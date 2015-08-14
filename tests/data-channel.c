@@ -177,7 +177,7 @@ int main( int argc, char **argv )
     data[2 * i + 1] = 32767.0 * sin( phase );
     }
   if( !hyscan_data_channel_add_data( dchannel1, 1, data, 2 * 4 * signal_size * sizeof( gint16 ), NULL ) )
-    g_error( "can't write data line 1" );
+    g_error( "can't write data channel 1 line 1" );
 
   // Данные для второго канала - сдвинуты на Pi/2.
   memset( data, 0, 2 * 4 * signal_size * sizeof( gint16 ) );
@@ -189,7 +189,24 @@ int main( int argc, char **argv )
     data[2 * i + 1] = 32767.0 * sin( phase );
     }
   if( !hyscan_data_channel_add_data( dchannel2, 1, data, 2 * 4 * signal_size * sizeof( gint16 ), NULL ) )
-    g_error( "can't write data line 1" );
+    g_error( "can't write data channel 2 line 1" );
+
+  g_free( data );
+
+  }
+
+
+  // Создаём тестовые данные для проверки скорости свёртки.
+  {
+
+  guint32 signal_size = discretization * duration;
+  gint16 *data = g_malloc0( 2 * 100 * signal_size * sizeof( gint16 ) );
+
+  if( !hyscan_data_channel_add_data( dchannel1, 2, data, 2 * 100 * signal_size * sizeof( gint16 ), NULL ) )
+    g_error( "can't write data channel 1 line 2" );
+
+  if( !hyscan_data_channel_add_data( dchannel2, 2, data, 2 * 100 * signal_size * sizeof( gint16 ), NULL ) )
+    g_error( "can't write data channel 2 line 2" );
 
   g_free( data );
 
@@ -245,10 +262,10 @@ int main( int argc, char **argv )
   // Выполним 1000 вызовов функции свёртки, для вычисления скорости работы.
   g_message( "data1 speed test" );
   for( i = 0; i < 1000; i++ )
-    hyscan_data_channel_get_amplitude_values( dchannel1, TRUE, 0, amp2, &readings, NULL );
+    hyscan_data_channel_get_amplitude_values( dchannel1, TRUE, 1, amp2, &readings, NULL );
   g_message( "data2 speed test" );
   for( i = 0; i < 1000; i++ )
-    hyscan_data_channel_get_amplitude_values( dchannel2, TRUE, 0, amp2, &readings, NULL );
+    hyscan_data_channel_get_amplitude_values( dchannel2, TRUE, 1, amp2, &readings, NULL );
 
   }
 
