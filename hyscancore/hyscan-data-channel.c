@@ -432,6 +432,8 @@ static void hyscan_data_channel_object_finalize( HyScanDataChannel *dchannel )
 
   g_object_unref( priv->db );
 
+  G_OBJECT_CLASS( hyscan_data_channel_parent_class )->finalize( G_OBJECT( dchannel ) );
+
 }
 
 
