@@ -799,6 +799,28 @@ gboolean hyscan_data_channel_add_data( HyScanDataChannel *dchannel, gint64 time,
 }
 
 
+// Функция возвращает число точек данных для указанного индекса.
+gint32 hyscan_data_channel_get_values_count( HyScanDataChannel *dchannel, gint32 index )
+{
+
+  HyScanDataChannelPriv *priv = HYSCAN_DATA_CHANNEL_GET_PRIVATE( dchannel );
+
+  gint32 dsize;
+
+  // Проверка состояния объекта.
+  if( priv->fail ) return FALSE;
+
+  // Считываем размер данных.
+  if( !hyscan_db_get_channel_data( priv->db, priv->channel_id, index, NULL, &dsize, NULL ) )
+    dsize = -1;
+  else
+    dsize /= hyscan_core_get_data_point_size( priv->info.discretization_type );
+
+  return dsize;
+
+}
+
+
 // Функция возвращает значения амплитуды акустического сигнала.
 gboolean hyscan_data_channel_get_amplitude_values( HyScanDataChannel *dchannel, gboolean convolve, gint32 index, gfloat *buffer, gint32 *buffer_size, gint64 *time )
 {
@@ -812,14 +834,7 @@ gboolean hyscan_data_channel_get_amplitude_values( HyScanDataChannel *dchannel, 
 
   // Проверка состояния объекта.
   if( priv->fail ) return FALSE;
-
-  // Если запрошен только размер данных и время записи.
-  if( buffer == NULL )
-    {
-    if( !hyscan_db_get_channel_data( priv->db, priv->channel_id, index, NULL, buffer_size, time ) ) return FALSE;
-    *buffer_size /= hyscan_core_get_data_point_size( priv->info.discretization_type );
-    return TRUE;
-    }
+  if( buffer == NULL ) return FALSE;
 
   g_mutex_lock( &priv->mutex );
 
@@ -866,14 +881,7 @@ gboolean hyscan_data_channel_get_quadrature_values( HyScanDataChannel *dchannel,
 
   // Проверка состояния объекта.
   if( priv->fail ) return FALSE;
-
-  // Если запрошен только размер данных и время записи.
-  if( buffer == NULL )
-    {
-    if( !hyscan_db_get_channel_data( priv->db, priv->channel_id, index, NULL, buffer_size, time ) ) return FALSE;
-    *buffer_size /= hyscan_core_get_data_point_size( priv->info.discretization_type );
-    return TRUE;
-    }
+  if( buffer == NULL ) return FALSE;
 
   g_mutex_lock( &priv->mutex );
 
@@ -921,14 +929,7 @@ gboolean hyscan_data_channel_get_phase_values( HyScanDataChannel *dchannel, HySc
 
   // Проверка состояния объекта.
   if( priv->fail ) return FALSE;
-
-  // Если запрошен только размер данных и время записи.
-  if( buffer == NULL )
-    {
-    if( !hyscan_db_get_channel_data( priv->db, priv->channel_id, index, NULL, buffer_size, time ) ) return FALSE;
-    *buffer_size /= hyscan_core_get_data_point_size( priv->info.discretization_type );
-    return TRUE;
-    }
+  if( buffer == NULL ) return FALSE;
 
   g_mutex_lock( &priv->mutex );
 
