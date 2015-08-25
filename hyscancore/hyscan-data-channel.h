@@ -78,7 +78,7 @@
 #define _hyscan_data_channel_h
 
 #include <hyscan-db.h>
-#include <hyscan-core-types.h>
+#include <hyscan-types.h>
 
 G_BEGIN_DECLS
 
@@ -125,7 +125,7 @@ typedef GObjectClass HyScanDataChannelClass;
  * Функция создаёт новый канал хранения акустических данных и открывает его для первичной обработки.
  * Параметры акустических данных определяются структурой \link HyScanDataChannelInfo \endlink. Образец сигнала
  * для свёртки задаётся как индекс записи канала данных с именем "signals". Создание и запись образца сигнала
- * должны быть выполнены заранее. \link HyScanSignals \endlink.
+ * должны быть выполнены заранее. \link !!!HyScanSignals!!! \endlink.
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param project_name название проекта;
@@ -158,9 +158,9 @@ HyScanDataChannel *hyscan_data_channel_open( HyScanDB *db, const gchar *project_
 /*!
  *
  * Функция возвращает параметры акустических данных. Структуру \link HyScanDataChannelInfo \endlink необходимо
- * удалить функцией g_free после окончания работы.
+ * удалить функцией g_free после окончания использования.
  *
- * \param dchannel указатель на объект \link HyScanDataChannel \endlink;
+ * \param dchannel указатель на объект \link HyScanDataChannel \endlink.
  *
  * \return Указатель на структуру с параметрами акустических данных.
  *

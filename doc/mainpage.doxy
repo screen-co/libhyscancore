@@ -4,7 +4,8 @@
  *
  * Библиотека содержит следующие функции и классы:
  *
- * - \link HyScanCoreTypes \endlink - вспомогательные функции определения типов объектов HyScan;
+ * - \link HyScanState \endlink - параметры состояния комплекса программ HyScan;
+ * - \link HyScanTypes \endlink - вспомогательные функции определения типов объектов HyScan;
  * - \link HyScanDataChannel \endlink - класс первичной обработки акустических данных.
  *
 */

@@ -1,14 +1,14 @@
 /*!
- * \file hyscan-core-types.h
+ * \file hyscan-types.h
  *
  * \brief Заголовочный файл вспомогательных функций с определениями типов объектов HyScan
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран"
  *
- * \defgroup HyScanCoreTypes HyScanCoreTypes - вспомогательные функции с определениями типов объектов HyScan
+ * \defgroup HyScanTypes HyScanTypes - вспомогательные функции с определениями типов объектов HyScan
  *
- * Группа функции HyScanCoreTypes используется для определения следующих типов:
+ * Группа функции HyScanTypes используется для определения следующих типов:
  *
  * - \link HyScanSonarType \endlink - типы гидролокаторов;
  * - \link HyScanBoardType \endlink - типы бортов;
@@ -17,21 +17,21 @@
  *
  * Для сигналов доступны функции определения типа по имени сигнала и наоборот:
  *
- * - #hyscan_core_get_signal_type_by_name - функция определяет тип сигнала по его имени;
- * - #hyscan_core_get_signal_type_name - функция возвращает название сигнала для указанного типа.
+ * - #hyscan_get_signal_type_by_name - функция определяет тип сигнала по его имени;
+ * - #hyscan_get_signal_type_name - функция возвращает название сигнала для указанного типа.
  *
  * Для данных доступны функции определения типа по имени данных и наоборот, определения размера одного отсчёта
  * в данных и преобразования данных:
  *
- * - #hyscan_core_get_data_type_by_name - функция определяет тип данных по имени;
- * - #hyscan_core_get_data_type_name - функция возвращает название данных для указанного типа;
- * - #hyscan_core_get_data_point_size - функция возвращает размер одного отсчёта данных в байтах;
- * - #hyscan_core_import_data - функция преобразовывает данные из низкоуровневого формата в HyScanComplexFloat.
+ * - #hyscan_get_data_type_by_name - функция определяет тип данных по имени;
+ * - #hyscan_get_data_type_name - функция возвращает название данных для указанного типа;
+ * - #hyscan_get_data_point_size - функция возвращает размер одного отсчёта данных в байтах;
+ * - #hyscan_import_data - функция преобразовывает данные из низкоуровневого формата в HyScanComplexFloat.
  *
 */
 
-#ifndef _hyscan_core_types_h
-#define _hyscan_core_types_h
+#ifndef _hyscan_types_h
+#define _hyscan_types_h
 
 #include <hyscan-db.h>
 
@@ -131,7 +131,7 @@ typedef struct HyScanComplexFloat {              // Комплексные чи�
 
 
 // Функция проверяет наличие данных для указанных типов гидролокатора и борта установки.
-gboolean hyscan_core_has_data( HyScanDB *db, guint32 track_id, HyScanSonarType sonar_type, HyScanBoardType board_type );
+gboolean hyscan_has_data( HyScanDB *db, guint32 track_id, HyScanSonarType sonar_type, HyScanBoardType board_type );
 
 
 /*!
@@ -143,7 +143,7 @@ gboolean hyscan_core_has_data( HyScanDB *db, guint32 track_id, HyScanSonarType s
  * \return Тип сигнала \link HyScanSignalType \endlink.
  *
 */
-HyScanSignalType hyscan_core_get_signal_type_by_name( const gchar *signal_name );
+HyScanSignalType hyscan_get_signal_type_by_name( const gchar *signal_name );
 
 
 /*!
@@ -157,7 +157,7 @@ HyScanSignalType hyscan_core_get_signal_type_by_name( const gchar *signal_name )
  * \return Строка с названием типа сигнала.
  *
 */
-const gchar *hyscan_core_get_signal_type_name( HyScanSignalType signal_type );
+const gchar *hyscan_get_signal_type_name( HyScanSignalType signal_type );
 
 
 /*!
@@ -169,7 +169,7 @@ const gchar *hyscan_core_get_signal_type_name( HyScanSignalType signal_type );
  * \return Тип данных \link HyScanDataType \endlink.
  *
 */
-HyScanDataType hyscan_core_get_data_type_by_name( const gchar *data_name );
+HyScanDataType hyscan_get_data_type_by_name( const gchar *data_name );
 
 
 /*!
@@ -183,7 +183,7 @@ HyScanDataType hyscan_core_get_data_type_by_name( const gchar *data_name );
  * \return Строка с названием типа данных.
  *
 */
-const gchar *hyscan_core_get_data_type_name( HyScanDataType data_type );
+const gchar *hyscan_get_data_type_name( HyScanDataType data_type );
 
 
 /*!
@@ -195,7 +195,7 @@ const gchar *hyscan_core_get_data_type_name( HyScanDataType data_type );
  * \return Размер одного отсчёта данных в байтах.
  *
 */
-guint32 hyscan_core_get_data_point_size( HyScanDataType data_type );
+guint32 hyscan_get_data_point_size( HyScanDataType data_type );
 
 
 /*!
@@ -213,9 +213,9 @@ guint32 hyscan_core_get_data_point_size( HyScanDataType data_type );
  * \return Число преобразованных точек или отрицательное число в случае ошибки.
  *
 */
-gint32 hyscan_core_import_data( HyScanDataType data_type, HyScanComplexFloat *out, gpointer in, guint32 n_points );
+gint32 hyscan_import_data( HyScanDataType data_type, HyScanComplexFloat *out, gpointer in, guint32 n_points );
 
 
 G_END_DECLS
 
-#endif // _hyscan_core_types_h
+#endif // _hyscan_types_h

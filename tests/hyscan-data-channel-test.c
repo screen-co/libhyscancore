@@ -1,5 +1,8 @@
+
 #include <hyscan-data-channel.h>
 #include <hyscan-db-file.h>
+
+#include <glib/gstdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -277,8 +280,14 @@ int main( int argc, char **argv )
   hyscan_db_close_project( db, project_id );
   hyscan_db_close_track( db, track_id );
 
+  // Удаляем проект.
+  hyscan_db_remove_project( db, "project" );
+
   // Закрываем базу данных.
   g_object_unref( db );
+
+  // Удаляем каталог проектов.
+  if( g_rmdir( db_path ) != 0 ) g_error( "can't delete directory '%s'", db_path );
 
   return 0;
 

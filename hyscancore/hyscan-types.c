@@ -1,5 +1,5 @@
 /*!
- * \file hyscan-core-types.c
+ * \file hyscan-types.c
  *
  * \brief Исходный файл вспомогательных функций с определениями типов данных HyScan
  * \author Andrei Fadeev (andrei@webcontrol.ru)
@@ -8,29 +8,29 @@
  *
 */
 
-#include "hyscan-core-types.h"
+#include "hyscan-types.h"
 
 
-typedef struct HyScanCoreDataType {
+typedef struct HyScanDataTypes {
 
   GQuark                     quark;
   const gchar               *name;
   HyScanDataType             type;
 
-} HyScanCoreDataType;
+} HyScanDataTypes;
 
 
-typedef struct HyScanCoreSignalType {
+typedef struct HyScanSignalTypes {
 
   GQuark                     quark;
   const gchar               *name;
   HyScanSignalType           type;
 
-} HyScanCoreSignalType;
+} HyScanSignalTypes;
 
 
 // Типы данных и их названия.
-static HyScanCoreDataType hyscan_core_data_types[] = {
+static HyScanDataTypes hyscan_data_types[] = {
 
   { 0, "HyScan-ADC12bit", HYSCAN_DATA_TYPE_ADC_12BIT },
   { 0, "HyScan-ADC14bit", HYSCAN_DATA_TYPE_ADC_14BIT },
@@ -70,7 +70,7 @@ static HyScanCoreDataType hyscan_core_data_types[] = {
 
 
 // Типы сигналов и их названия.
-static HyScanCoreSignalType hyscan_core_signal_types[] = {
+static HyScanSignalTypes hyscan_signal_types[] = {
 
   { 0, "TONE", HYSCAN_SIGNAL_TYPE_TONE },
   { 0, "LFM",  HYSCAN_SIGNAL_TYPE_LFM },
@@ -82,40 +82,40 @@ static HyScanCoreSignalType hyscan_core_signal_types[] = {
 
 
 // Функция инициализации статических данных.
-static void hyscan_core_initialize( void )
+static void hyscan_initialize( void )
 {
 
-  static gboolean hyscan_core_initialized = FALSE;
+  static gboolean hyscan_initialized = FALSE;
   gint i;
 
-  if( hyscan_core_initialized ) return;
+  if( hyscan_initialized ) return;
 
-  for( i = 0; hyscan_core_data_types[i].name != NULL; i++ )
-    hyscan_core_data_types[i].quark = g_quark_from_static_string( hyscan_core_data_types[i].name );
+  for( i = 0; hyscan_data_types[i].name != NULL; i++ )
+    hyscan_data_types[i].quark = g_quark_from_static_string( hyscan_data_types[i].name );
 
-  for( i = 0; hyscan_core_signal_types[i].name != NULL; i++ )
-    hyscan_core_signal_types[i].quark = g_quark_from_static_string( hyscan_core_signal_types[i].name );
+  for( i = 0; hyscan_signal_types[i].name != NULL; i++ )
+    hyscan_signal_types[i].quark = g_quark_from_static_string( hyscan_signal_types[i].name );
 
-  hyscan_core_initialized = TRUE;
+  hyscan_initialized = TRUE;
 
 }
 
 
 // Функция преобразовывает строку с названием типа сигнала в нумерованное значение.
-HyScanSignalType hyscan_core_get_signal_type_by_name( const gchar *signal_name )
+HyScanSignalType hyscan_get_signal_type_by_name( const gchar *signal_name )
 {
 
   GQuark quark;
   gint i;
 
   // Инициализация статических данных.
-  hyscan_core_initialize();
+  hyscan_initialize();
 
   // Ищем строку с указанным именем типа сигнала.
   quark = g_quark_try_string( signal_name );
-  for( i = 0; hyscan_core_signal_types[i].name != NULL; i++ )
-    if( hyscan_core_signal_types[i].quark == quark )
-      return hyscan_core_signal_types[i].type;
+  for( i = 0; hyscan_signal_types[i].name != NULL; i++ )
+    if( hyscan_signal_types[i].quark == quark )
+      return hyscan_signal_types[i].type;
 
   return HYSCAN_SIGNAL_TYPE_UNKNOWN;
 
@@ -123,18 +123,18 @@ HyScanSignalType hyscan_core_get_signal_type_by_name( const gchar *signal_name )
 
 
 // Функция преобразовывает нумерованное значение типа данных в название типа.
-const gchar *hyscan_core_get_signal_type_name( HyScanSignalType signal_type )
+const gchar *hyscan_get_signal_type_name( HyScanSignalType signal_type )
 {
 
   gint i;
 
   // Инициализация статических данных.
-  hyscan_core_initialize();
+  hyscan_initialize();
 
   // Ищем строку с указанным типом сигнала.
-  for( i = 0; hyscan_core_signal_types[i].name != NULL; i++ )
-    if( hyscan_core_signal_types[i].type == signal_type )
-      return hyscan_core_signal_types[i].name;
+  for( i = 0; hyscan_signal_types[i].name != NULL; i++ )
+    if( hyscan_signal_types[i].type == signal_type )
+      return hyscan_signal_types[i].name;
 
   return NULL;
 
@@ -142,20 +142,20 @@ const gchar *hyscan_core_get_signal_type_name( HyScanSignalType signal_type )
 
 
 // Функция преобразовывает строку с названием типа данных в нумерованное значение.
-HyScanDataType hyscan_core_get_data_type_by_name( const gchar *data_name )
+HyScanDataType hyscan_get_data_type_by_name( const gchar *data_name )
 {
 
   GQuark quark;
   gint i;
 
   // Инициализация статических данных.
-  hyscan_core_initialize();
+  hyscan_initialize();
 
   // Ищем строку с указанным именем типа данных.
   quark = g_quark_try_string( data_name );
-  for( i = 0; hyscan_core_data_types[i].name != NULL; i++ )
-    if( hyscan_core_data_types[i].quark == quark )
-      return hyscan_core_data_types[i].type;
+  for( i = 0; hyscan_data_types[i].name != NULL; i++ )
+    if( hyscan_data_types[i].quark == quark )
+      return hyscan_data_types[i].type;
 
   return HYSCAN_DATA_TYPE_UNKNOWN;
 
@@ -163,18 +163,18 @@ HyScanDataType hyscan_core_get_data_type_by_name( const gchar *data_name )
 
 
 // Функция преобразовывает нумерованное значение типа данных в название типа.
-const gchar *hyscan_core_get_data_type_name( HyScanDataType data_type )
+const gchar *hyscan_get_data_type_name( HyScanDataType data_type )
 {
 
   gint i;
 
   // Инициализация статических данных.
-  hyscan_core_initialize();
+  hyscan_initialize();
 
   // Ищем строку с указанным типом данных.
-  for( i = 0; hyscan_core_data_types[i].name != NULL; i++ )
-    if( hyscan_core_data_types[i].type == data_type )
-      return hyscan_core_data_types[i].name;
+  for( i = 0; hyscan_data_types[i].name != NULL; i++ )
+    if( hyscan_data_types[i].type == data_type )
+      return hyscan_data_types[i].name;
 
   return NULL;
 
@@ -182,7 +182,7 @@ const gchar *hyscan_core_get_data_type_name( HyScanDataType data_type )
 
 
 // Функция возвращает размер одного отсчёта данных в байтах, для указанного типа.
-guint32 hyscan_core_get_data_point_size( HyScanDataType data_type )
+guint32 hyscan_get_data_point_size( HyScanDataType data_type )
 {
 
   switch( data_type )
@@ -230,7 +230,7 @@ guint32 hyscan_core_get_data_point_size( HyScanDataType data_type )
 
 
 // Функция преобразовывает данные из низкоуровневого формата в HyScanComplexFloat размером raw_size.
-gint32 hyscan_core_import_data( HyScanDataType data_type, HyScanComplexFloat *data, gpointer raw, guint32 raw_size )
+gint32 hyscan_import_data( HyScanDataType data_type, HyScanComplexFloat *data, gpointer raw, guint32 raw_size )
 {
 
   guint32 i;

@@ -269,7 +269,7 @@ static GObject* hyscan_data_channel_object_constructor( GType g_type, guint n_co
 
   // Тип дискретизации данных в канале.
   type = hyscan_db_get_string_param( priv->db, priv->param_id, "discretization.type" );
-  priv->info.discretization_type = hyscan_core_get_data_type_by_name( type );
+  priv->info.discretization_type = hyscan_get_data_type_by_name( type );
   g_free( type );
   if( priv->info.discretization_type == HYSCAN_DATA_TYPE_UNKNOWN )
     {
@@ -287,7 +287,7 @@ static GObject* hyscan_data_channel_object_constructor( GType g_type, guint n_co
 
   // Тип рабочего сигнала.
   type = hyscan_db_get_string_param( priv->db, priv->param_id, "signal.type" );
-  priv->info.signal_type = hyscan_core_get_signal_type_by_name( type );
+  priv->info.signal_type = hyscan_get_signal_type_by_name( type );
   g_free( type );
   if( priv->info.signal_type == HYSCAN_SIGNAL_TYPE_UNKNOWN )
     {
@@ -452,7 +452,7 @@ static void hyscan_data_channel_buffer_realloc( HyScanDataChannelPriv *priv, gin
   priv->buffer_size = new_buffer_size;
 
   // Число отсчётов данных.
-  n_points = new_buffer_size / hyscan_core_get_data_point_size( priv->info.discretization_type );
+  n_points = new_buffer_size / hyscan_get_data_point_size( priv->info.discretization_type );
 
   // Число блоков преобразования Фурье над одной строкой.
   n_fft = ( n_points / ( priv->fft_size / 2 ) );
@@ -633,10 +633,10 @@ HyScanDataChannel *hyscan_data_channel_create( HyScanDB *db, const gchar *projec
 
   hyscan_db_set_string_param( db, param_id, "channel.version", "20150700" );
 
-  hyscan_db_set_string_param( db, param_id, "discretization.type", hyscan_core_get_data_type_name( info->discretization_type ) );
+  hyscan_db_set_string_param( db, param_id, "discretization.type", hyscan_get_data_type_name( info->discretization_type ) );
   hyscan_db_set_double_param( db, param_id, "discretization.frequency", info->discretization_frequency );
 
-  hyscan_db_set_string_param( db, param_id, "signal.type", hyscan_core_get_signal_type_name( info->signal_type ) );
+  hyscan_db_set_string_param( db, param_id, "signal.type", hyscan_get_signal_type_name( info->signal_type ) );
   hyscan_db_set_double_param( db, param_id, "signal.frequency", info->signal_frequency );
   hyscan_db_set_double_param( db, param_id, "signal.spectrum", info->signal_spectrum );
   hyscan_db_set_double_param( db, param_id, "signal.duration", info->signal_duration );
@@ -814,7 +814,7 @@ gint32 hyscan_data_channel_get_values_count( HyScanDataChannel *dchannel, gint32
   if( !hyscan_db_get_channel_data( priv->db, priv->channel_id, index, NULL, &dsize, NULL ) )
     dsize = -1;
   else
-    dsize /= hyscan_core_get_data_point_size( priv->info.discretization_type );
+    dsize /= hyscan_get_data_point_size( priv->info.discretization_type );
 
   return dsize;
 
@@ -842,7 +842,7 @@ gboolean hyscan_data_channel_get_amplitude_values( HyScanDataChannel *dchannel, 
   if( !hyscan_data_channel_get_raw_values( dchannel, index, priv->buffer, &io_size, time ) ) goto exit;
 
   // Преобразовываем "сырые" данные в HyScanComplexFloat.
-  n_points = hyscan_core_import_data( priv->info.discretization_type, priv->ibuff, priv->buffer, io_size );
+  n_points = hyscan_import_data( priv->info.discretization_type, priv->ibuff, priv->buffer, io_size );
   if( n_points < 0 ) goto exit;
 
   // Выполняем свёртку.
@@ -889,7 +889,7 @@ gboolean hyscan_data_channel_get_quadrature_values( HyScanDataChannel *dchannel,
   if( !hyscan_data_channel_get_raw_values( dchannel, index, priv->buffer, &io_size, time ) ) goto exit;
 
   // Преобразовываем "сырые" данные в HyScanComplexFloat.
-  n_points = hyscan_core_import_data( priv->info.discretization_type, priv->ibuff, priv->buffer, io_size );
+  n_points = hyscan_import_data( priv->info.discretization_type, priv->ibuff, priv->buffer, io_size );
   if( n_points < 0 ) goto exit;
 
   // Выполняем свёртку.
@@ -937,7 +937,7 @@ gboolean hyscan_data_channel_get_phase_values( HyScanDataChannel *dchannel, HySc
   if( !hyscan_data_channel_get_raw_values( dchannel, index, priv->buffer, &io_size, &time1 ) ) goto exit;
 
   // Преобразовываем "сырые" данные в HyScanComplexFloat.
-  n_points1 = hyscan_core_import_data( priv->info.discretization_type, priv->ibuff, priv->buffer, io_size );
+  n_points1 = hyscan_import_data( priv->info.discretization_type, priv->ibuff, priv->buffer, io_size );
   if( n_points1 < 0 ) goto exit;
 
   // Выполняем свёртку.
