@@ -71,16 +71,21 @@
 G_BEGIN_DECLS
 
 
-#define G_TYPE_HYSCAN_STATE              hyscan_state_get_type()
-#define HYSCAN_STATE( obj )              ( G_TYPE_CHECK_INSTANCE_CAST ( ( obj ), G_TYPE_HYSCAN_STATE, HyScanSate ) )
-#define HYSCAN_STATE_CLASS( vtable )     ( G_TYPE_CHECK_CLASS_CAST ( ( vtable ), G_TYPE_HYSCAN_STATE, HyScanSateClass ) )
-#define HYSCAN_STATE_GET_CLASS( inst )   ( G_TYPE_INSTANCE_GET_INTERFACE ( ( inst ), G_TYPE_HYSCAN_STATE, HyScanSateClass ) )
+#define HYSCAN_TYPE_STATE                        ( hyscan_state_get_type() )
+#define HYSCAN_STATE( obj )                      ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_STATE, HyScanState ) )
+#define HYSCAN_IS_STATE( obj )                   ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_STATE ) )
+#define HYSCAN_STATE_CLASS( klass )              ( G_TYPE_CHECK_CLASS_CAST( ( klass ), HYSCAN_TYPE_STATE, HyScanStateClass ) )
+#define HYSCAN_IS_STATE_CLASS( klass )           ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), HYSCAN_TYPE_STATE ) )
+#define HYSCAN_STATE_GET_CLASS( obj )            ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), HYSCAN_TYPE_STATE, HyScanStateClass ) )
 
 GType hyscan_state_get_type( void );
 
 
-typedef GObject HyScanSate;
-typedef GObjectClass HyScanSateClass;
+typedef GObject HyScanState;
+typedef GObjectClass HyScanStateClass;
+
+
+GType hyscan_state_get_type( void );
 
 
 /*!
@@ -92,7 +97,7 @@ typedef GObjectClass HyScanSateClass;
  * \return Указатель на объект \link HyScanState \endlink.
  *
 */
-HyScanSate *hyscan_state_new( void );
+HyScanState *hyscan_state_new( void );
 
 
 /*!
@@ -100,7 +105,7 @@ HyScanSate *hyscan_state_new( void );
  * Функция задаёт новый указатель на интерфейс базы данных \link HyScanDB \endlink.
  *
  * При изменении указателя на интерфейс базы данных производится проверка типа объекта и если он совпадает
- * с G_TYPE_HYSCAN_DB указатель изменяется на заданный. В противном случае значение указателя изменяется на NULL.
+ * с HYSCAN_TYPE_DB указатель изменяется на заданный. В противном случае значение указателя изменяется на NULL.
  * Также, при изменении указателя на интерфейс базы данных, обнуляются имена проекта, группы параметров обработки
  * и галса.
  *
@@ -116,7 +121,7 @@ HyScanSate *hyscan_state_new( void );
  * \return Нет.
  *
 */
-void hyscan_state_set_db( HyScanSate *state, HyScanDB *db );
+void hyscan_state_set_db( HyScanState *state, HyScanDB *db );
 
 
 /*!
@@ -131,7 +136,7 @@ void hyscan_state_set_db( HyScanSate *state, HyScanDB *db );
  * \return Указатель на объект \link HyScanDB \endlink или NULL.
  *
 */
-HyScanDB *hyscan_state_get_db( HyScanSate *state );
+HyScanDB *hyscan_state_get_db( HyScanState *state );
 
 
 /*!
@@ -146,7 +151,7 @@ HyScanDB *hyscan_state_get_db( HyScanSate *state );
  * \return Нет.
  *
 */
-void hyscan_state_set_project_name( HyScanSate *state, const gchar *project_name );
+void hyscan_state_set_project_name( HyScanState *state, const gchar *project_name );
 
 
 /*!
@@ -161,7 +166,7 @@ void hyscan_state_set_project_name( HyScanSate *state, const gchar *project_name
  * \return Имя используемого проекта или NULL.
  *
 */
-const gchar *hyscan_state_get_project_name( HyScanSate *state );
+const gchar *hyscan_state_get_project_name( HyScanState *state );
 
 
 /*!
@@ -174,7 +179,7 @@ const gchar *hyscan_state_get_project_name( HyScanSate *state );
  * \return Нет.
  *
 */
-void hyscan_state_set_track_name( HyScanSate *state, const gchar *track_name );
+void hyscan_state_set_track_name( HyScanState *state, const gchar *track_name );
 
 
 /*!
@@ -189,7 +194,7 @@ void hyscan_state_set_track_name( HyScanSate *state, const gchar *track_name );
  * \return Имя используемого галса или NULL.
  *
 */
-const gchar *hyscan_state_get_track_name( HyScanSate *state );
+const gchar *hyscan_state_get_track_name( HyScanState *state );
 
 
 /*!
@@ -202,7 +207,7 @@ const gchar *hyscan_state_get_track_name( HyScanSate *state );
  * \return Нет.
  *
 */
-void hyscan_state_set_preset_name( HyScanSate *state, const gchar *preset_name );
+void hyscan_state_set_preset_name( HyScanState *state, const gchar *preset_name );
 
 
 /*!
@@ -217,7 +222,7 @@ void hyscan_state_set_preset_name( HyScanSate *state, const gchar *preset_name )
  * \return Имя группы параметров обработки или NULL.
  *
 */
-const gchar *hyscan_state_get_preset_name( HyScanSate *state );
+const gchar *hyscan_state_get_preset_name( HyScanState *state );
 
 
 /*!
@@ -230,7 +235,7 @@ const gchar *hyscan_state_get_preset_name( HyScanSate *state );
  * \return Нет.
  *
 */
-void hyscan_state_set_profile_name( HyScanSate *state, const gchar *profile_name );
+void hyscan_state_set_profile_name( HyScanState *state, const gchar *profile_name );
 
 
 /*!
@@ -245,7 +250,7 @@ void hyscan_state_set_profile_name( HyScanSate *state, const gchar *profile_name
  * \return Имя профиля задачи или NULL.
  *
 */
-const gchar *hyscan_state_get_profile_name( HyScanSate *state );
+const gchar *hyscan_state_get_profile_name( HyScanState *state );
 
 
 G_END_DECLS

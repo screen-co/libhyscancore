@@ -29,7 +29,7 @@ enum { SIGNAL_DB_CHANGED,
 };
 
 
-typedef struct HyScanSatePriv {                  // Внутренние данные объекта.
+typedef struct HyScanStatePriv {                 // Внутренние данные объекта.
 
   HyScanDB                  *db;                 // Указатель на интерфейс базы данных.
 
@@ -39,26 +39,26 @@ typedef struct HyScanSatePriv {                  // Внутренние дан�
 
   gchar                     *profile_name;       // Название текущего профиля задачи.
 
-} HyScanSatePriv;
+} HyScanStatePriv;
 
 
-#define HYSCAN_STATE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), G_TYPE_HYSCAN_STATE, HyScanSatePriv ) )
+#define HYSCAN_STATE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), HYSCAN_TYPE_STATE, HyScanStatePriv ) )
 
 
-static void hyscan_state_set_property( HyScanSate *state, guint prop_id, const GValue *value, GParamSpec *pspec );
-static void hyscan_state_get_property( HyScanSate *state, guint prop_id, GValue *value, GParamSpec *pspec );
-static void hyscan_state_object_finalize( HyScanSate *state );
+static void hyscan_state_set_property( HyScanState *state, guint prop_id, const GValue *value, GParamSpec *pspec );
+static void hyscan_state_get_property( HyScanState *state, guint prop_id, GValue *value, GParamSpec *pspec );
+static void hyscan_state_object_finalize( HyScanState *state );
 
 static guint hyscan_state_signals[ SIGNAL_LAST ] = { 0 };
 
 
-G_DEFINE_TYPE( HyScanSate, hyscan_state, G_TYPE_OBJECT );
+G_DEFINE_TYPE( HyScanState, hyscan_state, G_TYPE_OBJECT );
 
 
-static void hyscan_state_init( HyScanSate *state )
+static void hyscan_state_init( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   priv->db = NULL;
   priv->project_name = NULL;
@@ -69,7 +69,7 @@ static void hyscan_state_init( HyScanSate *state )
 }
 
 
-static void hyscan_state_class_init( HyScanSateClass *klass )
+static void hyscan_state_class_init( HyScanStateClass *klass )
 {
 
   GObjectClass *this_class = G_OBJECT_CLASS( klass );
@@ -79,7 +79,7 @@ static void hyscan_state_class_init( HyScanSateClass *klass )
   this_class->finalize = hyscan_state_object_finalize;
 
   g_object_class_install_property( this_class, PROP_DB,
-    g_param_spec_object( "db", "HyScanDB", "HyScanDB intreface", G_TYPE_HYSCAN_DB, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
+    g_param_spec_object( "db", "HyScanDB", "HyScanDB intreface", HYSCAN_TYPE_DB, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
 
   g_object_class_install_property( this_class, PROP_PROJECT_NAME,
     g_param_spec_string( "project-name", "Project name", "HyScan DB project name", NULL, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
@@ -94,31 +94,31 @@ static void hyscan_state_class_init( HyScanSateClass *klass )
     g_param_spec_string( "profile-name", "Profile name", "HyScan profile name", NULL, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
 
   hyscan_state_signals[ SIGNAL_DB_CHANGED ] =
-    g_signal_new( "db-changed", G_TYPE_HYSCAN_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_signal_new( "db-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__OBJECT, G_TYPE_NONE, 1, G_TYPE_OBJECT );
 
   hyscan_state_signals[ SIGNAL_PROJECT_NAME_CHANGED ] =
-    g_signal_new( "project-changed", G_TYPE_HYSCAN_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_signal_new( "project-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__STRING, G_TYPE_NONE, 1, G_TYPE_STRING );
 
   hyscan_state_signals[ SIGNAL_TRACK_NAME_CHANGED ] =
-    g_signal_new( "track-changed", G_TYPE_HYSCAN_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_signal_new( "track-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__STRING, G_TYPE_NONE, 1, G_TYPE_STRING );
 
   hyscan_state_signals[ SIGNAL_PRESET_NAME_CHANGED ] =
-    g_signal_new( "preset-changed", G_TYPE_HYSCAN_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_signal_new( "preset-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__STRING, G_TYPE_NONE, 1, G_TYPE_STRING );
 
   hyscan_state_signals[ SIGNAL_PROFILE_NAME_CHANGED ] =
-    g_signal_new( "profile-changed", G_TYPE_HYSCAN_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_signal_new( "profile-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__STRING, G_TYPE_NONE, 1, G_TYPE_STRING );
 
-  g_type_class_add_private( klass, sizeof( HyScanSatePriv ) );
+  g_type_class_add_private( klass, sizeof( HyScanStatePriv ) );
 
 }
 
 
-static void hyscan_state_set_property( HyScanSate *state, guint prop_id, const GValue *value, GParamSpec *pspec )
+static void hyscan_state_set_property( HyScanState *state, guint prop_id, const GValue *value, GParamSpec *pspec )
 {
 
   switch ( prop_id )
@@ -153,7 +153,7 @@ static void hyscan_state_set_property( HyScanSate *state, guint prop_id, const G
 }
 
 
-static void hyscan_state_get_property( HyScanSate *state, guint prop_id, GValue *value, GParamSpec *pspec )
+static void hyscan_state_get_property( HyScanState *state, guint prop_id, GValue *value, GParamSpec *pspec )
 {
 
   switch ( prop_id )
@@ -189,10 +189,10 @@ static void hyscan_state_get_property( HyScanSate *state, guint prop_id, GValue 
 
 
 // Деструктор объекта.
-static void hyscan_state_object_finalize( HyScanSate *state )
+static void hyscan_state_object_finalize( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   g_clear_object( &priv->db );
 
@@ -205,19 +205,19 @@ static void hyscan_state_object_finalize( HyScanSate *state )
 
 
 // Функция создаёт новый объект.
-HyScanSate *hyscan_state_new( void )
+HyScanState *hyscan_state_new( void )
 {
 
-  return g_object_new( G_TYPE_HYSCAN_STATE, NULL );
+  return g_object_new( HYSCAN_TYPE_STATE, NULL );
 
 }
 
 
 //  Функция задаёт новый указатель на интерфейс базы данных.
-void hyscan_state_set_db( HyScanSate *state, HyScanDB *db )
+void hyscan_state_set_db( HyScanState *state, HyScanDB *db )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   gboolean project_changed = FALSE;
   gboolean track_changed = FALSE;
@@ -241,7 +241,7 @@ void hyscan_state_set_db( HyScanSate *state, HyScanDB *db )
 
   // Запоминаем указатель на интерфейс базы данных.
   priv->db = db;
-  if( G_IS_HYSCAN_DB( priv->db ) ) g_object_ref( priv->db );
+  if( HYSCAN_IS_DB( priv->db ) ) g_object_ref( priv->db );
   else priv->db = NULL;
 
   // Отправляем сигналы об изменении состояния.
@@ -254,10 +254,10 @@ void hyscan_state_set_db( HyScanSate *state, HyScanDB *db )
 
 
 // Функция возвращает указатель на интерфейс базы данных.
-HyScanDB *hyscan_state_get_db( HyScanSate *state )
+HyScanDB *hyscan_state_get_db( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   return priv->db;
 
@@ -265,10 +265,10 @@ HyScanDB *hyscan_state_get_db( HyScanSate *state )
 
 
 // Функция задаёт имя используемого проекта.
-void hyscan_state_set_project_name( HyScanSate *state, const gchar *project_name )
+void hyscan_state_set_project_name( HyScanState *state, const gchar *project_name )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   gboolean track_changed = FALSE;
   gboolean preset_changed = FALSE;
@@ -299,10 +299,10 @@ void hyscan_state_set_project_name( HyScanSate *state, const gchar *project_name
 
 
 // Функция возвращает имя используемого проекта.
-const gchar *hyscan_state_get_project_name( HyScanSate *state )
+const gchar *hyscan_state_get_project_name( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   return priv->project_name;
 
@@ -310,10 +310,10 @@ const gchar *hyscan_state_get_project_name( HyScanSate *state )
 
 
 // Функция задаёт имя используемого галса.
-void hyscan_state_set_track_name( HyScanSate *state, const gchar *track_name )
+void hyscan_state_set_track_name( HyScanState *state, const gchar *track_name )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   if( priv->db == NULL ) return;
 
@@ -333,10 +333,10 @@ void hyscan_state_set_track_name( HyScanSate *state, const gchar *track_name )
 
 
 // Функция возвращает имя используемого галса.
-const gchar *hyscan_state_get_track_name( HyScanSate *state )
+const gchar *hyscan_state_get_track_name( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   return priv->track_name;
 
@@ -344,10 +344,10 @@ const gchar *hyscan_state_get_track_name( HyScanSate *state )
 
 
 // Функция задаёт имя группы параметров обработки.
-void hyscan_state_set_preset_name( HyScanSate *state, const gchar *preset_name )
+void hyscan_state_set_preset_name( HyScanState *state, const gchar *preset_name )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   if( priv->db == NULL ) return;
 
@@ -367,20 +367,20 @@ void hyscan_state_set_preset_name( HyScanSate *state, const gchar *preset_name )
 
 
 // Функция возвращает имя группы параметров обработки.
-const gchar *hyscan_state_get_preset_name( HyScanSate *state )
+const gchar *hyscan_state_get_preset_name( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   return priv->preset_name;
 
 }
 
 
-void hyscan_state_set_profile_name( HyScanSate *state, const gchar *profile_name )
+void hyscan_state_set_profile_name( HyScanState *state, const gchar *profile_name )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   // Если имена профилей задачи совпадают - ничего не делаем.
   if( g_strcmp0( priv->profile_name, profile_name ) == 0 ) return;
@@ -397,10 +397,10 @@ void hyscan_state_set_profile_name( HyScanSate *state, const gchar *profile_name
 }
 
 
-const gchar *hyscan_state_get_profile_name( HyScanSate *state )
+const gchar *hyscan_state_get_profile_name( HyScanState *state )
 {
 
-  HyScanSatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   return priv->profile_name;
 

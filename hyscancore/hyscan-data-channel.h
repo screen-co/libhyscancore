@@ -83,12 +83,12 @@
 G_BEGIN_DECLS
 
 
-#define G_TYPE_HYSCAN_DATA_CHANNEL             hyscan_data_channel_get_type()
-#define HYSCAN_DATA_CHANNEL( obj )             ( G_TYPE_CHECK_INSTANCE_CAST ( ( obj ), G_TYPE_HYSCAN_DATA_CHANNEL, HyScanDataChannel ) )
-#define HYSCAN_DATA_CHANNEL_CLASS( vtable )    ( G_TYPE_CHECK_CLASS_CAST ( ( vtable ), G_TYPE_HYSCAN_DATA_CHANNEL, HyScanDataChannelClass ) )
-#define HYSCAN_DATA_CHANNEL_GET_CLASS( inst )  ( G_TYPE_INSTANCE_GET_INTERFACE ( ( inst ), G_TYPE_HYSCAN_DATA_CHANNEL, HyScanDataChannelClass ) )
-
-GType hyscan_data_channel_get_type( void );
+#define HYSCAN_TYPE_DATA_CHANNEL                 ( hyscan_data_channel_get_type() )
+#define HYSCAN_DATA_CHANNEL( obj )               ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_DATA_CHANNEL, HyScanDataChannel ) )
+#define HYSCAN_IS_DATA_CHANNEL( obj )            ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_DATA_CHANNEL ) )
+#define HYSCAN_DATA_CHANNEL_CLASS( klass )       ( G_TYPE_CHECK_CLASS_CAST( ( klass ), HYSCAN_TYPE_DATA_CHANNEL, HyScanDataChannelClass ) )
+#define HYSCAN_IS_DATA_CHANNEL_CLASS( klass )    ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), HYSCAN_TYPE_DATA_CHANNEL ) )
+#define HYSCAN_DATA_CHANNEL_GET_CLASS( obj )     ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), HYSCAN_TYPE_DATA_CHANNEL, HyScanDataChannelClass ) )
 
 
 /*! \brief Информация о канале данных */
@@ -118,6 +118,9 @@ typedef struct HyScanDataChannelInfo {
 
 typedef GObject HyScanDataChannel;
 typedef GObjectClass HyScanDataChannelClass;
+
+
+GType hyscan_data_channel_get_type( void );
 
 
 /*!

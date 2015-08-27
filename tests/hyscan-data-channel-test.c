@@ -81,7 +81,7 @@ int main( int argc, char **argv )
 
 
   // Открываем базу данных.
-  db = g_object_new( G_TYPE_HYSCAN_DB_FILE, "path", db_path, NULL );
+  db = g_object_new( HYSCAN_TYPE_DB_FILE, "path", db_path, NULL );
 
   // Создаём проект.
   project_id = hyscan_db_create_project( db, "project", NULL );

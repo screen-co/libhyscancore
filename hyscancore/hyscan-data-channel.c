@@ -66,7 +66,7 @@ typedef struct HyScanDataChannelPriv {              // Внутренние да
 } HyScanDataChannelPriv;
 
 
-#define HYSCAN_DATA_CHANNEL_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), G_TYPE_HYSCAN_DATA_CHANNEL, HyScanDataChannelPriv ) )
+#define HYSCAN_DATA_CHANNEL_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), HYSCAN_TYPE_DATA_CHANNEL, HyScanDataChannelPriv ) )
 
 
 static void hyscan_data_channel_set_property( HyScanDataChannel *dchannel, guint prop_id, const GValue *value, GParamSpec *pspec );
@@ -119,7 +119,7 @@ static void hyscan_data_channel_set_property( HyScanDataChannel *dchannel, guint
     case PROP_DB:
       priv->db = NULL;
       db = g_value_get_pointer( value );
-      if( db == NULL || !g_type_is_a( G_OBJECT_TYPE( db ), G_TYPE_HYSCAN_DB ) )
+      if( db == NULL || !g_type_is_a( G_OBJECT_TYPE( db ), HYSCAN_TYPE_DB ) )
         G_OBJECT_WARN_INVALID_PROPERTY_ID( dchannel, prop_id, pspec );
       else
         priv->db = db;
@@ -678,7 +678,7 @@ HyScanDataChannel *hyscan_data_channel_create( HyScanDB *db, const gchar *projec
 HyScanDataChannel *hyscan_data_channel_open( HyScanDB *db, const gchar *project_name, const gchar *track_name, const gchar *channel_name )
 {
 
-  HyScanDataChannel *dchannel = g_object_new( G_TYPE_HYSCAN_DATA_CHANNEL, "db", db, "project-name", project_name, "track-name", track_name, "channel-name", channel_name, NULL );
+  HyScanDataChannel *dchannel = g_object_new( HYSCAN_TYPE_DATA_CHANNEL, "db", db, "project-name", project_name, "track-name", track_name, "channel-name", channel_name, NULL );
   HyScanDataChannelPriv *priv = HYSCAN_DATA_CHANNEL_GET_PRIVATE( dchannel );
 
   if( !priv->fail ) return dchannel;
@@ -959,7 +959,7 @@ gboolean hyscan_data_channel_get_phase_values( HyScanDataChannel *dchannel, HySc
       }
 
     // Проверяем тип объекта второго канала данных.
-    if( !g_type_is_a( G_OBJECT_TYPE( pair ), G_TYPE_HYSCAN_DATA_CHANNEL ) )
+    if( !g_type_is_a( G_OBJECT_TYPE( pair ), HYSCAN_TYPE_DATA_CHANNEL ) )
       {
       g_critical( "hyscan_data_channel_get_phase_values: '%s.%s.%s': incorrect pair channel object type", priv->project_name, priv->track_name, priv->channel_name );
       goto exit;
