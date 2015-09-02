@@ -91,7 +91,7 @@ static void hyscan_data_channel_class_init( HyScanDataChannelClass *klass )
   this_class->finalize = hyscan_data_channel_object_finalize;
 
   g_object_class_install_property( this_class, PROP_DB,
-    g_param_spec_pointer( "db", "DB", "HyScanDB interface", G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY ) );
+    g_param_spec_object( "db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY ) );
 
   g_object_class_install_property( this_class, PROP_PROJECT_NAME,
     g_param_spec_string( "project-name", "ProjectName", "Project Name", NULL, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY ) );
@@ -111,18 +111,14 @@ static void hyscan_data_channel_set_property( HyScanDataChannel *dchannel, guint
 {
 
   HyScanDataChannelPriv *priv = HYSCAN_DATA_CHANNEL_GET_PRIVATE( dchannel );
-  HyScanDB *db;
 
   switch ( prop_id )
     {
 
     case PROP_DB:
-      priv->db = NULL;
-      db = g_value_get_pointer( value );
-      if( db == NULL || !g_type_is_a( G_OBJECT_TYPE( db ), HYSCAN_TYPE_DB ) )
+      priv->db = g_value_get_object( value );
+      if( priv->db == NULL )
         G_OBJECT_WARN_INVALID_PROPERTY_ID( dchannel, prop_id, pspec );
-      else
-        priv->db = db;
       break;
 
     case PROP_PROJECT_NAME:
@@ -835,6 +831,7 @@ gboolean hyscan_data_channel_get_amplitude_values( HyScanDataChannel *dchannel, 
   // Проверка состояния объекта.
   if( priv->fail ) return FALSE;
   if( buffer == NULL ) return FALSE;
+  if( priv->fft == NULL || priv->fft_signal == NULL ) convolve = FALSE;
 
   g_mutex_lock( &priv->mutex );
 
@@ -882,6 +879,7 @@ gboolean hyscan_data_channel_get_quadrature_values( HyScanDataChannel *dchannel,
   // Проверка состояния объекта.
   if( priv->fail ) return FALSE;
   if( buffer == NULL ) return FALSE;
+  if( priv->fft == NULL || priv->fft_signal == NULL ) convolve = FALSE;
 
   g_mutex_lock( &priv->mutex );
 
@@ -981,6 +979,9 @@ gboolean hyscan_data_channel_get_phase_values( HyScanDataChannel *dchannel, HySc
       }
 
     }
+
+  // Проверка состояния объекта.
+  if( priv->fft == NULL || priv->fft_signal == NULL ) convolve = FALSE;
 
   // Возвращаем значение фазы.
   *buffer_size = n_points1 = ( *buffer_size < n_points1 ) ? *buffer_size : n_points1;
