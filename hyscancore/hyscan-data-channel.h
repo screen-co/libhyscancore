@@ -95,7 +95,7 @@ G_BEGIN_DECLS
 typedef struct HyScanDataChannelInfo {
 
   HyScanDataType             discretization_type;   /*!< Тип дискретизации данных в канале, \link HyScanDataType \endlink. */
-  gfloat                discretization_frequency;   /*!< Частота дисретизации данных в канале, Гц. */
+  gfloat                discretization_frequency;   /*!< Частота дискретизации данных в канале, Гц. */
 
   HyScanSignalType           signal_type;           /*!< Тип сигнала, \link HyScanSignalType \endlink. */
   gfloat                     signal_frequency;      /*!< Рабочая (центральная) частота сигнала, Гц. */

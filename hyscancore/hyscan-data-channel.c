@@ -50,7 +50,7 @@ typedef struct HyScanDataChannelPriv {              // Внутренние да
   HyScanComplexFloat        *ibuff;                 // Буфер для выполнения преобразований.
   HyScanComplexFloat        *obuff;                 // Буфер для выполнения преобразований.
 
-  GMutex                     mutex;                 // Блокировка многопоточного доступа.
+  GMutex                     lock;                  // Блокировка многопоточного доступа.
 
   gboolean                   time_measure;          // Включение измерения времени свёртки.
   GTimer                    *timer;                 // Таймер измерения времени свёртки.
@@ -209,7 +209,7 @@ static GObject* hyscan_data_channel_object_constructor( GType g_type, guint n_co
 
   priv->fail = TRUE;
 
-  g_mutex_init( &priv->mutex );
+  g_mutex_init( &priv->lock );
 
   // Проверяем, что передан указатель на базу данных.
   if( priv->db != NULL ) g_object_ref( priv->db );
@@ -424,7 +424,7 @@ static void hyscan_data_channel_object_finalize( HyScanDataChannel *dchannel )
 
   if( priv->timer != NULL ) g_timer_destroy( priv->timer );
 
-  g_mutex_clear( &priv->mutex );
+  g_mutex_clear( &priv->lock );
 
   g_object_unref( priv->db );
 
@@ -701,7 +701,7 @@ gboolean hyscan_data_channel_set_signal_image( HyScanDataChannel *dchannel, HySc
 
   gint i, j, k;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Отменяем свёртку с текущим сигналом.
   if( priv->fft != NULL ) pffft_destroy_setup( priv->fft );
@@ -760,7 +760,7 @@ gboolean hyscan_data_channel_set_signal_image( HyScanDataChannel *dchannel, HySc
 
   exit:
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return status;
 
@@ -833,7 +833,7 @@ gboolean hyscan_data_channel_get_amplitude_values( HyScanDataChannel *dchannel, 
   if( buffer == NULL ) return FALSE;
   if( priv->fft == NULL || priv->fft_signal == NULL ) convolve = FALSE;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Считываем "сырые" данные канала.
   if( !hyscan_data_channel_get_raw_values( dchannel, index, priv->buffer, &io_size, time ) ) goto exit;
@@ -858,7 +858,7 @@ gboolean hyscan_data_channel_get_amplitude_values( HyScanDataChannel *dchannel, 
 
   exit:
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return status;
 
@@ -881,7 +881,7 @@ gboolean hyscan_data_channel_get_quadrature_values( HyScanDataChannel *dchannel,
   if( buffer == NULL ) return FALSE;
   if( priv->fft == NULL || priv->fft_signal == NULL ) convolve = FALSE;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Считываем "сырые" данные канала.
   if( !hyscan_data_channel_get_raw_values( dchannel, index, priv->buffer, &io_size, time ) ) goto exit;
@@ -906,7 +906,7 @@ gboolean hyscan_data_channel_get_quadrature_values( HyScanDataChannel *dchannel,
 
   exit:
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return status;
 
@@ -929,7 +929,7 @@ gboolean hyscan_data_channel_get_phase_values( HyScanDataChannel *dchannel, HySc
   if( priv->fail ) return FALSE;
   if( buffer == NULL ) return FALSE;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Считываем "сырые" данные канала.
   if( !hyscan_data_channel_get_raw_values( dchannel, index, priv->buffer, &io_size, &time1 ) ) goto exit;
@@ -1007,7 +1007,7 @@ gboolean hyscan_data_channel_get_phase_values( HyScanDataChannel *dchannel, HySc
 
   exit:
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return status;
 

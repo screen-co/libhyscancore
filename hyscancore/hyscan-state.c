@@ -194,12 +194,12 @@ static void hyscan_state_object_finalize( HyScanState *state )
 
   HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
-  g_clear_object( &priv->db );
+  g_object_unref( priv->db );
 
-  g_clear_pointer( &priv->project_name, g_free );
-  g_clear_pointer( &priv->track_name, g_free );
-  g_clear_pointer( &priv->preset_name, g_free );
-  g_clear_pointer( &priv->profile_name, g_free );
+  g_free( priv->project_name );
+  g_free( priv->track_name );
+  g_free( priv->preset_name );
+  g_free( priv->profile_name );
 
 }
 
