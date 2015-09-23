@@ -11,9 +11,12 @@ if( NOT CMAKE_BUILD_TYPE )
 endif()
 
 #
-# External dependencies.
+# HyScan libraries default paths
 if( NOT HYSCAN_DB_SOURCE_DIR )
   set( HYSCAN_DB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libhyscandb )
+endif()
+if( NOT HYSCAN_CACHE_SOURCE_DIR )
+  set( HYSCAN_CACHE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libhyscancache )
 endif()
 
 #
@@ -96,15 +99,17 @@ link_directories( ${GLIB2_LIBRARY_DIRS} )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/hyscancore )
 
 #
-# HyScanDB source directory.
-pkg_check_modules( HYSCAN_DB QUIET hyscandb )
-if( ${HYSCAN_DB_FOUND} )
-  add_definitions( ${HYSCAN_DB_CFLAGS} )
-  link_directories( ${HYSCAN_DB_LIBRARY_DIRS} )
+# HyScan dependencies.
+pkg_check_modules( HYSCAN QUIET hyscandb hyscancache )
+if( ${HYSCAN_FOUND} )
+  add_definitions( ${HYSCAN_CFLAGS} )
+  link_directories( ${HYSCAN_LIBRARY_DIRS} )
 else()
   include_directories( "${HYSCAN_DB_SOURCE_DIR}/hyscandb" )
+  include_directories( "${HYSCAN_CACHE_SOURCE_DIR}/hyscancache" )
   link_directories( "${HYSCAN_DB_SOURCE_DIR}/bin" )
-  set( HYSCAN_DB_LIBRARIES hyscandb )
+  link_directories( "${HYSCAN_CACHE_SOURCE_DIR}/bin" )
+  set( HYSCAN_LIBRARIES hyscandb hyscancache )
 endif()
 
 #

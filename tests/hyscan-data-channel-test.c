@@ -1,6 +1,7 @@
 
 #include <hyscan-data-channel.h>
 #include <hyscan-db-file.h>
+#include <hyscan-cached.h>
 
 #include <glib/gstdio.h>
 #include <string.h>
@@ -15,18 +16,16 @@ int main( int argc, char **argv )
   gdouble frequency = 0.0;        // Частота сигнала.
   gdouble duration = 0.0;         // Длительность сигнала.
   gdouble discretization = 0.0;   // Частота дискретизации.
+  gint cache_size = 0;            // Размер кэша, Мб.
 
   HyScanDB *db;
+  HyScanCache *cache = NULL;
   HyScanDataChannel *dchannel1;
   HyScanDataChannel *dchannel2;
 
   gint32 project_id;
   gint32 track_id;
   gint32 signal_index;
-
-  // Включим измерение времени.
-  g_setenv( "TIME_MEASURE", "YES", TRUE );
-  g_setenv( "G_MESSAGES_DEBUG", "all", TRUE );
 
   { // Разбор командной строки.
 
@@ -38,6 +37,7 @@ int main( int argc, char **argv )
     { "discretization", 'd', 0, G_OPTION_ARG_DOUBLE, &discretization, "Signal discretization, Hz", NULL },
     { "frequency", 'f', 0, G_OPTION_ARG_DOUBLE, &frequency, "Signal frequency, Hz", NULL },
     { "duration", 't', 0, G_OPTION_ARG_DOUBLE, &duration, "Signal duration, s", NULL },
+    { "cache", 'c', 0, G_OPTION_ARG_INT, &cache_size, "Use cache with size, Mb", NULL },
     { NULL }
   };
 
@@ -82,6 +82,10 @@ int main( int argc, char **argv )
 
   // Открываем базу данных.
   db = g_object_new( HYSCAN_TYPE_DB_FILE, "path", db_path, NULL );
+
+  // Кэш данных
+  if( cache_size )
+    cache = HYSCAN_CACHE( hyscan_cached_new( cache_size ) );
 
   // Создаём проект.
   project_id = hyscan_db_create_project( db, "project", NULL );
@@ -152,10 +156,10 @@ int main( int argc, char **argv )
   channel_info.antenna_vpattern = 0.0;
 
   // Создаём каналы данных.
-  dchannel1 = hyscan_data_channel_create( db, "project", "track", "data1", &channel_info, signal_index );
-  if( dchannel1 == NULL ) g_error( "can't create 'data1' channel" );
-  dchannel2 = hyscan_data_channel_create( db, "project", "track", "data2", &channel_info, signal_index );
-  if( dchannel2 == NULL ) g_error( "can't create 'data2' channel" );
+  dchannel1 = hyscan_data_channel_new( db, cache, NULL );
+  if( !hyscan_data_channel_create( dchannel1, "project", "track", "data1", &channel_info, signal_index ) ) g_error( "can't create 'data1' channel" );
+  dchannel2 = hyscan_data_channel_new( db, cache, NULL );
+  if( !hyscan_data_channel_create( dchannel2, "project", "track", "data2", &channel_info, signal_index ) ) g_error( "can't create 'data2' channel" );
 
   }
 
@@ -204,12 +208,18 @@ int main( int argc, char **argv )
 
   guint32 signal_size = discretization * duration;
   gint16 *data = g_malloc0( 2 * 100 * signal_size * sizeof( gint16 ) );
+  gint i;
 
-  if( !hyscan_data_channel_add_data( dchannel1, 2, data, 2 * 100 * signal_size * sizeof( gint16 ), NULL ) )
-    g_error( "can't write data channel 1 line 2" );
+  for( i = 0; i < 1000; i++ )
+    {
 
-  if( !hyscan_data_channel_add_data( dchannel2, 2, data, 2 * 100 * signal_size * sizeof( gint16 ), NULL ) )
-    g_error( "can't write data channel 2 line 2" );
+    if( !hyscan_data_channel_add_data( dchannel1, i+2, data, 2 * 100 * signal_size * sizeof( gint16 ), NULL ) )
+      g_error( "can't write data channel 1 line 2" );
+
+    if( !hyscan_data_channel_add_data( dchannel2, i+2, data, 2 * 100 * signal_size * sizeof( gint16 ), NULL ) )
+      g_error( "can't write data channel 2 line 2" );
+
+    }
 
   g_free( data );
 
@@ -226,7 +236,6 @@ int main( int argc, char **argv )
 
   gfloat *amp1 = g_malloc( 4 * signal_size * sizeof( gfloat ) );
   gfloat *amp2 = g_malloc( 4 * signal_size * sizeof( gfloat ) );
-  gfloat *phase = g_malloc( 4 * signal_size * sizeof( gfloat ) );
   gfloat delta;
 
   gint i, j;
@@ -240,7 +249,7 @@ int main( int argc, char **argv )
 
   // Проверяем вид свёртки в первом канале.
   readings = buffer_size;
-  hyscan_data_channel_get_amplitude_values( dchannel1, TRUE, 0, amp2, &readings, NULL );
+  hyscan_data_channel_get_amplitude_values( dchannel1, 0, amp2, &readings, NULL );
   delta = 0.0;
   for( i = 0; i < 4 * signal_size; i++ )
     delta += fabs( amp1[i] - amp2[i] );
@@ -248,27 +257,19 @@ int main( int argc, char **argv )
 
   // Проверяем вид свёртки в втором канале.
   readings = buffer_size;
-  hyscan_data_channel_get_amplitude_values( dchannel2, TRUE, 0, amp2, &readings, NULL );
+  hyscan_data_channel_get_amplitude_values( dchannel2, 0, amp2, &readings, NULL );
   delta = 0.0;
   for( i = 0; i < 4 * signal_size; i++ )
     delta += fabs( amp1[i] - amp2[i] );
   g_message( "data2 mean amplitude error = %f", delta / ( 4.0 * signal_size ) );
 
-  // Проверяем разницу фаз между двумя каналами.
-  readings = buffer_size;
-  hyscan_data_channel_get_phase_values( dchannel1, dchannel2, TRUE, 0, phase, &readings, NULL );
-  delta = 0.0;
-  for( i = signal_size; i < 3 * signal_size; i++ )
-    delta += fabs( phase[i] + G_PI / 2.0 );
-  g_message( "phase mean amplitude error = %f", delta / ( 2.0 * signal_size ) );
-
   // Выполним 1000 вызовов функции свёртки, для вычисления скорости работы.
   g_message( "data1 speed test" );
   for( i = 0; i < 1000; i++ )
-    hyscan_data_channel_get_amplitude_values( dchannel1, TRUE, 1, amp2, &readings, NULL );
+    hyscan_data_channel_get_amplitude_values( dchannel1, i+1, amp2, &readings, NULL );
   g_message( "data2 speed test" );
   for( i = 0; i < 1000; i++ )
-    hyscan_data_channel_get_amplitude_values( dchannel2, TRUE, 1, amp2, &readings, NULL );
+    hyscan_data_channel_get_amplitude_values( dchannel2, i+1, amp2, &readings, NULL );
 
   }
 
@@ -285,6 +286,9 @@ int main( int argc, char **argv )
 
   // Закрываем базу данных.
   g_object_unref( db );
+
+  // Удаляем кэш.
+  if( cache ) g_object_unref( cache );
 
   // Удаляем каталог проектов.
   if( g_rmdir( db_path ) != 0 ) g_error( "can't delete directory '%s'", db_path );

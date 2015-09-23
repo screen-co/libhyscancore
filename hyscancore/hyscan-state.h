@@ -19,18 +19,21 @@
  * HyScanState хранит следующие GObject параметры:
  *
  * - "db" - указатель на интерфейс базы данных \link HyScanDB \endlink, сигнал при изменении - "db-changed";
+ * - "cache" - указатель на интерфейс системы кэширования \link HyScanCache \endlink, сигнал при изменении - "cache-changed";
  * - "project_name" - название текущего открытого проекта, сигнал при изменении - "project-changed";
  * - "track_name" - название текущего обрабатываемого галса, сигнал при изменении - "track-changed";
  * - "preset_name" - название группы параметров используемой для текущей обработки данных проекта (preset), сигнал при изменении - "preset-changed";
  * - "profile_name" - название текущего профиля задачи, сигнал при изменении - "profile-changed".
  *
- * В качестве параметра сигнала "db-changed" передаётся указатель на интерфейс \link HyScanDB \endlink.
+ * В качестве параметра сигнала "db-changed" передаётся указатель на интерфейс \link HyScanDB \endlink,
+ * сигнала "cache-changed" передаётся указатель на интерфейс \link HyScanCache \endlink.
  * Для остальных сигналов передаётся указатель на строку с текущим значением параметра.
  *
  * Прототипы callback функции для сигналов:
  *
- * - "db-changed" - void callback_function( HyScanState *state, HyScanDb *db, gpointer user_data);
- * - остальные - void callback_function( HyScanState *state, const gchar *name, gpointer user_data);
+ * - "db-changed" - void callback_function( HyScanState *state, HyScanDb *db, gpointer user_data );
+ * - "cache-changed" - void callback_function( HyScanState *state, HyScanCache *db, gpointer user_data );
+ * - остальные - void callback_function( HyScanState *state, const gchar *name, gpointer user_data );
  *
  * Сигналы посылаются только если новое значение параметра отличается от предыдущего.
  *
@@ -50,6 +53,8 @@
  *
  * - #hyscan_state_set_db - изменить указатель на интерфейс базы данных;
  * - #hyscan_state_get_db - получить указатель на интерфейс базы данных;
+ * - #hyscan_state_set_cache - изменить указатель на интерфейс системы кэширования;
+ * - #hyscan_state_get_cache - получить указатель на интерфейс системы кэширования;
  * - #hyscan_state_set_project_name - изменить название текущего проекта;
  * - #hyscan_state_get_project_name - получить название текущего проекта;
  * - #hyscan_state_set_track_name - изменить название текущего галса;
@@ -67,6 +72,7 @@
 #define _hyscan_state_h
 
 #include <hyscan-db.h>
+#include <hyscan-cache.h>
 
 G_BEGIN_DECLS
 
@@ -111,7 +117,7 @@ HyScanState *hyscan_state_new( void );
  *
  * При задании нового указателя число ссылок на старый объект уменьшается функцией g_object_unref, а на новый
  * увеличивается функцией g_object_ref. Увеличивать и уменьшать число ссылок на базу данных, также, должны все
- * пользователи \link HyScanState \endlink.
+ * пользователи базы данных.
  *
  * Допускается передать NULL в качестве ссылки на интерфейс базы данных.
  *
@@ -131,12 +137,49 @@ void hyscan_state_set_db( HyScanState *state, HyScanDB *db );
  * Перед началом использования необходимо увеличить счётчик ссылок на объект \link HyScanDB \endlink функцией g_object_ref, а
  * по окончании уменьшить функцией g_object_unref.
  *
- * \param state указатель на объект \link HyScanDB \endlink.
+ * \param state указатель на объект \link HyScanState \endlink.
  *
  * \return Указатель на объект \link HyScanDB \endlink или NULL.
  *
 */
 HyScanDB *hyscan_state_get_db( HyScanState *state );
+
+
+/*!
+ *
+ * Функция задаёт новый указатель на интерфейс системы кэширования \link HyScanCache \endlink.
+ *
+ * При изменении указателя на интерфейс системы кэширования производится проверка типа объекта и если он совпадает
+ * с HYSCAN_TYPE_CACHE указатель изменяется на заданный. В противном случае значение указателя изменяется на NULL.
+ *
+ * При задании нового указателя число ссылок на старый объект уменьшается функцией g_object_unref, а на новый
+ * увеличивается функцией g_object_ref. Увеличивать и уменьшать число ссылок на базу данных, также, должны все
+ * пользователи системы кэширования.
+ *
+ * Допускается передать NULL в качестве ссылки на интерфейс системы кэширования.
+ *
+ * \param state указатель на объект \link HyScanState \endlink;
+ * \param cache указатель на объект \link HyScanCache \endlink или NULL.
+ *
+ * \return Нет.
+ *
+*/
+void hyscan_state_set_cache( HyScanState *state, HyScanCache *cache );
+
+
+/*!
+ *
+ * Функция возвращает указатель на интерфейс системы кэширования \link HyScanCache \endlink.
+ *
+ * Перед началом использования необходимо увеличить счётчик ссылок на объект \link HyScanCache \endlink функцией g_object_ref, а
+ * по окончании уменьшить функцией g_object_unref.
+ *
+ * \param state указатель на объект \link HyScanState \endlink.
+ *
+ * \return Указатель на объект \link HyScanCache \endlink или NULL.
+ *
+*/
+HyScanCache *hyscan_state_get_cache( HyScanState *state );
 
 
 /*!

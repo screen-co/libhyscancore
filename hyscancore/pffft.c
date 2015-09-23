@@ -1256,6 +1256,7 @@ PFFFT_Setup *pffft_new_setup(int N, pffft_transform_t transform) {
 
 
 void pffft_destroy_setup(PFFFT_Setup *s) {
+  if(!s) return;
   pffft_aligned_free(s->data);
   free(s);
 }

@@ -13,6 +13,7 @@
 
 enum { PROP_O,
        PROP_DB,
+       PROP_CACHE,
        PROP_PROJECT_NAME,
        PROP_TRACK_NAME,
        PROP_PRESET_NAME,
@@ -21,6 +22,7 @@ enum { PROP_O,
 
 
 enum { SIGNAL_DB_CHANGED,
+       SIGNAL_CACHE_CHANGED,
        SIGNAL_PROJECT_NAME_CHANGED,
        SIGNAL_TRACK_NAME_CHANGED,
        SIGNAL_PRESET_NAME_CHANGED,
@@ -32,6 +34,7 @@ enum { SIGNAL_DB_CHANGED,
 typedef struct HyScanStatePriv {                 // Внутренние данные объекта.
 
   HyScanDB                  *db;                 // Указатель на интерфейс базы данных.
+  HyScanCache               *cache;              // Указатель на интерфейс системы кэширования.
 
   gchar                     *project_name;       // Название текущего проекта.
   gchar                     *track_name;         // Название текущего галса.
@@ -55,18 +58,7 @@ static guint hyscan_state_signals[ SIGNAL_LAST ] = { 0 };
 G_DEFINE_TYPE( HyScanState, hyscan_state, G_TYPE_OBJECT );
 
 
-static void hyscan_state_init( HyScanState *state )
-{
-
-  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
-
-  priv->db = NULL;
-  priv->project_name = NULL;
-  priv->track_name = NULL;
-  priv->preset_name = NULL;
-  priv->profile_name = NULL;
-
-}
+static void hyscan_state_init( HyScanState *state ){ ; }
 
 
 static void hyscan_state_class_init( HyScanStateClass *klass )
@@ -80,6 +72,9 @@ static void hyscan_state_class_init( HyScanStateClass *klass )
 
   g_object_class_install_property( this_class, PROP_DB,
     g_param_spec_object( "db", "HyScanDB", "HyScanDB intreface", HYSCAN_TYPE_DB, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
+
+  g_object_class_install_property( this_class, PROP_CACHE,
+    g_param_spec_object( "cache", "HyScanCache", "HyScanCache intreface", HYSCAN_TYPE_CACHE, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
 
   g_object_class_install_property( this_class, PROP_PROJECT_NAME,
     g_param_spec_string( "project-name", "Project name", "HyScan DB project name", NULL, G_PARAM_READABLE | G_PARAM_WRITABLE ) );
@@ -95,6 +90,10 @@ static void hyscan_state_class_init( HyScanStateClass *klass )
 
   hyscan_state_signals[ SIGNAL_DB_CHANGED ] =
     g_signal_new( "db-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT, G_TYPE_NONE, 1, G_TYPE_OBJECT );
+
+  hyscan_state_signals[ SIGNAL_CACHE_CHANGED ] =
+    g_signal_new( "cache-changed", HYSCAN_TYPE_STATE, G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__OBJECT, G_TYPE_NONE, 1, G_TYPE_OBJECT );
 
   hyscan_state_signals[ SIGNAL_PROJECT_NAME_CHANGED ] =
@@ -126,6 +125,10 @@ static void hyscan_state_set_property( HyScanState *state, guint prop_id, const 
 
     case PROP_DB:
       hyscan_state_set_db( state, g_value_get_object( value ) );
+      break;
+
+    case PROP_CACHE:
+      hyscan_state_set_cache( state, g_value_get_object( value ) );
       break;
 
     case PROP_PROJECT_NAME:
@@ -163,6 +166,10 @@ static void hyscan_state_get_property( HyScanState *state, guint prop_id, GValue
       g_value_set_object( value, hyscan_state_get_db( state ) );
       break;
 
+    case PROP_CACHE:
+      g_value_set_object( value, hyscan_state_get_cache( state ) );
+      break;
+
     case PROP_PROJECT_NAME:
       g_value_set_string( value, hyscan_state_get_project_name( state ) );
       break;
@@ -194,7 +201,8 @@ static void hyscan_state_object_finalize( HyScanState *state )
 
   HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
-  g_object_unref( priv->db );
+  if( priv->db ) g_object_unref( priv->db );
+  if( priv->cache ) g_object_unref( priv->cache );
 
   g_free( priv->project_name );
   g_free( priv->track_name );
@@ -260,6 +268,40 @@ HyScanDB *hyscan_state_get_db( HyScanState *state )
   HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
 
   return priv->db;
+
+}
+
+
+// Функция задаёт новый указатель на интерфейс системы кэширования.
+void hyscan_state_set_cache( HyScanState *state, HyScanCache *cache )
+{
+
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+
+  // Если интерфейсы системы кэширования совпадают - ничего не делаем.
+  if( priv->cache == cache ) return;
+
+  // Закрываем соединение с системой кэштирования.
+  g_clear_object( &priv->cache );
+
+  // Запоминаем указатель на интерфейс базы данных.
+  priv->cache = cache;
+  if( HYSCAN_IS_CACHE( priv->cache ) ) g_object_ref( priv->cache );
+  else priv->cache = NULL;
+
+  // Отправляем сигнал об изменении состояния.
+  g_signal_emit( state, hyscan_state_signals[ SIGNAL_CACHE_CHANGED ], 0, priv->cache );
+
+}
+
+
+// Функция возвращает указатель на интерфейс системы кэширования.
+HyScanCache *hyscan_state_get_cache( HyScanState *state )
+{
+
+  HyScanStatePriv *priv = HYSCAN_STATE_GET_PRIVATE( state );
+
+  return priv->cache;
 
 }
 

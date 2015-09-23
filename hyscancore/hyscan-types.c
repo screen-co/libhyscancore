@@ -182,7 +182,7 @@ const gchar *hyscan_get_data_type_name( HyScanDataType data_type )
 
 
 // Функция возвращает размер одного отсчёта данных в байтах, для указанного типа.
-guint32 hyscan_get_data_point_size( HyScanDataType data_type )
+gint32 hyscan_get_data_point_size( HyScanDataType data_type )
 {
 
   switch( data_type )
@@ -229,8 +229,8 @@ guint32 hyscan_get_data_point_size( HyScanDataType data_type )
 }
 
 
-// Функция преобразовывает данные из низкоуровневого формата в HyScanComplexFloat размером raw_size.
-gint32 hyscan_import_data( HyScanDataType data_type, HyScanComplexFloat *data, gpointer raw, guint32 raw_size )
+// Функция преобразовывает данные из низкоуровневого формата в HyScanComplexFloat размером data_size.
+gboolean hyscan_import_data( HyScanDataType data_type, gpointer data, gint32 data_size, HyScanComplexFloat *buffer, gint32 *buffer_size )
 {
 
   guint32 i;
@@ -240,276 +240,302 @@ gint32 hyscan_import_data( HyScanDataType data_type, HyScanComplexFloat *data, g
     {
 
     case HYSCAN_DATA_TYPE_ADC_12BIT:
-      n_points = raw_size / sizeof( gint16 );
+      n_points = data_size / sizeof( gint16 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + n_points ) ) & 0x0fff;
-        data[i].re = (gfloat)raw_re / 4096.0;
-        data[i].im = 0.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + n_points ) ) & 0x0fff;
+        buffer[i].re = (gfloat)raw_re / 4096.0;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_ADC_14BIT:
-      n_points = raw_size / sizeof( gint16 );
+      n_points = data_size / sizeof( gint16 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + n_points ) ) & 0x3fff;
-        data[i].re = (gfloat)raw_re / 16384.0;
-        data[i].im = 0.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + n_points ) ) & 0x3fff;
+        buffer[i].re = (gfloat)raw_re / 16384.0;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_ADC_16BIT:
-      n_points = raw_size / sizeof( gint16 );
+      n_points = data_size / sizeof( gint16 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / 32768.0;
-        data[i].im = 0.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / 32768.0;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_ADC_12BIT:
-      n_points = raw_size / ( 2 * sizeof( gint16 ) );
+      n_points = data_size / ( 2 * sizeof( gint16 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + 2 * n_points ) ) & 0x0fff;
-        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)raw + 2 * n_points + 1 ) ) & 0x0fff;
-        data[i].re = (gfloat)raw_re / 4096.0;
-        data[i].im = (gfloat)raw_im / 4096.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + 2 * n_points ) ) & 0x0fff;
+        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)data + 2 * n_points + 1 ) ) & 0x0fff;
+        buffer[i].re = (gfloat)raw_re / 4096.0;
+        buffer[i].im = (gfloat)raw_im / 4096.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_ADC_14BIT:
-      n_points = raw_size / ( 2 * sizeof( gint16 ) );
+      n_points = data_size / ( 2 * sizeof( gint16 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + 2 * n_points ) ) & 0x3fff;
-        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)raw + 2 * n_points + 1 ) ) & 0x3fff;
-        data[i].re = (gfloat)raw_re / 16384.0;
-        data[i].im = (gfloat)raw_im / 16384.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + 2 * n_points ) ) & 0x3fff;
+        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)data + 2 * n_points + 1 ) ) & 0x3fff;
+        buffer[i].re = (gfloat)raw_re / 16384.0;
+        buffer[i].im = (gfloat)raw_im / 16384.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_ADC_16BIT:
-      n_points = raw_size / ( 2 * sizeof( gint16 ) );
+      n_points = data_size / ( 2 * sizeof( gint16 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + 2 * i ) );
-        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)raw + 2 * i + 1 ) );
-        data[i].re = (gfloat)raw_re / 32768.0;
-        data[i].im = (gfloat)raw_im / 32768.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + 2 * i ) );
+        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)data + 2 * i + 1 ) );
+        buffer[i].re = (gfloat)raw_re / 32768.0;
+        buffer[i].im = (gfloat)raw_im / 32768.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_INT8:
-      n_points = raw_size / sizeof( gint8 );
+      n_points = data_size / sizeof( gint8 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint8 raw_re = *( (gint8*)raw + n_points );
-        data[i].re = (gfloat)raw_re / G_MAXINT8;
-        data[i].im = 0.0;
+        gint8 raw_re = *( (gint8*)data + n_points );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT8;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_UINT8:
-      n_points = raw_size / sizeof( guint8 );
+      n_points = data_size / sizeof( guint8 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint8 raw_re = *( (guint8*)raw + n_points );
-        data[i].re = (gfloat)raw_re / G_MAXUINT8;
-        data[i].im = 0.0;
+        guint8 raw_re = *( (guint8*)data + n_points );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT8;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_INT16:
-      n_points = raw_size / sizeof( gint16 );
+      n_points = data_size / sizeof( gint16 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / G_MAXINT16;
-        data[i].im = 0.0;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT16;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_UINT16:
-      n_points = raw_size / sizeof( guint16 );
+      n_points = data_size / sizeof( guint16 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint16 raw_re = GUINT16_FROM_LE( *( (guint16*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / G_MAXUINT16;
-        data[i].im = 0.0;
+        guint16 raw_re = GUINT16_FROM_LE( *( (guint16*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT16;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_INT32:
-      n_points = raw_size / sizeof( gint32 );
+      n_points = data_size / sizeof( gint32 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint32 raw_re = GINT32_FROM_LE( *( (gint32*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / G_MAXINT32;
-        data[i].im = 0.0;
+        gint32 raw_re = GINT32_FROM_LE( *( (gint32*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT32;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_UINT32:
-      n_points = raw_size / sizeof( guint32 );
+      n_points = data_size / sizeof( guint32 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint32 raw_re = GUINT32_FROM_LE( *( (guint32*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / G_MAXUINT32;
-        data[i].im = 0.0;
+        guint32 raw_re = GUINT32_FROM_LE( *( (guint32*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT32;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_INT64:
-      n_points = raw_size / sizeof( gint64 );
+      n_points = data_size / sizeof( gint64 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint64 raw_re = GINT64_FROM_LE( *( (gint64*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / G_MAXINT64;
-        data[i].im = 0.0;
+        gint64 raw_re = GINT64_FROM_LE( *( (gint64*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT64;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_UINT64:
-      n_points = raw_size / sizeof( guint64 );
+      n_points = data_size / sizeof( guint64 );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint64 raw_re = GUINT64_FROM_LE( *( (guint64*)raw + n_points ) );
-        data[i].re = (gfloat)raw_re / G_MAXUINT64;
-        data[i].im = 0.0;
+        guint64 raw_re = GUINT64_FROM_LE( *( (guint64*)data + n_points ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT64;
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_INT8:
-      n_points = raw_size / ( 2 * sizeof( gint8 ) );
+      n_points = data_size / ( 2 * sizeof( gint8 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint8 raw_re = *( (gint8*)raw + 2 * n_points );
-        gint8 raw_im = *( (gint8*)raw + 2 * n_points + 1 );
-        data[i].re = (gfloat)raw_re / G_MAXINT8;
-        data[i].im = (gfloat)raw_im / G_MAXINT8;
+        gint8 raw_re = *( (gint8*)data + 2 * n_points );
+        gint8 raw_im = *( (gint8*)data + 2 * n_points + 1 );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT8;
+        buffer[i].im = (gfloat)raw_im / G_MAXINT8;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_UINT8:
-      n_points = raw_size / ( 2 * sizeof( guint8 ) );
+      n_points = data_size / ( 2 * sizeof( guint8 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint8 raw_re = *( (guint8*)raw + 2 * n_points );
-        guint8 raw_im = *( (guint8*)raw + 2 * n_points + 1 );
-        data[i].re = (gfloat)raw_re / G_MAXUINT8;
-        data[i].im = (gfloat)raw_im / G_MAXUINT8;
+        guint8 raw_re = *( (guint8*)data + 2 * n_points );
+        guint8 raw_im = *( (guint8*)data + 2 * n_points + 1 );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT8;
+        buffer[i].im = (gfloat)raw_im / G_MAXUINT8;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_INT16:
-      n_points = raw_size / ( 2 * sizeof( gint16 ) );
+      n_points = data_size / ( 2 * sizeof( gint16 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)raw + 2 * n_points ) );
-        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)raw + 2 * n_points + 1 ) );
-        data[i].re = (gfloat)raw_re / G_MAXINT16;
-        data[i].im = (gfloat)raw_im / G_MAXINT16;
+        gint16 raw_re = GINT16_FROM_LE( *( (gint16*)data + 2 * n_points ) );
+        gint16 raw_im = GINT16_FROM_LE( *( (gint16*)data + 2 * n_points + 1 ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT16;
+        buffer[i].im = (gfloat)raw_im / G_MAXINT16;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_UINT16:
-      n_points = raw_size / ( 2 * sizeof( guint16 ) );
+      n_points = data_size / ( 2 * sizeof( guint16 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint16 raw_re = GUINT16_FROM_LE( *( (guint16*)raw + 2 * n_points ) );
-        guint16 raw_im = GUINT16_FROM_LE( *( (guint16*)raw + 2 * n_points + 1 ) );
-        data[i].re = (gfloat)raw_re / G_MAXUINT16;
-        data[i].im = (gfloat)raw_im / G_MAXUINT16;
+        guint16 raw_re = GUINT16_FROM_LE( *( (guint16*)data + 2 * n_points ) );
+        guint16 raw_im = GUINT16_FROM_LE( *( (guint16*)data + 2 * n_points + 1 ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT16;
+        buffer[i].im = (gfloat)raw_im / G_MAXUINT16;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_INT32:
-      n_points = raw_size / ( 2 * sizeof( gint32 ) );
+      n_points = data_size / ( 2 * sizeof( gint32 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint32 raw_re = GINT32_FROM_LE( *( (gint32*)raw + 2 * n_points ) );
-        gint32 raw_im = GINT32_FROM_LE( *( (gint32*)raw + 2 * n_points + 1 ) );
-        data[i].re = (gfloat)raw_re / G_MAXINT32;
-        data[i].im = (gfloat)raw_im / G_MAXINT32;
+        gint32 raw_re = GINT32_FROM_LE( *( (gint32*)data + 2 * n_points ) );
+        gint32 raw_im = GINT32_FROM_LE( *( (gint32*)data + 2 * n_points + 1 ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT32;
+        buffer[i].im = (gfloat)raw_im / G_MAXINT32;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_UINT32:
-      n_points = raw_size / ( 2 * sizeof( guint32 ) );
+      n_points = data_size / ( 2 * sizeof( guint32 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint32 raw_re = GUINT32_FROM_LE( *( (guint32*)raw + 2 * n_points ) );
-        guint32 raw_im = GUINT32_FROM_LE( *( (guint32*)raw + 2 * n_points + 1 ) );
-        data[i].re = (gfloat)raw_re / G_MAXUINT32;
-        data[i].im = (gfloat)raw_im / G_MAXUINT32;
+        guint32 raw_re = GUINT32_FROM_LE( *( (guint32*)data + 2 * n_points ) );
+        guint32 raw_im = GUINT32_FROM_LE( *( (guint32*)data + 2 * n_points + 1 ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT32;
+        buffer[i].im = (gfloat)raw_im / G_MAXUINT32;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_INT64:
-      n_points = raw_size / ( 2 * sizeof( gint64 ) );
+      n_points = data_size / ( 2 * sizeof( gint64 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        gint64 raw_re = GINT64_FROM_LE( *( (gint64*)raw + 2 * n_points ) );
-        gint64 raw_im = GINT64_FROM_LE( *( (gint64*)raw + 2 * n_points + 1 ) );
-        data[i].re = (gfloat)raw_re / G_MAXINT64;
-        data[i].im = (gfloat)raw_im / G_MAXINT64;
+        gint64 raw_re = GINT64_FROM_LE( *( (gint64*)data + 2 * n_points ) );
+        gint64 raw_im = GINT64_FROM_LE( *( (gint64*)data + 2 * n_points + 1 ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXINT64;
+        buffer[i].im = (gfloat)raw_im / G_MAXINT64;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_UINT64:
-      n_points = raw_size / ( 2 * sizeof( guint64 ) );
+      n_points = data_size / ( 2 * sizeof( guint64 ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        guint64 raw_re = GUINT64_FROM_LE( *( (guint64*)raw + 2 * n_points ) );
-        guint64 raw_im = GUINT64_FROM_LE( *( (guint64*)raw + 2 * n_points + 1 ) );
-        data[i].re = (gfloat)raw_re / G_MAXUINT64;
-        data[i].im = (gfloat)raw_im / G_MAXUINT64;
+        guint64 raw_re = GUINT64_FROM_LE( *( (guint64*)data + 2 * n_points ) );
+        guint64 raw_im = GUINT64_FROM_LE( *( (guint64*)data + 2 * n_points + 1 ) );
+        buffer[i].re = (gfloat)raw_re / G_MAXUINT64;
+        buffer[i].im = (gfloat)raw_im / G_MAXUINT64;
         }
       break;
 
     case HYSCAN_DATA_TYPE_FLOAT:
-      n_points = raw_size / sizeof( gfloat );
+      n_points = data_size / sizeof( gfloat );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        data[i].re = *( (gfloat*)raw + n_points );
-        data[i].im = 0.0;
+        buffer[i].re = *( (gfloat*)data + n_points );
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_DOUBLE:
-      n_points = raw_size / sizeof( gdouble );
+      n_points = data_size / sizeof( gdouble );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        data[i].re = *( (gdouble*)raw + n_points );
-        data[i].im = 0.0;
+        buffer[i].re = *( (gdouble*)data + n_points );
+        buffer[i].im = 0.0;
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_FLOAT:
-      n_points = raw_size / ( 2 * sizeof( gfloat ) );
+      n_points = data_size / ( 2 * sizeof( gfloat ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        data[i].re = *( (gfloat*)raw + 2 * n_points );
-        data[i].im = *( (gfloat*)raw + 2 * n_points + 1 );
+        buffer[i].re = *( (gfloat*)data + 2 * n_points );
+        buffer[i].im = *( (gfloat*)data + 2 * n_points + 1 );
         }
       break;
 
     case HYSCAN_DATA_TYPE_COMPLEX_DOUBLE:
-      n_points = raw_size / ( 2 * sizeof( gdouble ) );
+      n_points = data_size / ( 2 * sizeof( gdouble ) );
+      *buffer_size = n_points = ( n_points > *buffer_size ) ? *buffer_size : n_points;
       for( i = 0; i < n_points; i++ )
         {
-        data[i].re = *( (gdouble*)raw + 2 * n_points );
-        data[i].im = *( (gdouble*)raw + 2 * n_points + 1 );
+        buffer[i].re = *( (gdouble*)data + 2 * n_points );
+        buffer[i].im = *( (gdouble*)data + 2 * n_points + 1 );
         }
       break;
 
-    default: return -1;
+    default: return FALSE;
 
     }
 
-  return n_points;
+  return TRUE;
 
 }

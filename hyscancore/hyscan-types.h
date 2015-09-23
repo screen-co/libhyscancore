@@ -33,7 +33,7 @@
 #ifndef _hyscan_types_h
 #define _hyscan_types_h
 
-#include <hyscan-db.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 
@@ -130,10 +130,6 @@ typedef struct HyScanComplexFloat {              // Комплексные чи�
 } HyScanComplexFloat;
 
 
-// Функция проверяет наличие данных для указанных типов гидролокатора и борта установки.
-gboolean hyscan_has_data( HyScanDB *db, guint32 track_id, HyScanSonarType sonar_type, HyScanBoardType board_type );
-
-
 /*!
  *
  * Функция преобразовывает строку с названием типа сигнала в нумерованное значение.
@@ -195,7 +191,7 @@ const gchar *hyscan_get_data_type_name( HyScanDataType data_type );
  * \return Размер одного отсчёта данных в байтах.
  *
 */
-guint32 hyscan_get_data_point_size( HyScanDataType data_type );
+gint32 hyscan_get_data_point_size( HyScanDataType data_type );
 
 
 /*!
@@ -206,14 +202,15 @@ guint32 hyscan_get_data_point_size( HyScanDataType data_type );
  * хранения данных используемого процессора.
  *
  * \param data_type тип данных;
- * \param out указатель на область памяти для сохранения преобразованных данных;
- * \param in указатель на область преобразовываемых данных;
- * \param n_points число преобразовываемых отсчётов.
+ * \param data указатель на преобразовываемые данные;
+ * \param data_size размер преобразовываемых данных;
+ * \param buffer указатель на буфер для преобразованных данных;
+ * \param buffer_size размер буфера для преобразованных данных в точках.
  *
- * \return Число преобразованных точек или отрицательное число в случае ошибки.
+ * \return TRUE - если преобразование выполнено, FALSE - в случае ошибки.
  *
 */
-gint32 hyscan_import_data( HyScanDataType data_type, HyScanComplexFloat *out, gpointer in, guint32 n_points );
+gboolean hyscan_import_data( HyScanDataType data_type, gpointer data, gint32 data_size, HyScanComplexFloat *buffer, gint32 *buffer_size );
 
 
 G_END_DECLS
