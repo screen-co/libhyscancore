@@ -263,13 +263,13 @@ int main( int argc, char **argv )
     delta += fabs( amp1[i] - amp2[i] );
   g_message( "data2 mean amplitude error = %f", delta / ( 4.0 * signal_size ) );
 
-  // Выполним 1000 вызовов функции свёртки, для вычисления скорости работы.
+  // Выполним 10000 вызовов функции свёртки, для вычисления скорости работы.
   g_message( "data1 speed test" );
-  for( i = 0; i < 1000; i++ )
-    hyscan_data_channel_get_amplitude_values( dchannel1, i+1, amp2, &readings, NULL );
+  for( i = 0; i < 10000; i++ )
+    hyscan_data_channel_get_amplitude_values( dchannel1, (i+1)/10, amp2, &readings, NULL );
   g_message( "data2 speed test" );
-  for( i = 0; i < 1000; i++ )
-    hyscan_data_channel_get_amplitude_values( dchannel2, i+1, amp2, &readings, NULL );
+  for( i = 0; i < 10000; i++ )
+    hyscan_data_channel_get_amplitude_values( dchannel2, (i+1)/10, amp2, &readings, NULL );
 
   }
 
