@@ -1,11 +1,11 @@
-/*! \mainpage Библиотека HyScanCore
+/** \mainpage Библиотека HyScanCore
  *
  * Библиотека предназначена для обработки гидроакустических и параметрических данных.
  *
  * Библиотека содержит следующие функции и классы:
  *
  * - \link HyScanState \endlink - параметры состояния комплекса программ HyScan;
- * - \link HyScanTypes \endlink - вспомогательные функции определения типов объектов HyScan;
- * - \link HyScanDataChannel \endlink - класс первичной обработки акустических данных.
+ * - \link HyScanConvolution \endlink - класс свёртки данных;
+ * - \link HyScanDataChannel \endlink - класс обработки акустических данных.
  *
-*/
+ */

@@ -1,4 +1,4 @@
-/*!
+/**
  * \file hyscan-state.h
  *
  * \brief Заголовочный файл класса состояния проекта HyScan
@@ -66,35 +66,36 @@
  *
  * Создать новый объект HyScanState можно функцией #hyscan_state_new.
  *
-*/
+ */
 
-#ifndef _hyscan_state_h
-#define _hyscan_state_h
+#ifndef __HYSCAN_STATE_H__
+#define __HYSCAN_STATE_H__
 
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
+#include <hyscan-core-exports.h>
 
 G_BEGIN_DECLS
 
+#define HYSCAN_TYPE_STATE             (hyscan_state_get_type ())
+#define HYSCAN_STATE(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_STATE, HyScanState))
+#define HYSCAN_IS_STATE(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_STATE))
+#define HYSCAN_STATE_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_STATE, HyScanStateClass))
+#define HYSCAN_IS_STATE_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_STATE))
+#define HYSCAN_STATE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_STATE, HyScanStateClass))
 
-#define HYSCAN_TYPE_STATE                        ( hyscan_state_get_type() )
-#define HYSCAN_STATE( obj )                      ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_STATE, HyScanState ) )
-#define HYSCAN_IS_STATE( obj )                   ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_STATE ) )
-#define HYSCAN_STATE_CLASS( klass )              ( G_TYPE_CHECK_CLASS_CAST( ( klass ), HYSCAN_TYPE_STATE, HyScanStateClass ) )
-#define HYSCAN_IS_STATE_CLASS( klass )           ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), HYSCAN_TYPE_STATE ) )
-#define HYSCAN_STATE_GET_CLASS( obj )            ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), HYSCAN_TYPE_STATE, HyScanStateClass ) )
+typedef struct _HyScanState HyScanState;
+typedef struct _HyScanStateClass HyScanStateClass;
 
-GType hyscan_state_get_type( void );
+struct _HyScanStateClass
+{
+  GObjectClass parent_class;
+};
 
+HYSCAN_CORE_EXPORT
+GType hyscan_state_get_type (void);
 
-typedef GObject HyScanState;
-typedef GObjectClass HyScanStateClass;
-
-
-GType hyscan_state_get_type( void );
-
-
-/*!
+/**
  *
  * Функция создаёт новый объект \link HyScanState \endlink.
  *
@@ -102,11 +103,11 @@ GType hyscan_state_get_type( void );
  *
  * \return Указатель на объект \link HyScanState \endlink.
  *
-*/
-HyScanState *hyscan_state_new( void );
+ */
+HYSCAN_CORE_EXPORT
+HyScanState   *hyscan_state_new                (void);
 
-
-/*!
+/**
  *
  * Функция задаёт новый указатель на интерфейс базы данных \link HyScanDB \endlink.
  *
@@ -126,11 +127,12 @@ HyScanState *hyscan_state_new( void );
  *
  * \return Нет.
  *
-*/
-void hyscan_state_set_db( HyScanState *state, HyScanDB *db );
+ */
+HYSCAN_CORE_EXPORT
+void           hyscan_state_set_db             (HyScanState           *state,
+                                                HyScanDB              *db);
 
-
-/*!
+/**
  *
  * Функция возвращает указатель на интерфейс базы данных \link HyScanDB \endlink.
  *
@@ -141,11 +143,11 @@ void hyscan_state_set_db( HyScanState *state, HyScanDB *db );
  *
  * \return Указатель на объект \link HyScanDB \endlink или NULL.
  *
-*/
-HyScanDB *hyscan_state_get_db( HyScanState *state );
+ */
+HYSCAN_CORE_EXPORT
+HyScanDB      *hyscan_state_get_db             (HyScanState           *state);
 
-
-/*!
+/**
  *
  * Функция задаёт новый указатель на интерфейс системы кэширования \link HyScanCache \endlink.
  *
@@ -163,11 +165,12 @@ HyScanDB *hyscan_state_get_db( HyScanState *state );
  *
  * \return Нет.
  *
-*/
-void hyscan_state_set_cache( HyScanState *state, HyScanCache *cache );
+ */
+HYSCAN_CORE_EXPORT
+void           hyscan_state_set_cache          (HyScanState           *state,
+                                                HyScanCache           *cache);
 
-
-/*!
+/**
  *
  * Функция возвращает указатель на интерфейс системы кэширования \link HyScanCache \endlink.
  *
@@ -178,11 +181,11 @@ void hyscan_state_set_cache( HyScanState *state, HyScanCache *cache );
  *
  * \return Указатель на объект \link HyScanCache \endlink или NULL.
  *
-*/
-HyScanCache *hyscan_state_get_cache( HyScanState *state );
+ */
+HYSCAN_CORE_EXPORT
+HyScanCache   *hyscan_state_get_cache          (HyScanState           *state);
 
-
-/*!
+/**
  *
  * Функция задаёт имя используемого проекта.
  *
@@ -194,10 +197,11 @@ HyScanCache *hyscan_state_get_cache( HyScanState *state );
  * \return Нет.
  *
 */
-void hyscan_state_set_project_name( HyScanState *state, const gchar *project_name );
+HYSCAN_CORE_EXPORT
+void           hyscan_state_set_project_name   (HyScanState           *state,
+                                                const gchar           *project_name);
 
-
-/*!
+/**
  *
  * Функция возвращает имя используемого проекта.
  *
@@ -208,11 +212,11 @@ void hyscan_state_set_project_name( HyScanState *state, const gchar *project_nam
  *
  * \return Имя используемого проекта или NULL.
  *
-*/
-const gchar *hyscan_state_get_project_name( HyScanState *state );
+ */
+HYSCAN_CORE_EXPORT
+const gchar   *hyscan_state_get_project_name   (HyScanState           *state);
 
-
-/*!
+/**
  *
  * Функция задаёт имя используемого галса.
  *
@@ -221,11 +225,12 @@ const gchar *hyscan_state_get_project_name( HyScanState *state );
  *
  * \return Нет.
  *
-*/
-void hyscan_state_set_track_name( HyScanState *state, const gchar *track_name );
+ */
+HYSCAN_CORE_EXPORT
+void           hyscan_state_set_track_name     (HyScanState           *state,
+                                                const gchar           *track_name);
 
-
-/*!
+/**
  *
  * Функция возвращает имя используемого галса.
  *
@@ -236,11 +241,11 @@ void hyscan_state_set_track_name( HyScanState *state, const gchar *track_name );
  *
  * \return Имя используемого галса или NULL.
  *
-*/
-const gchar *hyscan_state_get_track_name( HyScanState *state );
+ */
+HYSCAN_CORE_EXPORT
+const gchar   *hyscan_state_get_track_name     (HyScanState           *state);
 
-
-/*!
+/**
  *
  * Функция задаёт имя группы параметров обработки.
  *
@@ -249,11 +254,12 @@ const gchar *hyscan_state_get_track_name( HyScanState *state );
  *
  * \return Нет.
  *
-*/
-void hyscan_state_set_preset_name( HyScanState *state, const gchar *preset_name );
+ */
+HYSCAN_CORE_EXPORT
+void           hyscan_state_set_preset_name    (HyScanState           *state,
+                                                const gchar           *preset_name);
 
-
-/*!
+/**
  *
  * Функция возвращает имя группы параметров обработки.
  *
@@ -264,11 +270,11 @@ void hyscan_state_set_preset_name( HyScanState *state, const gchar *preset_name 
  *
  * \return Имя группы параметров обработки или NULL.
  *
-*/
-const gchar *hyscan_state_get_preset_name( HyScanState *state );
+ */
+HYSCAN_CORE_EXPORT
+const gchar   *hyscan_state_get_preset_name    (HyScanState           *state);
 
-
-/*!
+/**
  *
  * Функция задаёт имя профиля задачи.
  *
@@ -277,11 +283,12 @@ const gchar *hyscan_state_get_preset_name( HyScanState *state );
  *
  * \return Нет.
  *
-*/
-void hyscan_state_set_profile_name( HyScanState *state, const gchar *profile_name );
+ */
+HYSCAN_CORE_EXPORT
+void           hyscan_state_set_profile_name   (HyScanState           *state,
+                                                const gchar           *profile_name);
 
-
-/*!
+/**
  *
  * Функция возвращает имя профиля задачи.
  *
@@ -292,10 +299,10 @@ void hyscan_state_set_profile_name( HyScanState *state, const gchar *profile_nam
  *
  * \return Имя профиля задачи или NULL.
  *
-*/
-const gchar *hyscan_state_get_profile_name( HyScanState *state );
-
+ */
+HYSCAN_CORE_EXPORT
+const gchar   *hyscan_state_get_profile_name   (HyScanState           *state);
 
 G_END_DECLS
 
-#endif // _hyscan_state_h
+#endif /* __HYSCAN_STATE_H__ */
