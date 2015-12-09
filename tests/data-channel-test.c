@@ -8,7 +8,7 @@
 
 int main( int argc, char **argv )
 {
-  gchar *db_path = NULL;          /* Путь к каталогу с базой данных. */
+  gchar *db_uri = NULL;           /* Путь к каталогу с базой данных. */
   gdouble frequency = 0.0;        /* Частота сигнала. */
   gdouble duration = 0.0;         /* Длительность сигнала. */
   gdouble discretization = 0.0;   /* Частота дискретизации. */
@@ -48,7 +48,7 @@ int main( int argc, char **argv )
     args = g_strdupv (argv);
 #endif
 
-    context = g_option_context_new ("<db-path>");
+    context = g_option_context_new ("<db-uri>");
     g_option_context_set_help_enabled (context, TRUE);
     g_option_context_add_main_entries (context, entries, NULL);
     g_option_context_set_ignore_unknown_options (context, FALSE);
@@ -67,29 +67,14 @@ int main( int argc, char **argv )
 
     g_option_context_free (context);
 
-    db_path = g_strdup (args[1]);
+    db_uri = g_strdup (args[1]);
     g_strfreev (args);
   }
 
-  /* Создаём каталог для базы данных. */
-  {
-      GDir *dir;
-
-      if (g_mkdir_with_parents (db_path, 0777) != 0)
-        g_error( "can't create directory '%s'", db_path);
-
-      dir = g_dir_open (db_path, 0, NULL);
-      if (dir == NULL)
-        g_error( "can't open directory '%s'", db_path);
-
-      if (g_dir_read_name (dir) != NULL)
-        g_error( "db directory '%s' must be empty", db_path);
-
-      g_dir_close (dir);
-  }
-
   /* Открываем базу данных. */
-  db = g_object_new (HYSCAN_TYPE_DB_FILE, "path", db_path, NULL);
+  db = hyscan_db_new (db_uri);
+  if (db == NULL)
+    g_error ("can't open db at: %s", db_uri);
 
   /* Кэш данных */
   if (cache_size)
@@ -233,10 +218,6 @@ int main( int argc, char **argv )
 
   /* Удаляем кэш. */
   g_clear_object (&cache);
-
-  /* Удаляем каталог проектов. */
-  if (g_rmdir (db_path) != 0)
-    g_error ("can't delete directory '%s'", db_path);
 
   return 0;
 
