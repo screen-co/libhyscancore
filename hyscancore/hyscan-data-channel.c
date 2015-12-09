@@ -857,7 +857,7 @@ exit:
 static void
 hyscan_data_channel_close_int (HyScanDataChannel *dchannel)
 {
-  gint i;
+  guint i;
 
   /* Закрываем канал данных. */
   if (dchannel->channel_id > 0)

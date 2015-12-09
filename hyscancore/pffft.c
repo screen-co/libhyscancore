@@ -57,6 +57,11 @@
   - 2011/10/02, version 1: This is the very first release of this file.
 */
 
+/* for M_PI and M_SQRT2 */
+#if defined(_MSC_VER)
+#define _USE_MATH_DEFINES
+#endif
+
 #include "pffft.h"
 #include <stdlib.h>
 #include <stdio.h>

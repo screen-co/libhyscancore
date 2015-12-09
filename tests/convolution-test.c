@@ -57,7 +57,7 @@ main (int argc, char **argv)
   {
     guint32 signal_size = discretization * duration;
     HyScanComplexFloat *signal = g_malloc (signal_size * sizeof(HyScanComplexFloat));
-    gint32 i;
+    guint32 i;
 
     g_message( "signal size = %d", signal_size);
 
