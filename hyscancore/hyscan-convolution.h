@@ -76,7 +76,7 @@ HyScanConvolution     *hyscan_convolution_new          (void);
 HYSCAN_CORE_EXPORT
 gboolean               hyscan_convolution_set_image    (HyScanConvolution     *convolution,
                                                         HyScanComplexFloat    *image,
-                                                        gint32                 n_points );
+                                                        gint32                 n_points);
 
 /**
  *

@@ -94,10 +94,10 @@ static void     hyscan_data_channel_update_cache_key      (HyScanDataChannel    
                                                            gint32                 index);
 static void     hyscan_data_channel_buffer_realloc        (HyScanDataChannel     *dchannel,
                                                            gint32                 size);
-static gint32   hyscan_data_channel_read_raw_data         (HyScanDataChannel *dchannel,
-                                                           gint32             channel_id,
-                                                           gint32             index,
-                                                           gint64            *time);
+static gint32   hyscan_data_channel_read_raw_data         (HyScanDataChannel     *dchannel,
+                                                           gint32                 channel_id,
+                                                           gint32                 index,
+                                                           gint64                *time);
 
 static void     hyscan_data_channel_load_signals          (HyScanDataChannel *dchannel);
 static HyScanConvolution *hyscan_data_channel_find_signal (HyScanDataChannel *dchannel,
