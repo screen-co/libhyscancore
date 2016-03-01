@@ -444,8 +444,8 @@ hyscan_data_channel_read_data (HyScanDataChannel *dchannel,
   n_points = io_size / point_size;
 
   /* Импортируем данные в буфер обработки. */
-  hyscan_import_data (dchannel->discretization_type, dchannel->raw_buffer, io_size,
-                      dchannel->data_buffer, &n_points);
+  hyscan_data_import_complex_float (dchannel->discretization_type, dchannel->raw_buffer, io_size,
+                                    dchannel->data_buffer, &n_points);
 
   /* Выполняем свёртку. */
   if (dchannel->convolve )
@@ -1124,7 +1124,8 @@ hyscan_data_channel_add_data (HyScanDataChannel *dchannel,
 
       /* Импортируем данные в буфер обработки. */
       n_points = size / hyscan_get_data_point_size (dchannel->discretization_type);
-      hyscan_import_data (dchannel->discretization_type, data, size, dchannel->data_buffer, &n_points);
+      hyscan_data_import_complex_float (dchannel->discretization_type, data, size,
+                                        dchannel->data_buffer, &n_points);
       buffer = (gpointer)dchannel->data_buffer;
 
       /* Загружаем образцы сигналов. */
