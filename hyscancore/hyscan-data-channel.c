@@ -243,6 +243,7 @@ hyscan_data_channel_update_cache_key (HyScanDataChannel *dchannel,
                                                dchannel->track_name,
                                                dchannel->channel_name);
         }
+      dchannel->cache_key_length = strlen (dchannel->cache_key);
     }
 
   if (dchannel->cache_prefix)
