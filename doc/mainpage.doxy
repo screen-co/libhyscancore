@@ -7,5 +7,7 @@
  * - \link HyScanState \endlink - параметры состояния комплекса программ HyScan;
  * - \link HyScanConvolution \endlink - класс свёртки данных;
  * - \link HyScanDataChannel \endlink - класс обработки акустических данных.
- *
+ * - \link HyScanSeabed \endlink - интерфейс для определения глубины.
+ * - \link HyScanSeabedEchosounder \endlink - класс, реализующий метод определения глубины по данным, полученным с эхолота.
+ * - \link HyScanSeabedSonar \endlink - класс, реализующий метод определения глубины по данным, полученным с гидролокатора.
  */
