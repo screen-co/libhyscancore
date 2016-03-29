@@ -8,7 +8,8 @@ hyscan_seabed_default_init (HyScanSeabedInterface *iface)
 }
 
 gdouble
-hyscan_seabed_get_depth_by_index (HyScanSeabed *seabed, gint32 index)
+hyscan_seabed_get_depth_by_index (HyScanSeabed *seabed,
+                                  gint32 index)
 {
   HyScanSeabedInterface *iface;
 
@@ -22,10 +23,13 @@ hyscan_seabed_get_depth_by_index (HyScanSeabed *seabed, gint32 index)
 }
 
 void
-hyscan_seabed_set_soundspeed (HyScanSeabed *seabed, GArray *soundspeedtable)
+hyscan_seabed_set_soundspeed (HyScanSeabed *seabed,
+                              GArray *soundspeedtable)
 {
   HyScanSeabedInterface *iface;
 
+  g_return_if_fail (HYSCAN_IS_SEABED(seabed));
+  
   iface = HYSCAN_SEABED_GET_IFACE(seabed);
   (*iface->set_soundspeed) (seabed, soundspeedtable);
 }

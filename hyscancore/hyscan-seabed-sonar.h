@@ -13,16 +13,13 @@
  * #hyscan_seabed_sonar_new, создающая объект получения глубины.
  *  Дальнейшее общение с объектом ведется через интерфейс \link HyScanSeabed \endlink.
  */
- #ifndef __HYSCAN_SEABED_SONAR_H__
+#ifndef __HYSCAN_SEABED_SONAR_H__
 #define __HYSCAN_SEABED_SONAR_H__
 
 #include <hyscan-seabed.h>
 #include <hyscan-core-exports.h>
-#include <hyscan-types.h>
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
-#include <math.h>
-#include <string.h>
 
 G_BEGIN_DECLS
 
@@ -37,7 +34,6 @@ typedef struct _HyScanSeabedSonar HyScanSeabedSonar;
 typedef struct _HyScanSeabedSonarPrivate HyScanSeabedSonarPrivate;
 typedef struct _HyScanSeabedSonarClass HyScanSeabedSonarClass;
 
-/* !!! Change GObject to type of the base class. !!! */
 struct _HyScanSeabedSonar
 {
   GObject parent_instance;
@@ -45,7 +41,6 @@ struct _HyScanSeabedSonar
   HyScanSeabedSonarPrivate *priv;
 };
 
-/* !!! Change GObjectClass to type of the base class. !!! */
 struct _HyScanSeabedSonarClass
 {
   GObjectClass parent_class;
@@ -67,14 +62,13 @@ GType hyscan_seabed_sonar_get_type (void);
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param cache указатель на интерфейс \link HyScanCache \endlink;
- * \param cache_prefix префикс ключа кэширования или NULL.
- * \param project - имя проекта
- * \param track - имя галса
- * \param channel - имя канала данных
- * \param quality - качество входных данных
- * \param vsound - скорость звука. Если NULL, то берется 1500 м/с
+ * \param cache_prefix префикс ключа кэширования или NULL;
+ * \param project - имя проекта;
+ * \param track - имя галса;
+ * \param channel - имя канала данных;
+ * \param quality - качество входных данных.
  *
- * \return Указатель на объект \link HyScanSeabedEchosounder \endlink.
+ * \return Указатель на объект \link HyScanSeabed \endlink.
  *
  */
 HYSCAN_CORE_EXPORT
@@ -85,9 +79,6 @@ HyScanSeabed * hyscan_seabed_sonar_new        (HyScanDB       *db,
                                                gchar          *track,
                                                gchar          *channel,
                                                gdouble         quality);
-
-G_END_DECLS
-
 
 G_END_DECLS
 

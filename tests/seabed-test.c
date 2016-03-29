@@ -176,19 +176,14 @@ main (int argc, char **argv)
    * - ICE
    */
 
-  seabed_echo = HYSCAN_SEABED(
-      hyscan_seabed_echosounder_new (db, cache, "echocash", "t_project",
-				     "t_track", "t_channel", 0));
-  seabed_sonar = HYSCAN_SEABED(
-      hyscan_seabed_sonar_new (db, cache, "sonarcash", "t_project", "t_track",
-			       "t_channel", 0));
+  seabed_echo = HYSCAN_SEABED(hyscan_seabed_echosounder_new (db, cache, "echocash", "t_project", "t_track", "t_channel", 0));
+  seabed_sonar = HYSCAN_SEABED(hyscan_seabed_sonar_new (db, cache, "sonarcash", "t_project", "t_track","t_channel", 0));
 
   hyscan_seabed_set_soundspeed (seabed_echo, sst1);
   hyscan_seabed_set_soundspeed (seabed_sonar, sst2);
   gfloat depth;
   gfloat depth2;
-  g_printf (
-      "format: " KGRN "index:" KRED "depth" KIT "(echo)|" KNRM KRED "depth" KIT"(sonar) \n" KNRM);
+  g_printf ("format: " KGRN "index:" KRED "depth" KIT "(echo)|" KNRM KRED "depth" KIT"(sonar) \n" KNRM);
   for (i = 0; i < lines * 3; i++)
   {
     depth = hyscan_seabed_get_depth_by_index (seabed_echo, i);

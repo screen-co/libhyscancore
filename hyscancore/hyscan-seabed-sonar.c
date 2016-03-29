@@ -10,6 +10,9 @@
 #define MAXPEAKS 10
 #include "hyscan-seabed-sonar.h"
 #include "hyscan-data-channel.h"
+#include <hyscan-types.h>
+#include <math.h>
+#include <string.h>
 
 enum
 {
@@ -25,14 +28,14 @@ enum
 
 struct _HyScanSeabedSonarPrivate
 {
-  GObject               parent_instance;
+  GObject                parent_instance;
   HyScanDB              *db;                            /* Интерфейс базы данных. */
   gchar                 *uri;                           /* URI базы данных. */
 
   HyScanCache           *cache;                         /* Интерфейс системы кэширования. */
   gchar                 *cache_prefix;                  /* Префикс ключа кэширования. */
   gchar                 *cache_key;                     /* Ключ кэширования. */
-  gint                  cache_key_length;               /* Максимальная длина ключа. */
+  gint                   cache_key_length;              /* Максимальная длина ключа. */
 
   gchar                 *project;                       /* Название проекта. */
   gchar                 *track;                         /* Название галса. */
@@ -41,15 +44,15 @@ struct _HyScanSeabedSonarPrivate
   HyScanDataChannel     *data;                          /* Указатель на канал данных. */
   gfloat                *data_buffer0;                  /* Буффер для входных данных. */
   gfloat                *data_buffer1;                  /* Буффер для обработки данных. */
-  gint32                data_buffer_size;               /* Размер обрабатываемых данных (количество точек). */
+  gint32                 data_buffer_size;              /* Размер обрабатываемых данных (количество точек). */
 
-  gfloat                discretization_frequency;       /* Частота дискретизации данных. */
-  gdouble               quality;                        /* Качество входных данных. */
+  gfloat                 discretization_frequency;      /* Частота дискретизации данных. */
+  gdouble                quality;                       /* Качество входных данных. */
   GArray                *soundspeed;                    /* Таблично заданная скорость звука. */
-  gint32                soundspeed_size;                /* Размер таблицы скоростей звука. */
+  gint32                 soundspeed_size;               /* Размер таблицы скоростей звука. */
 
-  gboolean              status;                         /* Для проверки результатов выполнения. */
-  GMutex                lock;                           /* Блокировка многопоточного доступа. */
+  gboolean               status;                        /* Для проверки результатов выполнения. */
+  GMutex                 lock;                          /* Блокировка многопоточного доступа. */
 };
 
 static void     hyscan_seabed_sonar_set_property        (GObject               *object,
@@ -144,20 +147,20 @@ hyscan_seabed_sonar_set_property (GObject      *object,
   HyScanSeabedSonarPrivate *priv = seabed_sonar->priv;
 
   switch (prop_id)
-  {
+    {
     case PROP_DB:
       priv->db = g_value_get_object (value);
       if (priv->db != NULL)
-  g_object_ref (priv->db);
+        g_object_ref (priv->db);
       else
-  G_OBJECT_WARN_INVALID_PROPERTY_ID (seabed_sonar, prop_id, pspec);
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (seabed_sonar, prop_id, pspec);
       priv->uri = hyscan_db_get_uri (priv->db);
       break;
 
     case PROP_CACHE:
       priv->cache = g_value_get_object (value);
       if (priv->cache != NULL)
-  g_object_ref (priv->cache);
+        g_object_ref (priv->cache);
       break;
 
     case PROP_CACHE_PREFIX:
@@ -201,12 +204,13 @@ hyscan_seabed_sonar_set_soundspeed (HyScanSeabed *seabed,
   priv->soundspeed = g_array_new (FALSE, FALSE, sizeof(SoundSpeedTable));
 
   /* Наполняем таблицу новыми данными и переводим глубину из метров в дискреты*/
-  for (i = 0; i < soundspeed->len; i++) {
-    sst = g_array_index (soundspeed, SoundSpeedTable, i);
-    sst.depth = sst.depth * (priv->discretization_frequency * 2 / sst.soundspeed) + sum;
-    sum += sst.depth;
-    g_array_append_val (priv->soundspeed, sst);
-  }
+  for (i = 0; i < soundspeed->len; i++)
+    {
+      sst = g_array_index (soundspeed, SoundSpeedTable, i);
+      sst.depth = sst.depth * (priv->discretization_frequency * 2 / sst.soundspeed) + sum;
+      sum += sst.depth;
+      g_array_append_val (priv->soundspeed, sst);
+    }
 
   priv->soundspeed_size = priv->soundspeed->len;
 }
@@ -239,6 +243,7 @@ hyscan_seabed_sonar_new (HyScanDB    *db,
                          HyScanCache *cache,
                          gchar       *cache_prefix,
                          gchar       *project,
+
                          gchar       *track,
                          gchar       *channel,
                          gdouble      quality)
@@ -289,10 +294,10 @@ hyscan_seabed_sonar_get_depth_by_index (HyScanSeabed *seabed,
 
   status = hyscan_seabed_sonar_get_cache (seabedsonar, index, &depth);
   if (status)
-  {
-    g_mutex_unlock (&priv->lock);
-    return depth;
-  }
+    {
+      g_mutex_unlock (&priv->lock);
+      return depth;
+    }
 
   depth = hyscan_seabed_sonar_get_depth_int (seabedsonar, index);
   hyscan_seabed_sonar_set_cache (seabedsonar, index, &depth);
@@ -328,9 +333,9 @@ hyscan_seabed_sonar_get_depth_int (HyScanSeabedSonar *seabed,
   gfloat *data_buffer1 = priv->data_buffer1;
   gint32 data_buffer_size = priv->data_buffer_size;
   if (index == 112)
-  {
-    data_buffer0 = g_realloc (data_buffer0, data_buffer_size * sizeof(gfloat));
-  }
+    {
+      data_buffer0 = g_realloc (data_buffer0, data_buffer_size * sizeof(gfloat));
+    }
 
   /* Узнаем количество точек в строке данных, выделяем память и заполняем её. */
   data_buffer_size = hyscan_data_channel_get_values_count (priv->data, index);
@@ -350,88 +355,84 @@ hyscan_seabed_sonar_get_depth_int (HyScanSeabedSonar *seabed,
   data_buffer1[data_buffer_size - 1] = data_buffer0[data_buffer_size - 1];
 
   for (i = 1; i < data_buffer_size - 1; i++)
-  {
     data_buffer1[i] = (data_buffer0[i - 1] + data_buffer0[i] + data_buffer0[i + 1]) / 3.0;
-
-  }
 
   /* Вычисляем интегральный массив*/
   for (i = 1; i < data_buffer_size; i++)
-  {
-    data_buffer0[i] = data_buffer1[i] + data_buffer0[i - 1];
-  }
+    {
+      data_buffer0[i] = data_buffer1[i] + data_buffer0[i - 1];
+    }
 
   /* Теперь перемножаем фильтрованный массив и интегральный, чтобы уменьшить влияние тех элементов, что далеко от начала координат*/
   for (i = 0; i < data_buffer_size; i++)
-  {
-    data_buffer1[i] *= (1 - data_buffer0[i] / data_buffer0[data_buffer_size - 1]);
-    average_value += data_buffer1[i];
-  }
+    {
+      data_buffer1[i] *= (1 - data_buffer0[i] / data_buffer0[data_buffer_size - 1]);
+      average_value += data_buffer1[i];
+    }
   average_value /= data_buffer_size;
 
   /* Вычисляем СКО. */
   for (i = 0; i < data_buffer_size; i++)
-  {
     stdev += pow ((data_buffer1[i] - average_value), 2);
-  }
+
   stdev /= data_buffer_size;
   stdev = 2 * sqrt (stdev);
   stdev += average_value; /* - это наш порог бинаризации, среднее+2*ско */
 
   for (i = 0; i < data_buffer_size; i++)
-  {
-    if (data_buffer1[i] > stdev)
-      data_buffer1[i] = 1;
-    else
-      data_buffer1[i] = 0;
-  }
+   {
+     if (data_buffer1[i] > stdev)
+       data_buffer1[i] = 1;
+     else
+       data_buffer1[i] = 0;
+   }
 
   /* Ищем первые MAXPEAKS пиков. */
   for (i = 0; i < data_buffer_size && peakcounter < MAXPEAKS; i++)
-  {
-    /* тут есть проблема в логике. Если d_b1[i=0] == 1, то peaks[0][0]= i=0 и этот шаг пропускается.
-     * Но нас это волновать не должно, т.к. мало того, что в 0 дна быть не должно,
-     * так ещё и будем занулять эти точки.
-     */
-    if (peaks[0][peakcounter] == 0 && data_buffer1[i] > 0)
-      peaks[0][peakcounter] = i;
-    if (peaks[0][peakcounter] != 0 && (data_buffer1[i] == 0 || i == data_buffer_size - 1))
-    {
-      peaks[1][peakcounter] = i - 1;
-      peakcounter++;
-    }
-  }
+   {
+     /* тут есть проблема в логике. Если d_b1[i=0] == 1, то peaks[0][0]= i=0 и этот шаг пропускается.
+      * Но нас это волновать не должно, т.к. мало того, что в 0 дна быть не должно,
+      * так ещё и будем занулять эти точки.
+      */
+     if (peaks[0][peakcounter] == 0 && data_buffer1[i] > 0)
+       peaks[0][peakcounter] = i;
+     if (peaks[0][peakcounter] != 0 && (data_buffer1[i] == 0 || i == data_buffer_size - 1))
+       {
+         peaks[1][peakcounter] = i - 1;
+         peakcounter++;
+       }
+   }
 
   /* Теперь объединяем пики, если расстояние от конца первого до начала второго не более
    * 1/4 расстояния от начала первого до конца второго.
    */
   for (i = 0; i < peakcounter && peakcounter > 1; i++)
-  {
-    for (j = i + 1; j < peakcounter; j++)
     {
-      if ((float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 0.25)
-      {
-        for (k = peaks[1][i]; k < peaks[0][j]; k++)
-          data_buffer1[k] = 1;
-        peaks[1][i] = peaks[1][j];
-      }
+      for (j = i + 1; j < peakcounter; j++)
+        {
+          if ((float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 0.25)
+            {
+              for (k = peaks[1][i]; k < peaks[0][j]; k++)
+                data_buffer1[k] = 1;
+              peaks[1][i] = peaks[1][j];
+            }
+        }
     }
-  }
 
   /* Ищем наиболее широкий пик. */
   widest_peak_begin = peaks[0][0];
   widest_peak_size = peaks[1][0] - peaks[0][0];
   if (peakcounter > 1)
-  {
-    for (i = 1; i < peakcounter; i++)
     {
-      if ((peaks[1][i] - peaks[0][i]) > widest_peak_size)
-      {
-        widest_peak_size = peaks[1][i] - peaks[0][i];
-        widest_peak_begin = peaks[0][i];
-      }
+      for (i = 1; i < peakcounter; i++)
+        {
+          if ((peaks[1][i] - peaks[0][i]) > widest_peak_size)
+            {
+              widest_peak_size = peaks[1][i] - peaks[0][i];
+              widest_peak_begin = peaks[0][i];
+            }
+        }
     }
-  }
   /* Вычисляем глубину по таблице глубина/скорость звука.
    * Для этого сначала проводим численное интегрирование,
    * а потом делим на 2*Fдискр.
@@ -439,20 +440,20 @@ hyscan_seabed_sonar_get_depth_int (HyScanSeabedSonar *seabed,
   depth = 0;
   soundspeed_max = 0;
   for (i = 0; i < soundspeed_size; i++)
-  {
-    soundspeed0 = &g_array_index (priv->soundspeed, SoundSpeedTable, i);
-    if (widest_peak_begin > soundspeed0->depth)
     {
-      soundspeed_max = i;
-      if (i > 0)
-      {
-        soundspeed1 = &g_array_index (priv->soundspeed, SoundSpeedTable, i - 1);
-        depth += (soundspeed0->depth - soundspeed1->depth) * soundspeed1->soundspeed;
-      }
+      soundspeed0 = &g_array_index (priv->soundspeed, SoundSpeedTable, i);
+      if (widest_peak_begin > soundspeed0->depth)
+        {
+          soundspeed_max = i;
+          if (i > 0)
+            {
+              soundspeed1 = &g_array_index (priv->soundspeed, SoundSpeedTable, i - 1);
+              depth += (soundspeed0->depth - soundspeed1->depth) * soundspeed1->soundspeed;
+            }
+        }
+      if (widest_peak_begin <= soundspeed0->depth)
+        break;
     }
-    if (widest_peak_begin <= soundspeed0->depth)
-      break;
-  }
   soundspeed0 = &g_array_index (priv->soundspeed, SoundSpeedTable, soundspeed_max);
   depth += (widest_peak_begin - soundspeed0->depth) * soundspeed0->soundspeed;
 
@@ -473,46 +474,46 @@ hyscan_seabed_sonar_update_cache_key (HyScanSeabedSonar *seabed,
 
   /* Обновляем ключ кеширования. */
   if (priv->cache != NULL && priv->cache_key == NULL)
-  {
-    if (priv->cache_prefix != NULL)
     {
-      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.%s.0123456789",
-                                         priv->uri,
-                                         priv->cache_prefix,
-                                         priv->project,
-                                         priv->track,
-                                         priv->channel);
+      if (priv->cache_prefix != NULL)
+        {
+          priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.%s.0123456789",
+                                             priv->uri,
+                                             priv->cache_prefix,
+                                             priv->project,
+                                             priv->track,
+                                             priv->channel);
+        }
+      else
+        {
+          priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.0123456789",
+                                             priv->uri,
+                                             priv->project,
+                                             priv->track,
+                                             priv->channel);
+        }
+      priv->cache_key_length = strlen (priv->cache_key);
     }
-    else
-    {
-      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.0123456789",
-                                         priv->uri,
-                                         priv->project,
-                                         priv->track,
-                                         priv->channel);
-    }
-    priv->cache_key_length = strlen (priv->cache_key);
-  }
 
   if (priv->cache_prefix)
-  {
-    g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.%s.%d",
-                priv->uri,
-                priv->cache_prefix,
-                priv->project,
-                priv->track,
-                priv->channel,
-                index);
-  }
+    {
+      g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.%s.%d",
+                  priv->uri,
+                  priv->cache_prefix,
+                  priv->project,
+                  priv->track,
+                  priv->channel,
+                  index);
+    }
   else
-  {
-    g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.%d",
-                priv->uri,
-                priv->project,
-                priv->track,
-                priv->channel,
-                index);
-  }
+    {
+      g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.%d",
+                  priv->uri,
+                  priv->project,
+                  priv->track,
+                  priv->channel,
+                  index);
+    }
   return TRUE;
 }
 
@@ -564,7 +565,6 @@ hyscan_seabed_sonar_get_cache (HyScanSeabedSonar *seabed,
   status = hyscan_cache_get (priv->cache, priv->cache_key, NULL, depth, &buffer_size);
 
   return status;
-
 }
 
 static void

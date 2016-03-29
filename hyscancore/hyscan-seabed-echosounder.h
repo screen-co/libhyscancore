@@ -19,11 +19,9 @@
 
 #include <hyscan-seabed.h>
 #include <hyscan-core-exports.h>
-#include <hyscan-types.h>
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
-#include <math.h>
-#include <string.h>
+
 
 G_BEGIN_DECLS
 
@@ -37,8 +35,6 @@ G_BEGIN_DECLS
 typedef struct _HyScanSeabedEchosounder HyScanSeabedEchosounder;
 typedef struct _HyScanSeabedEchosounderPrivate HyScanSeabedEchosounderPrivate;
 typedef struct _HyScanSeabedEchosounderClass HyScanSeabedEchosounderClass;
-
-/* !!! Change GObject to type of the base class. !!! */
 
 struct _HyScanSeabedEchosounder
 {
@@ -69,13 +65,13 @@ GType           hyscan_seabed_echosounder_get_type      (void);
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param cache указатель на интерфейс \link HyScanCache \endlink;
- * \param cache_prefix префикс ключа кэширования или NULL.
- * \param project - имя проекта
- * \param track - имя галса
- * \param channel - имя канала данных
- * \param quality - качество входных данных
+ * \param cache_prefix префикс ключа кэширования или NULL;
+ * \param project - имя проекта;
+ * \param track - имя галса;
+ * \param channel - имя канала данных;
+ * \param quality - качество входных данных.
  *
- * \return Указатель на объект \link HyScanSeabedEchosounder \endlink.
+ * \return Указатель на объект \link HyScanSeabed \endlink.
  *
  */
 
