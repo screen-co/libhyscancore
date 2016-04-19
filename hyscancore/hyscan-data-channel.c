@@ -635,7 +635,7 @@ hyscan_data_channel_create_int (HyScanDataChannel *dchannel,
 
   status = hyscan_db_set_string_param  (dchannel->db, param_id,
                                         PARAM_DISCRETIZATION_TYPE,
-                                        hyscan_get_data_type_name (HYSCAN_DATA_TYPE_COMPLEX_FLOAT));
+                                        hyscan_get_data_type_name (HYSCAN_DATA_COMPLEX_FLOAT));
   if (!status)
     goto exit;
 
@@ -757,7 +757,7 @@ hyscan_data_channel_open_int (HyScanDataChannel *dchannel,
   dchannel->discretization_type = hyscan_get_data_type_by_name (type);
   g_free (type);
 
-  if (dchannel->discretization_type == HYSCAN_DATA_TYPE_INVALID)
+  if (dchannel->discretization_type == HYSCAN_DATA_INVALID)
     {
       g_critical ("hyscan_data_channel_open: '%s.%s.%s': unsupported discretization type",
                   dchannel->project_name, dchannel->track_name, dchannel->channel_name);
@@ -813,7 +813,7 @@ hyscan_data_channel_open_int (HyScanDataChannel *dchannel,
       discretization_type = hyscan_get_data_type_by_name (type);
       g_free (type);
 
-      if (discretization_type != HYSCAN_DATA_TYPE_COMPLEX_FLOAT)
+      if (discretization_type != HYSCAN_DATA_COMPLEX_FLOAT)
         {
           g_critical ("hyscan_data_channel_open: '%s.%s.%s.%s': unsupported discretization type",
                       dchannel->project_name, dchannel->track_name, dchannel->channel_name,
@@ -955,7 +955,7 @@ hyscan_data_channel_close (HyScanDataChannel *dchannel)
 HyScanDataType
 hyscan_data_channel_get_discretization_type (HyScanDataChannel *dchannel)
 {
-  HyScanDataType discretization_type = HYSCAN_DATA_TYPE_INVALID;
+  HyScanDataType discretization_type = HYSCAN_DATA_INVALID;
 
   g_mutex_lock (&dchannel->lock);
   if (dchannel->channel_id > 0)

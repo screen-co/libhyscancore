@@ -96,7 +96,7 @@ int main( int argc, char **argv )
 
   /* Создаём канал данных. */
   status = hyscan_data_channel_create (writer, "project", "track", "channel",
-                                       HYSCAN_DATA_TYPE_COMPLEX_ADC_16BIT,
+                                       HYSCAN_DATA_COMPLEX_ADC_16BIT,
                                        discretization);
   if (!status)
     g_error ("can't create data channel");

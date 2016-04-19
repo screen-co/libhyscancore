@@ -79,7 +79,7 @@ main (int argc, char **argv)
    */
   status = hyscan_data_channel_create (writer, "t_project", "t_track",
 				       "t_channel",
-				       HYSCAN_DATA_TYPE_COMPLEX_ADC_16BIT, 750);
+				       HYSCAN_DATA_COMPLEX_ADC_16BIT, 750);
   if (!status)
     g_error ("can't create data channel");
 
