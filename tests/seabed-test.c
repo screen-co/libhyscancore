@@ -1,13 +1,15 @@
+#include <hyscan-data-channel-writer.h>
 #include <hyscan-data-channel.h>
 #include <hyscan-seabed-echosounder.h>
 #include <hyscan-seabed-sonar.h>
 #include <hyscan-seabed.h>
 #include <hyscan-db-file.h>
 #include <hyscan-cached.h>
-#include <hyscan-types.h>
+#include <hyscan-data.h>
 
 #include <hyscan-core-exports.h>
 #include <glib/gstdio.h>
+#include <gio/gio.h>
 #include <string.h>
 
 #include <time.h>
@@ -26,16 +28,14 @@ main (int argc, char **argv)
   int i = 0, j = 0;
   HyScanDB *db;
   HyScanCache *cache = NULL;
-  HyScanDataChannel *datachan;
-  HyScanDataChannel *writer;
+  HyScanDataChannelWriter *writer;
   HyScanSeabed *seabed_echo;
   HyScanSeabed *seabed_sonar;
-
-  srand (time (NULL));
-  gboolean status;
-
   gint32 project_id;
   gint32 track_id;
+
+  HyScanDataChannelInfo channel_info = {0};
+  GBytes *schema;
 
   {
     gchar **args;
@@ -50,6 +50,12 @@ main (int argc, char **argv)
     g_strfreev (args);
   }
 
+  srand (time (NULL));
+
+  schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml", G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+  if (schema == NULL)
+    g_error ("can't load track schema");
+
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
@@ -61,33 +67,24 @@ main (int argc, char **argv)
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
 
   /* Создаём проект. */
-  project_id = hyscan_db_create_project (db, "t_project", NULL);
+  project_id = hyscan_db_project_create (db, "project", NULL);
   if (project_id < 0)
     g_error ("can't create project");
 
   /* Создаём галс. */
-  track_id = hyscan_db_create_track (db, project_id, "t_track");
+  #warning "replace with core function"
+  track_id = hyscan_db_track_create (db, project_id, "track", g_bytes_get_data (schema, NULL), NULL);
   if (track_id < 0)
     g_error ("can't create track");
-
-  /* Объекты обработки данных */
-  datachan = hyscan_data_channel_new (db, cache, NULL);
-  writer = hyscan_data_channel_new (db, cache, NULL);
 
   /* Создаём канал данных.
    * 750 - частота дискретизации, чтобы расстояние в метрах соответствовало расстоянию в дискретах
    */
-  status = hyscan_data_channel_create (writer, "t_project", "t_track",
-				       "t_channel",
-				       HYSCAN_DATA_COMPLEX_ADC_16BIT, 750);
-  if (!status)
-    g_error ("can't create data channel");
-
-  /* Открываем созданный канал данных. */
-  status = hyscan_data_channel_open (datachan, "t_project", "t_track",
-				     "t_channel");
-  if (!status)
-    g_error ("can't open data channel");
+  channel_info.discretization_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  channel_info.discretization_frequency = 750.0;
+  channel_info.vertical_pattern = 40.0;
+  channel_info.horizontal_pattern = 2.0;
+  writer = hyscan_data_channel_writer_new (db, "project", "track", "channel", &channel_info);
 
   /* Тестовые данные для проверки алгоритма. Массив размером 1 * 5000.
    *
@@ -108,8 +105,7 @@ main (int argc, char **argv)
     for (i = j; i < j + j + 10; i++)
       data[i * 2] = 32767;
 
-    hyscan_data_channel_add_data (writer, 1000 * (j + 1), data,
-				  data_size * sizeof(gfloat), NULL);
+    hyscan_data_channel_writer_add_data (writer, 1000 * (j + 1), data, data_size * sizeof(gfloat));
   }
 
   for (j = 0; j < lines; j++)
@@ -124,8 +120,7 @@ main (int argc, char **argv)
     for (i = j; i < j + j + 10; i++)
       data[i * 2] = 32767;
 
-    hyscan_data_channel_add_data (writer, 1000 * (j + lines + 1), data,
-				  data_size * sizeof(gfloat), NULL);
+    hyscan_data_channel_writer_add_data (writer, 1000 * (j + lines + 1), data, data_size * sizeof(gfloat));
   }
 
   for (j = 0; j < lines; j++)
@@ -145,8 +140,7 @@ main (int argc, char **argv)
     for (i = j; i < j + j + 10; i++)
       data[i * 2] = 32767;
 
-    hyscan_data_channel_add_data (writer, 1000 * (j + 2 * lines + 1), data,
-				  data_size * sizeof(gfloat), NULL);
+    hyscan_data_channel_writer_add_data (writer, 1000 * (j + 2 * lines + 1), data, data_size * sizeof(gfloat));
   }
   g_clear_object (&writer);
 
@@ -176,8 +170,8 @@ main (int argc, char **argv)
    * - ICE
    */
 
-  seabed_echo = HYSCAN_SEABED(hyscan_seabed_echosounder_new (db, cache, "echocash", "t_project", "t_track", "t_channel", 0));
-  seabed_sonar = HYSCAN_SEABED(hyscan_seabed_sonar_new (db, cache, "sonarcash", "t_project", "t_track","t_channel", 0));
+  seabed_echo = HYSCAN_SEABED(hyscan_seabed_echosounder_new (db, cache, "echocash", "project", "track", "channel", 0));
+  seabed_sonar = HYSCAN_SEABED(hyscan_seabed_sonar_new (db, cache, "sonarcash", "project", "track","channel", 0));
 
   hyscan_seabed_set_soundspeed (seabed_echo, sst1);
   hyscan_seabed_set_soundspeed (seabed_sonar, sst2);
@@ -212,22 +206,23 @@ main (int argc, char **argv)
   g_printf ("\n");
 
   /* Закрываем каналы данных. */
-  g_clear_object (&datachan);
   g_clear_object (&writer);
 
   /* Закрываем галс и проект. */
-  hyscan_db_close_project (db, project_id);
-  hyscan_db_close_track (db, track_id);
+  hyscan_db_close (db, project_id);
+  hyscan_db_close (db, track_id);
 
   /* Удаляем проект. */
-  hyscan_db_remove_project (db, "t_project");
+  hyscan_db_project_remove (db, "project");
   g_printf ("data remove ok\n");
+
   /* Закрываем базу данных. */
   g_clear_object (&db);
 
   /* Удаляем кэш. */
   g_clear_object (&cache);
 
-  return 0;
+  g_bytes_unref (schema);
 
+  return 0;
 }

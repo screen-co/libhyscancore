@@ -30,7 +30,7 @@
 #define __HYSCAN_SEABED_H__
 
 #include <glib-object.h>
-#include <hyscan-types.h>
+#include <hyscan-data.h>
 #include <hyscan-core-exports.h>
 
 G_BEGIN_DECLS

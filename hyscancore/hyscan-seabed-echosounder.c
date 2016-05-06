@@ -1,5 +1,5 @@
-/**
- * \file hyscan-data-channel.c
+/*
+ * \file hyscan-seabed-echosounder.c
  *
  * \brief Исходный файл класса определения глубины по эхолоту
  * \author Alexander Dmitriev (m1n7@yandex.ru)
@@ -10,7 +10,7 @@
 #define MAXPEAKS 10
 #include "hyscan-seabed-echosounder.h"
 #include "hyscan-data-channel.h"
-#include <hyscan-types.h>
+#include <hyscan-data.h>
 #include <math.h>
 #include <string.h>
 
@@ -28,7 +28,6 @@ enum
 
 struct _HyScanSeabedEchosounderPrivate
 {
-  GObject                parent_instance;
   HyScanDB              *db;                            /* Интерфейс базы данных. */
   gchar                 *uri;                           /* URI базы данных. */
 
@@ -149,18 +148,11 @@ hyscan_seabed_echosounder_set_property (GObject      *object,
   switch (prop_id)
     {
     case PROP_DB:
-      priv->db = g_value_get_object (value);
-      if (priv->db != NULL)
-        g_object_ref (priv->db);
-      else
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (seabed_echosounder, prop_id, pspec);
-      priv->uri = hyscan_db_get_uri (priv->db);
+      priv->db = g_value_dup_object (value);
       break;
 
     case PROP_CACHE:
-      priv->cache = g_value_get_object (value);
-      if (priv->cache != NULL)
-        g_object_ref (priv->cache);
+      priv->cache = g_value_dup_object (value);
       break;
 
     case PROP_CACHE_PREFIX:
@@ -223,19 +215,30 @@ hyscan_seabed_echosounder_object_constructed (GObject *object)
   HyScanSeabedEchosounder *seabed = HYSCAN_SEABED_ECHOSOUNDER(object);
   HyScanSeabedEchosounderPrivate *priv = seabed->priv;
 
+  HyScanDataChannelInfo *info;
   SoundSpeedTable sst;
+
+  if (priv->db == NULL)
+    return;
+
+  priv->uri = hyscan_db_get_uri (priv->db);
+
   sst.depth = 0;
   sst.soundspeed = 1500; /* по умолчанию считаем скорость звука 1500 м/с*/
 
-  priv->data = hyscan_data_channel_new (priv->db, priv->cache, NULL);
-  priv->status = hyscan_data_channel_open (priv->data, priv->project, priv->track, priv->channel);
-  priv->discretization_frequency = hyscan_data_channel_get_discretization_frequency (priv->data);
+  priv->data = hyscan_data_channel_new_with_cache (priv->db, priv->project, priv->track, priv->channel, priv->cache);
+  info = hyscan_data_channel_get_info (priv->data);
+  if (info != NULL)
+    {
+      priv->discretization_frequency = info->discretization_frequency;
+      priv->status = TRUE;
+      g_free (info);
+    }
 
   priv->soundspeed = g_array_new (FALSE, FALSE, sizeof(SoundSpeedTable));
   g_array_append_val (priv->soundspeed, sst);
 
   G_OBJECT_CLASS (hyscan_seabed_echosounder_parent_class)->constructed (object);
-
 }
 
 HyScanSeabed *
@@ -264,12 +267,11 @@ hyscan_seabed_echosounder_object_finalize (GObject *object)
   HyScanSeabedEchosounder *seabed = HYSCAN_SEABED_ECHOSOUNDER(object);
   HyScanSeabedEchosounderPrivate *priv = seabed->priv;
 
-  hyscan_data_channel_close (priv->data);
-
   g_free (priv->data_buffer0);
   g_free (priv->data_buffer1);
 
   g_clear_object (&priv->db);
+  g_clear_object (&priv->data);
   g_clear_object (&priv->cache);
 
   g_array_free(priv->soundspeed, TRUE);
@@ -315,7 +317,7 @@ hyscan_seabed_echosounder_get_depth_int (HyScanSeabedEchosounder *seabed,
   int i, j, k;
   gfloat average_value = 0;             /* потребуется для усреднения. */
   gfloat stdev = 0;                     /* среднеквадратичное отклонение .*/
-  gint peaks[2][MAXPEAKS] = { 0 };      /* координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы .*/
+  gint peaks[2][MAXPEAKS] = {{0}, {0}}; /* координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы .*/
   gint peakcounter = 0;                 /* Счетчик пиков .*/
   gint widest_peak_size = 0;            /* Размер самого широкого пика.*/
   gint widest_peak_begin = 0;           /* Координата начала самого широкого пика .*/
@@ -323,7 +325,6 @@ hyscan_seabed_echosounder_get_depth_int (HyScanSeabedEchosounder *seabed,
   gfloat discretization_frequency = priv->discretization_frequency;
   gdouble depth = -1;                   /* Глубина. Принимает значение -1, если что-то не так. */
   gboolean status;
-
 
   gint32 soundspeed_max = 0;                     /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты*/
   SoundSpeedTable *soundspeed0, *soundspeed1;    /* Таблица скоростей звука в зависимости от глубины*/

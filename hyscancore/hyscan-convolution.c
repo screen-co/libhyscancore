@@ -1,5 +1,5 @@
-/**
- * \file hyscan-convolution.h
+/*
+ * \file hyscan-convolution.c
  *
  * \brief Исходный файл класса свёртки данных
  * \author Andrei Fadeev (andrei@webcontrol.ru)
@@ -19,10 +19,8 @@
 #endif
 
 /* Внутренние данные объекта. */
-struct _HyScanConvolution
+struct _HyScanConvolutionPrivate
 {
-  GObject                      parent_instance;
-
   HyScanComplexFloat          *ibuff;          /* Буфер для обработки данных. */
   HyScanComplexFloat          *obuff;          /* Буфер для обработки данных. */
   gint32                       max_points;     /* Максимальное число точек помещающихся в буферах. */
@@ -35,7 +33,7 @@ struct _HyScanConvolution
 
 static void    hyscan_convolution_object_finalize      (GObject       *object);
 
-G_DEFINE_TYPE( HyScanConvolution, hyscan_convolution, G_TYPE_OBJECT );
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanConvolution, hyscan_convolution, G_TYPE_OBJECT);
 
 static void
 hyscan_convolution_class_init (HyScanConvolutionClass *klass)
@@ -48,18 +46,20 @@ hyscan_convolution_class_init (HyScanConvolutionClass *klass)
 static void
 hyscan_convolution_init (HyScanConvolution *convolution)
 {
+  convolution->priv = hyscan_convolution_get_instance_private (convolution);
 }
 
 static void
 hyscan_convolution_object_finalize (GObject *object)
 {
   HyScanConvolution *convolution = HYSCAN_CONVOLUTION (object);
+  HyScanConvolutionPrivate *priv = convolution->priv;
 
-  pffft_aligned_free (convolution->ibuff);
-  pffft_aligned_free (convolution->obuff);
+  pffft_aligned_free (priv->ibuff);
+  pffft_aligned_free (priv->obuff);
 
-  pffft_aligned_free (convolution->fft_image);
-  pffft_destroy_setup (convolution->fft);
+  pffft_aligned_free (priv->fft_image);
+  pffft_destroy_setup (priv->fft);
 
   G_OBJECT_CLASS (hyscan_convolution_parent_class)->finalize (object);
 }
@@ -73,10 +73,12 @@ hyscan_convolution_new (void)
 
 /* Функция задаёт образец сигнала для свёртки. */
 gboolean
-hyscan_convolution_set_image (HyScanConvolution   *convolution,
+hyscan_convolution_set_image (HyScanConvolution  *convolution,
                               HyScanComplexFloat *image,
                               gint32              n_points)
 {
+  HyScanConvolutionPrivate *priv;
+
   HyScanComplexFloat *image_buff;
 
   gint32 conv_size = 2 * n_points;
@@ -84,10 +86,14 @@ hyscan_convolution_set_image (HyScanConvolution   *convolution,
 
   gint32 i, j, k;
 
+  g_return_val_if_fail (HYSCAN_IS_CONVOLUTION (convolution), FALSE);
+
+  priv = convolution->priv;
+
   /* Отменяем свёртку с текущим сигналом. */
-  g_clear_pointer( &convolution->fft, pffft_destroy_setup);
-  g_clear_pointer( &convolution->fft_image, pffft_aligned_free);
-  convolution->fft_size = 2;
+  g_clear_pointer (&priv->fft, pffft_destroy_setup);
+  g_clear_pointer (&priv->fft_image, pffft_aligned_free);
+  priv->fft_size = 2;
 
   /* Пользователь отменил свёртку. */
   if (image == NULL)
@@ -111,39 +117,39 @@ hyscan_convolution_set_image (HyScanConvolution   *convolution,
       return FALSE;
     }
 
-  convolution->fft_size = opt_size;
+  priv->fft_size = opt_size;
 
   /* Коэффициент масштабирования свёртки. */
-  convolution->fft_scale = 1.0 / ((gfloat) convolution->fft_size * (gfloat) n_points);
+  priv->fft_scale = 1.0 / ((gfloat) priv->fft_size * (gfloat) n_points);
 
   /* Параметры преобразования Фурье. */
-  convolution->fft = pffft_new_setup (convolution->fft_size, PFFFT_COMPLEX);
-  if (!convolution->fft)
+  priv->fft = pffft_new_setup (priv->fft_size, PFFFT_COMPLEX);
+  if (!priv->fft)
     {
       g_critical ("hyscan_convolution_set_image: can't setup fft");
       return FALSE;
     }
 
   /* Копируем образец сигнала. */
-  convolution->fft_image = pffft_aligned_malloc (convolution->fft_size * sizeof(HyScanComplexFloat));
-  memset (convolution->fft_image, 0, convolution->fft_size * sizeof(HyScanComplexFloat));
-  memcpy (convolution->fft_image, image, n_points * sizeof(HyScanComplexFloat));
+  priv->fft_image = pffft_aligned_malloc (priv->fft_size * sizeof(HyScanComplexFloat));
+  memset (priv->fft_image, 0, priv->fft_size * sizeof(HyScanComplexFloat));
+  memcpy (priv->fft_image, image, n_points * sizeof(HyScanComplexFloat));
 
   /* Подготавливаем образец к свёртке и делаем его комплексно сопряжённым. */
-  image_buff = pffft_aligned_malloc (convolution->fft_size * sizeof(HyScanComplexFloat));
+  image_buff = pffft_aligned_malloc (priv->fft_size * sizeof(HyScanComplexFloat));
 
-  pffft_transform_ordered (convolution->fft,
-                           (const gfloat*) convolution->fft_image,
+  pffft_transform_ordered (priv->fft,
+                           (const gfloat*) priv->fft_image,
                            (gfloat*) image_buff,
                            NULL,
                            PFFFT_FORWARD);
 
-  for (i = 0; i < convolution->fft_size; i++)
+  for (i = 0; i < priv->fft_size; i++)
     image_buff[i].im = -image_buff[i].im;
 
-  pffft_zreorder (convolution->fft,
+  pffft_zreorder (priv->fft,
                   (const gfloat*) image_buff,
-                  (gfloat*) convolution->fft_image,
+                  (gfloat*) priv->fft_image,
                   PFFFT_BACKWARD);
 
   pffft_aligned_free (image_buff);
@@ -165,16 +171,23 @@ hyscan_convolution_convolve (HyScanConvolution  *convolution,
                              HyScanComplexFloat *data,
                              gint32              n_points)
 {
+  HyScanConvolutionPrivate *priv;
 
   gint32 i;
   gint32 n_fft;
+  gint32 full_size;
+  gint32 half_size;
 
-  gint32 full_size = convolution->fft_size;
-  gint32 half_size = convolution->fft_size / 2;
+  g_return_val_if_fail (HYSCAN_IS_CONVOLUTION (convolution), FALSE);
+
+  priv = convolution->priv;
 
   /* Свёртка невозможна. */
-  if (convolution->fft == NULL || convolution->fft_image == NULL )
+  if (priv->fft == NULL || priv->fft_image == NULL )
     return FALSE;
+
+  full_size = priv->fft_size;
+  half_size = priv->fft_size / 2;
 
   /* Число блоков преобразования Фурье над одной строкой. */
   n_fft = (n_points / half_size);
@@ -182,22 +195,22 @@ hyscan_convolution_convolve (HyScanConvolution  *convolution,
     n_fft += 1;
 
   /* Определяем размер буферов и изменяем их размер при необходимости. */
-  if (n_fft * full_size > convolution->max_points)
+  if (n_fft * full_size > priv->max_points)
     {
-      convolution->max_points = n_fft * full_size;
-      pffft_aligned_free (convolution->ibuff);
-      pffft_aligned_free (convolution->obuff);
-      convolution->ibuff = pffft_aligned_malloc (convolution->max_points * sizeof(HyScanComplexFloat));
-      convolution->obuff = pffft_aligned_malloc (convolution->max_points * sizeof(HyScanComplexFloat));
+      priv->max_points = n_fft * full_size;
+      pffft_aligned_free (priv->ibuff);
+      pffft_aligned_free (priv->obuff);
+      priv->ibuff = pffft_aligned_malloc (priv->max_points * sizeof(HyScanComplexFloat));
+      priv->obuff = pffft_aligned_malloc (priv->max_points * sizeof(HyScanComplexFloat));
     }
 
   /* Копируем данные во входной буфер. */
-  memcpy (convolution->ibuff,
+  memcpy (priv->ibuff,
           data,
           n_points * sizeof(HyScanComplexFloat));
 
   /* Зануляем конец буфера по границе half_size. */
-  memset (convolution->ibuff + n_points,
+  memset (priv->ibuff + n_points,
           0,
           ((n_fft + 1) * half_size - n_points) * sizeof(HyScanComplexFloat));
 
@@ -207,9 +220,9 @@ hyscan_convolution_convolve (HyScanConvolution  *convolution,
 #endif
   for (i = 0; i < n_fft; i++)
     {
-      pffft_transform (convolution->fft,
-                       (const gfloat*) (convolution->ibuff + (i * half_size)),
-                       (gfloat*) (convolution->obuff + (i * full_size)),
+      pffft_transform (priv->fft,
+                       (const gfloat*) (priv->ibuff + (i * half_size)),
+                       (gfloat*) (priv->obuff + (i * full_size)),
                        NULL,
                        PFFFT_FORWARD);
     }
@@ -225,32 +238,32 @@ hyscan_convolution_convolve (HyScanConvolution  *convolution,
 
       /* Обнуляем выходной буфер, т.к. функция zconvolve_accumulate добавляет полученный результат
          к значениям в этом буфере (нам это не нужно) ...*/
-      memset (convolution->ibuff + offset,
+      memset (priv->ibuff + offset,
               0,
               full_size * sizeof(HyScanComplexFloat));
 
       /* ... и выполняем свёртку. */
-      pffft_zconvolve_accumulate (convolution->fft,
-                                  (const gfloat*) (convolution->obuff + offset),
-                                  (const gfloat*) convolution->fft_image,
-                                  (gfloat*) (convolution->ibuff + offset),
-                                  convolution->fft_scale);
+      pffft_zconvolve_accumulate (priv->fft,
+                                  (const gfloat*) (priv->obuff + offset),
+                                  (const gfloat*) priv->fft_image,
+                                  (gfloat*) (priv->ibuff + offset),
+                                  priv->fft_scale);
 
       /* Выполняем обратное преобразование Фурье. */
-      pffft_zreorder (convolution->fft,
-                      (gfloat*) (convolution->ibuff + offset),
-                      (gfloat*) (convolution->obuff + offset),
+      pffft_zreorder (priv->fft,
+                      (gfloat*) (priv->ibuff + offset),
+                      (gfloat*) (priv->obuff + offset),
                       PFFFT_FORWARD);
 
-      pffft_transform_ordered (convolution->fft,
-                               (gfloat*) (convolution->obuff + offset),
-                               (gfloat*) (convolution->ibuff + offset),
+      pffft_transform_ordered (priv->fft,
+                               (gfloat*) (priv->obuff + offset),
+                               (gfloat*) (priv->ibuff + offset),
                                NULL,
                                PFFFT_BACKWARD);
 
       /* Копируем результат обратно в буфер пользователя. */
       memcpy (data + offset / 2,
-              convolution->ibuff + offset,
+              priv->ibuff + offset,
               used_size * sizeof (HyScanComplexFloat));
     }
 

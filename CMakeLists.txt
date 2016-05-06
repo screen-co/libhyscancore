@@ -11,30 +11,9 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 #
-# Default CPU architecture.
-if (NOT CPU_ARCH)
-  set (CPU_ARCH "x86")
-endif ()
-
-#
-# CPU architecture.
-if (CPU_ARCH STREQUAL "x86")
-  add_definitions (-DCPU_ARCH_X86)
-else ()
-  message (FATAL_ERROR "${CPU_ARCH} is unsupported CPU architecture")
-endif ()
-
-#
-# CPU bitness.
-if (CMAKE_SIZEOF_VOID_P EQUAL 4)
-  set (CPU32 1)
-  add_definitions (-DCPU32)
-elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set (CPU64 1)
-  add_definitions (-DCPU64)
-else ()
-  MATH (EXPR CPU_BITNESS 8*${CMAKE_SIZEOF_VOID_P})
-  message (FATAL_ERROR "${CPU_BITNESS}bit is unsupported CPU bitness")
+# PFFFT SIMD support.
+if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+  add_definitions (-DPFFFT_SIMD_DISABLE)
 endif ()
 
 #
@@ -46,31 +25,19 @@ endif ()
 #
 # Compilers options.
 if (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
-  if (CPU_ARCH STREQUAL "x86" AND CPU32)
-    set (COMPILER_FLAGS "-march=pentium4 -mtune=generic -mfpmath=sse -Wall")
-  else ()
-    set (COMPILER_FLAGS "-Wall")
-  endif ()
   if (HYSCAN_CORE_USE_OPENMP)
     set (OMP_FLAGS "-fopenmp")
   endif ()
-  set (COMPILER_FLAGS_RELEASE "${COMPILER_FLAGS} -O2 ${OMP_FLAGS}")
-  set (COMPILER_FLAGS_DEBUG "${COMPILER_FLAGS} -Og ${OMP_FLAGS}")
+  set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2 -Wall ${OMP_FLAGS} $ENV{CFLAGS}")
+  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og -Wall ${OMP_FLAGS} $ENV{CFLAGS}")
   set (ADDON_LIBRARIES m)
 elseif (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
   if (HYSCAN_CORE_USE_OPENMP)
     set (OMP_FLAGS "/openmp")
   endif ()
-  set (COMPILER_FLAGS_RELEASE "/wd4244 /wd4305 ${OMP_FLAGS}")
-  set (COMPILER_FLAGS_DEBUG "/wd4244 /wd4305 ${OMP_FLAGS}")
-else ()
-  message (FATAL_ERROR "Unsupported compiler ${CMAKE_C_COMPILER_ID}")
+  set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /wd4244 /wd4305 ${OMP_FLAGS} $ENV{CFLAGS}")
+  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /wd4244 /wd4305 ${OMP_FLAGS} $ENV{CFLAGS}")
 endif ()
-
-set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${COMPILER_FLAGS_RELEASE}")
-set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${COMPILER_FLAGS_DEBUG}")
-set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${COMPILER_FLAGS_RELEASE}")
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${COMPILER_FLAGS_DEBUG}")
 
 #
 # Output directories.
@@ -133,5 +100,6 @@ include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/hyscancore")
 #
 # Target.
 add_definitions (-DG_LOG_DOMAIN="HyScanCore")
+add_subdirectory ("resources")
 add_subdirectory ("hyscancore")
 add_subdirectory ("tests")

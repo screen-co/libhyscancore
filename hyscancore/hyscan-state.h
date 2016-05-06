@@ -85,7 +85,15 @@ G_BEGIN_DECLS
 #define HYSCAN_STATE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_STATE, HyScanStateClass))
 
 typedef struct _HyScanState HyScanState;
+typedef struct _HyScanStatePrivate HyScanStatePrivate;
 typedef struct _HyScanStateClass HyScanStateClass;
+
+struct _HyScanState
+{
+  GObject parent_instance;
+
+  HyScanStatePrivate *priv;
+};
 
 struct _HyScanStateClass
 {
