@@ -277,9 +277,9 @@ hyscan_data_channel_object_constructed (GObject *object)
   param_id = -1;
 
   /* Образцы сигналов для свёртки. */
-  #warning "Check channel exists"
   signals_name = g_strdup_printf ("%s.%s", priv->channel_name, SIGNALS_CHANNEL_POSTFIX);
-  priv->signal_id = hyscan_db_channel_open (priv->db, track_id, signals_name);
+  if (hyscan_db_is_exist (priv->db, priv->project_name, priv->track_name, signals_name))
+    priv->signal_id = hyscan_db_channel_open (priv->db, track_id, signals_name);
   g_free (signals_name);
 
   /* Свёртка не нужна. */
