@@ -584,7 +584,6 @@ hyscan_data_channel_read_raw_data (HyScanDataChannelPrivate *priv,
 }
 
 /* Функция загружает образцы сигналов для свёртки. */
-#warning "Don't check signals in read only mode"
 static void
 hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
 {
@@ -594,7 +593,8 @@ hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
 
   gboolean status;
   gint i;
-  /* Если нет канала с образцами сигналов, выходим. */
+
+  /* Если нет канала с образцами сигналов или сигналы не изменяются, выходим. */
   if (priv->signal_id < 0)
     return;
 
@@ -655,6 +655,13 @@ hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
     }
 
   priv->signals_mod_count = signals_mod_count;
+
+  /* Если запись в канал данных завершена, перестаём обновлять образцы сигналов. */
+  if (!hyscan_db_channel_is_writable (priv->db, priv->signal_id))
+    {
+      hyscan_db_close (priv->db, priv->signal_id);
+      priv->signal_id = -1;
+    }
 }
 
 /* Функция ищет образец сигнала для свёртки для указанного момента времени. */
@@ -831,7 +838,7 @@ hyscan_data_channel_get_info (HyScanDataChannel *dchannel)
 {
   HyScanDataChannelInfo *info;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), HYSCAN_DATA_INVALID);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), NULL);
 
   if (dchannel->priv->channel_id < 0)
     return NULL;
