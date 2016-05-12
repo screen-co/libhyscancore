@@ -11,19 +11,24 @@
  * В HyScanCoreTypes вводятся определения следующих типов:
  *
  * - \link HyScanSonarType \endlink - типы гидролокаторов;
+ * - \link HyScanTrackType \endlink - типы галсаов;
  * - \link HyScanSonarDataType \endlink - типы гидролокационных данных;
- * - \link HyScanSonarChannel \endlink - номера каналов данных;
+ * - \link HyScanSonarChannelIndex \endlink - номера каналов данных;
  * - \link HyScanCardinalDirectionType \endlink - стороны света.
  *
  * Для определения названий каналов, по типу сохраняемых в них данных и их характеристикам,
- * предназначена функция #hyscan_channel_get_name_by_types.  Определить характеристики данных
+ * предназначена функция #hyscan_channel_get_name_by_types. Определить характеристики данных
  * по названию канала можно функцией #hyscan_channel_get_types_by_name.
+ *
+ * Для создания галса в проекте необходимо использовать функцию #hyscan_track_create. При использовании
+ * этой функции будет определена схема данных галса и его каналов, используемая библиотекой HyScanCore.
  *
  */
 
 #ifndef __HYSCAN_CORE_TYPES_H__
 #define __HYSCAN_CORE_TYPES_H__
 
+#include <hyscan-db.h>
 #include <hyscan-data.h>
 #include <hyscan-core-exports.h>
 
@@ -43,6 +48,16 @@ typedef enum
   HYSCAN_SONAR_MULTI_BEAM,                             /**< Многолучевой эхолот. */
   HYSCAN_SONAR_INTERFEROMETER,                         /**< Интерферометрический гидролокатор. */
 } HyScanSonarType;
+
+/** \brief Типы галсов. */
+typedef enum
+{
+  HYSCAN_TRACK_UNSPECIFIED,                            /**< Неопределённый тип. */
+
+  HYSCAN_TRACK_SURVEY,                                 /**< Галс с данными съёмки. */
+  HYSCAN_TRACK_TACK,                                   /**< Лавировочный галс. */
+  HYSCAN_TRACK_TRACK                                   /**< Треки движения судна. */
+} HyScanTrackType;
 
 /** \brief Типы гидролокационных данных */
 typedef enum
@@ -74,7 +89,7 @@ typedef enum
   HYSCAN_SONAR_CHANNEL_6,                              /**< Канал 6. */
   HYSCAN_SONAR_CHANNEL_7,                              /**< Канал 7. */
   HYSCAN_SONAR_CHANNEL_8,                              /**< Канал 8. */
-} HyScanSonarChannel;
+} HyScanSonarChannelIndex;
 
 /** \brief Стороны света */
 typedef enum
@@ -106,7 +121,7 @@ HYSCAN_CORE_EXPORT
 const gchar           *hyscan_channel_get_name_by_types        (HyScanSonarDataType            data_type,
                                                                 gboolean                       hi_res,
                                                                 gboolean                       raw,
-                                                                gint                           index);
+                                                                HyScanSonarChannelIndex        index);
 
 /**
  *
@@ -126,7 +141,27 @@ gboolean               hyscan_channel_get_types_by_name        (const gchar     
                                                                 HyScanSonarDataType           *data_type,
                                                                 gboolean                      *hi_res,
                                                                 gboolean                      *raw,
-                                                                gint                          *index);
+                                                                HyScanSonarChannelIndex       *index);
+
+/**
+ *
+ * Функция создаёт галс в системе хранения. При создании галса необходимо указать
+ * название проекта, в котором создаётся галс, и тип галса. Проект должен быть
+ * создан заранее.
+ *
+ * \param db указатель на объект \link HyScanDB \endlink;
+ * \param project_name название проекта;
+ * \param track_name название галса;
+ * \param track_type тип галса.
+ *
+ * \return TRUE - если галс был создан, FALSE - в случае ошибки.
+ *
+ */
+HYSCAN_CORE_EXPORT
+gboolean               hyscan_track_create                     (HyScanDB                      *db,
+                                                                const gchar                   *project_name,
+                                                                const gchar                   *track_name,
+                                                                HyScanTrackType                track_type);
 
 G_END_DECLS
 

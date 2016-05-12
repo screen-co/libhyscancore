@@ -1,10 +1,9 @@
 #include <hyscan-data-channel-writer.h>
 #include <hyscan-data-channel.h>
-#include <hyscan-db-file.h>
+#include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
 #include <glib/gstdio.h>
-#include <gio/gio.h>
 #include <string.h>
 #include <math.h>
 
@@ -24,12 +23,9 @@ int main( int argc, char **argv )
   HyScanDataChannelWriter *writer;
   HyScanDataChannelInfo channel_info = {0};
 
-  GBytes *schema;
-
   gboolean status;
 
   gint32 project_id;
-  gint32 track_id;
 
   {
 
@@ -76,10 +72,6 @@ int main( int argc, char **argv )
     g_strfreev (args);
   }
 
-  schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml", G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
-  if (schema == NULL)
-    g_error ("can't load track schema");
-
   /* Параметры канала данных. */
   channel_info.discretization_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
   channel_info.discretization_frequency = discretization;
@@ -101,10 +93,7 @@ int main( int argc, char **argv )
     g_error( "can't create project");
 
   /* Создаём галс. */
-#warning "replace with core function"
-  track_id = hyscan_db_track_create (db, project_id, "track",
-                                     g_bytes_get_data (schema, NULL), NULL);
-  if (track_id < 0)
+  if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
     g_error( "can't create track");
 
   /* Объекты обработки данных */
@@ -224,14 +213,11 @@ int main( int argc, char **argv )
   g_clear_object (&reader);
 
   hyscan_db_close (db, project_id);
-  hyscan_db_close (db, track_id);
 
   hyscan_db_project_remove (db, "project");
 
   g_clear_object (&db);
   g_clear_object (&cache);
-
-  g_bytes_unref (schema);
 
   g_free (db_uri);
 

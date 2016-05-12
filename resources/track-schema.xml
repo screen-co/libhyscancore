@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
 
+  <schema id="track">
+    <key id="track-version" name="Track schema version" type="integer" flags="readonly">
+      <default>20160500</default>
+    </key>
+    <key id="type" name="Track type" type="string"/>
+  </schema>
+
   <schema id="data">
     <key id="data-version" name="Data schema version" type="integer" flags="readonly">
       <default>20160500</default>

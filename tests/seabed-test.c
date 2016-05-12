@@ -3,9 +3,8 @@
 #include <hyscan-seabed-echosounder.h>
 #include <hyscan-seabed-sonar.h>
 #include <hyscan-seabed.h>
-#include <hyscan-db-file.h>
+#include <hyscan-core-types.h>
 #include <hyscan-cached.h>
-#include <hyscan-data.h>
 
 #include <hyscan-core-exports.h>
 #include <glib/gstdio.h>
@@ -32,10 +31,8 @@ main (int argc, char **argv)
   HyScanSeabed *seabed_echo;
   HyScanSeabed *seabed_sonar;
   gint32 project_id;
-  gint32 track_id;
 
   HyScanDataChannelInfo channel_info = {0};
-  GBytes *schema;
 
   {
     gchar **args;
@@ -51,10 +48,6 @@ main (int argc, char **argv)
   }
 
   srand (time (NULL));
-
-  schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml", G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
-  if (schema == NULL)
-    g_error ("can't load track schema");
 
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
@@ -72,10 +65,8 @@ main (int argc, char **argv)
     g_error ("can't create project");
 
   /* Создаём галс. */
-  #warning "replace with core function"
-  track_id = hyscan_db_track_create (db, project_id, "track", g_bytes_get_data (schema, NULL), NULL);
-  if (track_id < 0)
-    g_error ("can't create track");
+  if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
+    g_error( "can't create track");
 
   /* Создаём канал данных.
    * 750 - частота дискретизации, чтобы расстояние в метрах соответствовало расстоянию в дискретах
@@ -210,7 +201,6 @@ main (int argc, char **argv)
 
   /* Закрываем галс и проект. */
   hyscan_db_close (db, project_id);
-  hyscan_db_close (db, track_id);
 
   /* Удаляем проект. */
   hyscan_db_project_remove (db, "project");
@@ -221,8 +211,6 @@ main (int argc, char **argv)
 
   /* Удаляем кэш. */
   g_clear_object (&cache);
-
-  g_bytes_unref (schema);
 
   return 0;
 }
