@@ -37,6 +37,8 @@ elseif (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
   endif ()
   set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /wd4244 /wd4305 ${OMP_FLAGS} $ENV{CFLAGS}")
   set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /wd4244 /wd4305 ${OMP_FLAGS} $ENV{CFLAGS}")
+else ()
+  message (FATAL_ERROR "Unsupported compiler ${CMAKE_C_COMPILER_ID}")
 endif ()
 
 #
