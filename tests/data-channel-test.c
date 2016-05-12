@@ -1,5 +1,6 @@
+#include <hyscan-data-channel-writer.h>
 #include <hyscan-data-channel.h>
-#include <hyscan-db-file.h>
+#include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
 #include <glib/gstdio.h>
@@ -19,12 +20,12 @@ int main( int argc, char **argv )
   HyScanDB *db;
   HyScanCache *cache = NULL;
   HyScanDataChannel *reader;
-  HyScanDataChannel *writer;
+  HyScanDataChannelWriter *writer;
+  HyScanDataChannelInfo channel_info = {0};
 
   gboolean status;
 
   gint32 project_id;
-  gint32 track_id;
 
   {
 
@@ -71,6 +72,12 @@ int main( int argc, char **argv )
     g_strfreev (args);
   }
 
+  /* Параметры канала данных. */
+  channel_info.discretization_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  channel_info.discretization_frequency = discretization;
+  channel_info.vertical_pattern = 40.0;
+  channel_info.horizontal_pattern = 2.0;
+
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
@@ -81,30 +88,17 @@ int main( int argc, char **argv )
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
 
   /* Создаём проект. */
-  project_id = hyscan_db_create_project (db, "project", NULL);
+  project_id = hyscan_db_project_create (db, "project", NULL);
   if (project_id < 0)
     g_error( "can't create project");
 
   /* Создаём галс. */
-  track_id = hyscan_db_create_track (db, project_id, "track");
-  if (track_id < 0)
+  if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
     g_error( "can't create track");
 
   /* Объекты обработки данных */
-  reader = hyscan_data_channel_new (db, cache, NULL);
-  writer = hyscan_data_channel_new (db, cache, NULL);
-
-  /* Создаём канал данных. */
-  status = hyscan_data_channel_create (writer, "project", "track", "channel",
-                                       HYSCAN_DATA_COMPLEX_ADC_16BIT,
-                                       discretization);
-  if (!status)
-    g_error ("can't create data channel");
-
-  /* Открываем созданный канал данных. */
-  status = hyscan_data_channel_open (reader, "project", "track", "channel");
-  if (!status)
-    g_error ("can't create data channel");
+  writer = hyscan_data_channel_writer_new (db, "project", "track", "channel", &channel_info);
+  reader = hyscan_data_channel_new_with_cache (db, "project", "track", "channel", cache);
 
   /* Тестовые данные для проверки свёртки. Массив размером 100 * signal_size.
      Сигнал располагается со смещением в две длительности. Все остальные индексы
@@ -135,7 +129,10 @@ int main( int argc, char **argv )
               signal[i].im = sin (phase);
             }
 
-        hyscan_data_channel_add_signal_image (writer, 1000 * (j + 1), signal, signal_size);
+        status = hyscan_data_channel_writer_add_signal_image (writer, 1000 * (j + 1),
+                                                              signal, signal_size);
+        if (!status)
+          g_error ("can't add signal image");
 
         memset (data, 0, 2 * data_size * sizeof(gint16));
         for (i = 2 * signal_size; i < 3 * signal_size; i++)
@@ -147,7 +144,12 @@ int main( int argc, char **argv )
           }
 
         for (i = 0; i < n_lines; i++)
-          hyscan_data_channel_add_data (writer, 1000 * (j + 1) + (i * 10), data, 2 * data_size * sizeof(gint16), NULL);
+          {
+            status = hyscan_data_channel_writer_add_data (writer, 1000 * (j + 1) + (i * 10),
+                                                          data, 2 * data_size * sizeof(gint16));
+            if (!status)
+              g_error ("can't add data");
+          }
 
       }
 
@@ -169,28 +171,16 @@ int main( int argc, char **argv )
 
     gint i, j;
 
-    amp1 = g_malloc (data_size * sizeof(gfloat));
-    amp2 = g_malloc (data_size * sizeof(gfloat));
+    amp1 = g_malloc0 (data_size * sizeof(gfloat));
+    amp2 = g_malloc0 (data_size * sizeof(gfloat));
 
     /* Аналитический вид амплитуды свёртки. */
-    memset (amp1, 0, data_size * sizeof(gfloat));
     for (i = signal_size, j = 0; j < signal_size; i++, j++)
       amp1[i] = (gfloat) j / signal_size;
     for (i = 2 * signal_size, j = 0; j < signal_size; i++, j++)
       amp1[i] = 1.0 - (gfloat) j / signal_size;
 
-    /* Проверяем вид свёртки в объекте записи данных. */
-    delta = 0.0;
-    for (j = 0; j < n_signals * n_lines; j++)
-      {
-        readings = data_size;
-        hyscan_data_channel_get_amplitude_values (writer, j, amp2, &readings, NULL);
-        for (i = 0; i < data_size; i++)
-          delta += fabs (amp1[i] - amp2[i]);
-      }
-    g_message ("writer channel mean amplitude error = %f", delta / (j * data_size));
-
-    /* Проверяем вид свёртки в объекте чтения данных. */
+    /* Проверяем вид свёртки. */
     delta = 0.0;
     for (j = 0; j < n_signals * n_lines; j++)
       {
@@ -199,26 +189,37 @@ int main( int argc, char **argv )
         for (i = 0; i < data_size; i++)
           delta += fabs (amp1[i] - amp2[i]);
       }
-    g_message ("reader channel mean amplitude error = %f", delta / ( j * data_size ));
+    g_message ("amplitude error = %f", delta / signal_size);
+
+    /* Проверяем работу кэша. */
+    if (cache != NULL)
+      {
+        delta = 0.0;
+        for (j = 0; j < n_signals * n_lines; j++)
+          {
+            readings = data_size;
+            hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL);
+            for (i = 0; i < data_size; i++)
+              delta += fabs (amp1[i] - amp2[i]);
+          }
+        g_message ("amplitude error = %f from cache", delta / signal_size);
+      }
+
+    g_free (amp1);
+    g_free (amp2);
   }
 
-  /* Закрываем каналы данных. */
   g_clear_object (&writer);
   g_clear_object (&reader);
 
-  /* Закрываем галс и проект. */
-  hyscan_db_close_project (db, project_id);
-  hyscan_db_close_track (db, track_id);
+  hyscan_db_close (db, project_id);
 
-  /* Удаляем проект. */
-  hyscan_db_remove_project (db, "project");
+  hyscan_db_project_remove (db, "project");
 
-  /* Закрываем базу данных. */
   g_clear_object (&db);
-
-  /* Удаляем кэш. */
   g_clear_object (&cache);
 
-  return 0;
+  g_free (db_uri);
 
+  return 0;
 }

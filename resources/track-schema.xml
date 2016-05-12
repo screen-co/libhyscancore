@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+
+  <schema id="track">
+    <key id="track-version" name="Track schema version" type="integer" flags="readonly">
+      <default>20160500</default>
+    </key>
+    <key id="type" name="Track type" type="string"/>
+  </schema>
+
+  <schema id="data">
+    <key id="data-version" name="Data schema version" type="integer" flags="readonly">
+      <default>20160500</default>
+    </key>
+    <node id="discretization">
+      <key id="type" name="Discretization type" type="string"/>
+      <key id="frequency" name="Discretization frequency" type="double"/>
+    </node>
+    <node id="pattern">
+      <key id="vertical" name="Vertical radiation pattern" type="double"/>
+      <key id="horizontal" name="Horizontal radiation pattern" type="double"/>
+    </node>
+    <node id="position">
+      <key id="x" name="X" type="double"/>
+      <key id="y" name="Y" type="double"/>
+      <key id="z" name="Z" type="double"/>
+    </node>
+    <node id="orientation">
+      <key id="psi" name="Psi" type="double"/>
+      <key id="gamma" name="Gamma" type="double"/>
+      <key id="theta" name="Theta" type="double"/>
+    </node>
+  </schema>
+
+  <schema id="signal">
+    <key id="signal-version" name="Signal schema version" type="integer" flags="readonly">
+      <default>20160500</default>
+    </key>
+    <node id="discretization">
+      <key id="type" name="Discretization type" type="string"/>
+      <key id="frequency" name="Discretization frequency" type="double"/>
+    </node>
+  </schema>
+
+</schemalist>

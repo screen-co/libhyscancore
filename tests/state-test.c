@@ -40,7 +40,7 @@ profile_changed (HyScanState *state, const gchar *profile_name, gpointer data)
 int
 main (int argc, char **argv)
 {
-  HyScanCache *cache = HYSCAN_CACHE (hyscan_cached_new (32));
+  HyScanCache *cache = HYSCAN_CACHE (hyscan_cached_new (64));
   HyScanState *state = hyscan_state_new ();
 
   g_signal_connect( state, "db-changed", G_CALLBACK( db_changed ), NULL);

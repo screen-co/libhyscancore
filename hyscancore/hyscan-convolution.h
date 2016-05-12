@@ -20,7 +20,7 @@
  *
  * Функция #hyscan_convolution_convolve выполняет свертку данных.
  *
- * Объект HyScanConvolution необходимо удалить функцией g_object_unref после окончания работы.
+ * HyScanConvolution не поддерживает работу в многопоточном режиме.
  *
  */
 
@@ -28,7 +28,7 @@
 #define __HYSCAN_CONVOLUTION_H__
 
 #include <glib-object.h>
-#include <hyscan-types.h>
+#include <hyscan-data.h>
 #include <hyscan-core-exports.h>
 
 G_BEGIN_DECLS
@@ -41,7 +41,15 @@ G_BEGIN_DECLS
 #define HYSCAN_CONVOLUTION_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_CONVOLUTION, HyScanConvolutionClass))
 
 typedef struct _HyScanConvolution HyScanConvolution;
+typedef struct _HyScanConvolutionPrivate HyScanConvolutionPrivate;
 typedef struct _HyScanConvolutionClass HyScanConvolutionClass;
+
+struct _HyScanConvolution
+{
+  GObject parent_instance;
+
+  HyScanConvolutionPrivate *priv;
+};
 
 struct _HyScanConvolutionClass
 {
