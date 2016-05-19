@@ -13,7 +13,8 @@
 #include <gio/gio.h>
 #include <string.h>
 
-#define TRACK_SCHEMA_ID        "track"
+#define TRACK_SCHEMA_ID                "track"
+#define SENSOR_CHANNEL_SCHEMA_ID       "sensor"
 
 /* Типы галсов и их названия. */
 typedef struct
@@ -290,4 +291,71 @@ exit:
     hyscan_db_close (db, param_id);
 
   return status;
+}
+
+gint32
+hyscan_channel_sensor_create (HyScanDB                *db,
+                              const gchar             *project_name,
+                              const gchar             *track_name,
+                              const gchar             *channel_name,
+                              HyScanSensorChannelInfo *channel_info)
+{
+  gint32 project_id = -1;
+  gint32 track_id = -1;
+  gint32 channel_id = -1;
+  gint32 param_id = -1;
+
+  gboolean status = FALSE;
+
+  project_id = hyscan_db_project_open (db, project_name);
+  if (project_id <= 0)
+    goto exit;
+
+  track_id = hyscan_db_track_open (db, project_id, track_name);
+  if (track_id <= 0)
+    goto exit;
+
+  channel_id = hyscan_db_channel_create (db, track_id, channel_name, SENSOR_CHANNEL_SCHEMA_ID);
+  if (channel_id <= 0)
+    goto exit;
+
+  param_id = hyscan_db_channel_param_open (db, track_id);
+  if (param_id <= 0)
+    goto exit;
+
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/x", channel_info->x))
+    goto exit;
+
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/y", channel_info->y))
+    goto exit;
+
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/z", channel_info->z))
+    goto exit;
+
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/psi", channel_info->psi))
+    goto exit;
+
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/gamma", channel_info->gamma))
+    goto exit;
+
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/theta", channel_info->theta))
+    goto exit;
+
+  status = TRUE;
+
+exit:
+  if (project_id > 0)
+    hyscan_db_close (db, project_id);
+  if (track_id > 0)
+    hyscan_db_close (db, track_id);
+  if (param_id > 0)
+    hyscan_db_close (db, param_id);
+
+  if (!status && channel_id > 0)
+    {
+      hyscan_db_close (db, channel_id);
+      channel_id = 1;
+    }
+
+  return channel_id;
 }

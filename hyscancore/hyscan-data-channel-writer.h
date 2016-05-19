@@ -36,8 +36,7 @@
 #define __HYSCAN_DATA_CHANNEL_WRITER_H__
 
 #include <hyscan-db.h>
-#include <hyscan-data-channel-common.h>
-#include <hyscan-core-exports.h>
+#include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
 

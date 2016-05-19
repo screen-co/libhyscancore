@@ -56,8 +56,7 @@
 
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
-#include <hyscan-data-channel-common.h>
-#include <hyscan-core-exports.h>
+#include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
 
