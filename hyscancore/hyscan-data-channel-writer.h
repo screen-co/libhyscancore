@@ -161,7 +161,7 @@ gboolean                       hyscan_data_channel_writer_add_signal_image     (
 HYSCAN_CORE_EXPORT
 gboolean                       hyscan_data_channel_writer_add_data             (HyScanDataChannelWriter   *dwriter,
                                                                                 gint64                     time,
-                                                                                gpointer                   data,
+                                                                                gconstpointer              data,
                                                                                 gint32                     size);
 
 G_END_DECLS

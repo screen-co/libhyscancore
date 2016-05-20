@@ -319,7 +319,7 @@ hyscan_channel_sensor_create (HyScanDB                *db,
   if (channel_id <= 0)
     goto exit;
 
-  param_id = hyscan_db_channel_param_open (db, track_id);
+  param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id <= 0)
     goto exit;
 
@@ -354,7 +354,7 @@ exit:
   if (!status && channel_id > 0)
     {
       hyscan_db_close (db, channel_id);
-      channel_id = 1;
+      channel_id = -1;
     }
 
   return channel_id;

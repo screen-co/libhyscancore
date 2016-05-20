@@ -439,7 +439,7 @@ hyscan_data_channel_writer_add_signal_image (HyScanDataChannelWriter  *dwriter,
 gboolean
 hyscan_data_channel_writer_add_data (HyScanDataChannelWriter *dwriter,
                                      gint64                   time,
-                                     gpointer                 data,
+                                     gconstpointer            data,
                                      gint32                   size)
 {
   g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL_WRITER (dwriter), FALSE);
