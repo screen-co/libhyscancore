@@ -9,6 +9,6 @@ add_library (hyscancore SHARED
              hyscan-seabed.c
              hyscan-seabed-echosounder.c
              hyscan-seabed-sonar.c
-             ${CMAKE_BINARY_DIR}/resources/resources.c)
+             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
 target_link_libraries (hyscancore ${ADDON_LIBRARIES} ${GLIB2_LIBRARIES} ${HYSCAN_LIBRARIES})
