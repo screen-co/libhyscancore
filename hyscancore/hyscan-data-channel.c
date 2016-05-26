@@ -763,7 +763,7 @@ hyscan_data_channel_check_cache (HyScanDataChannelPrivate *priv,
 
   /* Ищем данные в кэше. */
   time_size = sizeof(cached_time);
-  io_size = *buffer_size * sizeof(gfloat);
+  io_size = *buffer_size * data_type_size;
   status = hyscan_cache_get2 (priv->cache, priv->cache_key, NULL,
                               &cached_time, &time_size,
                               buffer, &io_size);
