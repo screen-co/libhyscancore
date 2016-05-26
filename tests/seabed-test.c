@@ -94,7 +94,7 @@ main (int argc, char **argv)
 
     /* Сигнал */
     for (i = j; i < j + j + 10; i++)
-      data[i * 2] = 32767;
+      data[i * 2] = 65535;
 
     hyscan_data_channel_writer_add_data (writer, 1000 * (j + 1), data, data_size * sizeof(gfloat));
   }
@@ -105,11 +105,11 @@ main (int argc, char **argv)
 
     /* Шум */
     for (i = 0; i < data_size; i++)
-      data[i * 2] = (1024 * (1 + j % 6)) + (rand () % 128);
+      data[i * 2] = 32767 + (1024 * (1 + j % 6)) + (rand () % 128);
 
     /* Сигнал */
     for (i = j; i < j + j + 10; i++)
-      data[i * 2] = 32767;
+      data[i * 2] = 65535;
 
     hyscan_data_channel_writer_add_data (writer, 1000 * (j + lines + 1), data, data_size * sizeof(gfloat));
   }
@@ -120,16 +120,15 @@ main (int argc, char **argv)
 
     /* Шум */
     for (i = 0; i < data_size; i++)
-      //data[i*2] = rand()%(1024*(1+j%10));//+(rand()%128);
-      data[i * 2] = (1024 * (1 + j % 10)) + (rand () % 128);
+      data[i * 2] = 32767 + (1024 * (1 + j % 10)) + (rand () % 128);
 
     /* Сигнал */
     for (i = 1000; i < 1050; i++)
-      data[i * 2] = 32767;
+      data[i * 2] = 65535;
 
     /* Засветка */
     for (i = j; i < j + j + 10; i++)
-      data[i * 2] = 32767;
+      data[i * 2] = 65535;
 
     hyscan_data_channel_writer_add_data (writer, 1000 * (j + 2 * lines + 1), data, data_size * sizeof(gfloat));
   }

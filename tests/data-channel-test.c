@@ -107,11 +107,11 @@ int main( int argc, char **argv )
     gint32 signal_size = discretization * duration;
     gint32 data_size = 100 * signal_size;
     HyScanComplexFloat *signal;
-    gint16 *data;
+    guint16 *data;
     gint i, j;
 
     signal = g_malloc (signal_size * sizeof (HyScanComplexFloat));
-    data = g_malloc (2 * data_size * sizeof (gint16));
+    data = g_malloc (2 * data_size * sizeof (guint16));
 
     g_message ("signal size = %d", signal_size);
     g_message ("data size = %d", data_size);
@@ -134,13 +134,15 @@ int main( int argc, char **argv )
         if (!status)
           g_error ("can't add signal image");
 
-        memset (data, 0, 2 * data_size * sizeof(gint16));
+        for (i = 0; i < 2 * data_size; i++)
+          data[i] = 32767;
+
         for (i = 2 * signal_size; i < 3 * signal_size; i++)
           {
             gdouble time = (1.0 / discretization) * i;
             gdouble phase = 2.0 * G_PI * work_frequency * time;
-            data[2 * i] = 32767.0 * cos (phase);
-            data[2 * i + 1] = 32767.0 * sin (phase);
+            data[2 * i] = 65535.0 * ((0.5 * cos (phase)) + 0.5);
+            data[2 * i + 1] = 65535.0 * ((0.5 * sin (phase)) + 0.5);
           }
 
         for (i = 0; i < n_lines; i++)
@@ -189,7 +191,7 @@ int main( int argc, char **argv )
         for (i = 0; i < data_size; i++)
           delta += fabs (amp1[i] - amp2[i]);
       }
-    g_message ("amplitude error = %f", delta / signal_size);
+    g_message ("amplitude error = %f", delta / (n_signals * n_lines * data_size));
 
     /* Проверяем работу кэша. */
     if (cache != NULL)
@@ -202,7 +204,7 @@ int main( int argc, char **argv )
             for (i = 0; i < data_size; i++)
               delta += fabs (amp1[i] - amp2[i]);
           }
-        g_message ("amplitude error = %f from cache", delta / signal_size);
+        g_message ("amplitude error = %f from cache", delta / (n_signals * n_lines * data_size));
       }
 
     g_free (amp1);
