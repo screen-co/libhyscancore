@@ -881,8 +881,34 @@ hyscan_data_channel_get_values_count (HyScanDataChannel *dchannel,
     {
       dsize /= hyscan_data_get_point_size (dchannel->priv->info.discretization_type);
     }
+  else
+    {
+      dsize = -1;
+    }
 
   return dsize;
+}
+
+/* Функция возвращает время приёма данных для указанного индекса. */
+gint64
+hyscan_data_channel_get_time (HyScanDataChannel *dchannel,
+                              gint32             index)
+{
+  gint32 dsize;
+  gint64 time;
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+
+  if (dchannel->priv->channel_id < 0)
+    return 0;
+
+  if (!hyscan_db_channel_get_data (dchannel->priv->db, dchannel->priv->channel_id,
+                                   index, NULL, &dsize, &time))
+    {
+      time = -1;
+    }
+
+  return time;
 }
 
 /* Функция ищет индекс данных для указанного момента времени. */

@@ -27,6 +27,8 @@
  *
  * Число точек данных, для указанного индекса, можно получить функцией #hyscan_data_channel_get_values_count.
  *
+ * Время приёма данных, для указанного индекса, можно получить функцией #hyscan_data_channel_get_time.
+ *
  * Для чтения данных используются следующие функции:
  *
  * - #hyscan_data_channel_get_amplitude_values - функция возвращает амплитуду акустического сигнала;
@@ -191,6 +193,20 @@ gboolean               hyscan_data_channel_get_range               (HyScanDataCh
  */
 HYSCAN_CORE_EXPORT
 gint32                 hyscan_data_channel_get_values_count        (HyScanDataChannel     *dchannel,
+                                                                    gint32                 index);
+
+/**
+ *
+ * Функция возвращает время приёма данных для указанного индекса.
+ *
+ * \param dchannel указатель на объект \link HyScanDataChannel \endlink;
+ * \param index индекс данных.
+ *
+ * \return Время приёма данных для указанного индекса или отрицательное число в случае ошибки.
+ *
+ */
+HYSCAN_CORE_EXPORT
+gint64                 hyscan_data_channel_get_time                (HyScanDataChannel     *dchannel,
                                                                     gint32                 index);
 
 /**
