@@ -14,19 +14,19 @@
 #include <stdio.h>
 
 #define AOP (10000)
-#define FILENM "/home/dmitriev.a/loca/out5.txt"
+#define FILENM "/home/dmitriev.a/loca/outpoot.txt"
 
 int
 main (int argc, char **argv)
 {
   #include "/home/dmitriev.a/loca/rmc_test_data"
 /*
+#include "/home/dmitriev.a/loca/6/rmc-c"
   #include "/home/dmitriev.a/loca/1/rmc-c"
-  #include "/home/dmitriev.a/loca/6/rmc-c"
+  #include "/home/dmitriev.a/loca/5/rmc-c"
   #include "/home/dmitriev.a/loca/2/rmc-c"
   #include "/home/dmitriev.a/loca/3/rmc-c"
   #include "/home/dmitriev.a/loca/4/rmc-c"
-  #include "/home/dmitriev.a/loca/5/rmc-c"
 */
   #include "/home/dmitriev.a/loca/gga_test_data"
   #include "/home/dmitriev.a/loca/depth_test_data"
@@ -53,7 +53,7 @@ main (int argc, char **argv)
 
 
 
-  HyScanSensorChannelInfo nmea_channel_info = {10, 20 , 0, 0, 0, 0};
+  HyScanSensorChannelInfo nmea_channel_info = {0, 0 , 0, 0, 0, 0};
 
   {
     gchar **args;
@@ -109,36 +109,40 @@ main (int argc, char **argv)
       hyscan_db_channel_add_data (db, channel_id2, db_time, gga_test_data[i], strlen(gga_test_data[i]), NULL);
       hyscan_data_channel_writer_add_data (dc_writer, db_time, &depth_test_data, 5000 * sizeof(gfloat));
     }
+  /* Переводим каналы в режим "только для чтения". */
+  hyscan_db_channel_finalize (db, channel_id1);
+  hyscan_db_channel_finalize (db, channel_id2);
   /* Создаем объект. */
   location = hyscan_location_new (db, cache, "locacache", "project", "track", 0);
 
-  //g_remove("/home/dmitriev.a/loca/out.txt");
   FILE *outfile = g_fopen(FILENM, "w+");
-  i = 2;
+  i = 0;
   parameter = HYSCAN_LOCATION_PARAMETER_LATLONG
               | HYSCAN_LOCATION_PARAMETER_TRACK
               | HYSCAN_LOCATION_PARAMETER_SPEED
               | HYSCAN_LOCATION_PARAMETER_DEPTH
               | HYSCAN_LOCATION_PARAMETER_ALTITUDE
-              | HYSCAN_LOCATION_PARAMETER_DATETIME;
-  while (i < 2000)
+              | HYSCAN_LOCATION_PARAMETER_DATETIME
+              ;
+  while (i < AOP)
     {
     data.validity = FALSE;
       while (data.validity == FALSE)
         {
-          data = hyscan_location_get (location, parameter, 1e10 + i*5e5, 10, 20, 0, 0, 0, 0);
+          data = hyscan_location_get (location, parameter, 1e10 + i*2*5e5, 0, 0, 0, 0, 0, 0);
           if (cache != NULL)
             {
-              data_cached = hyscan_location_get (location, parameter, 1e10 + i*5e5, 10, 20, 0, 0, 0, 0);
+              data_cached = hyscan_location_get (location, parameter, 1e10 + i*2*5e5, 0, 0, 0, 0, 0, 0);
               if (data.validity && data.validity != data_cached.validity)
                 g_printf ("cache error @ step %i\n",i);
             }
         }
-      //g_fprintf (outfile, "%f,%f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
-      g_fprintf (outfile, "%f,%f\n", data.latitude, data.longitude);
+      g_fprintf (outfile, "%f,%f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
+      //g_fprintf (outfile, "%10.8f,%10.8f,%f\n", data.latitude, data.longitude, data.track);
+      //g_fprintf (outfile, "%10.8f,%10.8f\n", data.latitude, data.longitude);
       i++;
     }
-  g_printf("%i\n",i);
+  g_printf("data points obtained: %i\n",i);
   fclose(outfile);
   g_object_unref(location);
   /* Закрываем каналы данных. */

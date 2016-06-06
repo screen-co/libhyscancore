@@ -206,61 +206,48 @@ hyscan_location_getter_depth (HyScanDB *db,
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  HyScanLocationGdouble1 output = {HYSCAN_LOCATION_GDOUBLE1_INIT};
-  HyScanLocationGdouble1 p1 = {HYSCAN_LOCATION_GDOUBLE1_INIT},
-                         p2 = {HYSCAN_LOCATION_GDOUBLE1_INIT},
-                         p3 = {HYSCAN_LOCATION_GDOUBLE1_INIT},
-                         p4 = {HYSCAN_LOCATION_GDOUBLE1_INIT};
+  HyScanLocationGdouble1 output = {0,0,0,0};
+  HyScanLocationGdouble1 data_point = {HYSCAN_LOCATION_GDOUBLE1_INIT};
   gint32 lindex = 0,
          rindex = 0;
   gint64 ltime = 0,
          rtime = 0;
 
+  /* Окно усреднения зависит от quality. 16 в случае quality = 0, 2 в случае quality = 1. */
+  gint window_size = 16 - floor (7 * quality),
+       num_of_points = 0;
+
+  if (source_list_element->shift == -1)
+    return output;
   if (!hyscan_data_channel_find_data (source_list_element->dchannel, time, &lindex, &rindex, &ltime, &rtime))
     return output;
 
   lindex -= source_list_element->shift;
   rindex -= source_list_element->shift;
 
-  /* Если запрошенное время отличается от времени какого-нибудь ближайшего значения в базе меньше, чем на 10 мс
-   * И это значение уже обработано, можно вернуть именно это значение.
-   */
-  if (ABS(ltime - time) < TIME_OF_VALIDITY && lindex < source_list_element->processing_index)
-    return g_array_index (cache, HyScanLocationGdouble1, lindex);
-  if (ABS(rtime - time) < TIME_OF_VALIDITY && rindex < source_list_element->processing_index)
-    return g_array_index (cache, HyScanLocationGdouble1, rindex);
-
-  if (rindex + 1 > source_list_element->processing_index || lindex - 1 < 0 || lindex - 1 > source_list_element->processing_index)
-    return output;
-
-  if (rindex + 1 <= source_list_element->processing_index)
-    p4 = g_array_index (cache, HyScanLocationGdouble1, rindex+1);
-
-  if (lindex - 1 >= 0 && lindex - 1 <= source_list_element->processing_index)
-    p1 = g_array_index (cache, HyScanLocationGdouble1, lindex-1);
-
-  /* Для усреднения берем одно значение слева, одно справа, а одно то,
-   * которое ближе к требуемому времени. */
-  p2 = g_array_index (cache, HyScanLocationGdouble1, lindex);
-  p3 = g_array_index (cache, HyScanLocationGdouble1, rindex);
-  if (p2.validity == FALSE || p3.validity == FALSE)
-    return output;
-
-  if (p1.validity == TRUE && p4.validity == FALSE)
-    output.value = (p1.value + p2.value + p3.value) / 3.0;
-  if (p1.validity == FALSE && p4.validity == TRUE)
-    output.value = (p4.value + p2.value + p3.value) / 3.0;
-  if (p1.validity == TRUE && p4.validity == TRUE)
+  if (lindex < source_list_element->processing_index && rindex < source_list_element->processing_index)
     {
-      output.value = (ABS(p1.db_time - time) <= ABS(p4.db_time - time)) ? p1.value : p4.value;
-      output.value = (output.value + p2.value + p3.value) / 3.0;
+      for (num_of_points = 0; num_of_points < window_size; num_of_points++)
+        {
+          /* Проверяем, что точка существует.*/
+          if (lindex - num_of_points >=0)
+            {
+              data_point = g_array_index (cache, HyScanLocationGdouble1, lindex - num_of_points);
+              output.value += data_point.value;
+            }
+          else
+            {
+              break;
+            }
+        }
     }
-  if (p1.validity == FALSE && p4.validity == FALSE)
-    output.value = (p2.value + p3.value) / 2.0;
 
-  output.validity = TRUE;
+  if (num_of_points > 0)
+    {
+      output.value /= num_of_points;
+      output.validity = TRUE;
+    }
   return output;
-
 }
 
 /* Функция выдачи даты и времени для заданного момента времени. */
@@ -322,7 +309,7 @@ hyscan_location_getter_datetime (HyScanDB *db,
 
 /* Внутренняя функция выдачи значений типа HyScanLocationGdouble2 для заданного момента времени. */
 HyScanLocationGdouble2
-hyscan_location_getter_gdouble2 (HyScanDB *db,
+hyscan_location_getter_gdouble2_DEPRECATED (HyScanDB *db,
                                  GArray *source_list,
                                  GArray *cache,
                                  gint32  source,
@@ -489,11 +476,77 @@ hyscan_location_getter_gdouble1 (HyScanDB *db,
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  HyScanLocationGdouble1 output = {HYSCAN_LOCATION_GDOUBLE1_INIT};
-  HyScanLocationGdouble1 p1 = {HYSCAN_LOCATION_GDOUBLE1_INIT},
-                         p2 = {HYSCAN_LOCATION_GDOUBLE1_INIT},
-                         p3 = {HYSCAN_LOCATION_GDOUBLE1_INIT},
-                         p4 = {HYSCAN_LOCATION_GDOUBLE1_INIT};
+  HyScanLocationGdouble1 output = {0,0,0,0};
+  HyScanLocationGdouble1 p1 = {HYSCAN_LOCATION_GDOUBLE1_INIT};
+  gint32 lindex = 0,
+         rindex = 0;
+  gint64 ltime = 0,
+         rtime = 0;
+
+  /* Окно усреднения зависит от quality. 16 в случае quality = 0, 2 в случае quality = 1. */
+  gint window_size = 16 - floor (7 * quality),
+       num_of_points = 0;
+
+  if (source_list_element->shift == -1)
+    return output;
+  if (!hyscan_db_channel_find_data (db, source_list_element->channel_id, time, &lindex, &rindex, &ltime, &rtime))
+    return output;
+
+  lindex -= source_list_element->shift;
+  rindex -= source_list_element->shift;
+
+  if (lindex < source_list_element->processing_index && rindex < source_list_element->processing_index)
+    {
+      for (num_of_points = 0; num_of_points < window_size; num_of_points++)
+        {
+          /* Проверяем, что точка существует.*/
+          if (lindex - num_of_points >=0)
+            {
+              p1 = g_array_index (cache, HyScanLocationGdouble1, lindex - num_of_points);
+              output.value += p1.value;
+            }
+          else
+            {
+              break;
+            }
+        }
+    }
+
+  if (num_of_points > 0)
+    {
+      output.value /= num_of_points;
+      output.validity = TRUE;
+    }
+  return output;
+}
+
+HyScanLocationGdouble2
+hyscan_location_getter_gdouble2 (HyScanDB *db,
+                                 GArray *source_list,
+                                 GArray *cache,
+                                 gint32  source,
+                                 gint64  time,
+                                 gdouble quality,
+                                 HyScanLocationGdouble2  *prev_point)
+{
+  /* TODO: функция в текущем виде предназначена для разработки и отладки.
+   * Когда будет понятно, что она работает надлежащим образом, нужно убрать все
+   * промежуточные переменные и заменить их непосредственно значениями из структур с данными. */
+  HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
+
+  HyScanLocationGdouble2 output = {HYSCAN_LOCATION_GDOUBLE2_INIT};
+
+  HyScanLocationGdouble2 *p1, *p2;
+  gdouble out_lat,
+          out_lon;
+  gdouble k_lat,
+          k_lon,
+          b_lat,
+          b_lon;
+  gdouble t1 = 0,
+          t2 = 0,
+          tout = 0;
+
   gint32 lindex = 0,
          rindex = 0;
   gint64 ltime = 0,
@@ -501,7 +554,6 @@ hyscan_location_getter_gdouble1 (HyScanDB *db,
 
   if (!hyscan_db_channel_find_data (db, source_list_element->channel_id, time, &lindex, &rindex, &ltime, &rtime))
     return output;
-
   lindex -= source_list_element->shift;
   rindex -= source_list_element->shift;
 
@@ -509,41 +561,56 @@ hyscan_location_getter_gdouble1 (HyScanDB *db,
    * И это значение уже обработано, можно вернуть именно это значение.
    */
   if (ABS(ltime - time) < TIME_OF_VALIDITY && lindex < source_list_element->processing_index)
-    return g_array_index (cache, HyScanLocationGdouble1, lindex);
-  if (ABS(rtime - time) < TIME_OF_VALIDITY && rindex < source_list_element->processing_index)
-    return g_array_index (cache, HyScanLocationGdouble1, rindex);
-
-  if (lindex == rindex)
-    return output;
-
-  if (rindex + 1 > source_list_element->processing_index || lindex - 1 < 0 || lindex - 1 > source_list_element->processing_index)
-    return output;
-
-  if (rindex + 1 <= source_list_element->processing_index)
-    p4 = g_array_index (cache, HyScanLocationGdouble1, rindex+1);
-
-  if (lindex - 1 >= 0 && lindex - 1 <= source_list_element->processing_index)
-    p1 = g_array_index (cache, HyScanLocationGdouble1, lindex-1);
-
-  /* Для усреднения берем одно значение слева, одно справа, а одно то,
-   * которое ближе к требуемому времени. */
-  p2 = g_array_index (cache, HyScanLocationGdouble1, lindex);
-  p3 = g_array_index (cache, HyScanLocationGdouble1, rindex);
-  if (p2.validity == FALSE || p3.validity == FALSE)
-    return output;
-
-  if (p1.validity == TRUE && p4.validity == FALSE)
-    output.value = (p1.value + p2.value + p3.value) / 3.0;
-  if (p1.validity == FALSE && p4.validity == TRUE)
-    output.value = (p4.value + p2.value + p3.value) / 3.0;
-  if (p1.validity == TRUE && p4.validity == TRUE)
     {
-      output.value = (ABS(p1.db_time - time) <= ABS(p4.db_time - time)) ? p1.value : p4.value;
-      output.value = (output.value + p2.value + p3.value) / 3.0;
+      if (lindex - 1 >= 0 && prev_point != NULL)
+        *prev_point = g_array_index (cache, HyScanLocationGdouble2, lindex-1);
+      if (lindex - 1 < 0 && prev_point != NULL)
+        *prev_point = g_array_index (cache, HyScanLocationGdouble2, lindex);
+      output = g_array_index (cache, HyScanLocationGdouble2, lindex);
+      return output;
     }
-  if (p1.validity == FALSE && p4.validity == FALSE)
-    output.value = (p2.value + p3.value) / 2.0;
+  if (ABS(rtime - time) < TIME_OF_VALIDITY && rindex < source_list_element->processing_index)
+    {
+      if (rindex - 1 >= 0 && prev_point != NULL)
+        *prev_point = g_array_index (cache, HyScanLocationGdouble2, rindex-1);
+      if (rindex - 1 < 0 && prev_point != NULL)
+        *prev_point = g_array_index (cache, HyScanLocationGdouble2, rindex);
+      output = g_array_index (cache, HyScanLocationGdouble2, lindex);
+      return g_array_index (cache, HyScanLocationGdouble2, rindex);
+    }
 
+  /* Возможна ситуация, когда в момент выполнения предыдущих двух проверок не проверяется вторая половина условия.
+   * В этом случае возвращаем все нули, чтобы не выполнить нижележащий код.
+   * Так же ноль возвращается, если правый индекс равен левому.
+   */
+  if (lindex > source_list_element->processing_index || rindex > source_list_element->processing_index || lindex == rindex)
+    {
+      return output;
+    }
+
+  /* Поскольку трэк представляет собой ряд прямолинейных участков, то нам достаточно двух точек для нахождения искомой точки. */
+  if (prev_point != NULL)
+    *prev_point = g_array_index (cache, HyScanLocationGdouble2, lindex);
+  p1 = &g_array_index (cache, HyScanLocationGdouble2, lindex);
+  p2 = &g_array_index (cache, HyScanLocationGdouble2, rindex);
+
+  t1 = p1->data_time;
+  t2 = p2->data_time;
+  tout = (time - t1) / (t2-t1);
+  t1 = 0;
+  t2 = 1;
+  k_lat = (p2->value1 - p1->value1)/(t2 - t1);
+  k_lon = (p2->value2 - p1->value2)/(t2 - t1);
+  b_lat = p1->value1 - k_lat * t1;
+  b_lon = p1->value2 - k_lon * t1;
+
+  /* Кладем p2 на определенную выше прямую. */
+  out_lat = (k_lat * tout + b_lat);
+  out_lon = (k_lon * tout + b_lon);
+
+  output.value1 = out_lat;
+  output.value2 = out_lon;
+  output.data_time = time;
   output.validity = TRUE;
   return output;
 }

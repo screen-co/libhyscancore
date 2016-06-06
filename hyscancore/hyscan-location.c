@@ -16,6 +16,9 @@ source_list_element.channel_id = 0;                                   \
 source_list_element.param_id = 0;                                     \
 source_list_element.shift = -1;                                       \
 source_list_element.assembler_index = 0;                              \
+source_list_element.preprocessing_index = 0;                          \
+source_list_element.thresholder_prev_index = 0;                       \
+source_list_element.thresholder_next_index = 0;                       \
 source_list_element.processing_index = 0;                             \
 source_list_element.discretization_type = NULL;                       \
 source_list_element.x = 0.0;                                          \
@@ -270,7 +273,6 @@ hyscan_location_constructed (GObject *object)
   /* Устанавливаем источники по умолчанию. */
   hyscan_location_source_defaults (location);
 
-  //priv->overseer_period = 1000000;
   /* Запускаем поток надзирателя. */
   g_atomic_int_set (&(priv->overseer_stop), 0);
   priv->overseer_thread = g_thread_new ("overseer thread", hyscan_location_overseer, location);
@@ -834,7 +836,6 @@ hyscan_location_source_set (HyScanLocation *location,
     case HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
-      //source_list_element->param_id = hyscan_db_channel_param_open (priv->db, source_list_element->channel_id);
       dc_info = hyscan_data_channel_get_info (source_list_element->dchannel);
       source_list_element->x = dc_info->x;
       source_list_element->y = dc_info->y;
@@ -1061,12 +1062,11 @@ hyscan_location_get (HyScanLocation *location,
   if ((parameter & HYSCAN_LOCATION_PARAMETER_DATETIME) == HYSCAN_LOCATION_PARAMETER_DATETIME)
     {
       temp3 = hyscan_location_getter_datetime (priv->db, priv->source_list, priv->datetime_cache, priv->datetime_source, time, priv->quality);
-      //output.time = temp3.value;
       output.validity &= temp3.validity;
     }
 
   /* Сдвигаем к центру масс. */
-  hyscan_location_shift (&output, center_x, center_y, center_z, (output.track)*G_PI/180.0, output.roll, output.pitch);
+  hyscan_location_shift (&output, -center_x, -center_y, -center_z, (output.track)*G_PI/180.0, output.roll, output.pitch);
   /* Кладем значение в кэш. */
   if (cache_status && output.validity)
     hyscan_location_cache_set (location, &output);

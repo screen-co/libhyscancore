@@ -24,11 +24,12 @@
  * - #hyscan_location_echosounder_depth_get - определяет глубину по эхолоту;
  * - #hyscan_location_sonar_depth_get - определяет глубину по ГБО.
  *
- * Для фильтрации данных:
+ * Для фильтрации и обработки данных:
  * - #hyscan_location_4_point_2d_bezier - сглаживание кривой Безье;
- * - #hyscan_location_3_point_2d_bezier - не используется;
- * - #hyscan_location_3_point_average - усреднение по трем точкам.
- * - #hyscan_location_shift - для сдвижки данных в пространстве с учетом курса, крена и дифферента.
+ * - #hyscan_location_thresholder - линеаризация трека;
+ * - #hyscan_location_thresholder2 - линеаризация трека (альтернативная);
+ * - #hyscan_location_shift - для сдвижки данных в пространстве с учетом курса, крена и дифферента;
+ * - #hyscan_location_track_calculator - вычисление курса.
  *
  * Функции надзирателя:
  * - #hyscan_location_overseer_latlong - следит за данными широты;
@@ -160,29 +161,49 @@ void                    hyscan_location_4_point_2d_bezier       (GArray *source,
                                                                  gint32 point3,
                                                                  gint32 point4,
                                                                  gdouble quality);
-void                    hyscan_location_3_point_2d_bezier       (GArray *source,
-                                                                 gint32 point1,
-                                                                 gint32 point2,
-                                                                 gint32 point3,
-                                                                 gdouble quality);
-
-/** Среднее арифметическое трех точек.
+/** Линеаризация данных.
  *
- * <b>Важно:</b> считается, что сглаживаемая точка - вторая. Сглаженное значение будет помещено в локальный кэш вместо второй точки.
+ * Функция предназначена для "нарезки" трэка на прямолинейные участки. Длина участков постоянна и определяется параметром quality
+ * и варьируется от 1 до 10 метров.
+ * <b>Важно:</b> считается, что сглаживаемая точка - вторая.
  *
- * Параметр quality позволяет задать степень сглаживания: при 0 данные сглаживаются сильней, при 1 слабей.
  * \param source указатель на локальный кэш с данными;
- * \param point1 первая точка;
- * \param point2 вторая точка;
- * \param point3 третья точка;
+ * \param point1 первая точка текущего прямолинейного участка;
+ * \param point2 обрабатываемая точка;
+ * \param point3 последняя точка текущего прямолинейного участка;
+ * \param last_index индекс последней точки, обработанной на этапе предобработки.
+ * \param is_writeable сигнализирует, что данных больше не будет.
  * \param quality качество (степень сглаживания).
  */
-void                    hyscan_location_3_point_average         (GArray *source,
-                                                                 gint32 point1,
-                                                                 gint32 point2,
-                                                                 gint32 point3,
+gboolean                hyscan_location_thresholder             (GArray *source,
+                                                                 gint32 *point1,
+                                                                 gint32  point2,
+                                                                 gint32 *point3,
+                                                                 gint32  last_index,
+                                                                 gboolean is_writeable,
                                                                  gdouble quality);
-
+/** Линеаризация данных.
+ *
+ * Функция предназначена для "нарезки" трэка на прямолинейные участки.
+ * Отличие от #hyscan_location_thresholder в том, что длина участков переменна,
+ * а функция стремится минимизировать изменение курса.
+ * Считается, что сглаживаемая точка - третья.
+ *
+ * \param source указатель на локальный кэш с данными;
+ * \param point2 первая точка текущего прямолинейного участка;
+ * \param point3 обрабатываемая точка;
+ * \param point4 последняя точка текущего прямолинейного участка;
+ * \param last_index индекс последней точки, обработанной на этапе предобработки.
+ * \param is_writeable сигнализирует, что данных больше не будет.
+ * \param quality качество (степень сглаживания).
+ */
+gboolean                hyscan_location_thresholder2            (GArray *source,
+                                                                 gint32 *point2,
+                                                                 gint32  point3,
+                                                                 gint32 *point4,
+                                                                 gint32  last_index,
+                                                                 gboolean is_writeable,
+                                                                 gdouble quality);
 /** Сдвижка данных в пространстве.
  *
  * Поскольку местоположение запрашивается для момента времени \b и для точки, смещенной от центра масс,
@@ -204,18 +225,37 @@ void                    hyscan_location_shift                   (HyScanLocationD
                                                                  gdouble             psi,
                                                                  gdouble             gamma,
                                                                  gdouble             theta);
+/** Функция вычисления курса.
+ *
+ * Вспомогательная функция, вычисляет курс по координатам двух точек.
+ *
+ * \param lat1 широта первой точки в десятичных градусах;
+ * \param lon1 долгота первой точки в десятичных градусах;
+ * \param lat2 широта второй точки в десятичных градусах;
+ * \param lon2 долгота второй точки в десятичных градусах;
+ * \return значение курса в градусах. 0 соответствует северу.
+
+ */
+gdouble                 hyscan_location_track_calculator        (gdouble lat1,
+                                                                 gdouble lon1,
+                                                                 gdouble lat2,
+                                                                 gdouble lon2);
 /* Вспомогательные функции надзирателя. */
 
 /** Функция слежения за широтой и долготой.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param datetime_cache указатель на локальный кэш даты и времени;
+ * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  */
+
+
 void                    hyscan_location_overseer_latlong         (HyScanDB *db,
                                                                   GArray *source_list,
-                                                                  GArray *local_cache,
+                                                                  GArray *cache,
                                                                   gint32 source,
                                                                   GArray *datetime_cache,
                                                                   gint32 datetime_source,
@@ -224,8 +264,10 @@ void                    hyscan_location_overseer_latlong         (HyScanDB *db,
 /** Функция слежения за высотой.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param datetime_cache указатель на локальный кэш даты и времени;
+ * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  */
 void                    hyscan_location_overseer_altitude        (HyScanDB *db,
@@ -241,8 +283,10 @@ void                    hyscan_location_overseer_altitude        (HyScanDB *db,
  * Функция автоматически определяет по списку источников, какие данные извлекать: курс или координаты.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param datetime_cache указатель на локальный кэш даты и времени;
+ * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  */
 void                    hyscan_location_overseer_track           (HyScanDB *db,
@@ -256,8 +300,10 @@ void                    hyscan_location_overseer_track           (HyScanDB *db,
 /** Функция слежения за креном.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param datetime_cache указатель на локальный кэш даты и времени;
+ * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  */
 void                    hyscan_location_overseer_roll            (HyScanDB *db,
@@ -270,8 +316,10 @@ void                    hyscan_location_overseer_roll            (HyScanDB *db,
 /** Функция слежения за дифферентом.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param datetime_cache указатель на локальный кэш даты и времени;
+ * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  */
  void                    hyscan_location_overseer_pitch           (HyScanDB *db,
@@ -286,8 +334,10 @@ void                    hyscan_location_overseer_roll            (HyScanDB *db,
  * Функция автоматически определяет по списку источников, какие данные извлекать: скорость или координаты.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param datetime_cache указатель на локальный кэш даты и времени;
+ * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  */
  void                    hyscan_location_overseer_speed           (HyScanDB *db,
@@ -300,8 +350,9 @@ void                    hyscan_location_overseer_roll            (HyScanDB *db,
 /** Функция слежения за глубиной.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
+ * \param soundspeed указатель на таблицу скорости звука;
  * \param quality качество.
  */
 void                    hyscan_location_overseer_depth           (HyScanDB *db,
@@ -313,7 +364,7 @@ void                    hyscan_location_overseer_depth           (HyScanDB *db,
 /** Функция слежения за датой и временем.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param quality качество.
  */
@@ -329,7 +380,7 @@ void                    hyscan_location_overseer_datetime        (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -345,7 +396,7 @@ HyScanLocationGdouble2   hyscan_location_getter_latlong          (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -362,7 +413,7 @@ HyScanLocationGdouble1   hyscan_location_getter_altitude         (HyScanDB *db,
  * Функция умная и сама определяет, что из себя представляют исходные данные (курс или координаты).
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -378,7 +429,7 @@ HyScanLocationGdouble1   hyscan_location_getter_altitude         (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -394,7 +445,7 @@ HyScanLocationGdouble1   hyscan_location_getter_altitude         (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -410,7 +461,7 @@ HyScanLocationGdouble1   hyscan_location_getter_altitude         (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -427,7 +478,7 @@ HyScanLocationGdouble1   hyscan_location_getter_speed            (HyScanDB *db,
  * Функция автоматически определяет, в каком виде хранятся данные (скорость или координаты).
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -443,7 +494,7 @@ HyScanLocationGdouble1   hyscan_location_getter_speed            (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество.
@@ -459,7 +510,7 @@ HyScanLocationGdouble1   hyscan_location_getter_speed            (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество;
@@ -477,7 +528,7 @@ HyScanLocationGdouble2   hyscan_location_getter_gdouble2         (HyScanDB *db,
  *
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param local_cache указатель на локальный кэш;
+ * \param cache указатель на локальный кэш;
  * \param source индекс источника;
  * \param time требуемый момент времени;
  * \param quality качество;

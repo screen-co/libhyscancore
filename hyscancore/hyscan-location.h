@@ -10,14 +10,28 @@
  *
  * Класс HyScanLocation предназначен для определения координат, высоты, скорости, курса, крена, дифферента и глубины в требуемый момент времени.
  *
- * Принципиально он устроен следующим образом.
- * В галсе есть каналы данных: эхолоты, ГБО, GPS/GLONASS-приемники, САД.
- * Каждый КД дает определенный список параметров, которые из него можно извлечь, определенные в структуре HyScanLocationParameters.
+ * В галсе есть каналы данных: эхолоты, ГБО, GPS/GLONASS-приемники, САД.<BR>
+ * Каждый КД дает определенный список параметров, которые из него можно извлечь, например, из RMC-строк можно получить информацию
+ * о дате, времени, координатах, курсе и скорости. Эти параметры определены в структуре #HyScanLocationParameters.
+ *
+ * При работе с каналами данных и параметрами, класс оперирует понятием источник.
+ * Источник - это некий номер, позволяющий однозначно сопоставить параметр обработки и канал данных.<BR>
  * Класс хранит информацию об источниках в таблице HyScanLocationSourcesList. Это внутренняя таблица, повлиять на которую извне невозможно,
- * можно только выбрать источник для каждого параметра.
- * При создании класса запускается поток-надзиратель, overseer. Он занимается тем, что проверяет БД на предмет наличия новых данных, разбирает их и
- * складывает в локальный кэш (для кождого параметра свой кэш). При этом проводится предобработка данных, например, координаты сглаживаются кривыми Безье.
- * Для получения информации о местоположении судна вызывается метод hyscan_location_get. В этом методе последовательно вызываются функции-getter'ы для каждого параметра,
+ * однако можно получить список источников для параметра навигационных данных с помощью функции #hyscan_location_sources_list.
+ * Так же можно получить индекс активного источника для параметра обработки с помощью функции #hyscan_location_source_get.
+ * Установка источника производится с помощью функции #hyscan_location_source_set.
+ *
+ * Работа класса разделена на три этапа. <BR>
+ * На первом этапе считывается список КД в галсе, составляется список источников,
+ * устанавливаются источники по умолчанию, инициализируются локальные кэши, запускается поток-надзиратель.
+ *
+ * Работа потока-надзирателя - это второй этап работы класса.
+ * Этот поток постоянно проверяет БД на предмет наличия новых данных, разбирает их и
+ * складывает в локальные кэши (для каждого параметра свой кэш). При этом может производиться предобработка данных,
+ * например, координаты сглаживаются кривыми Безье.
+ *
+ * Третий этап - это получение информации о местоположении судна. Для этого пользователем вызывается метод hyscan_location_get.
+ * В этом методе последовательно вызываются функции-getter'ы для каждого параметра,
  * который интересует пользователя. Getter'ы аппроксимируют данные (если требуется) и выдают их наверх.
  *
  * Публично доступны следующие методы:
@@ -35,7 +49,7 @@
  * <details>
  *  <summary>Дополнительная информация о таблице скорости звука</summary>
  *  Под профилем скорости звука понимается таблично заданная функция скорости звука от глубины, например, такая:<br>
- *  <table style="border-collapse:collapse;border-spacing:0"><tr><th style="font-family:Arial, sans-serif;font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;background-color:#329a9d;text-align:center;vertical-align:top">Глубина</th><th style="font-family:Arial, sans-serif;font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;background-color:#329a9d;text-align:center;vertical-align:top">Скорость звука</th></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">0</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1500</td></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">2</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1450</td></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">4</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1400</td></tr></table>
+ *  <table style="border-collapse:collapse;border-spacing:0"><tr><th style="font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;background-color:#329a9d;text-align:center;vertical-align:top">Глубина</th><th style="font-family:Arial, sans-serif;font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;background-color:#329a9d;text-align:center;vertical-align:top">Скорость звука</th></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">0</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1500</td></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">2</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1450</td></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">4</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1400</td></tr></table>
  *  Где глубина задается в метрах, а скорость звука в метрах в секунду. <br>
  *  Данный пример говорит о следующем: на глубинах от 0 до 2 метров скорость звука составляет 1500 м/с,
  *  от 2 до 4 метров - 1450 м/с, от 4 и далее - 1400 м/с. <br>
@@ -107,6 +121,9 @@ typedef struct
 
   gint32                    shift;                      /**< Сдвиг (по сути, индекс самого первого элемента в КД). */
   gint32                    assembler_index;            /**< Индекс сборщика данных. */
+  gint32                    preprocessing_index;        /**< Индекс предобработчика данных. */
+  gint32                    thresholder_prev_index;     /**< Индекс предыдущей точки для функции #hyscan_location_thresholder. */
+  gint32                    thresholder_next_index;     /**< Индекс следующей точки для функции #hyscan_location_thresholder. */
   gint32                    processing_index;           /**< Индекс обработчика данных. */
 
   gdouble                   x;                          /**< Параметр датчика. */
@@ -202,8 +219,9 @@ GType                   hyscan_location_get_type         (void);
  * После использования необходимо освободить занятую списком память.
  * На последнем месте в списке источников находится структура со всеми полями, установленными в 0.
  * Это признак конца списка источников.
-
- * \param parameter параметр из #HyScanLocationParameters;
+ *
+ * \param location указатель на объект обработки навигационных данных;
+ * \param parameter параметр из #HyScanLocationParameters.
  *
  * \return указатель на массив со списком источников.
  */
@@ -214,22 +232,27 @@ HyScanLocationSources  *hyscan_location_sources_list            (HyScanLocation 
 /**
  *
  * Функция возвращает активный источник для заданного параметра.
- * \param parameter параметр из #HyScanLocationParameters;
+ *
+ * \param location указатель на объект обработки навигационных данных
+ * \param parameter параметр из #HyScanLocationParameters.
  *
  * \return указатель на массив со списком источников.
  */
 HYSCAN_CORE_EXPORT
-gint                    hyscan_location_source_get       (HyScanLocation *location,
-                                                                  gint            parameter);
+gint                    hyscan_location_source_get              (HyScanLocation *location,
+                                                                 gint            parameter);
 
 /**
- *
  * Функция устанавливает источник.
  *
- * Особенность тут следующая. При вызове #hyscan_location_sources_list возвращается список источников,
- * и среди прочего - индекс. Этот индекс передается в hyscan_location_source_set, которая автоматически определяет,
+ * При вызове #hyscan_location_sources_list возвращается список источников,
+ * в котором каждому источнику присвоен индекс.
+ * Этот индекс передается в hyscan_location_source_set, которая автоматически определяет,
  * для какого параметра актуален этот источник.
- * \param parameter параметр из #HyScanLocationParameters;
+ *
+ * \param location указатель на объект обработки навигационных данных;
+ * \param source индекс источника данных;
+ * \param turn_on если FALSE, то параметр, соответствующий этому источнику, исключается из обработки.
  *
  * \return TRUE, если источник корректно установился.
  */
@@ -240,10 +263,10 @@ gboolean                hyscan_location_source_set              (HyScanLocation 
 
 
 /**
- *
  * Функция устанавливает таблицу профиля скорости звука.
  *
- * \param soundspeedtable таблица скорости звука #SoundSpeedTable
+ * \param location указатель на объект обработки навигационных данных;
+ * \param soundspeedtable таблица скорости звука #SoundSpeedTable.
  *
  * \return TRUE, всегда.
  */
@@ -252,14 +275,21 @@ gboolean                hyscan_location_soundspeed_set          (HyScanLocation 
                                                                  GArray          soundspeedtable);
 
 /**
- *
  * Функция получения координат в заданный момент времени.
  *
  * В выходной структуре для выбранных параметров будут указаны значения, для невыбранных - NAN.
  * Возможна ситуация, при которой для заданного момента времени нет данных (либо не существуют, либо еще не обработаны).
  * В таком случае будут возвращены все собранные данные, но те данные, что собрать не удалось, будут установлены в NAN. Дополнительно флаг validity будет установлен в FALSE.
- * \param parameter параметр из #HyScanLocationParameters. Параметры можно объединять логическим ИЛИ.
- * \param time время.
+ *
+ * \param location указатель на объект обработки навигационных данных;
+ * \param parameter параметр из #HyScanLocationParameters. Параметры можно объединять логическим ИЛИ;
+ * \param time время;
+ * \param x сдвижка по оси от центра масс к носу;
+ * \param y сдвижка по оси от центра масс к правому борту;
+ * \param z сдвижка по оси от центра масс к килю;
+ * \param psi угловой сдвиг (в радианах), соответствующий курсу;
+ * \param gamma угловой сдвиг (в радианах), соответствующий крену;
+ * \param theta угловой сдвиг (в радианах), соответствующий дифференту.
 
  * \return Структура #HyScanLocationData со всей затребованной информацией.
  */
@@ -273,7 +303,18 @@ HyScanLocationData      hyscan_location_get                     (HyScanLocation 
                                                                  gdouble         psi,
                                                                  gdouble         gamma,
                                                                  gdouble         theta);
-
+/**
+ * Функция возвращает номер изменения в объекте.
+ * Номер изменения увеличивается, например, при изменении параметров обработки.
+ *
+ * Программа не должна полагаться на значение номера изменения, важен только факт смены номера по
+ * сравнению с предыдущим запросом.
+ *
+ * \param location указатель на объект обработки навигационных данных.
+ *
+ * \return Номер изменения.
+ *
+ */
 HYSCAN_CORE_EXPORT
 gint32                  hyscan_location_get_mod_count           (HyScanLocation *location);
 HYSCAN_CORE_EXPORT
