@@ -53,6 +53,9 @@ static HyScanChannelTypeInfo hyscan_channel_types_info[] =
   { 0, "echosounder",             HYSCAN_SONAR_DATA_ECHOSOUNDER,  FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1 },
   { 0, "echosounder-raw",         HYSCAN_SONAR_DATA_ECHOSOUNDER,  FALSE, TRUE,  HYSCAN_SONAR_CHANNEL_1 },
 
+  { 0, "profiler",                HYSCAN_SONAR_DATA_PROFILER,     FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1 },
+  { 0, "profiler-raw",            HYSCAN_SONAR_DATA_PROFILER,     FALSE, TRUE,  HYSCAN_SONAR_CHANNEL_1 },
+
   { 0, "ss-startboard",           HYSCAN_SONAR_DATA_SS_STARBOARD, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1 },
   { 0, "ss-startboard-hi",        HYSCAN_SONAR_DATA_SS_STARBOARD, TRUE,  FALSE, HYSCAN_SONAR_CHANNEL_1 },
   { 0, "ss-startboard-raw",       HYSCAN_SONAR_DATA_SS_STARBOARD, FALSE, TRUE,  HYSCAN_SONAR_CHANNEL_1 },

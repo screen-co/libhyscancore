@@ -84,6 +84,7 @@ typedef enum
   HYSCAN_SONAR_DATA_INVALID,                                   /**< Недопустимый тип, ошибка. */
 
   HYSCAN_SONAR_DATA_ECHOSOUNDER,                               /**< Эхолот. */
+  HYSCAN_SONAR_DATA_PROFILER,                                  /**< Профилограф. */
   HYSCAN_SONAR_DATA_SS_STARBOARD,                              /**< Боковой обзор, правый борт. */
   HYSCAN_SONAR_DATA_SS_PORT,                                   /**< Боковой обзор, левый борт. */
 
