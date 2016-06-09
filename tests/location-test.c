@@ -1,38 +1,64 @@
-#include <hyscan-data-channel-writer.h>
 #include <hyscan-location.h>
+#include <hyscan-data-channel-writer.h>
 #include <hyscan-db-file.h>
 #include <hyscan-cached.h>
 #include <hyscan-data-channel.h>
 #include <hyscan-core-exports.h>
+
 #include <glib/gstdio.h>
 #include <gio/gio.h>
-#include <string.h>
 
+#include <string.h>
 #include <time.h>
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
 
 #define AOP (10000)
-#define FILENM "/home/dmitriev.a/loca/outpoot.txt"
+//#define FILENM "/home/dmitriev.a/loca/output.txt"
 
 int
 main (int argc, char **argv)
 {
-  #include "/home/dmitriev.a/loca/rmc_test_data"
-/*
-#include "/home/dmitriev.a/loca/6/rmc-c"
-  #include "/home/dmitriev.a/loca/1/rmc-c"
-  #include "/home/dmitriev.a/loca/5/rmc-c"
-  #include "/home/dmitriev.a/loca/2/rmc-c"
-  #include "/home/dmitriev.a/loca/3/rmc-c"
-  #include "/home/dmitriev.a/loca/4/rmc-c"
-*/
-  #include "/home/dmitriev.a/loca/gga_test_data"
-  #include "/home/dmitriev.a/loca/depth_test_data"
+  GError *error = NULL;
+  gchar *resource_name;
+  gsize test_data_size;
+
+  GBytes *rmc_resource;
+  GBytes *gga_resource;
+  //GBytes *dpt_resource;
+  const gchar *rmc_data;
+  const gchar *gga_data;
+  gchar **rmc_test_data;
+  gchar **gga_test_data;
+  gfloat depth_test_data[5000] = {0};
+  gint i;
+  gchar *filename;
+  gint64 points_num = 10000,
+         points_freq = 0;
+
+  resource_name = g_strdup_printf ("/org/hyscan/location-test/rmc_test_data");
+  rmc_resource = g_resources_lookup_data (resource_name, G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
+  test_data_size = g_bytes_get_size (rmc_resource);
+  rmc_data = (const gchar*) g_bytes_get_data (rmc_resource, &test_data_size);
+
+  resource_name = g_strdup_printf ("/org/hyscan/location-test/gga_test_data");
+  gga_resource = g_resources_lookup_data (resource_name, G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
+  test_data_size = g_bytes_get_size (gga_resource);
+  gga_data = (const gchar*) g_bytes_get_data (gga_resource, &test_data_size);
+
+  for (i = 0; i < 5000; i++)
+    depth_test_data[i] = (i > 1000 && i < 1010) ? 32767 : 0;
+
+  g_bytes_unref (rmc_resource);
+  g_bytes_unref (gga_resource);
+
+
+  rmc_test_data = g_strsplit (rmc_data, "\n", -1);
+  gga_test_data = g_strsplit (gga_data, "\n", -1);
+
   gchar *db_uri = NULL; /* Путь к каталогу с базой данных. */
   gint cache_size = 0; /* Размер кэша, Мб. */
-  int i = 0;
   HyScanDB *db;
   HyScanCache *cache = NULL;
   gint parameter;
@@ -51,12 +77,18 @@ main (int argc, char **argv)
   gint32 db_index;
   gint64 db_time;
 
-
-
-  HyScanSensorChannelInfo nmea_channel_info = {0, 0 , 0, 0, 0, 0};
+  HyScanSensorChannelInfo nmea_channel_info = {0, 0, 0, 0, 0, 0};
 
   {
     gchar **args;
+    error = NULL;
+    GOptionContext *context;
+    GOptionEntry entries[] = {
+      {"output", 'o', 0, G_OPTION_ARG_STRING, &filename, "Path and name of output file;", NULL},
+      {"points", 'n', 0, G_OPTION_ARG_INT, &points_num, "Number of data points to obtain;", NULL},
+      {"frequency", 'f', 0, G_OPTION_ARG_INT, &points_freq, "Number of data points between actual points. Can be negative. ", NULL},
+      {NULL}
+    };
 
 #ifdef G_OS_WIN32
     args = g_win32_get_command_line ();
@@ -64,10 +96,32 @@ main (int argc, char **argv)
     args = g_strdupv (argv);
 #endif
 
+    context = g_option_context_new ("<db-uri>");
+    g_option_context_set_help_enabled (context, TRUE);
+    g_option_context_add_main_entries (context, entries, NULL);
+    g_option_context_set_ignore_unknown_options (context, FALSE);
+    if (!g_option_context_parse_strv (context, &args, &error))
+      {
+        g_message (error->message);
+        return -1;
+      }
+
+    if (g_strv_length (args) != 2)
+      {
+        g_print ("%s", g_option_context_get_help (context, FALSE, NULL));
+        return 0;
+      }
+
+    g_option_context_free (context);
+
     db_uri = g_strdup (args[1]);
     g_strfreev (args);
   }
 
+  if (points_freq < 0)
+    points_freq = 10e5 * ABS(points_freq);
+  else
+    points_freq = 10e5 / (points_freq+1);
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
@@ -115,7 +169,7 @@ main (int argc, char **argv)
   /* Создаем объект. */
   location = hyscan_location_new (db, cache, "locacache", "project", "track", 0);
 
-  FILE *outfile = g_fopen(FILENM, "w+");
+  FILE *outfile = g_fopen(filename, "w+");
   i = 0;
   parameter = HYSCAN_LOCATION_PARAMETER_LATLONG
               | HYSCAN_LOCATION_PARAMETER_TRACK
@@ -124,23 +178,26 @@ main (int argc, char **argv)
               | HYSCAN_LOCATION_PARAMETER_ALTITUDE
               | HYSCAN_LOCATION_PARAMETER_DATETIME
               ;
-  while (i < AOP)
+  if (points_num>0)
     {
-    data.validity = FALSE;
-      while (data.validity == FALSE)
+      while (i < points_num)
         {
-          data = hyscan_location_get (location, parameter, 1e10 + i*2*5e5, 0, 0, 0, 0, 0, 0);
-          if (cache != NULL)
+          data.validity = FALSE;
+          while (data.validity == FALSE)
             {
-              data_cached = hyscan_location_get (location, parameter, 1e10 + i*2*5e5, 0, 0, 0, 0, 0, 0);
-              if (data.validity && data.validity != data_cached.validity)
-                g_printf ("cache error @ step %i\n",i);
+              data = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0);
+              if (cache != NULL)
+                {
+                  data_cached = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0);
+                  if (data.validity && data.validity != data_cached.validity)
+                    g_printf ("cache error @ step %i\n",i);
+                }
             }
+          g_fprintf (outfile, "%f,%f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
+          //g_fprintf (outfile, "%10.8f,%10.8f,%f\n", data.latitude, data.longitude, data.track);
+          //g_fprintf (outfile, "%10.8f,%10.8f\n", data.latitude, data.longitude);
+          i++;
         }
-      g_fprintf (outfile, "%f,%f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
-      //g_fprintf (outfile, "%10.8f,%10.8f,%f\n", data.latitude, data.longitude, data.track);
-      //g_fprintf (outfile, "%10.8f,%10.8f\n", data.latitude, data.longitude);
-      i++;
     }
   g_printf("data points obtained: %i\n",i);
   fclose(outfile);

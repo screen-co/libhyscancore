@@ -32,12 +32,12 @@ g_array_append_val (priv->source_list, source_list_element);
 
 /* Макрос, используемый при установке источников по-умолчанию.
  * Написан исключительно с целью уменьшения количества повторяющегося кода. */
-#define SOURCE_LIST_CHECK(ind,par)                                \
- (                                                                \
-  source_list_element->source_type == default_source &&     \
-  source_list_element->sensor_channel == default_channel && \
-  source_list_element->parameter == (par)                   \
-)
+#define SOURCE_LIST_CHECK(ind,par)                                    \
+ (                                                                    \
+  source_list_element->source_type == default_source &&               \
+  source_list_element->sensor_channel == default_channel &&           \
+  source_list_element->parameter == (par)                             \
+ )
 
 enum
 {
@@ -127,15 +127,15 @@ gboolean                hyscan_location_soundspeed_set  (HyScanLocation     *loc
 
 static gpointer         hyscan_location_overseer        (gpointer            user_data);
 
-HyScanLocationData      hyscan_location_get             (HyScanLocation *location,
-                                                         gint            parameter,
-                                                         gint64          time,
-                                                         gdouble         x,
-                                                         gdouble         y,
-                                                         gdouble         z,
-                                                         gdouble         psi,
-                                                         gdouble         gamma,
-                                                         gdouble         theta);
+HyScanLocationData      hyscan_location_get             (HyScanLocation     *location,
+                                                         gint                parameter,
+                                                         gint64              time,
+                                                         gdouble             x,
+                                                         gdouble             y,
+                                                         gdouble             z,
+                                                         gdouble             psi,
+                                                         gdouble             gamma,
+                                                         gdouble             theta);
 static gboolean         hyscan_location_update_cache_key(HyScanLocation     *location,
                                                          gint64              time);
 static gboolean         hyscan_location_cache_set       (HyScanLocation     *location,
@@ -144,8 +144,8 @@ static gboolean         hyscan_location_cache_get       (HyScanLocation     *loc
                                                          gint                parameter,
                                                          HyScanLocationData *data);
 
-gint32                  hyscan_location_get_mod_count   (HyScanLocation *location);
-gint                    hyscan_location_get_progress    (HyScanLocation *location);
+gint32                  hyscan_location_get_mod_count   (HyScanLocation     *location);
+gint                    hyscan_location_get_progress    (HyScanLocation     *location);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanLocation, hyscan_location, G_TYPE_OBJECT);
 

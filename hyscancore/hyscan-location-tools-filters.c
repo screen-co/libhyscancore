@@ -5,10 +5,10 @@
 /* Сглаживает данные кривой Безье. */
 void
 hyscan_location_4_point_2d_bezier (GArray *source,
-                                   gint32 point1,
-                                   gint32 point2,
-                                   gint32 point3,
-                                   gint32 point4,
+                                   gint32  point1,
+                                   gint32  point2,
+                                   gint32  point3,
+                                   gint32  point4,
                                    gdouble quality)
 {
   HyScanLocationGdouble2 p1 = {0},
@@ -166,13 +166,13 @@ hyscan_location_shift (HyScanLocationData *data,
 
 /* Линеаризация трека. */
 gboolean
-hyscan_location_thresholder       (GArray *source,
-                                   gint32 *point1,
-                                   gint32  point2,
-                                   gint32 *point3,
-                                   gint32  last_index,
-                                   gboolean is_writeable,
-                                   gdouble quality)
+hyscan_location_thresholder (GArray  *source,
+                             gint32  *point1,
+                             gint32   point2,
+                             gint32  *point3,
+                             gint32   last_index,
+                             gboolean is_writeable,
+                             gdouble  quality)
 {
   HyScanLocationGdouble2 *p1,
                          *p2,
@@ -248,13 +248,13 @@ hyscan_location_thresholder       (GArray *source,
 
 /* Линеаризация трека. */
 gboolean
-hyscan_location_thresholder2   (GArray *source,
-                                   gint32 *point2,
-                                   gint32  point3,
-                                   gint32 *point4,
-                                   gint32  last_index,
-                                   gboolean is_writeable,
-                                   gdouble quality)
+hyscan_location_thresholder2 (GArray  *source,
+                              gint32  *point2,
+                              gint32   point3,
+                              gint32  *point4,
+                              gint32   last_index,
+                              gboolean is_writeable,
+                              gdouble  quality)
 {
   HyScanLocationGdouble2 *p1,
                          *p2,

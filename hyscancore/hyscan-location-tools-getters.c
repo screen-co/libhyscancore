@@ -12,11 +12,11 @@
 /* Функция выдачи широты и долготы для заданного момента времени. */
 HyScanLocationGdouble2
 hyscan_location_getter_latlong (HyScanDB *db,
-                                 GArray *source_list,
-                                 GArray *cache,
-                                 gint32 source,
-                                 gint64 time,
-                                 gdouble quality)
+                                 GArray  *source_list,
+                                 GArray  *cache,
+                                 gint32   source,
+                                 gint64   time,
+                                 gdouble  quality)
 {
   return hyscan_location_getter_gdouble2 (db, source_list, cache, source, time, quality, NULL);
 }
@@ -24,11 +24,11 @@ hyscan_location_getter_latlong (HyScanDB *db,
 /* Функция выдачи высоты для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_altitude (HyScanDB *db,
-                                  GArray *source_list,
-                                  GArray *cache,
-                                  gint32 source,
-                                  gint64 time,
-                                  gdouble quality)
+                                  GArray  *source_list,
+                                  GArray  *cache,
+                                  gint32   source,
+                                  gint64   time,
+                                  gdouble  quality)
 {
   return hyscan_location_getter_gdouble1 (db, source_list, cache, source, time, quality);
 }
@@ -36,31 +36,20 @@ hyscan_location_getter_altitude (HyScanDB *db,
 /* Функция выдачи курса для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_track (HyScanDB *db,
-                               GArray *source_list,
-                               GArray *cache,
-                               gint32 source,
-                               gint64 time,
-                               gdouble quality)
+                               GArray  *source_list,
+                               GArray  *cache,
+                               gint32   source,
+                               gint64   time,
+                               gdouble  quality)
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
   HyScanLocationGdouble1 output = {HYSCAN_LOCATION_GDOUBLE1_INIT};
   HyScanLocationGdouble2 point  = {HYSCAN_LOCATION_GDOUBLE2_INIT},
                          prev_point = {HYSCAN_LOCATION_GDOUBLE2_INIT};
 
-  gdouble f2 = 0,
-          f1 = 0,
-          l2 = 0,
-          l1 = 0,
-          x = 0,
-          y = 0;
-
   /* Если курс берется непосредственно из NMEA. */
   if (source_list_element->source_type == HYSCAN_LOCATION_SOURCE_NMEA)
-    {
-      output = hyscan_location_getter_gdouble1 (db, source_list, cache, source, time, quality);
-      return output;
-    }
-
+    return hyscan_location_getter_gdouble1 (db, source_list, cache, source, time, quality);
 
   /* Если курс высчитывается из координат. */
   if (source_list_element->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
@@ -68,53 +57,9 @@ hyscan_location_getter_track (HyScanDB *db,
       point = hyscan_location_getter_gdouble2 (db, source_list, cache, source, time, quality, &prev_point);
       if (point.validity == TRUE && prev_point.validity == TRUE)
         {
-          f2 = point.value1 * G_PI/ 180.0;
-          f1 = prev_point.value1 * G_PI/ 180.0;
-          l2 = point.value2 * G_PI/ 180.0;
-          l1 = prev_point.value2 * G_PI/ 180.0;
-
-          x = cos(f2) * sin (l2-l1);
-          y = cos (f1) * sin(f2) - sin(f1) * cos(f2) * cos(l2-l1);
-
-          if (y > 0)
-            {
-              if (x > 0)
-                output.value = atan(y/x);
-              if (x < 0)
-                output.value = G_PI - atan(-y/x);
-              if (x == 0)
-                output.value = G_PI/ 2.0;
-            }
-
-          if (y < 0)
-            {
-              if (x > 0)
-                output.value = - atan(-y/x);
-              if (x < 0)
-                output.value = atan(y/x) - G_PI;
-              if (x == 0)
-                output.value = 3*G_PI/ 2.0;
-            }
-
-          if (y == 0)
-            {
-              if (x > 0)
-                output.value = 0;
-              if (x < 0)
-                output.value = G_PI;
-              if (x == 0)
-                output.value = 0;
-            }
-
-          /* Пересчитываем курс так, чтобы 0 соответствовал северу, а 90 - востоку. */
-          output.value = 90.0 - output.value * 180.0/G_PI;
-          if (output.value < 0)
-            output.value = 360.0 + output.value;
-          if (output.value > 360.0)
-            output.value -= 360.0;
+          output.value = hyscan_location_track_calculator (point.value1, prev_point.value1, point.value2, prev_point.value2);
           output.validity = TRUE;
         }
-      return output;
     }
   return output;
 }
@@ -122,11 +67,11 @@ hyscan_location_getter_track (HyScanDB *db,
 /* Функция выдачи крена для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_roll (HyScanDB *db,
-                              GArray *source_list,
-                              GArray *cache,
-                              gint32 source,
-                              gint64 time,
-                              gdouble quality)
+                              GArray  *source_list,
+                              GArray  *cache,
+                              gint32   source,
+                              gint64   time,
+                              gdouble  quality)
 {
   return hyscan_location_getter_gdouble1 (db, source_list, cache, source, time, quality);
 }
@@ -134,11 +79,11 @@ hyscan_location_getter_roll (HyScanDB *db,
 /* Функция выдачи дифферента для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_pitch (HyScanDB *db,
-                               GArray *source_list,
-                               GArray *cache,
-                               gint32 source,
-                               gint64 time,
-                               gdouble quality)
+                               GArray  *source_list,
+                               GArray  *cache,
+                               gint32   source,
+                               gint64   time,
+                               gdouble  quality)
 {
   return hyscan_location_getter_gdouble1 (db, source_list, cache, source, time, quality);
 }
@@ -146,11 +91,11 @@ hyscan_location_getter_pitch (HyScanDB *db,
 /* Функция выдачи скорости для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_speed (HyScanDB *db,
-                               GArray *source_list,
-                               GArray *cache,
-                               gint32 source,
-                               gint64 time,
-                               gdouble quality)
+                               GArray  *source_list,
+                               GArray  *cache,
+                               gint32   source,
+                               gint64   time,
+                               gdouble  quality)
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
@@ -198,11 +143,11 @@ hyscan_location_getter_speed (HyScanDB *db,
 /* Функция выдачи глубины для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_depth (HyScanDB *db,
-                               GArray *source_list,
-                               GArray *cache,
-                               gint32 source,
-                               gint64 time,
-                               gdouble quality)
+                               GArray  *source_list,
+                               GArray  *cache,
+                               gint32   source,
+                               gint64   time,
+                               gdouble  quality)
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
@@ -253,11 +198,11 @@ hyscan_location_getter_depth (HyScanDB *db,
 /* Функция выдачи даты и времени для заданного момента времени. */
 HyScanLocationGint1
 hyscan_location_getter_datetime (HyScanDB *db,
-                                  GArray *source_list,
-                                  GArray *cache,
-                                  gint32 source,
-                                  gint64 time,
-                                  gdouble quality)
+                                  GArray  *source_list,
+                                  GArray  *cache,
+                                  gint32   source,
+                                  gint64   time,
+                                  gdouble  quality)
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
   GDateTime *dt,
@@ -299,23 +244,27 @@ hyscan_location_getter_datetime (HyScanDB *db,
 
       dt2 = g_date_time_new_utc (year, month, day, 0, 0, 0);
       output.date = g_date_time_to_unix (dt2) * 1e6;
+      g_date_time_unref (dt2);
+
       dt2 = g_date_time_new_utc (1970, 1, 1, hour, minute, (gdouble)(second) + (gdouble)(microsecond)/1e6);
       output.time = g_date_time_to_unix (dt2) * 1e6;
       output.validity = TRUE;
     }
 
+  g_date_time_unref (dt);
+  g_date_time_unref (dt2);
   return output;
 }
 
 /* Внутренняя функция выдачи значений типа HyScanLocationGdouble2 для заданного момента времени. */
 HyScanLocationGdouble2
-hyscan_location_getter_gdouble2_DEPRECATED (HyScanDB *db,
-                                 GArray *source_list,
-                                 GArray *cache,
-                                 gint32  source,
-                                 gint64  time,
-                                 gdouble quality,
-                                 HyScanLocationGdouble2  *prev_point)
+hyscan_location_getter_gdouble2_DEPRECATED (HyScanDB               *db,
+                                            GArray                 *source_list,
+                                            GArray                 *cache,
+                                            gint32                  source,
+                                            gint64                  time,
+                                            gdouble                 quality,
+                                            HyScanLocationGdouble2 *prev_point)
 {
   /* TODO: функция в текущем виде предназначена для разработки и отладки.
    * Когда будет понятно, что она работает надлежащим образом, нужно убрать все
@@ -468,11 +417,11 @@ hyscan_location_getter_gdouble2_DEPRECATED (HyScanDB *db,
 /* Внутренняя функция выдачи значений типа HyScanLocationGdouble1 для заданного момента времени. */
 HyScanLocationGdouble1
 hyscan_location_getter_gdouble1 (HyScanDB *db,
-                                 GArray *source_list,
-                                 GArray *cache,
-                                 gint32 source,
-                                 gint64 time,
-                                 gdouble quality)
+                                 GArray   *source_list,
+                                 GArray   *cache,
+                                 gint32    source,
+                                 gint64    time,
+                                 gdouble   quality)
 {
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
@@ -521,12 +470,12 @@ hyscan_location_getter_gdouble1 (HyScanDB *db,
 }
 
 HyScanLocationGdouble2
-hyscan_location_getter_gdouble2 (HyScanDB *db,
-                                 GArray *source_list,
-                                 GArray *cache,
-                                 gint32  source,
-                                 gint64  time,
-                                 gdouble quality,
+hyscan_location_getter_gdouble2 (HyScanDB                *db,
+                                 GArray                  *source_list,
+                                 GArray                  *cache,
+                                 gint32                   source,
+                                 gint64                   time,
+                                 gdouble                  quality,
                                  HyScanLocationGdouble2  *prev_point)
 {
   /* TODO: функция в текущем виде предназначена для разработки и отладки.

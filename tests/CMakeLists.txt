@@ -1,4 +1,3 @@
-
 add_executable (data-channel-test data-channel-test.c)
 add_executable (convolution-test convolution-test.c)
 add_executable (state-test state-test.c)

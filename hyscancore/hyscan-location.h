@@ -147,52 +147,52 @@ typedef struct
 /** \brief Выходная структура, отдаваемая при вызове  #hyscan_location_get */
 typedef struct
 {
-  gdouble  latitude;                                    /**< Широта. */
-  gdouble  longitude;                                   /**< Долгота. */
-  gdouble  altitude;                                    /**< Высота. */
-  gdouble  track;                                       /**< Курс. */
-  gdouble  roll;                                        /**< Крен. */
-  gdouble  pitch;                                       /**< Дифферент. */
-  gdouble  speed;                                       /**< Скорость. */
-  gdouble  depth;                                       /**< Глубина. */
-  gint64   time;                                        /**< Время. */
-  gboolean validity;                                    /**< Признак валидности данных. */
+  gdouble                   latitude;                   /**< Широта. */
+  gdouble                   longitude;                  /**< Долгота. */
+  gdouble                   altitude;                   /**< Высота. */
+  gdouble                   track;                      /**< Курс. */
+  gdouble                   roll;                       /**< Крен. */
+  gdouble                   pitch;                      /**< Дифферент. */
+  gdouble                   speed;                      /**< Скорость. */
+  gdouble                   depth;                      /**< Глубина. */
+  gint64                    time;                       /**< Время. */
+  gboolean                  validity;                   /**< Признак валидности данных. */
 } HyScanLocationData;
 
 /** \brief Внутренняя структура. Иcпользуется для работы с данными широты и долготы. */
 typedef struct
 {
-  gint64   db_time;                                     /**< Время, в которое данные записались в БД. */
-  gint64   data_time;                                   /**< Время, содержащееся в самих данных. */
-  gdouble  value1;                                      /**< Значение 1 (обычно - широта). */
-  gdouble  value2;                                      /**< Значение 2 (обычно - долгота). */
-  gboolean validity;                                    /**< Флаг валидности данных. */
+  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
+  gint64                    data_time;                  /**< Время, содержащееся в самих данных. */
+  gdouble                   value1;                     /**< Значение 1 (обычно - широта). */
+  gdouble                   value2;                     /**< Значение 2 (обычно - долгота). */
+  gboolean                  validity;                   /**< Флаг валидности данных. */
 } HyScanLocationGdouble2;
 
 /** \brief Внутренняя структура. Иcпользуется для работы с данными высоты, курса, крена, дифферента, глубины. */
 typedef struct
 {
-  gint64   db_time;                                     /**< Время, в которое данные записались в БД. */
-  gint64   data_time;                                   /**< Время, содержащееся в самих данных. */
-  gdouble  value;                                       /**< Значение. */
-  gboolean validity;                                    /**< Флаг валидности данных. */
+  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
+  gint64                    data_time;                  /**< Время, содержащееся в самих данных. */
+  gdouble                   value;                      /**< Значение. */
+  gboolean                  validity;                   /**< Флаг валидности данных. */
 } HyScanLocationGdouble1;
 
 /** \brief Внутренняя структура. Иcпользуется для работы с данными времени. */
 typedef struct
 {
-  gint64   db_time;                                     /**< Время, в которое данные записались в БД. */
-  gint64   date;                                        /**< Дата. */
-  gint64   time;                                        /**< Время. */
-  gint64   time_shift;                                  /**< Временная сдвижка. */
-  gboolean validity;                                    /**< Флаг валидности данных. */
+  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
+  gint64                    date;                       /**< Дата. */
+  gint64                    time;                       /**< Время. */
+  gint64                    time_shift;                 /**< Временная сдвижка. */
+  gboolean                  validity;                   /**< Флаг валидности данных. */
 } HyScanLocationGint1;
 
 /** \brief Таблица профиля скорости звука. */
 typedef struct
 {
-  gdouble depth;
-  gdouble soundspeed;
+  gdouble                   depth;
+  gdouble                   soundspeed;
 } SoundSpeedTable;
 
 typedef struct _HyScanLocation HyScanLocation;
@@ -211,7 +211,7 @@ struct _HyScanLocationClass
   GObjectClass parent_class;
 };
 
-GType                   hyscan_location_get_type         (void);
+GType                   hyscan_location_get_type                (void);
 
 /**
  * Функция возвращает список источников для заданного параметра.
@@ -321,12 +321,12 @@ HYSCAN_CORE_EXPORT
 gint                    hyscan_location_get_progress            (HyScanLocation *location);
 
 HYSCAN_CORE_EXPORT
-HyScanLocation         *hyscan_location_new                     (HyScanDB    *db,
-                                                                 HyScanCache *cache,
-                                                                 gchar       *cache_prefix,
-                                                                 gchar       *track,
-                                                                 gchar       *project,
-                                                                 gdouble      quality);
+HyScanLocation         *hyscan_location_new                     (HyScanDB       *db,
+                                                                 HyScanCache    *cache,
+                                                                 gchar          *cache_prefix,
+                                                                 gchar          *track,
+                                                                 gchar          *project,
+                                                                 gdouble         quality);
 
 G_END_DECLS
 

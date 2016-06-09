@@ -2,8 +2,8 @@
 #include <hyscan-location-tools.h>
 
 HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
-                                                                 gint   input_size,
-                                                                 gfloat discretization_frequency,
+                                                                 gint    input_size,
+                                                                 gfloat  discretization_frequency,
                                                                  GArray *input_soundspeed)
 {
   HyScanLocationGdouble1 output = {0};
@@ -158,8 +158,8 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
 }
 
 HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
-                                                                 gint   input_size,
-                                                                 gfloat discretization_frequency,
+                                                                 gint    input_size,
+                                                                 gfloat  discretization_frequency,
                                                                  GArray *input_soundspeed)
 {
   HyScanLocationGdouble1 output = {0};

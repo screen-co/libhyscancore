@@ -2,7 +2,7 @@
 
 /* Функция проверяет тип и валидность строки. */
 HyScanSonarDataType
-hyscan_location_nmea_sentence_check (gchar  *input)
+hyscan_location_nmea_sentence_check (gchar *input)
 {
   gchar *ch = input;
   gchar *str;
@@ -68,7 +68,7 @@ hyscan_location_nmea_sentence_check (gchar  *input)
 
 /* Функция извлекает широту и долготу из NMEA-строки. */
 HyScanLocationGdouble2
-hyscan_location_nmea_latlong_get (gchar  *input)
+hyscan_location_nmea_latlong_get (gchar *input)
 {
   HyScanLocationGdouble2 output = {0};
   gdouble field_val = 0,
@@ -119,7 +119,7 @@ hyscan_location_nmea_latlong_get (gchar  *input)
 
 /* Функция извлекает высоту из NMEA-строки. */
 HyScanLocationGdouble1
-hyscan_location_nmea_altitude_get (gchar  *input)
+hyscan_location_nmea_altitude_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
   int i = 0;
@@ -140,7 +140,7 @@ hyscan_location_nmea_altitude_get (gchar  *input)
 
 /* Функция извлекает курс из NMEA-строки. */
 HyScanLocationGdouble1
-hyscan_location_nmea_track_get (gchar  *input)
+hyscan_location_nmea_track_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
   int i = 0;
@@ -160,7 +160,7 @@ hyscan_location_nmea_track_get (gchar  *input)
 
 /* Функция извлекает крен из NMEA-строки. */
 HyScanLocationGdouble1
-hyscan_location_nmea_roll_get (gchar  *input)
+hyscan_location_nmea_roll_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
   /*HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);*/
@@ -170,7 +170,7 @@ hyscan_location_nmea_roll_get (gchar  *input)
 
 /* Функция извлекает дифферент из NMEA-строки. */
 HyScanLocationGdouble1
-hyscan_location_nmea_pitch_get (gchar  *input)
+hyscan_location_nmea_pitch_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
   /*HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);*/
@@ -180,7 +180,7 @@ hyscan_location_nmea_pitch_get (gchar  *input)
 
 /* Функция извлекает скорость из NMEA-строки. */
 HyScanLocationGdouble1
-hyscan_location_nmea_speed_get (gchar  *input)
+hyscan_location_nmea_speed_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
   int i = 0;
@@ -200,7 +200,7 @@ hyscan_location_nmea_speed_get (gchar  *input)
 
 /* Функция извлекает глубину из NMEA-строки. */
 HyScanLocationGdouble1
-hyscan_location_nmea_depth_get (gchar  *input)
+hyscan_location_nmea_depth_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
   gchar *ch = input;
@@ -219,7 +219,7 @@ hyscan_location_nmea_depth_get (gchar  *input)
 
 /* Функция извлекает дату и время из NMEA-строки. */
 HyScanLocationGint1
-hyscan_location_nmea_datetime_get (gchar  *input)
+hyscan_location_nmea_datetime_get (gchar *input)
 {
   HyScanLocationGint1 output = {0};
   int i = 0;
@@ -297,18 +297,21 @@ hyscan_location_nmea_datetime_get (gchar  *input)
       /* Дата с начала эпохи юникс. */
       dt = g_date_time_new_utc (year, month, day, 0, 0, 0);
       output.date = g_date_time_to_unix (dt) * 1e6;
+      g_date_time_unref (dt);
+
       /* Время с начала суток в микросекундах. */
       dt = g_date_time_new_utc (1970, 1, 1, hour, minutes, seconds_integer);
       output.time = g_date_time_to_unix (dt) * 1e6 + seconds_fractional;
 
       output.validity = TRUE;
     }
+  g_date_time_unref (dt);
   return output;
 }
 
 /* Функция извлекает только время из NMEA-строки. */
 gint64
-hyscan_location_nmea_time_get (gchar  *input,
+hyscan_location_nmea_time_get (gchar              *input,
                                HyScanSonarDataType sentence_type)
 {
   gint64 output = {0};
@@ -359,5 +362,6 @@ hyscan_location_nmea_time_get (gchar  *input,
       dt = g_date_time_new_utc (1970, 1, 1, hour, minutes, seconds_integer);
       output = g_date_time_to_unix (dt) * 1e6 + seconds_fractional;
     }
+  g_date_time_unref (dt);
   return output;
 }

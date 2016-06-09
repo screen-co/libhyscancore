@@ -6,10 +6,10 @@
 /* Функция слежения за датой и временем. */
 void
 hyscan_location_overseer_datetime (HyScanDB *db,
-                                   GArray *source_list,
-                                   GArray *cache,
-                                   gint32 source,
-                                   gdouble quality)
+                                   GArray   *source_list,
+                                   GArray   *cache,
+                                   gint32    source,
+                                   gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -91,13 +91,13 @@ hyscan_location_overseer_datetime (HyScanDB *db,
 
 /* Функция слежения за широтой и долготой. */
 void
-hyscan_location_overseer_latlong (HyScanDB* db,
-                                  GArray *source_list,
-                                  GArray *cache,
-                                  gint32 source,
-                                  GArray *datetime_cache,
-                                  gint32 datetime_source,
-                                  gdouble quality)
+hyscan_location_overseer_latlong (HyScanDB *db,
+                                  GArray   *source_list,
+                                  GArray   *cache,
+                                  gint32    source,
+                                  GArray   *datetime_cache,
+                                  gint32    datetime_source,
+                                  gdouble   quality)
 {
   gboolean status;
 
@@ -222,12 +222,12 @@ hyscan_location_overseer_latlong (HyScanDB* db,
 /* Функция слежения за высотой. */
 void
 hyscan_location_overseer_altitude (HyScanDB *db,
-                                   GArray *source_list,
-                                   GArray *cache,
-                                   gint32 source,
-                                   GArray *datetime_cache,
-                                   gint32 datetime_source,
-                                   gdouble quality)
+                                   GArray   *source_list,
+                                   GArray   *cache,
+                                   gint32    source,
+                                   GArray   *datetime_cache,
+                                   gint32    datetime_source,
+                                   gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -301,12 +301,12 @@ hyscan_location_overseer_altitude (HyScanDB *db,
 /* Функция слежения за курсом. */
 void
 hyscan_location_overseer_track (HyScanDB *db,
-                                GArray *source_list,
-                                GArray *cache,
-                                gint32 source,
-                                GArray *datetime_cache,
-                                gint32 datetime_source,
-                                gdouble quality)
+                                GArray   *source_list,
+                                GArray   *cache,
+                                gint32    source,
+                                GArray   *datetime_cache,
+                                gint32    datetime_source,
+                                gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -465,12 +465,12 @@ hyscan_location_overseer_track (HyScanDB *db,
 /* Функция слежения за креном. */
 void
 hyscan_location_overseer_roll (HyScanDB *db,
-                               GArray *source_list,
-                               GArray *cache,
-                               gint32 source,
-                               GArray *datetime_cache,
-                               gint32 datetime_source,
-                               gdouble quality)
+                               GArray   *source_list,
+                               GArray   *cache,
+                               gint32    source,
+                               GArray   *datetime_cache,
+                               gint32    datetime_source,
+                               gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -542,12 +542,12 @@ hyscan_location_overseer_roll (HyScanDB *db,
 /* Функция слежения за дифферентом. */
 void
 hyscan_location_overseer_pitch (HyScanDB *db,
-                                GArray *source_list,
-                                GArray *cache,
-                                gint32 source,
-                                GArray *datetime_cache,
-                                gint32 datetime_source,
-                                gdouble quality)
+                                GArray   *source_list,
+                                GArray   *cache,
+                                gint32    source,
+                                GArray   *datetime_cache,
+                                gint32    datetime_source,
+                                gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -623,12 +623,12 @@ hyscan_location_overseer_pitch (HyScanDB *db,
 /* Функция слежения за скоростью. */
 void
 hyscan_location_overseer_speed (HyScanDB *db,
-                                GArray *source_list,
-                                GArray *cache,
-                                gint32 source,
-                                GArray *datetime_cache,
-                                gint32 datetime_source,
-                                gdouble quality)
+                                GArray   *source_list,
+                                GArray   *cache,
+                                gint32    source,
+                                GArray   *datetime_cache,
+                                gint32    datetime_source,
+                                gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -786,11 +786,11 @@ hyscan_location_overseer_speed (HyScanDB *db,
 /* Функция слежения за глубиной. */
 void
 hyscan_location_overseer_depth (HyScanDB *db,
-                                GArray *source_list,
-                                GArray *cache,
-                                gint32 source,
-                                GArray *soundspeed,
-                                gdouble quality)
+                                GArray   *source_list,
+                                GArray   *cache,
+                                gint32    source,
+                                GArray   *soundspeed,
+                                gdouble   quality)
 {
   gboolean status;
   HyScanLocationSourcesList *source_list_element = &g_array_index (source_list, HyScanLocationSourcesList, source);
