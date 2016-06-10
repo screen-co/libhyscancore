@@ -126,6 +126,7 @@ hyscan_location_overseer_latlong (HyScanDB *db,
       /* 1. Смотрим, сколько у нас есть данных в канале. */
       status = hyscan_db_channel_get_data_range (db, channel_id, &data_range_first, &data_range_last);
       is_writeable = hyscan_db_channel_is_writable (db, channel_id);
+
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
       if (status && *shift == -1)
         {
@@ -144,6 +145,7 @@ hyscan_location_overseer_latlong (HyScanDB *db,
           /* Увеличиваем размер кэша блоками по 512 элементов. */
           while (cache->len < (data_range_last - *shift))
             cache = g_array_set_size (cache, cache->len + 512);
+
           /* Сборка данных. */
           while (*assembler_index <= data_range_last)
             {
@@ -165,12 +167,13 @@ hyscan_location_overseer_latlong (HyScanDB *db,
           /* На первых двух точках Безье не строится, только временной сдвиг. */
           val = &g_array_index (cache, HyScanLocationGdouble2, *preprocessing_index);
           datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val->db_time, quality);
-          /* В данных хранится только время с начала суток. Требуется добавить дату. */
+
+          /* В данных хранится только время с начала суток. Требуется добавить дату.
+           * Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
+           * то произошел переход на следующие сутки и требуется добавить эти сутки.
+           * TODO: перевести всё на GDateTime.
+           */
           val->data_time += datetime.date;
-          /* Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
-          * то произошел переход на следующие сутки и требуется добавить эти сутки.
-          * TODO: перевести всё на GDateTime.
-          */
           if (val->data_time < UNIX_1200 && datetime.time > UNIX_2300)
             val->data_time += 86400 * 1e6;
           val->data_time += datetime.time_shift;
@@ -191,17 +194,19 @@ hyscan_location_overseer_latlong (HyScanDB *db,
         {
           val = &g_array_index (cache, HyScanLocationGdouble2, *preprocessing_index);
           datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val->db_time, quality);
-          /* В данных хранится только время с начала суток. Требуется добавить дату. */
+
+          /* В данных хранится только время с начала суток. Требуется добавить дату. 
+           * Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
+           * то произошел переход на следующие сутки и требуется добавить эти сутки.
+           * TODO: перевести всё на GDateTime.
+           */
           val->data_time += datetime.date;
-          /* Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
-          * то произошел переход на следующие сутки и требуется добавить эти сутки.
-          * TODO: перевести всё на GDateTime.
-          */
           if (val->data_time < UNIX_1200 && datetime.time > UNIX_2300)
             val->data_time += 86400 * 1e6;
           val->data_time += datetime.time_shift;
           (*preprocessing_index)++;
         }
+
       /* 5. Второй этап обработки - нарезка трэка на прямолинейные участки. */
       while (*processing_index < *preprocessing_index)
         {
@@ -404,15 +409,17 @@ hyscan_location_overseer_track (HyScanDB *db,
           /* 4. Предобработка данных. Включает в себя сглаживание безье и временные сдвижки. */
           while (*preprocessing_index < *assembler_index - *shift - 1)
             {
+
               /* На первых двух точках Безье не строится, только временной сдвиг. */
               val2 = &g_array_index (cache, HyScanLocationGdouble2, *preprocessing_index);
               datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val2->db_time, quality);
-              /* В данных хранится только время с начала суток. Требуется добавить дату. */
+
+              /* В данных хранится только время с начала суток. Требуется добавить дату.
+               * Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
+               * то произошел переход на следующие сутки и требуется добавить эти сутки.
+               * TODO: перевести всё на GDateTime.
+               */
               val2->data_time += datetime.date;
-              /* Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
-              * то произошел переход на следующие сутки и требуется добавить эти сутки.
-              * TODO: перевести всё на GDateTime.
-              */
               if (val2->data_time < UNIX_1200 && datetime.time > UNIX_2300)
                 val2->data_time += 86400 * 1e6;
               val2->data_time += datetime.time_shift;
@@ -433,12 +440,13 @@ hyscan_location_overseer_track (HyScanDB *db,
             {
               val2 = &g_array_index (cache, HyScanLocationGdouble2, *preprocessing_index);
               datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val2->db_time, quality);
-              /* В данных хранится только время с начала суток. Требуется добавить дату. */
+
+              /* В данных хранится только время с начала суток. Требуется добавить дату.
+               * Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
+               * то произошел переход на следующие сутки и требуется добавить эти сутки.
+               * TODO: перевести всё на GDateTime.
+               */
               val2->data_time += datetime.date;
-              /* Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
-              * то произошел переход на следующие сутки и требуется добавить эти сутки.
-              * TODO: перевести всё на GDateTime.
-              */
               if (val2->data_time < UNIX_1200 && datetime.time > UNIX_2300)
                 val2->data_time += 86400 * 1e6;
               val2->data_time += datetime.time_shift;
@@ -502,6 +510,7 @@ hyscan_location_overseer_roll (HyScanDB *db,
           *assembler_index = data_range_first;
           *processing_index = 0;
         }
+
       /* 3. Собираем данные, кладем в локальный кэш. */
       if (status)
         {
@@ -523,6 +532,7 @@ hyscan_location_overseer_roll (HyScanDB *db,
               (*assembler_index)++;
             }
         }
+
       /* 4. Обрабатываем данные из локального кэша и кладем обратно. */
       while (*processing_index < *assembler_index - *shift)
         {
@@ -728,12 +738,13 @@ hyscan_location_overseer_speed (HyScanDB *db,
               /* На первых двух точках Безье не строится, только временной сдвиг. */
               val2 = &g_array_index (cache, HyScanLocationGdouble2, *preprocessing_index);
               datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val2->db_time, quality);
-              /* В данных хранится только время с начала суток. Требуется добавить дату. */
+
+              /* В данных хранится только время с начала суток. Требуется добавить дату.
+               * Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
+               * то произошел переход на следующие сутки и требуется добавить эти сутки.
+               * TODO: перевести всё на GDateTime.
+               */
               val2->data_time += datetime.date;
-              /* Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
-              * то произошел переход на следующие сутки и требуется добавить эти сутки.
-              * TODO: перевести всё на GDateTime.
-              */
               if (val2->data_time < UNIX_1200 && datetime.time > UNIX_2300)
                 val2->data_time += 86400 * 1e6;
               val2->data_time += datetime.time_shift;
@@ -754,17 +765,19 @@ hyscan_location_overseer_speed (HyScanDB *db,
             {
               val2 = &g_array_index (cache, HyScanLocationGdouble2, *preprocessing_index);
               datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val2->db_time, quality);
-              /* В данных хранится только время с начала суток. Требуется добавить дату. */
+
+              /* В данных хранится только время с начала суток. Требуется добавить дату.
+               * Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
+               * то произошел переход на следующие сутки и требуется добавить эти сутки.
+               * TODO: перевести всё на GDateTime.
+               */
               val2->data_time += datetime.date;
-              /* Считаем, что если в val время до полудня, а в datetime - время больше 23:00,
-              * то произошел переход на следующие сутки и требуется добавить эти сутки.
-              * TODO: перевести всё на GDateTime.
-              */
               if (val2->data_time < UNIX_1200 && datetime.time > UNIX_2300)
                 val2->data_time += 86400 * 1e6;
               val2->data_time += datetime.time_shift;
               (*preprocessing_index)++;
             }
+
           /* 5. Второй этап обработки - нарезка трэка на прямолинейные участки. */
           while (*processing_index < *preprocessing_index)
             {

@@ -26,7 +26,8 @@ hyscan_location_nmea_sentence_check (gchar *input)
   if (len < sizeof("xx"))
     return HYSCAN_SONAR_DATA_INVALID;
 
-  ch++; /* Пропускаем "*". */
+  ch++; /* Пропускаем "*", этот символ не учитывается при подсчете контрольной суммы. */
+
   /* Старший байт контрольной суммы. */
   /* 48 - это ascii код символа '0'
    * 97 - 'a', но т.к hex(a)==dec(10), берем 87
@@ -51,7 +52,7 @@ hyscan_location_nmea_sentence_check (gchar *input)
   if (sentence_checksum != calculated_checksum)
     return HYSCAN_SONAR_DATA_INVALID;
 
-  ch = input + 3; /* Пропускаем первые 3 символа "$GPxxx"*/
+  ch = input + 3; /* Пропускаем первые 3 символа "$GPxxx". */
 
   str = g_strndup (ch, 3);
 
@@ -163,7 +164,7 @@ HyScanLocationGdouble1
 hyscan_location_nmea_roll_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
-  /*HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);*/
+  /* HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input); */
 
   return output;
 }
@@ -173,7 +174,7 @@ HyScanLocationGdouble1
 hyscan_location_nmea_pitch_get (gchar *input)
 {
   HyScanLocationGdouble1 output = {0};
-  /*HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);*/
+  /* HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input); */
 
   return output;
 }
@@ -210,8 +211,6 @@ hyscan_location_nmea_depth_get (gchar *input)
       /* Глубина - это значение в 1 поле RMC. */
       while (*(ch++) != ',');
       output.value = g_ascii_strtod (ch, NULL);
-      /* Здесь всегда будет возвращен 0, т.к в DPT-строках нет информации о времени.*/
-      /* output.data_time = hyscan_location_nmea_time_get(input, sentence_type); */
       output.validity = TRUE;
     }
   return output;
@@ -304,8 +303,8 @@ hyscan_location_nmea_datetime_get (gchar *input)
       output.time = g_date_time_to_unix (dt) * 1e6 + seconds_fractional;
 
       output.validity = TRUE;
+      g_date_time_unref (dt);
     }
-  g_date_time_unref (dt);
   return output;
 }
 
@@ -361,7 +360,7 @@ hyscan_location_nmea_time_get (gchar              *input,
 
       dt = g_date_time_new_utc (1970, 1, 1, hour, minutes, seconds_integer);
       output = g_date_time_to_unix (dt) * 1e6 + seconds_fractional;
+      g_date_time_unref (dt);
     }
-  g_date_time_unref (dt);
   return output;
 }

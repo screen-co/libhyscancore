@@ -36,6 +36,7 @@ hyscan_location_4_point_2d_bezier (GArray *source,
           k2 = 0,
           k3 = 0,
           k4 = 0;
+
   /* t определяет момент времени, значение которого используется.
    * При quality == 0 берется момент времени 1/ 3.0,
    * при quality == 1 берется момент времени 2/ 3.0.
@@ -104,6 +105,7 @@ hyscan_location_shift (HyScanLocationData *data,
   gdouble rot_x = 0,   /* Ось вращения, компонента x. */
           rot_y = 0,   /* Ось вращения, компонента y. */
           rot_z = 0;   /* Ось вращения, компонента z. */
+
   gdouble res_x = 0,   /* Результирующий вектор, компонента x. */
           res_y = 0,   /* Результирующий вектор, компонента y. */
           res_z = 0;   /* Результирующий вектор, компонента z. */
@@ -113,13 +115,14 @@ hyscan_location_shift (HyScanLocationData *data,
   gdouble cosfi,
           sinfi;
 
-  /* Вращение в плоскости Oxy (курс).*/
-  /* Задаем ось.*/
+  /* Вращение в плоскости Oxy (курс). */
+  /* Задаем ось. */
   rot_x = 0;
   rot_y = 0;
   rot_z = 1;
   cosfi = cos(track);
   sinfi = sin(track);
+
   res_x = (cosfi + (1 - cosfi)*rot_x*rot_x) * x + ((1 - cosfi)*rot_x*rot_y - sinfi*rot_z) * y + ((1 - cosfi)*rot_x*rot_z + sinfi*rot_y) * z;
   res_y = ((1 - cosfi)*rot_y*rot_x + sinfi*rot_z) * x + (cosfi + (1 - cosfi)*rot_y*rot_y) * y + ((1 - cosfi)*rot_y*rot_z - sinfi*rot_x) * z;
   res_z = ((1 - cosfi)*rot_z*rot_x - sinfi*rot_y) * x + ((1 - cosfi)*rot_z*rot_y + sinfi*rot_x) * y + (cosfi + (1 - cosfi)*rot_z*rot_z) * z;
@@ -128,13 +131,14 @@ hyscan_location_shift (HyScanLocationData *data,
   temp_res_y = res_y;
   temp_res_z = res_z;
 
-  /* Вращение в плоскости Oyz (дифферент).*/
-  /* Задаем ось.*/
+  /* Вращение в плоскости Oyz (дифферент). */
+  /* Задаем ось. */
   rot_x = -res_y;
   rot_y = res_x;
   rot_z = 1;
   cosfi = cos(pitch);
   sinfi = sin(pitch);
+
   res_x = (cosfi + (1 - cosfi)*rot_x*rot_x) * temp_res_x + ((1 - cosfi)*rot_x*rot_y - sinfi*rot_z) * temp_res_y + ((1 - cosfi)*rot_x*rot_z + sinfi*rot_y) * temp_res_z;
   res_y = ((1 - cosfi)*rot_y*rot_x + sinfi*rot_z) * temp_res_x + (cosfi + (1 - cosfi)*rot_y*rot_y) * temp_res_y + ((1 - cosfi)*rot_y*rot_z - sinfi*rot_x) * temp_res_z;
   res_z = ((1 - cosfi)*rot_z*rot_x - sinfi*rot_y) * temp_res_x + ((1 - cosfi)*rot_z*rot_y + sinfi*rot_x) * temp_res_y + (cosfi + (1 - cosfi)*rot_z*rot_z) * temp_res_z;
@@ -143,23 +147,139 @@ hyscan_location_shift (HyScanLocationData *data,
   temp_res_y = res_y;
   temp_res_z = res_z;
 
-  /* Вращение в плоскости Ozx (крен).*/
-  /* Задаем ось.*/
+  /* Вращение в плоскости Ozx (крен). */
+  /* Задаем ось. */
   rot_x = res_x;
   rot_y = res_y;
   rot_z = res_z;
   cosfi = cos(roll);
   sinfi = sin(roll);
+
   res_x = (cosfi + (1 - cosfi)*rot_x*rot_x) * temp_res_x + ((1 - cosfi)*rot_x*rot_y - sinfi*rot_z) * temp_res_y + ((1 - cosfi)*rot_x*rot_z + sinfi*rot_y) * temp_res_z;
   res_y = ((1 - cosfi)*rot_y*rot_x + sinfi*rot_z) * temp_res_x + (cosfi + (1 - cosfi)*rot_y*rot_y) * temp_res_y + ((1 - cosfi)*rot_y*rot_z - sinfi*rot_x) * temp_res_z;
   res_z = ((1 - cosfi)*rot_z*rot_x - sinfi*rot_y) * temp_res_x + ((1 - cosfi)*rot_z*rot_y + sinfi*rot_x) * temp_res_y + (cosfi + (1 - cosfi)*rot_z*rot_z) * temp_res_z;
 
   /* Сейчас значения смещений заданы в метрах. Их необходимо перевести в градусы.
    * Для этого нужно поделить смещение на длину градуса в метрах.
-   * Длина одного градуса широты составляет 111321.378 метров.
-   * Длина одного градуса долготы зависит от широты. На экваторе 111321.378 метров, а дальше нужно умножать на косинус широты.*/
-  data->latitude -= res_x / 111321.378;
-  data->longitude -= res_y / (111321.378 * cos(data->latitude * G_PI / 180.0));
+   * Длина одного градуса долготы зависит от широты. На экваторе 111321.378 метров, а дальше нужно умножать на косинус широты.
+   */
+  data->latitude -= res_x / ONE_DEG_LENGTH;
+  data->longitude -= res_y / (ONE_DEG_LENGTH * cos(data->latitude * G_PI / 180.0));
+  data->altitude -= res_z;
+}
+
+/* Сдвижка данных в пространстве. */
+void
+hyscan_location_shift2 (HyScanLocationData *data,
+                        gdouble             x,
+                        gdouble             y,
+                        gdouble             z,
+                        gdouble             psi,
+                        gdouble             gamma,
+                        gdouble             theta)
+{
+
+  gdouble track = -psi,
+          roll = gamma,
+          pitch = theta;
+  gdouble r_ax_x = 0,   /* Ось вращения, компонента x. */
+          r_ax_y = 0,   /* Ось вращения, компонента y. */
+          r_ax_z = 0;   /* Ось вращения, компонента z. */
+  gdouble ax_x = 0,   /* Ось вращения, компонента x. */
+          ax_y = 0,   /* Ось вращения, компонента y. */
+          ax_z = 0;   /* Ось вращения, компонента z. */
+  gdouble t_ax_x = 0,   /* Ось вращения, компонента x. */
+          t_ax_y = 0,   /* Ось вращения, компонента y. */
+          t_ax_z = 0;   /* Ось вращения, компонента z. */
+
+  gdouble res_x = 0,   /* Результирующий вектор, компонента x. */
+          res_y = 0,   /* Результирующий вектор, компонента y. */
+          res_z = 0;   /* Результирующий вектор, компонента z. */
+  gdouble cosfi,
+          sinfi;
+
+  /* 1. Вращение в плоскости Oxy (курс). */
+  /* 1.1 Задаем ось, вокруг которой происходит вращение. */
+  r_ax_x = 0;
+  r_ax_y = 0;
+  r_ax_z = 1;
+
+  /* 1.2 Задаем вспомогательную ось, вокруг которой  будет происходить вращение на следующем шаге. */
+  ax_x = 0;
+  ax_y = 1;
+  ax_z = 0;
+  cosfi = cos(track);
+  sinfi = sin(track);
+
+  /* 1.3 Вращаем вспомогательную ось. */
+  t_ax_x = (cosfi + (1 - cosfi)*r_ax_x*r_ax_x) * ax_x + ((1 - cosfi)*r_ax_x*r_ax_y - sinfi*r_ax_z) * ax_y + ((1 - cosfi)*r_ax_x*r_ax_z + sinfi*r_ax_y) * ax_z;
+  t_ax_y = ((1 - cosfi)*r_ax_y*r_ax_x + sinfi*r_ax_z) * ax_x + (cosfi + (1 - cosfi)*r_ax_y*r_ax_y) * ax_y + ((1 - cosfi)*r_ax_y*r_ax_z - sinfi*r_ax_x) * ax_z;
+  t_ax_z = ((1 - cosfi)*r_ax_z*r_ax_x - sinfi*r_ax_y) * ax_x + ((1 - cosfi)*r_ax_z*r_ax_y + sinfi*r_ax_x) * ax_y + (cosfi + (1 - cosfi)*r_ax_z*r_ax_z) * ax_z;
+
+  /* 1.4 Вращаем вектор, задающий положение датчика. */
+  res_x = (cosfi + (1 - cosfi)*r_ax_x*r_ax_x) * x + ((1 - cosfi)*r_ax_x*r_ax_y - sinfi*r_ax_z) * y + ((1 - cosfi)*r_ax_x*r_ax_z + sinfi*r_ax_y) * z;
+  res_y = ((1 - cosfi)*r_ax_y*r_ax_x + sinfi*r_ax_z) * x + (cosfi + (1 - cosfi)*r_ax_y*r_ax_y) * y + ((1 - cosfi)*r_ax_y*r_ax_z - sinfi*r_ax_x) * z;
+  res_z = ((1 - cosfi)*r_ax_z*r_ax_x - sinfi*r_ax_y) * x + ((1 - cosfi)*r_ax_z*r_ax_y + sinfi*r_ax_x) * y + (cosfi + (1 - cosfi)*r_ax_z*r_ax_z) * z;
+
+  /* 1.5 Запоминаем новую вспомогательную ось и вектор датчика. */
+  ax_x = t_ax_x;
+  ax_y = t_ax_y;
+  ax_z = t_ax_z;
+
+  x = res_x;
+  y = res_y;
+  z = res_z;
+
+  /* 2. Вращение в *новой* плоскости Oyz (дифферент). */
+  /* 2.1 Задаем ось, вокруг которой происходит вращение. */
+  r_ax_x = -ax_y;
+  r_ax_y = ax_x;
+  r_ax_z = 0;
+
+  /* 2.2 Вспомогательную ось уже задавать не надо. */
+  cosfi = cos(pitch);
+  sinfi = sin(pitch);
+
+  /* 2.3 Вращаем вспомогательную ось. */
+  t_ax_x = (cosfi + (1 - cosfi)*r_ax_x*r_ax_x) * ax_x + ((1 - cosfi)*r_ax_x*r_ax_y - sinfi*r_ax_z) * ax_y + ((1 - cosfi)*r_ax_x*r_ax_z + sinfi*r_ax_y) * ax_z;
+  t_ax_y = ((1 - cosfi)*r_ax_y*r_ax_x + sinfi*r_ax_z) * ax_x + (cosfi + (1 - cosfi)*r_ax_y*r_ax_y) * ax_y + ((1 - cosfi)*r_ax_y*r_ax_z - sinfi*r_ax_x) * ax_z;
+  t_ax_z = ((1 - cosfi)*r_ax_z*r_ax_x - sinfi*r_ax_y) * ax_x + ((1 - cosfi)*r_ax_z*r_ax_y + sinfi*r_ax_x) * ax_y + (cosfi + (1 - cosfi)*r_ax_z*r_ax_z) * ax_z;
+
+  /* 2.4 Вращаем вектор, задающий положение датчика. */
+  res_x = (cosfi + (1 - cosfi)*r_ax_x*r_ax_x) * x + ((1 - cosfi)*r_ax_x*r_ax_y - sinfi*r_ax_z) * y + ((1 - cosfi)*r_ax_x*r_ax_z + sinfi*r_ax_y) * z;
+  res_y = ((1 - cosfi)*r_ax_y*r_ax_x + sinfi*r_ax_z) * x + (cosfi + (1 - cosfi)*r_ax_y*r_ax_y) * y + ((1 - cosfi)*r_ax_y*r_ax_z - sinfi*r_ax_x) * z;
+  res_z = ((1 - cosfi)*r_ax_z*r_ax_x - sinfi*r_ax_y) * x + ((1 - cosfi)*r_ax_z*r_ax_y + sinfi*r_ax_x) * y + (cosfi + (1 - cosfi)*r_ax_z*r_ax_z) * z;
+
+  /* 2.5 Запоминаем новую вспомогательную ось и вектор датчика. */
+  ax_x = t_ax_x;
+  ax_y = t_ax_y;
+  ax_z = t_ax_z;
+
+  x = res_x;
+  y = res_y;
+  z = res_z;
+
+  /* 3. Вращение в *новой* плоскости Ozx (крен). */
+  /* 3.1 Ось, вокруг которой происходит вращение, совпадает со вспомогательной осью. */
+  /* Задаем ось. */
+  r_ax_x = ax_x;
+  r_ax_y = ax_y;
+  r_ax_z = ax_z;
+  cosfi = cos(roll);
+  sinfi = sin(roll);
+
+  /* 3.3 Вращать вспомогательную ось более не требуется. */
+  /* 3.4 Вращаем вектор, задающий положение датчика. */
+  res_x = (cosfi + (1 - cosfi)*r_ax_x*r_ax_x) * x + ((1 - cosfi)*r_ax_x*r_ax_y - sinfi*r_ax_z) * y + ((1 - cosfi)*r_ax_x*r_ax_z + sinfi*r_ax_y) * z;
+  res_y = ((1 - cosfi)*r_ax_y*r_ax_x + sinfi*r_ax_z) * x + (cosfi + (1 - cosfi)*r_ax_y*r_ax_y) * y + ((1 - cosfi)*r_ax_y*r_ax_z - sinfi*r_ax_x) * z;
+  res_z = ((1 - cosfi)*r_ax_z*r_ax_x - sinfi*r_ax_y) * x + ((1 - cosfi)*r_ax_z*r_ax_y + sinfi*r_ax_x) * y + (cosfi + (1 - cosfi)*r_ax_z*r_ax_z) * z;
+
+  /* Сейчас значения смещений заданы в метрах. Их необходимо перевести в градусы.
+   * Для этого нужно поделить смещение на длину градуса в метрах.
+   * Длина одного градуса долготы зависит от широты. На экваторе 111321.378 метров, а дальше нужно умножать на косинус широты.
+   */
+  data->latitude -= res_x / ONE_DEG_LENGTH;
+  data->longitude -= res_y / (ONE_DEG_LENGTH * cos(data->latitude * G_PI / 180.0));
   data->altitude -= res_z;
 
 }
@@ -203,12 +323,14 @@ hyscan_location_thresholder (GArray  *source,
           /* Если данных пока нет (но они будут в дальнейшем), выходим из функции. */
           if (*point1 + i > last_index && is_writeable)
             return FALSE;
+
           /* Если данных нет и больше не будет, то берем последнюю точку. */
           if (*point1 + i > last_index && !is_writeable)
             {
               *point3 = last_index;
               break;
             }
+
           /* Если всё в порядке. */
           p3 = &g_array_index (source, HyScanLocationGdouble2, *point1 + i);
           dlat = p1->value1* ONE_DEG_LENGTH - p3->value1* ONE_DEG_LENGTH;
@@ -229,6 +351,7 @@ hyscan_location_thresholder (GArray  *source,
     }
 
   p3 = &g_array_index (source, HyScanLocationGdouble2, *point3);
+
   /* Определяем параметры прямой, проходящей через точки p1 и p3. */
   k_lat = (p3->value1 - p1->value1)/(p3->db_time - p1->db_time);
   k_lon = (p3->value2 - p1->value2)/(p3->db_time - p1->db_time);
@@ -293,6 +416,7 @@ hyscan_location_thresholder2 (GArray  *source,
       /* 1 часть алгоритма: инициализация и вычисление курса на предыдущем отрезке. */
       /* Курс на предыдущем участке. */
       prev_track = hyscan_location_track_calculator (p1->value1, p1->value2, p2->value1, p2->value2);
+
       /* Инициализируем min_track_delta.
        * Если данных нет, но они будут в дальнейшем, выходим из функции,
        * а если данных нет и больше не будет, то берем последнюю точку. */
@@ -320,6 +444,7 @@ hyscan_location_thresholder2 (GArray  *source,
               break;
 
           p4 = &g_array_index (source, HyScanLocationGdouble2, *point2 + i);
+
           /* Проверяем, что точка лежит в пределах, установленных переменной threshold. */
           dlat = p2->value1 * ONE_DEG_LENGTH - p4->value1 * ONE_DEG_LENGTH;
           dlon = p2->value2 * ONE_DEG_LENGTH * cos(p2->value1 * G_PI/180.0) - p4->value2 * ONE_DEG_LENGTH * cos(p2->value1 * G_PI/180.0);
@@ -342,6 +467,7 @@ hyscan_location_thresholder2 (GArray  *source,
             }
         }
     }
+
 out:
   /* Если точки совпали, то обновляем p4 и выходим из функции, не меняя p3. */
   if (*point4 == point3)
@@ -351,6 +477,7 @@ out:
     }
 
   p4 = &g_array_index (source, HyScanLocationGdouble2, *point4);
+
   /* Определяем параметры прямой, проходящей через точки p2 и p4. */
   k_lat = (p4->value1 - p2->value1)/(p4->db_time - p2->db_time);
   k_lon = (p4->value2 - p2->value2)/(p4->db_time - p2->db_time);

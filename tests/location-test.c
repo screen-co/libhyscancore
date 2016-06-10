@@ -74,6 +74,8 @@ main (int argc, char **argv)
   HyScanDataChannelInfo dc_info = {HYSCAN_DATA_COMPLEX_ADC_16LE, 750, 0};
   HyScanDataChannelWriter *dc_writer;
 
+  HyScanLocationSources ** source_list;
+
   gint32 db_index;
   gint64 db_time;
 
@@ -122,6 +124,7 @@ main (int argc, char **argv)
     points_freq = 10e5 * ABS(points_freq);
   else
     points_freq = 10e5 / (points_freq+1);
+
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
@@ -138,7 +141,6 @@ main (int argc, char **argv)
     g_error ("can't create project");
 
   /* Создаём галс. */
-
   if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
     g_error( "can't create track");
 
@@ -147,14 +149,13 @@ main (int argc, char **argv)
   channel_name1 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_NMEA_RMC, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_3);
   channel_id1 = hyscan_channel_sensor_create (db,"project", "track", channel_name1, &nmea_channel_info);
 
-  ///* ГГА. */
-  channel_name2 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_NMEA_GGA, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1);
+  /* ГГА. */
+  channel_name2 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_NMEA_GGA, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_2);
   channel_id2 = hyscan_channel_sensor_create (db,"project", "track", channel_name2, &nmea_channel_info);
 
   /* Глубина. */
   channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_ECHOSOUNDER, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1);
   dc_writer = hyscan_data_channel_writer_new(db, "project", "track", channel_name3, &dc_info);
-  //channel_id3 = hyscan_db_channel_create (db, track_id, channel_name3, NULL);
 
   /* Заполняем каналы тестовыми данными. */
   for (i = 0, db_time = 1e10, db_index = 2^16; i < AOP; i++, db_index++, db_time+=1e6)
@@ -163,11 +164,50 @@ main (int argc, char **argv)
       hyscan_db_channel_add_data (db, channel_id2, db_time, gga_test_data[i], strlen(gga_test_data[i]), NULL);
       hyscan_data_channel_writer_add_data (dc_writer, db_time, &depth_test_data, 5000 * sizeof(gfloat));
     }
+
   /* Переводим каналы в режим "только для чтения". */
   hyscan_db_channel_finalize (db, channel_id1);
   hyscan_db_channel_finalize (db, channel_id2);
+
   /* Создаем объект. */
-  location = hyscan_location_new (db, cache, "locacache", "project", "track", 0);
+  location = hyscan_location_new_with_cache_prefix (db, cache, "locacache", "project", "track", 0);
+
+  /* Проверка получения списка источников. */
+  source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_LATLONG);
+  for (i = 0; source_list[i] != NULL; i++)
+    g_printf("LATLONG: index %i, source_type %i, sensor_channel %i\n",
+             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+  hyscan_location_source_list_free (&source_list);
+
+  source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_TRACK);
+  for (i = 0; source_list[i] != NULL; i++)
+    g_printf("TRACK: index %i, source_type %i, sensor_channel %i\n",
+             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+  hyscan_location_source_list_free (&source_list);
+
+  source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_SPEED);
+  for (i = 0; source_list[i] != NULL; i++)
+    g_printf("SPEED: index %i, source_type %i, sensor_channel %i\n",
+             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+  hyscan_location_source_list_free (&source_list);
+
+  source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_DEPTH);
+  for (i = 0; source_list[i] != NULL; i++)
+    g_printf("DEPTH: index %i, source_type %i, sensor_channel %i\n",
+             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+  hyscan_location_source_list_free (&source_list);
+
+  source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_ALTITUDE);
+  for (i = 0; source_list[i] != NULL; i++)
+    g_printf("ALTITUDE: index %i, source_type %i, sensor_channel %i\n",
+             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+  hyscan_location_source_list_free (&source_list);
+
+  source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_DATETIME);
+  for (i = 0; source_list[i] != NULL; i++)
+    g_printf("DATETIME: index %i, source_type %i, sensor_channel %i\n",
+             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+  hyscan_location_source_list_free (&source_list);
 
   FILE *outfile = g_fopen(filename, "w+");
   i = 0;
@@ -193,9 +233,7 @@ main (int argc, char **argv)
                     g_printf ("cache error @ step %i\n",i);
                 }
             }
-          g_fprintf (outfile, "%f,%f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
-          //g_fprintf (outfile, "%10.8f,%10.8f,%f\n", data.latitude, data.longitude, data.track);
-          //g_fprintf (outfile, "%10.8f,%10.8f\n", data.latitude, data.longitude);
+          g_fprintf (outfile, "%10.8f,%10.8f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
           i++;
         }
     }

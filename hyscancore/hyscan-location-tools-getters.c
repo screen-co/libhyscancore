@@ -1,4 +1,4 @@
-/*TODO: обсудить размер вот этой временной константы.
+/* TODO: обсудить размер вот этой временной константы.
  * Она определяет временные рамки, в течение которых данные можно не интерполировать, а взять точное значение. */
 #define TIME_OF_VALIDITY 10e3
 #define ONE_RAD_LENGTH 6474423.1 /* Длина одного радиана по экватору в метрах. */
@@ -174,7 +174,7 @@ hyscan_location_getter_depth (HyScanDB *db,
     {
       for (num_of_points = 0; num_of_points < window_size; num_of_points++)
         {
-          /* Проверяем, что точка существует.*/
+          /* Проверяем, что точка существует. */
           if (lindex - num_of_points >=0)
             {
               data_point = g_array_index (cache, HyScanLocationGdouble1, lindex - num_of_points);
@@ -241,6 +241,7 @@ hyscan_location_getter_datetime (HyScanDB *db,
       minute = g_date_time_get_minute (dt);
       second = g_date_time_get_second (dt);
       microsecond = g_date_time_get_microsecond (dt);
+      g_date_time_unref (dt);
 
       dt2 = g_date_time_new_utc (year, month, day, 0, 0, 0);
       output.date = g_date_time_to_unix (dt2) * 1e6;
@@ -249,10 +250,9 @@ hyscan_location_getter_datetime (HyScanDB *db,
       dt2 = g_date_time_new_utc (1970, 1, 1, hour, minute, (gdouble)(second) + (gdouble)(microsecond)/1e6);
       output.time = g_date_time_to_unix (dt2) * 1e6;
       output.validity = TRUE;
+      g_date_time_unref (dt2);
     }
 
-  g_date_time_unref (dt);
-  g_date_time_unref (dt2);
   return output;
 }
 
@@ -448,7 +448,7 @@ hyscan_location_getter_gdouble1 (HyScanDB *db,
     {
       for (num_of_points = 0; num_of_points < window_size; num_of_points++)
         {
-          /* Проверяем, что точка существует.*/
+          /* Проверяем, что точка существует. */
           if (lindex - num_of_points >=0)
             {
               p1 = g_array_index (cache, HyScanLocationGdouble1, lindex - num_of_points);

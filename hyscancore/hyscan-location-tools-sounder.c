@@ -10,18 +10,18 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
   int i = 0,
       j = 0,
       k = 0;
-  gfloat average_value = 0;             /* потребуется для усреднения. */
-  gfloat stdev = 0;                     /* среднеквадратичное отклонение .*/
-  gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы .*/
-  gint peakcounter = 0;                 /* Счетчик пиков .*/
-  gint widest_peak_size = 0;            /* Размер самого широкого пика.*/
-  gint widest_peak_begin = 0;           /* Координата начала самого широкого пика .*/
+  gfloat average_value = 0;             /* Потребуется для усреднения. */
+  gfloat stdev = 0;                     /* Среднеквадратичное отклонение. */
+  gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* Координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы. */
+  gint peakcounter = 0;                 /* Счетчик пиков. */
+  gint widest_peak_size = 0;            /* Размер самого широкого пика. */
+  gint widest_peak_begin = 0;           /* Координата начала самого широкого пика. */
   gdouble depthvalue = NAN;             /* Глубина. Принимает значение NAN, если что-то не так. */
 
   gfloat *data_buffer0 = g_memdup (input, input_size * sizeof(gfloat));
   gfloat *data_buffer1 = g_malloc0 (input_size * sizeof(gfloat));
 
-  gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты*/
+  gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты. */
   SoundSpeedTable sst;                  /* Временная таблица скорости звука. */
   gdouble sum = 0;
   gdouble *soundspeed0, *soundspeed1;
@@ -82,7 +82,7 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
   i = i + 0;
   for (i = 0; i < input_size && peakcounter < DEPTH_MAXPEAKS; i++)
     {
-      /* тут есть проблема в логике. Если d_b1[i=0] == 1, то peaks[0][0]= i=0 и этот шаг пропускается.
+      /* Тут есть проблема в логике. Если d_b1[i=0] == 1, то peaks[0][0]= i=0 и этот шаг пропускается.
        * Но нас это волновать не должно, т.к. мало того, что в 0 дна быть не должно,
        * так ещё и будем занулять эти точки.
        */
@@ -96,7 +96,7 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
     }
 
   /* Теперь объединяем пики, если расстояние от конца первого до начала второго не более
-   * 1/ 4.0 расстояния от начала первого до конца второго.
+   * 1/4 расстояния от начала первого до конца второго.
    */
   for (i = 0; i < peakcounter && peakcounter > 1; i++)
     {
@@ -166,18 +166,18 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
   int i = 0,
       j = 0,
       k = 0;
-  gfloat average_value = 0;             /* потребуется для усреднения. */
-  gfloat stdev = 0;                     /* среднеквадратичное отклонение .*/
-  gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы .*/
-  gint peakcounter = 0;                 /* Счетчик пиков .*/
-  gint widest_peak_size = 0;            /* Размер самого широкого пика.*/
-  gint widest_peak_begin = 0;           /* Координата начала самого широкого пика .*/
+  gfloat average_value = 0;             /* Потребуется для усреднения. */
+  gfloat stdev = 0;                     /* Среднеквадратичное отклонение. */
+  gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* Координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы. */
+  gint peakcounter = 0;                 /* Счетчик пиков. */
+  gint widest_peak_size = 0;            /* Размер самого широкого пика. */
+  gint widest_peak_begin = 0;           /* Координата начала самого широкого пика. */
   gdouble depthvalue = NAN;             /* Глубина. Принимает значение NAN, если что-то не так. */
 
   gfloat *data_buffer0 = g_memdup (input, input_size * sizeof(gfloat));
   gfloat *data_buffer1 = g_malloc0 (input_size * sizeof(gfloat));
 
-  gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты*/
+  gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты. */
   SoundSpeedTable sst;                  /* Временная таблица скорости звука. */
   gdouble sum = 0;
   gdouble *soundspeed0, *soundspeed1;
@@ -215,13 +215,13 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
   for (i = 1; i < input_size - 1; i++)
     data_buffer1[i] = (data_buffer0[i - 1] + data_buffer0[i] + data_buffer0[i + 1]) / 3.0;
 
-  /* Вычисляем интегральный массив*/
+  /* Вычисляем интегральный массив. */
   for (i = 1; i < input_size; i++)
     {
       data_buffer0[i] = data_buffer1[i] + data_buffer0[i - 1];
     }
 
-  /* Теперь перемножаем фильтрованный массив и интегральный, чтобы уменьшить влияние тех элементов, что далеко от начала координат*/
+  /* Теперь перемножаем фильтрованный массив и интегральный, чтобы уменьшить влияние тех элементов, что далеко от начала координат. */
   for (i = 0; i < input_size; i++)
     {
       data_buffer1[i] *= (1 - data_buffer0[i] / data_buffer0[input_size - 1]);
@@ -248,7 +248,7 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
   /* Ищем первые DEPTH_MAXPEAKS пиков. */
   for (i = 0; i < input_size && peakcounter < DEPTH_MAXPEAKS; i++)
    {
-     /* тут есть проблема в логике. Если d_b1[i=0] == 1, то peaks[0][0]= i=0 и этот шаг пропускается.
+     /* Тут есть проблема в логике. Если d_b1[i=0] == 1, то peaks[0][0]= i=0 и этот шаг пропускается.
       * Но нас это волновать не должно, т.к. мало того, что в 0 дна быть не должно,
       * так ещё и будем занулять эти точки.
       */
@@ -262,7 +262,7 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
    }
 
   /* Теперь объединяем пики, если расстояние от конца первого до начала второго не более
-   * 1/ 4.0 расстояния от начала первого до конца второго.
+   * 1/4 расстояния от начала первого до конца второго.
    */
   for (i = 0; i < peakcounter && peakcounter > 1; i++)
     {

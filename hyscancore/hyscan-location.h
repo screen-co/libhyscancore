@@ -17,12 +17,16 @@
  * При работе с каналами данных и параметрами, класс оперирует понятием источник.
  * Источник - это некий номер, позволяющий однозначно сопоставить параметр обработки и канал данных.<BR>
  * Класс хранит информацию об источниках в таблице HyScanLocationSourcesList. Это внутренняя таблица, повлиять на которую извне невозможно,
- * однако можно получить список источников для параметра навигационных данных с помощью функции #hyscan_location_sources_list.
+ * однако можно получить список источников для параметра навигационных данных с помощью функции #hyscan_location_source_list.
  * Так же можно получить индекс активного источника для параметра обработки с помощью функции #hyscan_location_source_get.
  * Установка источника производится с помощью функции #hyscan_location_source_set.
  *
+ * Настройка работы алгоритмов заключается в установке параметра quality (либо при создании объекта, либо во время работы с помощью функции #hyscan_location_quality_set).
+ * При меньшем значении этого параметра данные сглаживаются сильней. Возможный диапазон значений - от 0.0 до 1.0.
+ *
  * Работа класса разделена на три этапа. <BR>
- * На первом этапе считывается список КД в галсе, составляется список источников,
+ * На первом этапе объект создается (с помощью функций #hyscan_location_new, #hyscan_location_new_with_cache,
+ * #hyscan_location_new_with_cache_prefix)  считывается список КД в галсе, составляется список источников,
  * устанавливаются источники по умолчанию, инициализируются локальные кэши, запускается поток-надзиратель.
  *
  * Работа потока-надзирателя - это второй этап работы класса.
@@ -35,7 +39,11 @@
  * который интересует пользователя. Getter'ы аппроксимируют данные (если требуется) и выдают их наверх.
  *
  * Публично доступны следующие методы:
- * - #hyscan_location_sources_list - список доступных источников для заданного параметра;
+ * - #hyscan_location_new - создание объекта;
+ * - #hyscan_location_new_with_cache - создание объекта с использованием системы кэширования;
+ * - #hyscan_location_new_with_cache_prefix - создание объекта с использованием системы кэширования и префиксом;
+ * - #hyscan_location_source_list - список доступных источников для заданного параметра;
+ * - #hyscan_location_source_list_free - освобождает память, занятую списком источников;
  * - #hyscan_location_source_get - выбранный источник для заданного параметра;
  * - #hyscan_location_source_set - установка источника для заданного параметра;
  * - #hyscan_location_soundspeed_set - установка профиля скорости звука;
@@ -44,7 +52,6 @@
  * - #hyscan_location_get_progress - процент выполнения расчетов (режим пост-обработки)
  *
  * - - -
- * Объект использует библиотеку функций \link HyScanLocationTools \endlink
  * \htmlonly
  * <details>
  *  <summary>Дополнительная информация о таблице скорости звука</summary>
@@ -61,13 +68,10 @@
 #ifndef __HYSCAN_LOCATION_H__
 #define __HYSCAN_LOCATION_H__
 
-#include <glib-object.h>
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
 #include <hyscan-core-types.h>
 #include <hyscan-data-channel.h>
-#include <glib/gprintf.h>
-#include <math.h>
 
 G_BEGIN_DECLS
 
@@ -104,38 +108,6 @@ typedef enum
   HYSCAN_LOCATION_SOURCE_SAS
 } HyScanLocationSourceTypes;
 
-/** \brief Внутренняя таблица источников данных */
-typedef struct
-{
-  gint32 index;                                         /**< Индекс источника. */
-
-  HyScanLocationParameters  parameter;                  /**< Параметр, обрабатываемый источником. */
-  HyScanLocationSourceTypes source_type;                /**< Тип источника. */
-  HyScanSonarChannelIndex   sensor_channel;             /**< Номер КД. */
-  gboolean                  active;                     /**< Используется ли источник. */
-
-  HyScanDataChannel        *dchannel;                   /**< Для работы с акустическими данными. */
-  gchar                    *channel_name;               /**< Имя КД (для работы с не-акустическими данными). */
-  gint32                    channel_id;                 /**< Идентификатор открытого КД (для работы с не-акустическими данными). */
-  gint32                    param_id;                   /**< Идентификатор параметров КД (для работы с не-акустическими данными). */
-
-  gint32                    shift;                      /**< Сдвиг (по сути, индекс самого первого элемента в КД). */
-  gint32                    assembler_index;            /**< Индекс сборщика данных. */
-  gint32                    preprocessing_index;        /**< Индекс предобработчика данных. */
-  gint32                    thresholder_prev_index;     /**< Индекс предыдущей точки для функции #hyscan_location_thresholder. */
-  gint32                    thresholder_next_index;     /**< Индекс следующей точки для функции #hyscan_location_thresholder. */
-  gint32                    processing_index;           /**< Индекс обработчика данных. */
-
-  gdouble                   x;                          /**< Параметр датчика. */
-  gdouble                   y;                          /**< Параметр датчика. */
-  gdouble                   z;                          /**< Параметр датчика. */
-  gdouble                   psi;                        /**< Параметр датчика. */
-  gdouble                   gamma;                      /**< Параметр датчика. */
-  gdouble                   theta;                      /**< Параметр датчика. */
-  gdouble                   discretization_frequency;   /**< Параметр датчика. */
-  gchar                    *discretization_type;        /**< Параметр датчика. */
-} HyScanLocationSourcesList;
-
 /** \brief Таблица источников данных, отдаваемая при вызове  #hyscan_location_sources_list */
 typedef struct
 {
@@ -158,35 +130,6 @@ typedef struct
   gint64                    time;                       /**< Время. */
   gboolean                  validity;                   /**< Признак валидности данных. */
 } HyScanLocationData;
-
-/** \brief Внутренняя структура. Иcпользуется для работы с данными широты и долготы. */
-typedef struct
-{
-  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
-  gint64                    data_time;                  /**< Время, содержащееся в самих данных. */
-  gdouble                   value1;                     /**< Значение 1 (обычно - широта). */
-  gdouble                   value2;                     /**< Значение 2 (обычно - долгота). */
-  gboolean                  validity;                   /**< Флаг валидности данных. */
-} HyScanLocationGdouble2;
-
-/** \brief Внутренняя структура. Иcпользуется для работы с данными высоты, курса, крена, дифферента, глубины. */
-typedef struct
-{
-  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
-  gint64                    data_time;                  /**< Время, содержащееся в самих данных. */
-  gdouble                   value;                      /**< Значение. */
-  gboolean                  validity;                   /**< Флаг валидности данных. */
-} HyScanLocationGdouble1;
-
-/** \brief Внутренняя структура. Иcпользуется для работы с данными времени. */
-typedef struct
-{
-  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
-  gint64                    date;                       /**< Дата. */
-  gint64                    time;                       /**< Время. */
-  gint64                    time_shift;                 /**< Временная сдвижка. */
-  gboolean                  validity;                   /**< Флаг валидности данных. */
-} HyScanLocationGint1;
 
 /** \brief Таблица профиля скорости звука. */
 typedef struct
@@ -213,10 +156,95 @@ struct _HyScanLocationClass
 
 GType                   hyscan_location_get_type                (void);
 
+
 /**
- * Функция возвращает список источников для заданного параметра.
  *
- * После использования необходимо освободить занятую списком память.
+ * Функция создает новый объект обработки навигационных данных.
+ *
+ * \param db - указатель на базу данных;
+ * \param project - название проекта;
+ * \param track - название галса;
+ * \param quality - качество данных.
+ *
+ * \return location указатель на объект обработки навигационных данных.
+ *
+ */
+HYSCAN_CORE_EXPORT
+HyScanLocation         *hyscan_location_new                     (HyScanDB       *db,
+                                                                 gchar          *project,
+                                                                 gchar          *track,
+                                                                 gdouble         quality);
+
+/**
+ *
+ * Функция создает новый объект обработки навигационных данных
+ * с использованием системы кэширования.
+ *
+ * \param db - указатель на базу данных;
+ * \param cache - указатель на объект системы кэширования;
+ * \param project - название проекта;
+ * \param track - название галса;
+ * \param quality - качество данных.
+ *
+ * \return location указатель на объект обработки навигационных данных.
+ *
+ */
+HYSCAN_CORE_EXPORT
+HyScanLocation         *hyscan_location_new_with_cache          (HyScanDB       *db,
+                                                                 HyScanCache    *cache,
+                                                                 gchar          *project,
+                                                                 gchar          *track,
+                                                                 gdouble         quality);
+
+/**
+ *
+ * Функция создает новый объект обработки навигационных данных
+ * с использованием системы кэширования и префиксом.
+ *
+ * \param db - указатель на базу данных;
+ * \param cache - указатель на объект системы кэширования;
+ * \param cache_prefix - префикс для системы кэширования;
+ * \param project - название проекта;
+ * \param track - название галса;
+ * \param quality - качество данных.
+ *
+ * \return location указатель на объект обработки навигационных данных.
+ *
+ */
+HYSCAN_CORE_EXPORT
+HyScanLocation         *hyscan_location_new_with_cache_prefix   (HyScanDB       *db,
+                                                                 HyScanCache    *cache,
+                                                                 gchar          *cache_prefix,
+                                                                 gchar          *project,
+                                                                 gchar          *track,
+                                                                 gdouble         quality);
+
+/**
+ *
+ * Функция позволяет задать период работы потока-надзирателя.
+ *
+ * \param location указатель на объект обработки навигационных данных;
+ * \param overseer_period период работы потока-надзирателя в микросекундах.
+ *
+ */
+void                    hyscan_location_overseer_period_set    (HyScanLocation  *location,
+                                                                gint32           overseer_period);
+
+/**
+ *
+ * Функция позволяет задать качество данных.
+ *
+ * \param location указатель на объект обработки навигационных данных;
+ * \param quality качество данных.
+ *
+ */
+void                    hyscan_location_quality_set            (HyScanLocation  *location,
+                                                                gdouble          quality);
+/**
+ *
+ * Функция возвращает нуль-терминированный список источников для заданного параметра.
+ *
+ * После использования нужно освободить занятую списком память с помощью функции #hyscan_location_source_list_free.
  * На последнем месте в списке источников находится структура со всеми полями, установленными в 0.
  * Это признак конца списка источников.
  *
@@ -224,10 +252,23 @@ GType                   hyscan_location_get_type                (void);
  * \param parameter параметр из #HyScanLocationParameters.
  *
  * \return указатель на массив со списком источников.
+ *
  */
 HYSCAN_CORE_EXPORT
-HyScanLocationSources  *hyscan_location_sources_list            (HyScanLocation *location,
+HyScanLocationSources  **hyscan_location_source_list            (HyScanLocation *location,
                                                                  gint            parameter);
+
+/**
+ *
+ * Функция освобождает память, занятую списоком источников для заданного параметра.
+ *
+ * Это удобный механизм освобождения памяти, занятой списком источников.
+ * Однако пользователь может вручную освободить эту область памяти.
+ *
+ * \param data указатель на список источников.
+ *
+ */
+void                     hyscan_location_source_list_free        (HyScanLocationSources ***data);
 
 /**
  *
@@ -236,16 +277,19 @@ HyScanLocationSources  *hyscan_location_sources_list            (HyScanLocation 
  * \param location указатель на объект обработки навигационных данных
  * \param parameter параметр из #HyScanLocationParameters.
  *
- * \return указатель на массив со списком источников.
+ * \return индекс активного источника. -1 сигнализирует о том,
+ * что либо параметр исключен из обработки, либо есть проблемы с БД.
+ *
  */
 HYSCAN_CORE_EXPORT
 gint                    hyscan_location_source_get              (HyScanLocation *location,
                                                                  gint            parameter);
 
 /**
+ *
  * Функция устанавливает источник.
  *
- * При вызове #hyscan_location_sources_list возвращается список источников,
+ * При вызове #hyscan_location_source_list возвращается список источников,
  * в котором каждому источнику присвоен индекс.
  * Этот индекс передается в hyscan_location_source_set, которая автоматически определяет,
  * для какого параметра актуален этот источник.
@@ -255,6 +299,7 @@ gint                    hyscan_location_source_get              (HyScanLocation 
  * \param turn_on если FALSE, то параметр, соответствующий этому источнику, исключается из обработки.
  *
  * \return TRUE, если источник корректно установился.
+ *
  */
 HYSCAN_CORE_EXPORT
 gboolean                hyscan_location_source_set              (HyScanLocation *location,
@@ -263,23 +308,28 @@ gboolean                hyscan_location_source_set              (HyScanLocation 
 
 
 /**
+ *
  * Функция устанавливает таблицу профиля скорости звука.
  *
  * \param location указатель на объект обработки навигационных данных;
  * \param soundspeedtable таблица скорости звука #SoundSpeedTable.
  *
- * \return TRUE, всегда.
+ * \return FALSE, если база данных недоступна, TRUE во всех остальных случаях.
+ *
  */
 HYSCAN_CORE_EXPORT
 gboolean                hyscan_location_soundspeed_set          (HyScanLocation *location,
                                                                  GArray          soundspeedtable);
 
 /**
+ *
  * Функция получения координат в заданный момент времени.
  *
  * В выходной структуре для выбранных параметров будут указаны значения, для невыбранных - NAN.
- * Возможна ситуация, при которой для заданного момента времени нет данных (либо не существуют, либо еще не обработаны).
- * В таком случае будут возвращены все собранные данные, но те данные, что собрать не удалось, будут установлены в NAN. Дополнительно флаг validity будет установлен в FALSE.
+ * Возможна ситуация, при которой для заданного момента времени нет данных
+ * (либо не существуют, либо еще не обработаны).
+ * В таком случае будут возвращены все собранные данные, но те данные, что собрать не удалось,
+ * будут установлены в NAN. Дополнительно флаг validity будет установлен в FALSE.
  *
  * \param location указатель на объект обработки навигационных данных;
  * \param parameter параметр из #HyScanLocationParameters. Параметры можно объединять логическим ИЛИ;
@@ -290,8 +340,9 @@ gboolean                hyscan_location_soundspeed_set          (HyScanLocation 
  * \param psi угловой сдвиг (в радианах), соответствующий курсу;
  * \param gamma угловой сдвиг (в радианах), соответствующий крену;
  * \param theta угловой сдвиг (в радианах), соответствующий дифференту.
-
+ *
  * \return Структура #HyScanLocationData со всей затребованной информацией.
+ *
  */
 HYSCAN_CORE_EXPORT
 HyScanLocationData      hyscan_location_get                     (HyScanLocation *location,
@@ -304,6 +355,7 @@ HyScanLocationData      hyscan_location_get                     (HyScanLocation 
                                                                  gdouble         gamma,
                                                                  gdouble         theta);
 /**
+ *
  * Функция возвращает номер изменения в объекте.
  * Номер изменения увеличивается, например, при изменении параметров обработки.
  *
@@ -319,14 +371,6 @@ HYSCAN_CORE_EXPORT
 gint32                  hyscan_location_get_mod_count           (HyScanLocation *location);
 HYSCAN_CORE_EXPORT
 gint                    hyscan_location_get_progress            (HyScanLocation *location);
-
-HYSCAN_CORE_EXPORT
-HyScanLocation         *hyscan_location_new                     (HyScanDB       *db,
-                                                                 HyScanCache    *cache,
-                                                                 gchar          *cache_prefix,
-                                                                 gchar          *track,
-                                                                 gchar          *project,
-                                                                 gdouble         quality);
 
 G_END_DECLS
 
