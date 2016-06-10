@@ -1,9 +1,9 @@
 #include <hyscan-data-channel-writer.h>
 #include <hyscan-data-channel.h>
-#include <hyscan-seabed-echosounder.h>
-#include <hyscan-seabed-sonar.h>
-#include <hyscan-seabed.h>
-#include <hyscan-core-types.h>
+#include <hyscan-depth-echosounder.h>
+#include <hyscan-depth-sonar.h>
+#include <hyscan-location.h>
+#include <hyscan-db-file.h>
 #include <hyscan-cached.h>
 
 #include <hyscan-core-exports.h>
@@ -27,9 +27,16 @@ main (int argc, char **argv)
   int i = 0, j = 0;
   HyScanDB *db;
   HyScanCache *cache = NULL;
-  HyScanDataChannelWriter *writer;
-  HyScanSeabed *seabed_echo;
-  HyScanSeabed *seabed_sonar;
+  HyScanDataChannel *datachan;
+  HyScanDataChannel *writer;
+  HyScanLocation *depth_echo;
+  HyScanLocation *depth_sonar;
+  HyScanDepthData depth,
+                  depth2;
+
+  srand (time (NULL));
+  gboolean status;
+
   gint32 project_id;
 
   HyScanDataChannelInfo channel_info = {0};
@@ -160,30 +167,26 @@ main (int argc, char **argv)
    * - ICE
    */
 
-  seabed_echo = HYSCAN_SEABED(hyscan_seabed_echosounder_new (db, cache, "echocash", "project", "track", "channel", 0));
-  seabed_sonar = HYSCAN_SEABED(hyscan_seabed_sonar_new (db, cache, "sonarcash", "project", "track","channel", 0));
+  depth_echo = HYSCAN_LOCATION(hyscan_depth_echosounder_new (db, "t_project", "t_track", "t_channel", 0));
+  depth_sonar = HYSCAN_LOCATION(hyscan_depth_sonar_new (db, "t_project", "t_track","t_channel", 0));
 
-  hyscan_seabed_set_soundspeed (seabed_echo, sst1);
-  hyscan_seabed_set_soundspeed (seabed_sonar, sst2);
-  gfloat depth;
-  gfloat depth2;
+  hyscan_location_set_soundspeed (depth_echo, sst1);
+  hyscan_location_set_soundspeed (depth_sonar, sst2);
+
   g_printf ("format: " KGRN "index:" KRED "depth" KIT "(echo)|" KNRM KRED "depth" KIT"(sonar) \n" KNRM);
   for (i = 0; i < lines * 3; i++)
   {
-    depth = hyscan_seabed_get_depth_by_index (seabed_echo, i);
-    g_printf (KGRN"%3i: " KRED "%6.2f", i, depth);
+    depth = hyscan_location_get_depth (depth_echo, i);
+    g_printf (KGRN"%3i: " KRED "%6.2f", i, depth.depth);
 
-    depth2 = hyscan_seabed_get_depth_by_index (seabed_echo, i);
-    if (depth != depth2)
-      g_printf (KNRM "|ICE" KRED);
+    depth2 = hyscan_location_get_depth (depth_echo, i);
+    g_printf ("/%6.2f", depth2.depth);
 
-    depth = hyscan_seabed_get_depth_by_index (seabed_sonar, i);
-    g_printf ("|%6.2f", depth);
+    depth = hyscan_location_get_depth (depth_sonar, i);
+    g_printf ("|%6.2f", depth.depth);
 
-    depth2 = hyscan_seabed_get_depth_by_index (seabed_sonar, i);
-    if (depth != depth2)
-      g_printf (KNRM "|ICE" KRED);
-
+    depth2 = hyscan_location_get_depth (depth_sonar, i);
+    g_printf ("/%6.2f", depth2.depth);
     g_printf ("\b\t");
 
     /* Выводим по 5 значений на строку */
@@ -193,7 +196,7 @@ main (int argc, char **argv)
       g_printf ("\n");
   }
 
-  g_printf ("\n");
+  g_printf (KNRM "\n");
 
   /* Закрываем каналы данных. */
   g_clear_object (&writer);
