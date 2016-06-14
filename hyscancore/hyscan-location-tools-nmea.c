@@ -8,7 +8,7 @@ hyscan_location_nmea_sentence_check (gchar *input)
   gchar *str;
   gint calculated_checksum = 0,
        sentence_checksum = 0;
-  gint  len = strlen(ch);
+  gsize  len = strlen(ch);
 
   /* Контрольная сумма считается как XOR всех элементов между $ и *. */
   ch++; /* Пропускаем $. */
@@ -77,10 +77,12 @@ hyscan_location_nmea_latlong_get (gchar *input)
           min = 0;
   gchar *ch = input;
 
+  HyScanSonarDataType sentence_type;
+
   if (input == NULL)
     return output;
 
-  HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);
+  sentence_type = hyscan_location_nmea_sentence_check(input);
 
   switch (sentence_type)
     {
@@ -147,6 +149,7 @@ hyscan_location_nmea_track_get (gchar *input)
   int i = 0;
   gchar *ch = input;
   HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);
+
   if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
     {
       /* Курс - это значение в 8 поле RMC. */
@@ -187,6 +190,7 @@ hyscan_location_nmea_speed_get (gchar *input)
   int i = 0;
   gchar *ch = input;
   HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);
+
   if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
     {
       /* Скорость - это значение в 7 поле RMC. */
@@ -206,6 +210,7 @@ hyscan_location_nmea_depth_get (gchar *input)
   HyScanLocationGdouble1 output = {0};
   gchar *ch = input;
   HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);
+
   if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
     {
       /* Глубина - это значение в 1 поле RMC. */
@@ -233,8 +238,8 @@ hyscan_location_nmea_datetime_get (gchar *input)
   gdouble seconds_fractional = 0;
   gint divider = 10;
 
-
   HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check(input);
+
   if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
     {
       /* Время - это значение в 1 поле RMC. */

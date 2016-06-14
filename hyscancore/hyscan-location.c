@@ -64,7 +64,7 @@ struct _HyScanLocationPrivate
   HyScanCache          *cache;                          /* Интерфейс системы кэширования. */
   gchar                *cache_prefix;                   /* Префикс ключа кэширования. */
   gchar                *cache_key;                      /* Ключ кэширования. */
-  gint                  cache_key_length;               /* Максимальная длина ключа. */
+  gsize                 cache_key_length;               /* Максимальная длина ключа. */
 
   GArray               *latlong_cache;                  /* Локальный кэш координат. */
   GArray               *altitude_cache;                 /* Локальный кэш высоты. */
@@ -318,7 +318,7 @@ hyscan_location_finalize (GObject *object)
 {
   HyScanLocation *location = HYSCAN_LOCATION (object);
   HyScanLocationPrivate *priv = location->priv;
-  gint i;
+  guint i;
 
   HyScanLocationSourcesList *source_list_element;
   /* Говорим надзирателю, что пора бы и остановиться, и закрываем соответствующий поток. */
@@ -470,7 +470,10 @@ hyscan_location_source_list_int (HyScanLocation *location)
 static void
 hyscan_location_source_defaults (HyScanLocation *location)
 {
-  gint i = 0, j = 0, k = 0;
+  guint i = 0,
+        j = 0,
+        k = 0;
+        
   HyScanLocationPrivate *priv = location->priv;
   HyScanLocationSourcesList *source_list_element;
   /* Выбираем КД по умолчанию.
@@ -614,8 +617,8 @@ hyscan_location_source_list (HyScanLocation *location,
   HyScanLocationSourcesList *source_list_element;
   HyScanLocationSources **output_source_list;
 
-  gint i = 0,
-       j = 0;
+  guint i = 0,
+        j = 0;
 
   if (priv->db == NULL)
     return NULL;
@@ -650,7 +653,7 @@ void
 hyscan_location_source_list_free (HyScanLocationSources ***data)
 {
   HyScanLocationSources **d = *data;
-  gint j = 0;
+  guint j = 0;
   while (d[j] != NULL)
     g_clear_pointer (&(d[j++]), g_free);
 
@@ -665,7 +668,7 @@ hyscan_location_source_get (HyScanLocation *location,
 {
   HyScanLocationPrivate *priv = location->priv;
   HyScanLocationSourcesList *source_list_element;
-  gint i = 0;
+  guint i = 0;
 
   if (priv->db == NULL)
     return -1;

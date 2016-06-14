@@ -227,6 +227,8 @@ HyScanLocation         *hyscan_location_new_with_cache_prefix   (HyScanDB       
  * \param overseer_period период работы потока-надзирателя в микросекундах.
  *
  */
+
+HYSCAN_CORE_EXPORT
 void                    hyscan_location_overseer_period_set    (HyScanLocation  *location,
                                                                 gint32           overseer_period);
 
@@ -238,6 +240,8 @@ void                    hyscan_location_overseer_period_set    (HyScanLocation  
  * \param quality качество данных.
  *
  */
+
+HYSCAN_CORE_EXPORT
 void                    hyscan_location_quality_set            (HyScanLocation  *location,
                                                                 gdouble          quality);
 /**
@@ -268,6 +272,8 @@ HyScanLocationSources  **hyscan_location_source_list            (HyScanLocation 
  * \param data указатель на список источников.
  *
  */
+
+HYSCAN_CORE_EXPORT
 void                     hyscan_location_source_list_free        (HyScanLocationSources ***data);
 
 /**

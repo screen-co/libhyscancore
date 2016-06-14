@@ -507,12 +507,14 @@ hyscan_location_track_calculator (gdouble lat1,
   gdouble f1 = lat1 * G_PI/ 180.0;
   gdouble l2 = lon2 * G_PI/ 180.0;
   gdouble l1 = lon1 * G_PI/ 180.0;
+  gdouble x = 0.0;
+  gdouble y = 0.0;
 
   if (f2 == f1 && l2 == l1)
     return 0;
 
-  gdouble x = cos(f2) * sin (l2-l1);
-  gdouble y = cos (f1) * sin(f2) - sin(f1) * cos(f2) * cos(l2-l1);
+  x = cos(f2) * sin (l2-l1);
+  y = cos (f1) * sin(f2) - sin(f1) * cos(f2) * cos(l2-l1);
 
   if (y > 0)
     {
