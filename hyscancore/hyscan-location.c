@@ -469,10 +469,10 @@ hyscan_location_source_list_int (HyScanLocation *location)
   gchar **channel_list;
   gint index = 0;
 
-  HyScanSonarDataType data_type = 0;
+  HyScanSourceType data_type = 0;
   gboolean hi_res = FALSE;
   gboolean raw = FALSE;
-  HyScanSonarChannelIndex sensor_channel = 0;
+  gint sensor_channel = 0;
   gint number_of_channels = 0;
 
   /* Получаем список КД и подсчитываем их количество. */
@@ -487,13 +487,13 @@ hyscan_location_source_list_int (HyScanLocation *location)
 
   for (i = 0, index = 0; i < number_of_channels; i++)
   {
-    hyscan_channel_get_types_by_name (channel_list[i], &data_type, &hi_res, &raw, &sensor_channel);
+    hyscan_channel_get_types_by_name (channel_list[i], &data_type, &raw, &sensor_channel);
 
     /* Пропускаем этот источник, если он выдает сырые данные. */
 
     switch (data_type)
       {
-      case HYSCAN_SONAR_DATA_NMEA_RMC:
+      case HYSCAN_SOURCE_NMEA_RMC:
         hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_LATLONG, HYSCAN_LOCATION_SOURCE_NMEA, sensor_channel, channel_list, i);
         index++;
         hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_TRACK, HYSCAN_LOCATION_SOURCE_NMEA, sensor_channel, channel_list, i);
@@ -508,17 +508,17 @@ hyscan_location_source_list_int (HyScanLocation *location)
         index++;
         break;
 
-      case HYSCAN_SONAR_DATA_NMEA_GGA:
+      case HYSCAN_SOURCE_NMEA_GGA:
         hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_ALTITUDE, HYSCAN_LOCATION_SOURCE_NMEA, sensor_channel, channel_list, i);
         index++;
         break;
 
-      case HYSCAN_SONAR_DATA_ECHOSOUNDER:
+      case HYSCAN_SOURCE_ECHOSOUNDER:
         hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_DEPTH, HYSCAN_LOCATION_SOURCE_ECHOSOUNDER, sensor_channel, channel_list, i);
         index++;
         break;
 
-      case HYSCAN_SONAR_DATA_SS_PORT:
+      case HYSCAN_SOURCE_SS_PORT:
 
         if (hi_res == TRUE)
           hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_DEPTH, HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT, sensor_channel, channel_list, i);
@@ -527,7 +527,7 @@ hyscan_location_source_list_int (HyScanLocation *location)
         index++;
         break;
 
-      case HYSCAN_SONAR_DATA_SS_STARBOARD:
+      case HYSCAN_SOURCE_SS_STARBOARD:
 
         if (hi_res == TRUE)
           hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_DEPTH, HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD, sensor_channel, channel_list, i);
@@ -536,7 +536,7 @@ hyscan_location_source_list_int (HyScanLocation *location)
         index++;
         break;
 
-      case HYSCAN_SONAR_DATA_NMEA_DPT:
+      case HYSCAN_SOURCE_NMEA_DPT:
         hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_DEPTH, HYSCAN_LOCATION_SOURCE_NMEA, sensor_channel, channel_list, i);
         index++;
         break;

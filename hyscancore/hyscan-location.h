@@ -132,7 +132,7 @@ typedef struct
 {
   gint                      index;                      /**< Индекс источника. */
   HyScanLocationSourceTypes source_type;                /**< Тип источника. */
-  HyScanSonarChannelIndex   sensor_channel;             /**< Номер КД. */
+  gint                      sensor_channel;             /**< Номер КД. */
 } HyScanLocationSources;
 
 /** \brief Выходная структура, отдаваемая при вызове  #hyscan_location_get */

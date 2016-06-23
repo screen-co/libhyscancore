@@ -10,10 +10,8 @@
  *
  * В HyScanCoreTypes вводятся определения следующих типов:
  *
- * - \link HyScanSonarType \endlink - типы гидролокаторов;
+ * - \link HyScanSonarSourceType \endlink - источники данных;
  * - \link HyScanTrackType \endlink - типы галсаов;
- * - \link HyScanSonarDataType \endlink - типы гидролокационных данных;
- * - \link HyScanSonarChannelIndex \endlink - номера каналов данных;
  * - \link HyScanCardinalDirectionType \endlink - стороны света.
  *
  * В HyScanCoreTypes вводятся определения следующих структур:
@@ -53,73 +51,50 @@
 
 G_BEGIN_DECLS
 
-/** \brief Типы гидролокаторов */
+/** \brief Типы источников гидролокационных данных и данных датчиков */
 typedef enum
 {
-  HYSCAN_SONAR_INVALID,                                        /**< Недопустимый тип, ошибка. */
+  HYSCAN_SOURCE_INVALID                             = 0,       /**< Недопустимый тип, ошибка. */
 
-  HYSCAN_SONAR_ECHOSOUNDER,                                    /**< Эхолот. */
-  HYSCAN_SONAR_SIDE_SCAN,                                      /**< Гидролокатор бокового обзора. */
-  HYSCAN_SONAR_SIDE_SCAN_DF,                                   /**< Гидролокатор бокового обзора двухчастотный. */
-  HYSCAN_SONAR_LOOK_AROUND,                                    /**< Гидролокатор кругового обзора. */
-  HYSCAN_SONAR_LOOK_AHEAD,                                     /**< Вперёд смотрящий гидролокатор. */
-  HYSCAN_SONAR_PROFILER,                                       /**< Профилограф. */
-  HYSCAN_SONAR_MULTI_BEAM,                                     /**< Многолучевой эхолот. */
-  HYSCAN_SONAR_INTERFEROMETER,                                 /**< Интерферометрический гидролокатор. */
-} HyScanSonarType;
+  HYSCAN_SOURCE_ECHOSOUNDER                         = 101,     /**< Эхолот. */
+  HYSCAN_SOURCE_SS_STARBOARD                        = 102,     /**< Правый борт, боковой обзор. */
+  HYSCAN_SOURCE_SS_PORT                             = 103,     /**< Левый борт, боковой обзор. */
+  HYSCAN_SOURCE_SS_STARBOARD_HI                     = 104,     /**< Правый борт, боковой обзор, высокое разрешение. */
+  HYSCAN_SOURCE_SS_PORT_HI                          = 105,     /**< Левый борт, боковой обзор, высокое разрешение. */
+  HYSCAN_SOURCE_ISS_STARBOARD                       = 106,     /**< Правый борт, интерферометр. */
+  HYSCAN_SOURCE_ISS_PORT                            = 107,     /**< Левый борт, интерферометр. */
+  HYSCAN_SOURCE_LA_STARBOARD                        = 108,     /**< Правый борт, круговой обзор. */
+  HYSCAN_SOURCE_LA_PORT                             = 109,     /**< Левый борт, круговой обзор. */
+  HYSCAN_SOURCE_PROFILER                            = 110,     /**< Профилограф. */
+  HYSCAN_SOURCE_FL                                  = 111,     /**< Вперёдсмотрящий гидролокатор. */
 
-/** \brief Типы галсов. */
+  HYSCAN_SOURCE_SAS                                 = 201,     /**< Сообщения САД. */
+
+  HYSCAN_SOURCE_NMEA_ANY                            = 301,     /**< Любые сообщения NMEA. */
+  HYSCAN_SOURCE_NMEA_GGA                            = 302,     /**< Сообщения NMEA GGA. */
+  HYSCAN_SOURCE_NMEA_RMC                            = 303,     /**< Сообщения NMEA RMC. */
+  HYSCAN_SOURCE_NMEA_DPT                            = 304      /**< Сообщения NMEA DPT. */
+} HyScanSourceType;
+
+/** \brief Типы галсов */
 typedef enum
 {
-  HYSCAN_TRACK_UNSPECIFIED,                                    /**< Неопределённый тип. */
+  HYSCAN_TRACK_UNSPECIFIED                          = 0,       /**< Неопределённый тип. */
 
-  HYSCAN_TRACK_SURVEY,                                         /**< Галс с данными съёмки. */
-  HYSCAN_TRACK_TACK,                                           /**< Лавировочный галс. */
-  HYSCAN_TRACK_TRACK                                           /**< Треки движения судна. */
+  HYSCAN_TRACK_SURVEY                               = 101,     /**< Галс с данными съёмки. */
+  HYSCAN_TRACK_TACK                                 = 102,     /**< Лавировочный галс. */
+  HYSCAN_TRACK_TRACK                                = 103      /**< Треки движения судна. */
 } HyScanTrackType;
-
-/** \brief Типы гидролокационных данных */
-typedef enum
-{
-  HYSCAN_SONAR_DATA_INVALID,                                   /**< Недопустимый тип, ошибка. */
-
-  HYSCAN_SONAR_DATA_ECHOSOUNDER,                               /**< Эхолот. */
-  HYSCAN_SONAR_DATA_PROFILER,                                  /**< Профилограф. */
-  HYSCAN_SONAR_DATA_SS_STARBOARD,                              /**< Боковой обзор, правый борт. */
-  HYSCAN_SONAR_DATA_SS_PORT,                                   /**< Боковой обзор, левый борт. */
-
-  HYSCAN_SONAR_DATA_SAS,                                       /**< Сообщения САД. */
-
-  HYSCAN_SONAR_DATA_NMEA_ANY,                                  /**< Любые сообщения NMEA. */
-  HYSCAN_SONAR_DATA_NMEA_GGA,                                  /**< Сообщения NMEA GGA. */
-  HYSCAN_SONAR_DATA_NMEA_RMC,                                  /**< Сообщения NMEA RMC. */
-  HYSCAN_SONAR_DATA_NMEA_DPT,                                  /**< Сообщения NMEA DPT. */
-} HyScanSonarDataType;
-
-/** \brief Номера каналов */
-typedef enum
-{
-  HYSCAN_SONAR_CHANNEL_INVALID,                                /**< Недопустимый номер, ошибка. */
-
-  HYSCAN_SONAR_CHANNEL_1,                                      /**< Канал 1. */
-  HYSCAN_SONAR_CHANNEL_2,                                      /**< Канал 2. */
-  HYSCAN_SONAR_CHANNEL_3,                                      /**< Канал 3. */
-  HYSCAN_SONAR_CHANNEL_4,                                      /**< Канал 4. */
-  HYSCAN_SONAR_CHANNEL_5,                                      /**< Канал 5. */
-  HYSCAN_SONAR_CHANNEL_6,                                      /**< Канал 6. */
-  HYSCAN_SONAR_CHANNEL_7,                                      /**< Канал 7. */
-  HYSCAN_SONAR_CHANNEL_8,                                      /**< Канал 8. */
-} HyScanSonarChannelIndex;
 
 /** \brief Стороны света */
 typedef enum
 {
-  HYSCAN_CARDINAL_DIRECTION_INVALID,                           /**< Недопустимая сторона света, ошибка. */
+  HYSCAN_CARDINAL_DIRECTION_INVALID                 = 0,       /**< Недопустимая сторона света, ошибка. */
 
-  HYSCAN_CARDINAL_DIRECTION_NORTH,                             /**< Север. */
-  HYSCAN_CARDINAL_DIRECTION_EAST,                              /**< Восток. */
-  HYSCAN_CARDINAL_DIRECTION_SOUTH,                             /**< Юг. */
-  HYSCAN_CARDINAL_DIRECTION_WEST,                              /**< Запад. */
+  HYSCAN_CARDINAL_DIRECTION_NORTH                   = 101,     /**< Север. */
+  HYSCAN_CARDINAL_DIRECTION_EAST                    = 102,     /**< Восток. */
+  HYSCAN_CARDINAL_DIRECTION_SOUTH                   = 103,     /**< Юг. */
+  HYSCAN_CARDINAL_DIRECTION_WEST                    = 104      /**< Запад. */
 } HyScanCardinalDirectionType;
 
 /** \brief Параметры канала с данными датчиков */
@@ -157,29 +132,24 @@ typedef struct
  * Функция возвращает название канала для указанных характеристик.
  * Строка, возвращаемая этой функцией, не должна изменяться пользователем.
  *
- * Индекс канала данных для одноканальных систем (ГБО, Эхолот) должен быть равным нулю.
- *
- * \param data_type тип данных;
- * \param hi_res признак повышенного разрешения;
+ * \param src источник данных;
  * \param raw признак "сырых" данных;
- * \param index индекс канала данных.
+ * \param index индекс канала данных, начиная с 1.
  *
  * \return Строка с названием канала или NULL - в случае ошибки.
  *
  */
 HYSCAN_CORE_EXPORT
-const gchar           *hyscan_channel_get_name_by_types        (HyScanSonarDataType            data_type,
-                                                                gboolean                       hi_res,
+const gchar           *hyscan_channel_get_name_by_types        (HyScanSourceType               src,
                                                                 gboolean                       raw,
-                                                                HyScanSonarChannelIndex        index);
+                                                                gint                           index);
 
 /**
  *
  * Функция возвращает характеристики канала данных по его имени.
  *
- * \param channel_name название канала данных;
- * \param data_type переменная для типа данных или NULL;
- * \param hi_res переменная для признака повышенного разрешения или NULL;
+ * \param name название канала данных;
+ * \param src переменная для источника данных или NULL;
  * \param raw переменная для признака "сырых" данных или NULL;
  * \param index переменная для индекса канала данных или NULL.
  *
@@ -187,11 +157,10 @@ const gchar           *hyscan_channel_get_name_by_types        (HyScanSonarDataT
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean               hyscan_channel_get_types_by_name        (const gchar                   *channel_name,
-                                                                HyScanSonarDataType           *data_type,
-                                                                gboolean                      *hi_res,
+gboolean               hyscan_channel_get_types_by_name        (const gchar                   *name,
+                                                                HyScanSourceType              *src,
                                                                 gboolean                      *raw,
-                                                                HyScanSonarChannelIndex       *index);
+                                                                gint                          *index);
 
 /**
  *

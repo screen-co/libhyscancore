@@ -8,7 +8,7 @@
 #include <hyscan-location-tools.h>
 
 /* Функция проверяет тип и валидность строки. */
-HyScanSonarDataType
+HyScanSourceType
 hyscan_location_nmea_sentence_check (gchar *input)
 {
   gchar *ch = input;
@@ -33,7 +33,7 @@ hyscan_location_nmea_sentence_check (gchar *input)
 
   /* Если количество оставшихся меньше длины контрольной суммы, строка не валидна. */
   if (len < sizeof("xx"))
-    return HYSCAN_SONAR_DATA_INVALID;
+    return HYSCAN_SOURCE_INVALID;
 
   ch++; /* Пропускаем "*", этот символ не учитывается при подсчете контрольной суммы. */
 
@@ -59,22 +59,22 @@ hyscan_location_nmea_sentence_check (gchar *input)
     sentence_checksum += (*ch - 55);
 
   if (sentence_checksum != calculated_checksum)
-    return HYSCAN_SONAR_DATA_INVALID;
+    return HYSCAN_SOURCE_INVALID;
 
   ch = input + 3; /* Пропускаем первые 3 символа "$GPxxx". */
 
   str = g_strndup (ch, 3);
-
-  if (g_strcmp0 (str, "GGA") == 0)
-    data_type = HYSCAN_SONAR_DATA_NMEA_GGA;
-  if (g_strcmp0 (str, "RMC") == 0)
-    data_type = HYSCAN_SONAR_DATA_NMEA_RMC;
-  if (g_strcmp0 (str, "DPT") == 0)
-    data_type = HYSCAN_SONAR_DATA_NMEA_DPT;
+#warning "Memory leak!!!"
+  if (g_strcmp0(str, "GGA") == 0)
+    return HYSCAN_SOURCE_NMEA_GGA;
+  if (g_strcmp0(str, "RMC") == 0)
+    return HYSCAN_SOURCE_NMEA_RMC;
+  if (g_strcmp0(str, "DPT") == 0)
+    return HYSCAN_SOURCE_NMEA_DPT;
 
   /* Если тип не совпадает с вышеуказанными, возвращаем ошибку. */
   g_free (str);
-  return data_type;
+  return HYSCAN_SOURCE_INVALID;
 }
 
 /* Функция извлекает широту и долготу из NMEA-строки. */
@@ -87,7 +87,7 @@ hyscan_location_nmea_latlong_get (gchar *input)
   gdouble min = 0;
   gchar *ch = input;
 
-  HyScanSonarDataType sentence_type;
+  HyScanSourceType sentence_type;
 
   if (input == NULL)
     return output;
@@ -96,10 +96,10 @@ hyscan_location_nmea_latlong_get (gchar *input)
 
   switch (sentence_type)
     {
-    case HYSCAN_SONAR_DATA_NMEA_RMC:
+    case HYSCAN_SOURCE_NMEA_RMC:
       while (*(ch++) != ',');
 
-    case HYSCAN_SONAR_DATA_NMEA_GGA:
+    case HYSCAN_SOURCE_NMEA_GGA:
       while (*(ch++) != ',');
       while (*(ch++) != ',');
       field_val = g_ascii_strtod (ch, NULL);
@@ -137,9 +137,9 @@ hyscan_location_nmea_altitude_get (gchar *input)
   HyScanLocationInternalData output = {0};
   int i = 0;
   gchar *ch = input;
-  HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check (input);
+  HyScanSourceType sentence_type = hyscan_location_nmea_sentence_check(input);
 
-  if (sentence_type == HYSCAN_SONAR_DATA_NMEA_GGA)
+  if (sentence_type == HYSCAN_SOURCE_NMEA_GGA)
     {
       /* Высота - это значение в 9 поле GGA. */
       for (i = 0; i < 9; i++)
@@ -161,9 +161,9 @@ hyscan_location_nmea_track_get (gchar *input)
   gdouble deg = 0;
   gdouble min = 0;
   gchar *ch = input;
-  HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check (input);
+  HyScanSourceType sentence_type = hyscan_location_nmea_sentence_check(input);
 
-  if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
+  if (sentence_type == HYSCAN_SOURCE_NMEA_RMC)
     {
       /* Достаем координаты. */
       for (i = 0; i < 3; i++)
@@ -227,9 +227,9 @@ hyscan_location_nmea_speed_get (gchar *input)
   gdouble deg = 0;
   gdouble min = 0;
   gchar *ch = input;
-  HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check (input);
+  HyScanSourceType sentence_type = hyscan_location_nmea_sentence_check(input);
 
-  if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
+  if (sentence_type == HYSCAN_SOURCE_NMEA_RMC)
     {
       /* Достаем координаты. */
       for (i = 0; i < 3; i++)
@@ -269,9 +269,9 @@ hyscan_location_nmea_depth_get (gchar *input)
 {
   HyScanLocationInternalData output = {0};
   gchar *ch = input;
-  HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check (input);
+  HyScanSourceType sentence_type = hyscan_location_nmea_sentence_check(input);
 
-  if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
+  if (sentence_type == HYSCAN_SOURCE_NMEA_RMC)
     {
       /* Глубина - это значение в 1 поле RMC. */
       while (*(ch++) != ',');
@@ -298,9 +298,9 @@ hyscan_location_nmea_datetime_get (gchar *input)
   gdouble seconds_fractional = 0;
   gint divider = 10;
 
-  HyScanSonarDataType sentence_type = hyscan_location_nmea_sentence_check (input);
+  HyScanSourceType sentence_type = hyscan_location_nmea_sentence_check(input);
 
-  if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC)
+  if (sentence_type == HYSCAN_SOURCE_NMEA_RMC)
     {
       /* Время - это значение в 1 поле RMC. */
       while (*(ch++) != ',');
@@ -376,7 +376,7 @@ hyscan_location_nmea_datetime_get (gchar *input)
 /* Функция извлекает только время из NMEA-строки. */
 gint64
 hyscan_location_nmea_time_get (gchar              *input,
-                               HyScanSonarDataType sentence_type)
+                               HyScanSourceType sentence_type)
 {
   gint64 output = {0};
   gchar *ch = input;
@@ -388,7 +388,7 @@ hyscan_location_nmea_time_get (gchar              *input,
   gdouble seconds_fractional = 0;
   gint divider = 10;
 
-  if (sentence_type == HYSCAN_SONAR_DATA_NMEA_RMC || sentence_type == HYSCAN_SONAR_DATA_NMEA_GGA)
+  if (sentence_type == HYSCAN_SOURCE_NMEA_RMC || sentence_type == HYSCAN_SOURCE_NMEA_GGA )
     {
       /* Время - это значение в 1 поле RMC. */
       while (*(ch++) != ',');

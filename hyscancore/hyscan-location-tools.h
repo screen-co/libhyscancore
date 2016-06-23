@@ -312,8 +312,8 @@ HyScanLocationInternalTime      hyscan_location_nmea_datetime_get       (gchar  
  * \return Структура HyScanLocationInternalData со значениями.
  *
  */
-gint64                          hyscan_location_nmea_time_get           (gchar              *input,
-                                                                         HyScanSonarDataType sentence_type);
+gint64                          hyscan_location_nmea_time_get           (gchar           *input,
+                                                                         HyScanSourceType sentence_type);
 
 /* Функции определения глубины по ГБО и эхолоту. */
 

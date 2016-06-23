@@ -203,15 +203,15 @@ main (int argc, char **argv)
 
   /* Создаём каналы данных. */
   /* РМЦ. */
-  channel_name1 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_NMEA_RMC, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_3);
+  channel_name1 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_RMC, FALSE, 3);
   channel_id1 = hyscan_channel_sensor_create (db,"project", "track", channel_name1, &nmea_channel_info);
 
   /* ГГА. */
-  channel_name2 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_NMEA_GGA, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_2);
+  channel_name2 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_GGA, FALSE, 2);
   channel_id2 = hyscan_channel_sensor_create (db,"project", "track", channel_name2, &nmea_channel_info);
 
   /* Глубина. */
-  channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_ECHOSOUNDER, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1);
+  channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_ECHOSOUNDER, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1);
   dc_writer = hyscan_data_channel_writer_new (db, "project", "track", channel_name3, &dc_info);
 
   /* Заполняем каналы тестовыми данными. */
