@@ -1,6 +1,12 @@
+/*
+ * Файл содержит следующие группы функций:
+ *
+ * Функции фильтрации и обработки данных.
+ *
+ */
+
 #include <hyscan-location-tools.h>
 #include <math.h>
-#define ONE_DEG_LENGTH 111321.378 /* Длина одного радиана по экватору в метрах. */
 
 /* Сглаживает данные кривой Безье. */
 void
@@ -11,10 +17,10 @@ hyscan_location_4_point_2d_bezier (GArray *source,
                                    gint32  point4,
                                    gdouble quality)
 {
-  HyScanLocationGdouble2 p1 = {0},
-                         p2 = {0},
-                         p3 = {0},
-                         p4 = {0};
+  HyScanLocationInternalData p1 = {0},
+                             p2 = {0},
+                             p3 = {0},
+                             p4 = {0};
   gdouble t;
   gdouble p1_lat = NAN,
           p1_lon = NAN,
@@ -49,22 +55,22 @@ hyscan_location_4_point_2d_bezier (GArray *source,
     * 1       | 0.037           | 0.222   | 0.444  | 0.296
     */
 
-  p1 = g_array_index (source, HyScanLocationGdouble2, point1);
-  p2 = g_array_index (source, HyScanLocationGdouble2, point2);
-  p3 = g_array_index (source, HyScanLocationGdouble2, point3);
-  p4 = g_array_index (source, HyScanLocationGdouble2, point4);
+  p1 = g_array_index (source, HyScanLocationInternalData, point1);
+  p2 = g_array_index (source, HyScanLocationInternalData, point2);
+  p3 = g_array_index (source, HyScanLocationInternalData, point3);
+  p4 = g_array_index (source, HyScanLocationInternalData, point4);
 
-  p1_lat = p1.value1;
-  p1_lon = p1.value2;
+  p1_lat = p1.int_latitude;
+  p1_lon = p1.int_longitude;
   p1_time = p1.db_time;
-  p2_lat = p2.value1;
-  p2_lon = p2.value2;
+  p2_lat = p2.int_latitude;
+  p2_lon = p2.int_longitude;
   p2_time = p2.db_time;
-  p3_lat = p3.value1;
-  p3_lon = p3.value2;
+  p3_lat = p3.int_latitude;
+  p3_lon = p3.int_longitude;
   p3_time = p3.db_time;
-  p4_lat = p4.value1;
-  p4_lon = p4.value2;
+  p4_lat = p4.int_latitude;
+  p4_lon = p4.int_longitude;
   p4_time = p4.db_time;
 
   t = (p2_time - p1_time) / (p4_time - p1_time) + quality * (p3_time - p2_time) / (p4_time - p1_time);
@@ -81,11 +87,32 @@ hyscan_location_4_point_2d_bezier (GArray *source,
   out_lat = p1_lat + (out_lat - p1_lat) * (p3_time - p1_time) / (out_time - p1_time);
   out_lon = p1_lon + (out_lon - p1_lon) * (p3_time - p1_time) / (out_time - p1_time);
 
-  p3.value1 = out_lat;
-  p3.value2 = out_lon;
-  p3.validity = TRUE;
+  p3.int_latitude = out_lat;
+  p3.int_longitude = out_lon;
+  p3.validity = HYSCAN_LOCATION_PREPROCESSED;
   g_array_remove_index (source, point3);
   g_array_insert_val (source, point3, p3);
+}
+
+/* Сдвижка данных во времени. */
+void
+hyscan_location_timeshift (HyScanDB *db,
+                           GArray *source_list,
+                           gint32  source,
+                           GArray *cache,
+                           gint32  datetime_source,
+                           GArray *datetime_cache,
+                           gint32  index)
+{
+  HyScanLocationInternalData *val;
+  HyScanLocationInternalTime datetime;
+
+  val = &g_array_index (cache, HyScanLocationInternalData, index);
+  datetime = hyscan_location_getter_datetime (db, source_list, datetime_cache, datetime_source, val->db_time, 1);
+  val->data_time += datetime.date;
+  if (val->data_time < UNIX_1200 && datetime.time > UNIX_2300)
+    val->data_time += 86400 * 1e6;
+  val->data_time += datetime.time_shift;
 }
 
 /* Сдвижка данных в пространстве. */
@@ -294,7 +321,7 @@ hyscan_location_thresholder (GArray  *source,
                              gboolean is_writeable,
                              gdouble  quality)
 {
-  HyScanLocationGdouble2 *p1,
+  HyScanLocationInternalData *p1,
                          *p2,
                          *p3;
 
@@ -312,8 +339,8 @@ hyscan_location_thresholder (GArray  *source,
   gdouble threshold = (10 - 9 * quality);
   gint i;
 
-  p1 = &g_array_index (source, HyScanLocationGdouble2, *point1);
-  p2 = &g_array_index (source, HyScanLocationGdouble2, point2);
+  p1 = &g_array_index (source, HyScanLocationInternalData, *point1);
+  p2 = &g_array_index (source, HyScanLocationInternalData, point2);
 
   /* Ищем p3 такую, что расстояние от неё до p1 не меньше threshold. */
   if (*point3 <= *point1)
@@ -332,9 +359,9 @@ hyscan_location_thresholder (GArray  *source,
             }
 
           /* Если всё в порядке. */
-          p3 = &g_array_index (source, HyScanLocationGdouble2, *point1 + i);
-          dlat = p1->value1* ONE_DEG_LENGTH - p3->value1* ONE_DEG_LENGTH;
-          dlon = p1->value2* ONE_DEG_LENGTH * cos(p1->value1 * G_PI/180.0) - p3->value2* ONE_DEG_LENGTH * cos(p1->value1 * G_PI/180.0);
+          p3 = &g_array_index (source, HyScanLocationInternalData, *point1 + i);
+          dlat = p1->int_latitude* ONE_DEG_LENGTH - p3->int_latitude* ONE_DEG_LENGTH;
+          dlon = p1->int_longitude* ONE_DEG_LENGTH * cos(p1->int_latitude * G_PI/180.0) - p3->int_longitude* ONE_DEG_LENGTH * cos(p1->int_latitude * G_PI/180.0);
           if (sqrt (dlat * dlat + dlon * dlon) > threshold)
             {
               *point3 = *point1 + i;
@@ -350,21 +377,21 @@ hyscan_location_thresholder (GArray  *source,
       return TRUE;
     }
 
-  p3 = &g_array_index (source, HyScanLocationGdouble2, *point3);
+  p3 = &g_array_index (source, HyScanLocationInternalData, *point3);
 
   /* Определяем параметры прямой, проходящей через точки p1 и p3. */
-  k_lat = (p3->value1 - p1->value1)/(p3->db_time - p1->db_time);
-  k_lon = (p3->value2 - p1->value2)/(p3->db_time - p1->db_time);
-  b_lat = p1->value1 - k_lat * p1->db_time;
-  b_lon = p1->value2 - k_lon * p1->db_time;
+  k_lat = (p3->int_latitude - p1->int_latitude)/(p3->db_time - p1->db_time);
+  k_lon = (p3->int_longitude - p1->int_longitude)/(p3->db_time - p1->db_time);
+  b_lat = p1->int_latitude - k_lat * p1->db_time;
+  b_lon = p1->int_longitude - k_lon * p1->db_time;
 
   /* Кладем p2 на определенную выше прямую. */
   out_lat = k_lat * p2->db_time + b_lat;
   out_lon = k_lon * p2->db_time + b_lon;
 
-  p2->value1 = out_lat;
-  p2->value2 = out_lon;
-  p2->validity = TRUE;
+  p2->int_latitude = out_lat;
+  p2->int_longitude = out_lon;
+  p2->validity = HYSCAN_LOCATION_PROCESSED;
 
   return TRUE;
 }
@@ -379,7 +406,7 @@ hyscan_location_thresholder2 (GArray  *source,
                               gboolean is_writeable,
                               gdouble  quality)
 {
-  HyScanLocationGdouble2 *p1,
+  HyScanLocationInternalData *p1,
                          *p2,
                          *p3,
                          *p4;
@@ -403,19 +430,26 @@ hyscan_location_thresholder2 (GArray  *source,
           distance;
 
   if (*point2 != 0)
-    p1 = &g_array_index (source, HyScanLocationGdouble2, *point2 - 1);
+    p1 = &g_array_index (source, HyScanLocationInternalData, *point2 - 1);
   else
-    p1 = &g_array_index (source, HyScanLocationGdouble2, *point2);
+    p1 = &g_array_index (source, HyScanLocationInternalData, *point2);
 
-  p2 = &g_array_index (source, HyScanLocationGdouble2, *point2);
-  p3 = &g_array_index (source, HyScanLocationGdouble2, point3);
+  p2 = &g_array_index (source, HyScanLocationInternalData, *point2);
+  p3 = &g_array_index (source, HyScanLocationInternalData, point3);
+
+  /* Если точка принудительно установлена пользователем, то никуда двигать её не надо.*/
+  if (p3->validity == HYSCAN_LOCATION_USER_VALID)
+    {
+      p3->validity = HYSCAN_LOCATION_PROCESSED;
+      return TRUE;
+    }
 
   /* Ищем p4 такую, что изменение курса - минимально. */
   if (*point4 <= *point2)
     {
       /* 1 часть алгоритма: инициализация и вычисление курса на предыдущем отрезке. */
       /* Курс на предыдущем участке. */
-      prev_track = hyscan_location_track_calculator (p1->value1, p1->value2, p2->value1, p2->value2);
+      prev_track = hyscan_location_track_calculator (p1->int_latitude, p1->int_longitude, p2->int_latitude, p2->int_longitude);
 
       /* Инициализируем min_track_delta.
        * Если данных нет, но они будут в дальнейшем, выходим из функции,
@@ -427,9 +461,10 @@ hyscan_location_thresholder2 (GArray  *source,
           *point4 = last_index;
           goto out;
         }
+
       *point4 = *point2 + 1;
-      p4 = &g_array_index (source, HyScanLocationGdouble2, *point4);
-      min_track_delta = hyscan_location_track_calculator (p2->value1, p2->value2, p4->value1, p4->value2);
+      p4 = &g_array_index (source, HyScanLocationInternalData, *point4);
+      min_track_delta = hyscan_location_track_calculator (p2->int_latitude, p2->int_longitude, p4->int_latitude, p4->int_longitude);
       min_track_delta -=  prev_track;
       if (min_track_delta > 180.0)
         min_track_delta = 360.0 - min_track_delta;
@@ -443,24 +478,24 @@ hyscan_location_thresholder2 (GArray  *source,
           if (*point2 + i > last_index)
               break;
 
-          p4 = &g_array_index (source, HyScanLocationGdouble2, *point2 + i);
+          p4 = &g_array_index (source, HyScanLocationInternalData, *point2 + i);
 
           /* Проверяем, что точка лежит в пределах, установленных переменной threshold. */
-          dlat = p2->value1 * ONE_DEG_LENGTH - p4->value1 * ONE_DEG_LENGTH;
-          dlon = p2->value2 * ONE_DEG_LENGTH * cos(p2->value1 * G_PI/180.0) - p4->value2 * ONE_DEG_LENGTH * cos(p2->value1 * G_PI/180.0);
+          dlat = p2->int_latitude * ONE_DEG_LENGTH - p4->int_latitude * ONE_DEG_LENGTH;
+          dlon = p2->int_longitude * ONE_DEG_LENGTH * cos(p2->int_latitude * G_PI/180.0) - p4->int_longitude * ONE_DEG_LENGTH * cos(p2->int_latitude * G_PI/180.0);
           distance = sqrt (dlat * dlat + dlon * dlon);
 
           if (distance > threshold)
             break;
 
-          track = hyscan_location_track_calculator (p2->value1, p2->value2, p4->value1, p4->value2);
+          track = hyscan_location_track_calculator (p2->int_latitude, p2->int_longitude, p4->int_latitude, p4->int_longitude);
           track -= prev_track;
           if (track > 180.0)
             track = 360.0 - track;
           if (track < -180.0)
             track = 360.0 + track;
 
-          if (ABS(track) < ABS(min_track_delta))
+          if (fabs(track) < fabs(min_track_delta))
             {
               min_track_delta = track;
               *point4 = *point2 + i;
@@ -468,29 +503,30 @@ hyscan_location_thresholder2 (GArray  *source,
         }
     }
 
-out:
+ out:
   /* Если точки совпали, то обновляем p4 и выходим из функции, не меняя p3. */
   if (*point4 == point3)
     {
       *point2 = *point4;
+      p3->validity = HYSCAN_LOCATION_PROCESSED;
       return TRUE;
     }
 
-  p4 = &g_array_index (source, HyScanLocationGdouble2, *point4);
+  p4 = &g_array_index (source, HyScanLocationInternalData, *point4);
 
   /* Определяем параметры прямой, проходящей через точки p2 и p4. */
-  k_lat = (p4->value1 - p2->value1)/(p4->db_time - p2->db_time);
-  k_lon = (p4->value2 - p2->value2)/(p4->db_time - p2->db_time);
-  b_lat = p2->value1 - k_lat * p2->db_time;
-  b_lon = p2->value2 - k_lon * p2->db_time;
+  k_lat = (p4->int_latitude - p2->int_latitude)/(p4->db_time - p2->db_time);
+  k_lon = (p4->int_longitude - p2->int_longitude)/(p4->db_time - p2->db_time);
+  b_lat = p2->int_latitude - k_lat * p2->db_time;
+  b_lon = p2->int_longitude - k_lon * p2->db_time;
 
   /* Кладем p2 на определенную выше прямую. */
   out_lat = k_lat * p3->db_time + b_lat;
   out_lon = k_lon * p3->db_time + b_lon;
 
-  p3->value1 = out_lat;
-  p3->value2 = out_lon;
-  p3->validity = TRUE;
+  p3->int_latitude = out_lat;
+  p3->int_longitude = out_lon;
+  p3->validity = HYSCAN_LOCATION_PROCESSED;
 
   return TRUE;
 }
@@ -553,4 +589,184 @@ hyscan_location_track_calculator (gdouble lat1,
   if (track > 360.0)
     track -= 360.0;
   return track;
+}
+
+/* Вычисление скорости. */
+gdouble
+hyscan_location_speed_calculator (gdouble lat1,
+                                  gdouble lon1,
+                                  gdouble lat2,
+                                  gdouble lon2,
+                                  gdouble time)
+{
+  gdouble f2 = 0;
+  gdouble f1 = 0;
+  gdouble l2 = 0;
+  gdouble l1 = 0;
+  gdouble dlon = 0;
+  gdouble dlat = 0;
+
+  if (time == 0.0)
+    return 0.0;
+
+  f2 = lat2 * G_PI/ 180.0;
+  f1 = lat1 * G_PI/ 180.0;
+  l2 = lon2 * G_PI/ 180.0;
+  l1 = lon1 * G_PI/ 180.0;
+
+  dlon = (l2 - l1) * ONE_RAD_LENGTH * cos (f2);
+  dlat = (f2 - f1) * ONE_RAD_LENGTH;
+
+  return sqrt (pow(dlat, 2) + pow(dlon, 2)) / (ABS(time) / 1e6);
+}
+
+gboolean
+hyscan_location_find_data (GArray *cache,
+                           GArray *source_list,
+                           gint32  source,
+                           gint64  time,
+                           gint32 *lindex,
+                           gint32 *rindex,
+                           gint64 *ltime,
+                           gint64 *rtime)
+{
+  HyScanLocationInternalData *data;
+  HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
+  gint32 first_index = 0,
+         last_index = source_info->processing_index - 1,
+         mid_index = 0;
+
+  if (first_index == last_index || last_index < 0)
+    return FALSE;
+
+  mid_index = first_index;
+  data = &g_array_index (cache, HyScanLocationInternalData, mid_index);
+  if (data->data_time > time)
+    {
+      *lindex = G_MININT32;
+      *rindex = first_index;
+      return FALSE;
+    }
+
+  mid_index = last_index;
+  data = &g_array_index (cache, HyScanLocationInternalData, mid_index);
+  if (data->data_time < time)
+    {
+      *lindex = last_index;
+      *rindex = G_MAXINT32;
+      return FALSE;
+    }
+
+  while (TRUE)
+    {
+      /* Найдены точные данные. */
+      if (data->data_time == time)
+        {
+          *lindex = mid_index;
+          *rindex = mid_index;
+          *ltime = data->data_time;
+          *rtime = data->data_time;
+          return TRUE;
+        }
+
+      if (last_index - first_index == 1)
+        {
+          *lindex = first_index;
+          data = &g_array_index (cache, HyScanLocationInternalData, first_index);
+          *ltime = data->data_time;
+          *rindex = last_index;
+          data = &g_array_index (cache, HyScanLocationInternalData, last_index);
+          *rtime = data->data_time;
+          return TRUE;
+        }
+
+      /* Сужаем границы поиска. */
+      mid_index = first_index + (last_index - first_index) / 2;
+
+      data = &g_array_index (cache, HyScanLocationInternalData, mid_index);
+      if (data == NULL)
+        return FALSE;
+
+      /* Обновляем границы поиска. */
+      if (data->data_time <= time)
+          first_index = mid_index;
+
+      if (data->data_time > time)
+          last_index = mid_index;
+    }
+
+  return FALSE;
+}
+
+gboolean
+hyscan_location_find_time (GArray *cache,
+                           GArray *source_list,
+                           gint32  source,
+                           gint64  time,
+                           gint32 *lindex,
+                           gint32 *rindex
+                          // gint64 *ltime,
+                          // gint64 *rtime
+                           )
+{
+  HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
+  HyScanLocationInternalTime *data;
+
+  gint32 first_index = 0,
+         last_index = source_info->processing_index - 1,
+         mid_index = 0;
+
+  if (first_index == last_index || last_index < 0)
+    return FALSE;
+
+
+  data = &g_array_index (cache, HyScanLocationInternalTime, first_index);
+  if (data->db_time > time)
+    {
+      *lindex = G_MININT32;
+      *rindex = first_index;
+      return FALSE;
+    }
+
+  data = &g_array_index (cache, HyScanLocationInternalTime, last_index);
+  if (data->db_time < time)
+    {
+      *lindex = last_index;
+      *rindex = G_MAXINT32;
+      return FALSE;
+    }
+
+  while (TRUE)
+    {
+      /* Найдены точные данные. */
+      if (data->db_time == time)
+        {
+          *lindex = first_index;
+          *rindex = first_index;
+          return TRUE;
+        }
+
+      if (last_index - first_index == 1)
+        {
+          *lindex = first_index;
+          *rindex = last_index;
+          return TRUE;
+        }
+
+      /* Сужаем границы поиска. */
+      mid_index = first_index + (last_index - first_index) / 2;
+
+      data = &g_array_index (cache, HyScanLocationInternalTime, mid_index);
+      if (data == NULL)
+        return FALSE;
+
+      /* Обновляем границы поиска. */
+      if (data->db_time <= time)
+          first_index = mid_index;
+
+      if (data->db_time > time)
+          last_index = mid_index;
+    }
+
+  return FALSE;
 }

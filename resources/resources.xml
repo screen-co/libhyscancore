@@ -2,5 +2,6 @@
 <gresources>
   <gresource prefix="/org/hyscan/schemas">
     <file compressed="true">track-schema.xml</file>
+    <file compressed="true">location-schema.xml</file>
   </gresource>
 </gresources>

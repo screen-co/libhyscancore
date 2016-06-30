@@ -6,9 +6,11 @@ add_library (hyscancore SHARED
              hyscan-convolution.c
              hyscan-data-channel.c
              hyscan-data-channel-writer.c
+             hyscan-geo.c
              hyscan-location-tools-nmea.c
              hyscan-location-tools-sounder.c
              hyscan-location-tools-filters.c
+             hyscan-location-tools-assemblers.c
              hyscan-location-tools-overseer.c
              hyscan-location-tools-getters.c
              hyscan-location.c

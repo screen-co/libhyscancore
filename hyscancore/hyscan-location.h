@@ -10,16 +10,16 @@
  *
  * Класс HyScanLocation предназначен для определения координат, высоты, скорости, курса, крена, дифферента и глубины в требуемый момент времени.
  *
- * В галсе есть каналы данных: эхолоты, ГБО, GPS/GLONASS-приемники, САД.<BR>
+ * В каждом галсе есть каналы данных: эхолоты, ГБО, GPS/GLONASS-приемники, САД. <BR>
  * Каждый КД дает определенный список параметров, которые из него можно извлечь, например, из RMC-строк можно получить информацию
- * о дате, времени, координатах, курсе и скорости. Эти параметры определены в структуре #HyScanLocationParameters.
+ * о дате, времени, координатах, <BR>курсе и скорости. Эти параметры определены в структуре #HyScanLocationParameters.
  *
- * При работе с каналами данных и параметрами, класс оперирует понятием источник.
- * Источник - это некий номер, позволяющий однозначно сопоставить параметр обработки и канал данных.<BR>
+ * При работе с каналами данных и параметрами, класс оперирует понятием источник.<BR>
+ * Источник - это некий номер, позволяющий однозначно сопоставить параметр обработки и канал данных.
  * Класс хранит информацию об источниках в таблице HyScanLocationSourcesList. Это внутренняя таблица, повлиять на которую извне невозможно,
- * однако можно получить список источников для параметра навигационных данных с помощью функции #hyscan_location_source_list.
+ * однако можно получить <BR>список источников для параметра навигационных данных с помощью функции #hyscan_location_source_list.
  * Так же можно получить индекс активного источника для параметра обработки с помощью функции #hyscan_location_source_get.
- * Установка источника производится с помощью функции #hyscan_location_source_set.
+ * Установка источника производится <BR>с помощью функции #hyscan_location_source_set.
  *
  * Настройка работы алгоритмов заключается в установке параметра quality (либо при создании объекта, либо во время работы с помощью функции #hyscan_location_quality_set).
  * При меньшем значении этого параметра данные сглаживаются сильней. Возможный диапазон значений - от 0.0 до 1.0.
@@ -28,15 +28,22 @@
  * На первом этапе объект создается (с помощью функций #hyscan_location_new, #hyscan_location_new_with_cache,
  * #hyscan_location_new_with_cache_prefix)  считывается список КД в галсе, составляется список источников,
  * устанавливаются источники по умолчанию, инициализируются локальные кэши, запускается поток-надзиратель.
+ * Также при создании открывается группа параметров пользовательской обработки, которая определяется названием галса и префиксом.
  *
  * Работа потока-надзирателя - это второй этап работы класса.
- * Этот поток постоянно проверяет БД на предмет наличия новых данных, разбирает их и
- * складывает в локальные кэши (для каждого параметра свой кэш). При этом может производиться предобработка данных,
- * например, координаты сглаживаются кривыми Безье.
+ * Этот поток постоянно проверяет БД на предмет наличия новых данных, разбирает их и складывает
+ * в локальные кэши (для каждого параметра свой кэш). При этом может производиться предобработка данных,
+ * например, координаты сглаживаются кривыми Безье. Так же этот поток следит за пользовательскими параметрами обработки.
  *
- * Третий этап - это получение информации о местоположении судна. Для этого пользователем вызывается метод hyscan_location_get.
+ * Третий этап - это получение информации о местоположении судна. Для этого пользователем вызывается метод #hyscan_location_get.
  * В этом методе последовательно вызываются функции-getter'ы для каждого параметра,
  * который интересует пользователя. Getter'ы аппроксимируют данные (если требуется) и выдают их наверх.
+ *
+ * Объект поддерживает работу с т.н. пользовательскими параметрами обработки. Схемы данных этих параметров описаны в файле location-schema.xml.
+ * Название <I>группы параметров</I> должно быть либо передано на этапе создания объекта, либо установлено в "location.default.[track]",
+ * где [track] - название галса.
+ * Названия <I>объектов</I> должны начинаться с префикса, соответствующего идентификатору (location-edit-latlong, location-edit-track,
+ * location-edit-roll, location-edit-pitch, location-bulk-edit, location-remove, location-bulk-remove).
  *
  * Публично доступны следующие методы:
  * - #hyscan_location_new - создание объекта;
@@ -108,7 +115,7 @@ typedef enum
   HYSCAN_LOCATION_SOURCE_SAS
 } HyScanLocationSourceTypes;
 
-/** \brief Таблица источников данных, отдаваемая при вызове  #hyscan_location_sources_list */
+/** \brief Таблица источников данных, отдаваемая при вызове  #hyscan_location_source_list */
 typedef struct
 {
   gint                      index;                      /**< Индекс источника. */
@@ -145,7 +152,7 @@ typedef struct _HyScanLocationClass HyScanLocationClass;
 struct _HyScanLocation
 {
   GObject parent_instance;
-
+  
   HyScanLocationPrivate *priv;
 };
 
@@ -164,6 +171,7 @@ GType                   hyscan_location_get_type                (void);
  * \param db - указатель на базу данных;
  * \param project - название проекта;
  * \param track - название галса;
+ * \param param_prefix - префикс группы параметров;
  * \param quality - качество данных.
  *
  * \return location указатель на объект обработки навигационных данных.
@@ -173,6 +181,7 @@ HYSCAN_CORE_EXPORT
 HyScanLocation         *hyscan_location_new                     (HyScanDB       *db,
                                                                  gchar          *project,
                                                                  gchar          *track,
+                                                                 gchar          *param_prefix,
                                                                  gdouble         quality);
 
 /**
@@ -184,6 +193,7 @@ HyScanLocation         *hyscan_location_new                     (HyScanDB       
  * \param cache - указатель на объект системы кэширования;
  * \param project - название проекта;
  * \param track - название галса;
+ * \param param_prefix - префикс группы параметров;
  * \param quality - качество данных.
  *
  * \return location указатель на объект обработки навигационных данных.
@@ -194,6 +204,7 @@ HyScanLocation         *hyscan_location_new_with_cache          (HyScanDB       
                                                                  HyScanCache    *cache,
                                                                  gchar          *project,
                                                                  gchar          *track,
+                                                                 gchar          *param_prefix,
                                                                  gdouble         quality);
 
 /**
@@ -206,6 +217,7 @@ HyScanLocation         *hyscan_location_new_with_cache          (HyScanDB       
  * \param cache_prefix - префикс для системы кэширования;
  * \param project - название проекта;
  * \param track - название галса;
+ * \param param_prefix - префикс группы параметров;
  * \param quality - качество данных.
  *
  * \return location указатель на объект обработки навигационных данных.
@@ -217,6 +229,7 @@ HyScanLocation         *hyscan_location_new_with_cache_prefix   (HyScanDB       
                                                                  gchar          *cache_prefix,
                                                                  gchar          *project,
                                                                  gchar          *track,
+                                                                 gchar          *param_prefix,
                                                                  gdouble         quality);
 
 /**
@@ -229,8 +242,8 @@ HyScanLocation         *hyscan_location_new_with_cache_prefix   (HyScanDB       
  */
 
 HYSCAN_CORE_EXPORT
-void                    hyscan_location_overseer_period_set    (HyScanLocation  *location,
-                                                                gint32           overseer_period);
+void                    hyscan_location_overseer_period_set     (HyScanLocation  *location,
+                                                                 gint32           overseer_period);
 
 /**
  *
@@ -242,8 +255,8 @@ void                    hyscan_location_overseer_period_set    (HyScanLocation  
  */
 
 HYSCAN_CORE_EXPORT
-void                    hyscan_location_quality_set            (HyScanLocation  *location,
-                                                                gdouble          quality);
+void                    hyscan_location_quality_set             (HyScanLocation  *location,
+                                                                 gdouble          quality);
 /**
  *
  * Функция возвращает нуль-терминированный список источников для заданного параметра.
@@ -259,7 +272,7 @@ void                    hyscan_location_quality_set            (HyScanLocation  
  *
  */
 HYSCAN_CORE_EXPORT
-HyScanLocationSources  **hyscan_location_source_list            (HyScanLocation *location,
+HyScanLocationSources **hyscan_location_source_list             (HyScanLocation *location,
                                                                  gint            parameter);
 
 /**
@@ -274,7 +287,7 @@ HyScanLocationSources  **hyscan_location_source_list            (HyScanLocation 
  */
 
 HYSCAN_CORE_EXPORT
-void                     hyscan_location_source_list_free        (HyScanLocationSources ***data);
+void                    hyscan_location_source_list_free        (HyScanLocationSources ***data);
 
 /**
  *
@@ -363,7 +376,8 @@ HyScanLocationData      hyscan_location_get                     (HyScanLocation 
 /**
  *
  * Функция возвращает номер изменения в объекте.
- * Номер изменения увеличивается, например, при изменении параметров обработки.
+ * Номер изменения увеличивается в следующих случаях: установка нового источника данных,
+ * установка таблицы скорости звука, установка нового значения quality, изменения в группе пользовательских параметров.
  *
  * Программа не должна полагаться на значение номера изменения, важен только факт смены номера по
  * сравнению с предыдущим запросом.
@@ -374,7 +388,7 @@ HyScanLocationData      hyscan_location_get                     (HyScanLocation 
  *
  */
 HYSCAN_CORE_EXPORT
-gint32                  hyscan_location_get_mod_count           (HyScanLocation *location);
+gint64                  hyscan_location_get_mod_count           (HyScanLocation *location);
 HYSCAN_CORE_EXPORT
 gint                    hyscan_location_get_progress            (HyScanLocation *location);
 

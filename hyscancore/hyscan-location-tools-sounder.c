@@ -1,12 +1,18 @@
-#define DEPTH_MAXPEAKS 10
+/*
+ * Файл содержит следующие группы функций:
+ *
+ * Функции для работы с сырыми данными (акустические строки).
+ *
+ */
+
 #include <hyscan-location-tools.h>
 
-HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
+HyScanLocationInternalData  hyscan_location_echosounder_depth_get   (gfloat *input,
                                                                  gint    input_size,
                                                                  gfloat  discretization_frequency,
                                                                  GArray *input_soundspeed)
 {
-  HyScanLocationGdouble1 output = {0};
+  HyScanLocationInternalData output = {0};
   int i = 0,
       j = 0,
       k = 0;
@@ -152,17 +158,17 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
   g_free (data_buffer0);
   g_free (data_buffer1);
 
-  output.value = depthvalue;
-  output.validity = TRUE;
+  output.int_value = depthvalue;
+  output.validity = HYSCAN_LOCATION_PARSED;
   return output;
 }
 
-HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
+HyScanLocationInternalData  hyscan_location_sonar_depth_get         (gfloat *input,
                                                                  gint    input_size,
                                                                  gfloat  discretization_frequency,
                                                                  GArray *input_soundspeed)
 {
-  HyScanLocationGdouble1 output = {0};
+  HyScanLocationInternalData output = {0};
   int i = 0,
       j = 0,
       k = 0;
@@ -317,7 +323,7 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
   g_free (data_buffer0);
   g_free (data_buffer1);
 
-  output.value = depthvalue;
-  output.validity = TRUE;
+  output.int_value = depthvalue;
+  output.validity = HYSCAN_LOCATION_PARSED;
   return output;
 }
