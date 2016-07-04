@@ -10,7 +10,6 @@
 HyScanLocationInternalTime
 hyscan_location_assembler_datetime (HyScanDB *db,
                                     GArray   *source_list,
-                                    GArray   *cache,
                                     gint32    source,
                                     gint64    index)
 {
@@ -22,7 +21,7 @@ hyscan_location_assembler_datetime (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   datetime = hyscan_location_nmea_datetime_get (buffer);
@@ -40,7 +39,6 @@ HyScanLocationInternalData
 hyscan_location_assembler_latlong (HyScanDB *db,
                                    GArray   *source_list,
                                    GArray   *params,
-                                   GArray   *cache,
                                    gint32    source,
                                    gint64    index)
 {
@@ -56,7 +54,7 @@ hyscan_location_assembler_latlong (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   latlong = hyscan_location_nmea_latlong_get (buffer);
@@ -76,7 +74,6 @@ hyscan_location_assembler_latlong (HyScanDB *db,
               latlong.validity = HYSCAN_LOCATION_USER_VALID;
               break;
 
-            case HYSCAN_LOCATION_REMOVE:
             case HYSCAN_LOCATION_BULK_REMOVE :
               //if (db_time == param_info->ltime || db_time == param_info->rtime)
               //  latlong.validity = HYSCAN_LOCATION_USER_VALID;
@@ -102,7 +99,6 @@ hyscan_location_assembler_latlong (HyScanDB *db,
 HyScanLocationInternalData
 hyscan_location_assembler_altitude (HyScanDB *db,
                                     GArray   *source_list,
-                                    GArray   *cache,
                                     gint32    source,
                                     gint64    index)
 {
@@ -114,7 +110,7 @@ hyscan_location_assembler_altitude (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   altitude = hyscan_location_nmea_altitude_get (buffer);
@@ -132,7 +128,6 @@ HyScanLocationInternalData
 hyscan_location_assembler_track (HyScanDB *db,
                                  GArray   *source_list,
                                  GArray   *params,
-                                 GArray   *cache,
                                  gint32    source,
                                  gint64    index)
 {
@@ -147,7 +142,7 @@ hyscan_location_assembler_track (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   /* Достаем либо значение. В track будут храниться как координаты, так и курс (из строки) */
@@ -168,12 +163,6 @@ hyscan_location_assembler_track (HyScanDB *db,
               track.validity = HYSCAN_LOCATION_USER_VALID;
               break;
 
-            case HYSCAN_LOCATION_EDIT_TRACK:
-              track.int_value = param_info->value1;
-              track.validity = HYSCAN_LOCATION_USER_VALID;
-              break;
-
-            case HYSCAN_LOCATION_REMOVE:
             case HYSCAN_LOCATION_BULK_REMOVE :
               track.validity = HYSCAN_LOCATION_INVALID;
               break;
@@ -196,7 +185,6 @@ HyScanLocationInternalData
 hyscan_location_assembler_roll (HyScanDB *db,
                                 GArray   *source_list,
                                 GArray   *params,
-                                GArray   *cache,
                                 gint32    source,
                                 gint64    index)
 {
@@ -208,7 +196,7 @@ hyscan_location_assembler_roll (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   roll = hyscan_location_nmea_roll_get (buffer);
@@ -227,7 +215,6 @@ HyScanLocationInternalData
 hyscan_location_assembler_pitch (HyScanDB *db,
                                  GArray   *source_list,
                                  GArray   *params,
-                                 GArray   *cache,
                                  gint32    source,
                                  gint64    index)
 {
@@ -239,7 +226,7 @@ hyscan_location_assembler_pitch (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   pitch = hyscan_location_nmea_pitch_get (buffer);
@@ -258,7 +245,6 @@ HyScanLocationInternalData
 hyscan_location_assembler_speed (HyScanDB *db,
                                  GArray   *source_list,
                                  GArray   *params,
-                                 GArray   *cache,
                                  gint32    source,
                                  gint64    index)
 {
@@ -274,7 +260,7 @@ hyscan_location_assembler_speed (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-  buffer = g_malloc0(buffer_size * sizeof(gchar));
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
   hyscan_db_channel_get_data (db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
 
   speed = hyscan_location_nmea_speed_get (buffer);
@@ -295,7 +281,6 @@ hyscan_location_assembler_speed (HyScanDB *db,
               speed.validity = HYSCAN_LOCATION_USER_VALID;
               break;
 
-            case HYSCAN_LOCATION_REMOVE:
             case HYSCAN_LOCATION_BULK_REMOVE :
               speed.validity = HYSCAN_LOCATION_INVALID;
               break;
@@ -317,7 +302,6 @@ hyscan_location_assembler_speed (HyScanDB *db,
 HyScanLocationInternalData
 hyscan_location_assembler_depth (HyScanDB *db,
                                  GArray   *source_list,
-                                 GArray   *cache,
                                  gint32    source,
                                  GArray   *soundspeed,
                                  gint64    index)
@@ -334,14 +318,14 @@ hyscan_location_assembler_depth (HyScanDB *db,
     {
     case HYSCAN_LOCATION_SOURCE_NMEA:
       hyscan_db_channel_get_data (db, source_info->channel_id, index, NULL, &buffer_size, NULL);
-      char_buffer = g_malloc0(buffer_size * sizeof(gchar));
+      char_buffer = g_malloc0 (buffer_size * sizeof(gchar));
       hyscan_db_channel_get_data (db, source_info->channel_id, index, char_buffer, &buffer_size, &db_time);
       depth = hyscan_location_nmea_depth_get (char_buffer);
       break;
 
     case HYSCAN_LOCATION_SOURCE_ECHOSOUNDER:
-      buffer_size = hyscan_data_channel_get_values_count(source_info->dchannel, index);
-      float_buffer = g_malloc0(buffer_size * sizeof(gfloat));
+      buffer_size = hyscan_data_channel_get_values_count (source_info->dchannel, index);
+      float_buffer = g_malloc0 (buffer_size * sizeof(gfloat));
       hyscan_data_channel_get_amplitude_values (source_info->dchannel, index, float_buffer, &buffer_size, &db_time);
       depth = hyscan_location_echosounder_depth_get (float_buffer, buffer_size, source_info->discretization_frequency, soundspeed);
       break;
@@ -350,8 +334,8 @@ hyscan_location_assembler_depth (HyScanDB *db,
     case HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
-      buffer_size = hyscan_data_channel_get_values_count(source_info->dchannel, index);
-      float_buffer = g_malloc0(buffer_size * sizeof(gfloat));
+      buffer_size = hyscan_data_channel_get_values_count (source_info->dchannel, index);
+      float_buffer = g_malloc0 (buffer_size * sizeof(gfloat));
       hyscan_data_channel_get_amplitude_values (source_info->dchannel, index, float_buffer, &buffer_size, &db_time);
       depth = hyscan_location_sonar_depth_get (float_buffer, buffer_size, source_info->discretization_frequency, soundspeed);
       break;
@@ -365,6 +349,7 @@ hyscan_location_assembler_depth (HyScanDB *db,
   depth.data_time = db_time;
 
   g_free (char_buffer);
+  g_free (float_buffer);
 
   return depth;
 }

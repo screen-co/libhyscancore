@@ -7,15 +7,16 @@
 
 #include <hyscan-location-tools.h>
 
-HyScanLocationInternalData  hyscan_location_echosounder_depth_get   (gfloat *input,
-                                                                 gint    input_size,
-                                                                 gfloat  discretization_frequency,
-                                                                 GArray *input_soundspeed)
+HyScanLocationInternalData
+hyscan_location_echosounder_depth_get (gfloat *input,
+                                       gint    input_size,
+                                       gfloat  discretization_frequency,
+                                       GArray *input_soundspeed)
 {
   HyScanLocationInternalData output = {0};
-  int i = 0,
-      j = 0,
-      k = 0;
+  gint i = 0;
+  gint j = 0;
+  gint k = 0;
   gfloat average_value = 0;             /* Потребуется для усреднения. */
   gfloat stdev = 0;                     /* Среднеквадратичное отклонение. */
   gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* Координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы. */
@@ -163,15 +164,16 @@ HyScanLocationInternalData  hyscan_location_echosounder_depth_get   (gfloat *inp
   return output;
 }
 
-HyScanLocationInternalData  hyscan_location_sonar_depth_get         (gfloat *input,
-                                                                 gint    input_size,
-                                                                 gfloat  discretization_frequency,
-                                                                 GArray *input_soundspeed)
+HyScanLocationInternalData
+hyscan_location_sonar_depth_get (gfloat *input,
+                                 gint    input_size,
+                                 gfloat  discretization_frequency,
+                                 GArray *input_soundspeed)
 {
   HyScanLocationInternalData output = {0};
-  int i = 0,
-      j = 0,
-      k = 0;
+  gint i = 0;
+  gint j = 0;
+  gint k = 0;
   gfloat average_value = 0;             /* Потребуется для усреднения. */
   gfloat stdev = 0;                     /* Среднеквадратичное отклонение. */
   gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* Координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы. */

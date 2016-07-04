@@ -14,7 +14,6 @@ add_library (hyscancore SHARED
              hyscan-location-tools-overseer.c
              hyscan-location-tools-getters.c
              hyscan-location.c
-             ${CMAKE_BINARY_DIR}/resources/hyscan-location-test-resources.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
              )
 

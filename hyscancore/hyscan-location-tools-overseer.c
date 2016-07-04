@@ -11,19 +11,20 @@
 
 /* Функция слежения за датой и временем. */
 void
-hyscan_location_overseer_datetime (HyScanDB *db,
-                                   GArray   *source_list,
-                                   GArray   *cache,
-                                   gint32    source,
-                                   gdouble   quality)
+hyscan_location_overseer_datetime (HyScanDB                    *db,
+                                   GArray                      *source_list,
+                                   HyScanLocationLocalCaches   *caches,
+                                   HyScanLocationSourceIndices *indices,
+                                   gdouble                      quality)
 {
   gboolean status;
+  gint32 source = indices->datetime_source;
+
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
   gint i;
-  HyScanLocationInternalTime  datetime,
-                             *datetime_p;
-  gint32 data_range_first = 0,
-  data_range_last = 0;
+  HyScanLocationInternalTime  datetime, *datetime_p;
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
   gint64 time_shift;
 
   gint32 channel_id = source_info->channel_id;
@@ -33,6 +34,7 @@ hyscan_location_overseer_datetime (HyScanDB *db,
   gint32 *assembler_index = &(source_info->assembler_index);
   gint32 *processing_index = &(source_info->processing_index);
 
+  GArray *cache = caches->datetime_cache;
   if (source != -1)
     {
       /* 1. Смотрим, сколько у нас есть данных в канале. */
@@ -58,7 +60,7 @@ hyscan_location_overseer_datetime (HyScanDB *db,
           while (*db_index <= data_range_last)
             {
               /* Разбираем соответствующую строку данных. */
-              datetime = hyscan_location_assembler_datetime (db, source_list, cache, source, *db_index);
+              datetime = hyscan_location_assembler_datetime (db, source_list, source, *db_index);
 
               /* Если строка валидна, кладем её в кэш. */
               if (datetime.validity == HYSCAN_LOCATION_ASSEMBLED);
@@ -100,28 +102,30 @@ hyscan_location_overseer_datetime (HyScanDB *db,
 
 /* Функция слежения за широтой и долготой. */
 void
-hyscan_location_overseer_latlong (HyScanDB *db,
-                                  GArray   *source_list,
-                                  GArray   *params,
-                                  GArray   *cache,
-                                  gint32    source,
-                                  GArray   *datetime_cache,
-                                  gint32    datetime_source,
-                                  gdouble   quality)
+hyscan_location_overseer_latlong (HyScanDB                    *db,
+                                  GArray                      *source_list,
+                                  GArray                      *params,
+                                  HyScanLocationLocalCaches   *caches,
+                                  HyScanLocationSourceIndices *indices,
+                                  gdouble                      quality)
 {
   gboolean status;
 
-  gint32 data_range_first = 0,
-         data_range_last = 0;
+  gint32 source = indices->latlong_source;
+  gint32 datetime_source = indices->datetime_source;
+  GArray *cache = caches->latlong_cache;
+  GArray *datetime_cache = caches->datetime_cache;
+
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
   gint i;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   HyScanLocationUserParameters param_info;
-  GArray *params_temp;
+  GArray *params_temp = NULL;
 
-  HyScanLocationInternalData  latlong,
-                             *latlong_p;
+  HyScanLocationInternalData  latlong, *latlong_p;
 
   gint32 channel_id = source_info->channel_id;
   gint32 *shift = &(source_info->shift);
@@ -159,12 +163,8 @@ hyscan_location_overseer_latlong (HyScanDB *db,
       for (i = 0; i < params->len; i++)
         {
           param_info = g_array_index (params, HyScanLocationUserParameters, i);
-          if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG ||
-              param_info.type == HYSCAN_LOCATION_REMOVE ||
-              param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
-            {
-              g_array_append_val (params_temp, param_info);
-            }
+          if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG || param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
+            g_array_append_val (params_temp, param_info);
         }
 
       /* 4. Собираем данные, кладем в локальный кэш. */
@@ -178,7 +178,7 @@ hyscan_location_overseer_latlong (HyScanDB *db,
           while (*db_index <= data_range_last)
             {
               /* Разбираем соответствующую строку данных. */
-              latlong = hyscan_location_assembler_latlong (db, source_list, params_temp, cache, source, *db_index);
+              latlong = hyscan_location_assembler_latlong (db, source_list, params_temp, source, *db_index);
 
               /* Если строка валидна, кладем её в кэш. */
               if (latlong.validity == HYSCAN_LOCATION_ASSEMBLED ||
@@ -201,10 +201,6 @@ hyscan_location_overseer_latlong (HyScanDB *db,
           /* На первых двух точках Безье не строится, только временной сдвиг. */
           if (*preprocessing_index >= 2)
             {
-	      if (*preprocessing_index == 445)
-	      {
-		*preprocessing_index += 0;
-	      }
               hyscan_location_4_point_2d_bezier  (cache,
                                                   *preprocessing_index-2,
                                                   *preprocessing_index-1,
@@ -224,38 +220,43 @@ hyscan_location_overseer_latlong (HyScanDB *db,
       /* 6. Второй этап обработки - нарезка трэка на прямолинейные участки. */
       while (*processing_index < *preprocessing_index)
         {
-          thresholder_status = TRUE;/* hyscan_location_thresholder2 (cache,
+          thresholder_status =  hyscan_location_thresholder2 (cache,
                                                               thresholder_prev_index,
                                                               *processing_index,
                                                               thresholder_next_index,
                                                               *preprocessing_index - 1,
                                                               is_writeable,
-                                                              quality);*/
+                                                              quality);
           if (!thresholder_status)
             break;
           (*processing_index)++;
 
         }
     }
+  if (params_temp != NULL)
+    g_array_free (params_temp, TRUE);
 }
 /* Функция слежения за высотой. */
 void
-hyscan_location_overseer_altitude (HyScanDB *db,
-                                   GArray   *source_list,
-                                   GArray   *cache,
-                                   gint32    source,
-                                   GArray   *datetime_cache,
-                                   gint32    datetime_source,
-                                   gdouble   quality)
+hyscan_location_overseer_altitude (HyScanDB                    *db,
+                                   GArray                      *source_list,
+                                   HyScanLocationLocalCaches   *caches,
+                                   HyScanLocationSourceIndices *indices,
+                                   gdouble                      quality)
 {
   gboolean status;
+
+  gint32 source = indices->altitude_source;
+  gint32 datetime_source = indices->datetime_source;
+  GArray *cache = caches->altitude_cache;
+  GArray *datetime_cache = caches->datetime_cache;
+
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  gint32 data_range_first = 0,
-  data_range_last = 0;
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
 
-  HyScanLocationInternalData  altitude,
-                             *altitude_p;
+  HyScanLocationInternalData  altitude, *altitude_p;
 
   gint32 channel_id = source_info->channel_id;
 
@@ -289,7 +290,7 @@ hyscan_location_overseer_altitude (HyScanDB *db,
           while (*db_index <= data_range_last)
             {
               /* Разбираем соответствующую строку данных. */
-              altitude = hyscan_location_assembler_altitude (db, source_list, cache, source, *db_index);
+              altitude = hyscan_location_assembler_altitude (db, source_list, source, *db_index);
 
               /* Если строка валидна, кладем её в кэш. */
               if (altitude.validity == HYSCAN_LOCATION_ASSEMBLED)
@@ -316,28 +317,30 @@ hyscan_location_overseer_altitude (HyScanDB *db,
 
 /* Функция слежения за курсом. */
 void
-hyscan_location_overseer_track (HyScanDB *db,
-                                GArray   *source_list,
-                                GArray   *params,
-                                GArray   *cache,
-                                gint32    source,
-                                GArray   *datetime_cache,
-                                gint32    datetime_source,
-                                gdouble   quality)
+hyscan_location_overseer_track (HyScanDB                    *db,
+                                GArray                      *source_list,
+                                GArray                      *params,
+                                HyScanLocationLocalCaches   *caches,
+                                HyScanLocationSourceIndices *indices,
+                                gdouble                      quality)
 {
   gboolean status;
 
-  HyScanLocationInternalData  track,
-                             *track_p;
+  gint32 source = indices->track_source;
+  gint32 datetime_source = indices->datetime_source;
+  GArray *cache = caches->track_cache;
+  GArray *datetime_cache = caches->datetime_cache;
 
-  gint32 data_range_first = 0,
-         data_range_last = 0;
+  HyScanLocationInternalData  track, *track_p;
+
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
   gint i;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   HyScanLocationUserParameters param_info;
-  GArray *params_temp;
+  GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
   gint32 *shift = &(source_info->shift);
@@ -374,14 +377,8 @@ hyscan_location_overseer_track (HyScanDB *db,
       for (i = 0; i < params->len; i++)
         {
           param_info = g_array_index (params, HyScanLocationUserParameters, i);
-          if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG ||
-              param_info.type == HYSCAN_LOCATION_EDIT_TRACK ||
-              param_info.type == HYSCAN_LOCATION_REMOVE ||
-              param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
-            {
-              g_array_append_val (params_temp, param_info);
-            }
-
+          if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG || param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
+            g_array_append_val (params_temp, param_info);
         }
 
       /* 3. Собираем данные, кладем в локальный кэш. */
@@ -394,7 +391,7 @@ hyscan_location_overseer_track (HyScanDB *db,
           /* Сборка данных. */
           while (*db_index <= data_range_last)
             {
-              track = hyscan_location_assembler_track (db, source_list, params_temp, cache, source, *db_index);
+              track = hyscan_location_assembler_track (db, source_list, params_temp, source, *db_index);
               if (track.validity == HYSCAN_LOCATION_ASSEMBLED)
                 {
                   track_p = &g_array_index (cache, HyScanLocationInternalData, *assembler_index);
@@ -460,32 +457,38 @@ hyscan_location_overseer_track (HyScanDB *db,
             }
         }
     }
+
+  if (params_temp != NULL)
+    g_array_free (params_temp, TRUE);
 }
 
 /* Функция слежения за креном. */
 void
-hyscan_location_overseer_roll (HyScanDB *db,
-                               GArray   *source_list,
-                               GArray   *params,
-                               GArray   *cache,
-                               gint32    source,
-                               GArray   *datetime_cache,
-                               gint32    datetime_source,
-                               gdouble   quality)
+hyscan_location_overseer_roll (HyScanDB                    *db,
+                               GArray                      *source_list,
+                               GArray                      *params,
+                               HyScanLocationLocalCaches   *caches,
+                               HyScanLocationSourceIndices *indices,
+                               gdouble                      quality)
 {
   gboolean status;
+
+  gint32 source = indices->roll_source;
+  gint32 datetime_source = indices->datetime_source;
+  GArray *cache = caches->roll_cache;
+  GArray *datetime_cache = caches->datetime_cache;
+
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
 
-  gint32 data_range_first = 0,
-         data_range_last = 0;
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
   gint i;
 
-  HyScanLocationInternalData *roll_p,
-                              roll;
+  HyScanLocationInternalData *roll_p, roll;
 
   HyScanLocationUserParameters param_info;
-  GArray *params_temp;
+  GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
   gint32 *shift = &(source_info->shift);
@@ -513,21 +516,12 @@ hyscan_location_overseer_roll (HyScanDB *db,
           if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA)
             {
               param_info = g_array_index (params, HyScanLocationUserParameters, i);
-              if (param_info.type == HYSCAN_LOCATION_EDIT_TRACK ||
-                  param_info.type == HYSCAN_LOCATION_BULK_EDIT)
-                {
-                  g_array_append_val (params_temp, param_info);
-                }
             }
           if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
             {
               param_info = g_array_index (params, HyScanLocationUserParameters, i);
-              if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG ||
-                  param_info.type == HYSCAN_LOCATION_REMOVE ||
-                  param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
-                {
-                  g_array_append_val (params_temp, param_info);
-                }
+              if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG || param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
+                g_array_append_val (params_temp, param_info);
             }
         }
       /* 3. Собираем данные, кладем в локальный кэш. */
@@ -539,7 +533,7 @@ hyscan_location_overseer_roll (HyScanDB *db,
           /* Сборка данных. */
           while (*db_index <= data_range_last)
             {
-              roll = hyscan_location_assembler_roll (db, source_list, params_temp, cache, source, *db_index);
+              roll = hyscan_location_assembler_roll (db, source_list, params_temp, source, *db_index);
               if (roll.validity == HYSCAN_LOCATION_ASSEMBLED)
                 {
                   roll_p = &g_array_index (cache, HyScanLocationInternalData, *assembler_index);
@@ -558,31 +552,37 @@ hyscan_location_overseer_roll (HyScanDB *db,
           (*processing_index)++;
         }
     }
+
+  if (params_temp != NULL)
+    g_array_free (params_temp, TRUE);
 }
 
 /* Функция слежения за дифферентом. */
 void
-hyscan_location_overseer_pitch (HyScanDB *db,
-                                GArray   *source_list,
-                                GArray   *params,
-                                GArray   *cache,
-                                gint32    source,
-                                GArray   *datetime_cache,
-                                gint32    datetime_source,
-                                gdouble   quality)
+hyscan_location_overseer_pitch (HyScanDB                    *db,
+                                GArray                      *source_list,
+                                GArray                      *params,
+                                HyScanLocationLocalCaches   *caches,
+                                HyScanLocationSourceIndices *indices,
+                                gdouble                      quality)
 {
   gboolean status;
+
+  gint32 source = indices->pitch_source;
+  gint32 datetime_source = indices->datetime_source;
+  GArray *cache = caches->pitch_cache;
+  GArray *datetime_cache = caches->datetime_cache;
+
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  gint32 data_range_first = 0,
-         data_range_last = 0;
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
   gint i;
 
-  HyScanLocationInternalData *pitch_p,
-                              pitch;
+  HyScanLocationInternalData *pitch_p, pitch;
 
   HyScanLocationUserParameters param_info;
-  GArray *params_temp;
+  GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
   gint32 *shift = &(source_info->shift);
@@ -611,21 +611,12 @@ hyscan_location_overseer_pitch (HyScanDB *db,
           if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA)
             {
               param_info = g_array_index (params, HyScanLocationUserParameters, i);
-              if (param_info.type == HYSCAN_LOCATION_EDIT_TRACK ||
-                  param_info.type == HYSCAN_LOCATION_BULK_EDIT)
-                {
-                  g_array_append_val (params_temp, param_info);
-                }
             }
           if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
             {
               param_info = g_array_index (params, HyScanLocationUserParameters, i);
-              if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG ||
-                  param_info.type == HYSCAN_LOCATION_REMOVE ||
-                  param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
-                {
-                  g_array_append_val (params_temp, param_info);
-                }
+              if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG || param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
+                g_array_append_val (params_temp, param_info);
             }
         }
       /* 3. Собираем данные, кладем в локальный кэш. */
@@ -638,7 +629,7 @@ hyscan_location_overseer_pitch (HyScanDB *db,
           /* Сборка данных. */
           while (*db_index <= data_range_last)
             {
-              pitch = hyscan_location_assembler_pitch (db, source_list, params_temp, cache, source, *assembler_index);
+              pitch = hyscan_location_assembler_pitch (db, source_list, params_temp, source, *assembler_index);
               if (pitch.validity == HYSCAN_LOCATION_ASSEMBLED)
                 {
                   pitch_p = &g_array_index (cache, HyScanLocationInternalData, *assembler_index);
@@ -657,32 +648,37 @@ hyscan_location_overseer_pitch (HyScanDB *db,
           (*processing_index)++;
         }
     }
+
+  if (params_temp != NULL)
+    g_array_free (params_temp, TRUE);
 }
 
 /* Функция слежения за скоростью. */
 void
-hyscan_location_overseer_speed (HyScanDB *db,
-                                GArray   *source_list,
-                                GArray   *params,
-                                GArray   *cache,
-                                gint32    source,
-                                GArray   *datetime_cache,
-                                gint32    datetime_source,
-                                gdouble   quality)
+hyscan_location_overseer_speed (HyScanDB                    *db,
+                                GArray                      *source_list,
+                                GArray                      *params,
+                                HyScanLocationLocalCaches   *caches,
+                                HyScanLocationSourceIndices *indices,
+                                gdouble                      quality)
 {
   gboolean status;
 
-  gint32 data_range_first = 0,
-         data_range_last = 0;
+  gint32 source = indices->speed_source;
+  gint32 datetime_source = indices->datetime_source;
+  GArray *cache = caches->speed_cache;
+  GArray *datetime_cache = caches->datetime_cache;
+
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
   gint i;
 
-  HyScanLocationInternalData *speed_p,
-                              speed;
+  HyScanLocationInternalData *speed_p, speed;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   HyScanLocationUserParameters param_info;
-  GArray *params_temp;
+  GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
   gint32 *shift = &(source_info->shift);
@@ -721,21 +717,12 @@ hyscan_location_overseer_speed (HyScanDB *db,
           if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA)
             {
               param_info = g_array_index (params, HyScanLocationUserParameters, i);
-              if (param_info.type == HYSCAN_LOCATION_EDIT_TRACK ||
-                  param_info.type == HYSCAN_LOCATION_BULK_EDIT)
-                {
-                  g_array_append_val (params_temp, param_info);
-                }
             }
           if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
             {
               param_info = g_array_index (params, HyScanLocationUserParameters, i);
-              if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG ||
-                  param_info.type == HYSCAN_LOCATION_REMOVE ||
-                  param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
-                {
-                  g_array_append_val (params_temp, param_info);
-                }
+              if (param_info.type == HYSCAN_LOCATION_EDIT_LATLONG || param_info.type == HYSCAN_LOCATION_BULK_REMOVE)
+                g_array_append_val (params_temp, param_info);
             }
         }
       /* 3. Собираем данные, кладем в локальный кэш. */
@@ -748,7 +735,7 @@ hyscan_location_overseer_speed (HyScanDB *db,
           /* Сборка данных. */
           while (*db_index <= data_range_last)
             {
-              speed = hyscan_location_assembler_speed (db, source_list, params_temp, cache, source, *assembler_index);
+              speed = hyscan_location_assembler_speed (db, source_list, params_temp, source, *assembler_index);
               if (speed.validity == HYSCAN_LOCATION_ASSEMBLED)
                 {
                   speed_p = &g_array_index (cache, HyScanLocationInternalData, *assembler_index);
@@ -812,25 +799,31 @@ hyscan_location_overseer_speed (HyScanDB *db,
             }
         }
     }
+
+  if (params_temp != NULL)
+    g_array_free (params_temp, TRUE);
 }
 
 /* Функция слежения за глубиной. */
 void
-hyscan_location_overseer_depth (HyScanDB *db,
-                                GArray   *source_list,
-                                GArray   *cache,
-                                gint32    source,
-                                GArray   *soundspeed,
-                                gdouble   quality)
+hyscan_location_overseer_depth (HyScanDB                    *db,
+                                GArray                      *source_list,
+                                HyScanLocationLocalCaches   *caches,
+                                HyScanLocationSourceIndices *indices,
+                                GArray                      *soundspeed,
+                                gdouble                      quality)
 {
   gboolean status;
+
+  gint32 source = indices->depth_source;
+  GArray *cache = caches->depth_cache;
+
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  gint32 data_range_first = 0,
-  data_range_last = 0;
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
 
-  HyScanLocationInternalData *depth_p,
-                              depth;
+  HyScanLocationInternalData *depth_p, depth;
 
   gint32 channel_id = source_info->channel_id;
 
@@ -879,7 +872,7 @@ hyscan_location_overseer_depth (HyScanDB *db,
           /* Сборка данных. */
           while (*db_index <= data_range_last)
             {
-              depth = hyscan_location_assembler_depth (db, source_list, cache, source, soundspeed, *db_index);
+              depth = hyscan_location_assembler_depth (db, source_list, source, soundspeed, *db_index);
               if (depth.validity == HYSCAN_LOCATION_ASSEMBLED)
                 {
                   depth_p = &g_array_index (cache, HyScanLocationInternalData, *assembler_index);

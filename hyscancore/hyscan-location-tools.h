@@ -100,81 +100,113 @@ G_BEGIN_DECLS;
 #define HYSCAN_LOCATION_INTERNALDATA_INIT 0,0,NAN,NAN,NAN,FALSE /* Инициализация переменных типа HyScanLocationInternalData.*/
 #define HYSCAN_LOCATIONDATA_NAN NAN,NAN,NAN,0,0,0,NAN,NAN,0,0 /* Инициализация переменных типа HyScanLocationData.*/
 
-/** \brief Флаги валидности данных */
+/* \brief Флаги валидности данных */
 typedef enum
 {
-  HYSCAN_LOCATION_INVALID      = 0,                     /**< Данные не валидны. */
-  HYSCAN_LOCATION_PARSED       = 1,                     /**< Произведена сборка данных. */
-  HYSCAN_LOCATION_ASSEMBLED    = 2,                     /**< Произведена сборка данных. */
-  HYSCAN_LOCATION_PREPROCESSED = 3,                     /**< Произведена предобработка данных. */
-  HYSCAN_LOCATION_PROCESSED    = 4,                     /**< Произведена обработка данных. */
-  HYSCAN_LOCATION_USER_INVALID = 5,                     /**< Данные принудительно заданы пользователем. */
-  HYSCAN_LOCATION_USER_VALID   = 6,                     /**< Данные принудительно заданы пользователем. */
-  HYSCAN_LOCATION_VALID        = 7,                     /**< Данные валидны. */
+  HYSCAN_LOCATION_INVALID       = 0,                            /*< Данные не валидны. */
+  HYSCAN_LOCATION_PARSED        = 1,                            /*< Произведена сборка данных. */
+  HYSCAN_LOCATION_ASSEMBLED     = 2,                            /*< Произведена сборка данных. */
+  HYSCAN_LOCATION_PREPROCESSED  = 3,                            /*< Произведена предобработка данных. */
+  HYSCAN_LOCATION_PROCESSED     = 4,                            /*< Произведена обработка данных. */
+  HYSCAN_LOCATION_USER_INVALID  = 5,                            /*< Данные принудительно заданы пользователем. */
+  HYSCAN_LOCATION_USER_VALID    = 6,                            /*< Данные принудительно заданы пользователем. */
+  HYSCAN_LOCATION_VALID         = 7,                            /*< Данные валидны. */
 } HyScanLocationValidity;
 
-/** \brief Внутренняя таблица источников данных */
+/* \brief Внутренняя таблица источников данных */
 typedef struct
 {
-  gint32 index;                                         /**< Индекс источника. */
+  gint32                        index;                          /*< Индекс источника. */
 
-  HyScanLocationParameters  parameter;                  /**< Параметр, обрабатываемый источником. */
-  HyScanLocationSourceTypes source_type;                /**< Тип источника. */
-  HyScanSonarChannelIndex   sensor_channel;             /**< Номер КД. */
-  gboolean                  active;                     /**< Используется ли источник. */
+  HyScanLocationParameters      parameter;                      /*< Параметр, обрабатываемый источником. */
+  HyScanLocationSourceTypes     source_type;                    /*< Тип источника. */
+  HyScanSonarChannelIndex       sensor_channel;                 /*< Номер КД. */
+  gboolean                      active;                         /*< Используется ли источник. */
 
-  HyScanDataChannel        *dchannel;                   /**< Для работы с акустическими данными. */
-  gchar                    *channel_name;               /**< Имя КД (для работы с не-акустическими данными). */
-  gint32                    channel_id;                 /**< Идентификатор открытого КД (для работы с не-акустическими данными). */
-  gint32                    param_id;                   /**< Идентификатор параметров КД (для работы с не-акустическими данными). */
+  HyScanDataChannel            *dchannel;                       /*< Для работы с акустическими данными. */
+  gchar                        *channel_name;                   /*< Имя КД (для работы с не-акустическими данными). */
+  gint32                        channel_id;                     /*< Идентификатор открытого КД (для работы с не-акустическими данными). */
+  gint32                        param_id;                       /*< Идентификатор параметров КД (для работы с не-акустическими данными). */
 
-  gint32                    shift;                      /**< Сдвиг (по сути, индекс самого первого элемента в КД). */
-  gint32                    db_index;                   /**< Индекс данных в БД. */
-  gint32                    assembler_index;            /**< Индекс сборщика данных. */
-  gint32                    preprocessing_index;        /**< Индекс предобработчика данных. */
-  gint32                    thresholder_prev_index;     /**< Индекс предыдущей точки для функции #hyscan_location_thresholder2. */
-  gint32                    thresholder_next_index;     /**< Индекс следующей точки для функции #hyscan_location_thresholder2. */
-  gint32                    processing_index;           /**< Индекс обработчика данных. */
+  gint32                        shift;                          /*< Сдвиг (по сути, индекс самого первого элемента в КД). */
+  gint32                        db_index;                       /*< Индекс данных в БД. */
+  gint32                        assembler_index;                /*< Индекс сборщика данных. */
+  gint32                        preprocessing_index;            /*< Индекс предобработчика данных. */
+  gint32                        thresholder_prev_index;         /*< Индекс предыдущей точки для функции #hyscan_location_thresholder2. */
+  gint32                        thresholder_next_index;         /*< Индекс следующей точки для функции #hyscan_location_thresholder2. */
+  gint32                        processing_index;               /*< Индекс обработчика данных. */
 
-  gdouble                   x;                          /**< Параметр датчика. */
-  gdouble                   y;                          /**< Параметр датчика. */
-  gdouble                   z;                          /**< Параметр датчика. */
-  gdouble                   psi;                        /**< Параметр датчика. */
-  gdouble                   gamma;                      /**< Параметр датчика. */
-  gdouble                   theta;                      /**< Параметр датчика. */
-  gdouble                   discretization_frequency;   /**< Параметр датчика. */
-  gchar                    *discretization_type;        /**< Параметр датчика. */
+  gdouble                       x;                              /*< Параметр датчика. */
+  gdouble                       y;                              /*< Параметр датчика. */
+  gdouble                       z;                              /*< Параметр датчика. */
+  gdouble                       psi;                            /*< Параметр датчика. */
+  gdouble                       gamma;                          /*< Параметр датчика. */
+  gdouble                       theta;                          /*< Параметр датчика. */
+  gdouble                       discretization_frequency;       /*< Параметр датчика. */
+  gchar                        *discretization_type;            /*< Параметр датчика. */
 } HyScanLocationSourcesList;
 
-/** \brief Внутренняя структура. Иcпользуется для хранения любых данных. */
+/* \brief Внутреннее хранилище параметров и состояния потока надзирателя. */
 typedef struct
 {
-  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
-  gint64                    data_time;                  /**< Время, содержащееся в самих данных. */
-  gdouble                   int_latitude;               /**< Широта. */
-  gdouble                   int_longitude;              /**< Долгота. */
-  gdouble                   int_value;                  /**< Курс, скорость... */
-  gboolean                  validity;                   /**< Флаг валидности данных. */
+  GThread                      *overseer_thread;                /* Поток надзирателя. */
+  gint                          overseer_started;               /* Надзиратель запустился. */
+  gint                          overseer_pause;                 /* Поставить надзирателя на паузу. */
+  gint                          overseer_paused;                /* Надзиратель стоит на паузе. */
+  gint                          overseer_stop;                  /* Сигнализирует, что надзирателю пора остановиться. */
+  gint32                        overseer_period;                /* Время ожидания надзирателя. */
+} HyScanLocationOverseerParams;
+
+/* \brief Внутреннее хранилище индексов источников данных. */
+typedef struct
+{
+  gint32                        latlong_source;                 /* Индекс КД координат в source_list. */
+  gint32                        altitude_source;                /* Индекс КД высоты в source_list. */
+  gint32                        track_source;                   /* Индекс КД курса в source_list. */
+  gint32                        roll_source;                    /* Индекс КД крена в source_list. */
+  gint32                        pitch_source;                   /* Индекс КД дифферента в source_list. */
+  gint32                        speed_source;                   /* Индекс КД скорости в source_list. */
+  gint32                        depth_source;                   /* Индекс КД глубины в source_list. */
+  gint32                        datetime_source;                /* Индекс КД времени в source_list. */
+} HyScanLocationSourceIndices;
+
+/* \brief Внутреннее хранилище локальных кэшей. */
+typedef struct
+{
+  GArray                       *latlong_cache;                  /* Локальный кэш координат. */
+  GArray                       *altitude_cache;                 /* Локальный кэш высоты. */
+  GArray                       *track_cache;                    /* Локальный кэш курса. */
+  GArray                       *roll_cache;                     /* Локальный кэш крена. */
+  GArray                       *pitch_cache;                    /* Локальный кэш дифферента. */
+  GArray                       *speed_cache;                    /* Локальный кэш скорости. */
+  GArray                       *depth_cache;                    /* Локальный кэш глубины. */
+  GArray                       *datetime_cache;                 /* Локальный кэш времени. */
+} HyScanLocationLocalCaches;
+
+/* \brief Внутренняя структура. Иcпользуется для хранения любых данных. */
+typedef struct
+{
+  gint64                        db_time;                        /*< Время, в которое данные записались в БД. */
+  gint64                        data_time;                      /*< Время, содержащееся в самих данных. */
+  gdouble                       int_latitude;                   /*< Широта. */
+  gdouble                       int_longitude;                  /*< Долгота. */
+  gdouble                       int_value;                      /*< Курс, скорость... */
+  gboolean                      validity;                       /*< Флаг валидности данных. */
 } HyScanLocationInternalData;
 
-/** \brief Внутренняя структура. Иcпользуется для работы с данными времени. */
+/* \brief Внутренняя структура. Иcпользуется для работы с данными времени. */
 typedef struct
 {
-  gint64                    db_time;                    /**< Время, в которое данные записались в БД. */
-  gint64                    date;                       /**< Дата. */
-  gint64                    time;                       /**< Время. */
-  gint64                    time_shift;                 /**< Временная сдвижка. */
-  gboolean                  validity;                   /**< Флаг валидности данных. */
+  gint64                        db_time;                        /*< Время, в которое данные записались в БД. */
+  gint64                        date;                           /*< Дата. */
+  gint64                        time;                           /*< Время. */
+  gint64                        time_shift;                     /*< Временная сдвижка. */
+  gboolean                      validity;                       /*< Флаг валидности данных. */
 } HyScanLocationInternalTime;
 
 typedef enum
 {
   HYSCAN_LOCATION_EDIT_LATLONG = 1,
-  HYSCAN_LOCATION_EDIT_TRACK,
-  HYSCAN_LOCATION_EDIT_ROLL,
-  HYSCAN_LOCATION_EDIT_PITCH,
-  HYSCAN_LOCATION_BULK_EDIT,
-  HYSCAN_LOCATION_REMOVE,
   HYSCAN_LOCATION_BULK_REMOVE
 } HyScanLocationUserParameterTypes;
 
@@ -191,7 +223,7 @@ typedef struct
 
 /* Функции работы с NMEA-строками. */
 
-/**
+/*
  *
  * Извлекает широту и долготу из NMEA-строки.
  *
@@ -199,9 +231,9 @@ typedef struct
  * \return Структура HyScanLocationInternalData со значениями.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_latlong_get        (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_latlong_get        (gchar  *input);
 
-/**
+/*
  *
  * Извлекает высоту из NMEA-строки.
  *
@@ -209,9 +241,9 @@ HyScanLocationInternalData  hyscan_location_nmea_latlong_get        (gchar  *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_altitude_get       (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_altitude_get       (gchar  *input);
 
-/**
+/*
  *
  * Извлекает курс из NMEA-строки.
  *
@@ -219,9 +251,9 @@ HyScanLocationInternalData  hyscan_location_nmea_altitude_get       (gchar  *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_track_get          (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_track_get          (gchar  *input);
 
-/**
+/*
  *
  * Извлекает крен из NMEA-строки.
  *
@@ -229,9 +261,9 @@ HyScanLocationInternalData  hyscan_location_nmea_track_get          (gchar  *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_roll_get           (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_roll_get           (gchar  *input);
 
-/**
+/*
  *
  * Извлекает дифферент из NMEA-строки.
  *
@@ -239,9 +271,9 @@ HyScanLocationInternalData  hyscan_location_nmea_roll_get           (gchar  *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_pitch_get          (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_pitch_get          (gchar  *input);
 
-/**
+/*
  *
  * Извлекает скорость из NMEA-строки.
  *
@@ -249,9 +281,9 @@ HyScanLocationInternalData  hyscan_location_nmea_pitch_get          (gchar  *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_speed_get          (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_speed_get          (gchar  *input);
 
-/**
+/*
  *
  * Извлекает глубину из NMEA-строки.
  *
@@ -259,9 +291,9 @@ HyScanLocationInternalData  hyscan_location_nmea_speed_get          (gchar  *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_nmea_depth_get          (gchar  *input);
+HyScanLocationInternalData      hyscan_location_nmea_depth_get          (gchar  *input);
 
-/**
+/*
  *
  * Извлекает дату и время из NMEA-строки.
  *
@@ -269,9 +301,9 @@ HyScanLocationInternalData  hyscan_location_nmea_depth_get          (gchar  *inp
  * \return Структура HyScanLocationInternalTime со значением.
  *
  */
-HyScanLocationInternalTime     hyscan_location_nmea_datetime_get       (gchar  *input);
+HyScanLocationInternalTime      hyscan_location_nmea_datetime_get       (gchar  *input);
 
-/**
+/*
  *
  * Извлекает только время из NMEA-строки.
  *
@@ -280,12 +312,12 @@ HyScanLocationInternalTime     hyscan_location_nmea_datetime_get       (gchar  *
  * \return Структура HyScanLocationInternalData со значениями.
  *
  */
-gint64                  hyscan_location_nmea_time_get           (gchar              *input,
-                                                                 HyScanSonarDataType sentence_type);
+gint64                          hyscan_location_nmea_time_get           (gchar              *input,
+                                                                         HyScanSonarDataType sentence_type);
 
 /* Функции определения глубины по ГБО и эхолоту. */
 
-/**
+/*
  *
  * Определяет глубину по эхолоту.
  *
@@ -296,11 +328,11 @@ gint64                  hyscan_location_nmea_time_get           (gchar          
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_echosounder_depth_get   (gfloat *input,
-                                                                 gint    input_size,
-                                                                 gfloat  discretization_frequency,
-                                                                 GArray *soundspeedtable);
-/**
+HyScanLocationInternalData      hyscan_location_echosounder_depth_get   (gfloat *input,
+                                                                         gint    input_size,
+                                                                         gfloat  discretization_frequency,
+                                                                         GArray *soundspeedtable);
+/*
  *
  * Определяет глубину по ГБО.
  *
@@ -311,20 +343,19 @@ HyScanLocationInternalData  hyscan_location_echosounder_depth_get   (gfloat *inp
  * \return Структура HyScanLocationInternalData со значением.
  *
  */
-HyScanLocationInternalData  hyscan_location_sonar_depth_get         (gfloat *input,
-                                                                 gint    input_size,
-                                                                 gfloat  discretization_frequency,
-                                                                 GArray *soundspeedtable);
-
+HyScanLocationInternalData      hyscan_location_sonar_depth_get         (gfloat *input,
+                                                                         gint    input_size,
+                                                                         gfloat  discretization_frequency,
+                                                                         GArray *soundspeedtable);
 /* Фильтры. */
 
-/**
+/*
  *
  * Сглаживает данные кривой Безье.
  * Функция извлекает значения и сглаживает их. Предполагается, что первые две точки уже сглажены,
  * а третья и четвертая - нет. Алгоритм учитывает время, в которое получена каждая точка.
  *
- * <b>Важно:</b> считается, что сглаживаемая точка - третья. Сглаженное значение будет помещено в локальный кэш вместо третьей точки.
+ * \warning считается, что сглаживаемая точка - третья. Сглаженное значение будет помещено в локальный кэш вместо третьей точки.
  *
  * Параметр quality позволяет задать степень сглаживания: при 0 данные сглаживаются сильней, при 1 слабей.
  * \param source указатель на локальный кэш с данными;
@@ -335,13 +366,13 @@ HyScanLocationInternalData  hyscan_location_sonar_depth_get         (gfloat *inp
  * \param quality качество (степень сглаживания).
  *
  */
-void                    hyscan_location_4_point_2d_bezier       (GArray *source,
-                                                                 gint32  point1,
-                                                                 gint32  point2,
-                                                                 gint32  point3,
-                                                                 gint32  point4,
-                                                                 gdouble quality);
-/**
+void                            hyscan_location_4_point_2d_bezier       (GArray *source,
+                                                                         gint32  point1,
+                                                                         gint32  point2,
+                                                                         gint32  point3,
+                                                                         gint32  point4,
+                                                                         gdouble quality);
+/*
  *
  * Линеаризация данных.
  *
@@ -358,15 +389,15 @@ void                    hyscan_location_4_point_2d_bezier       (GArray *source,
  * \param quality качество (степень сглаживания).
  *
  */
-gboolean                hyscan_location_thresholder             (GArray  *source,
-                                                                 gint32  *point1,
-                                                                 gint32   point2,
-                                                                 gint32  *point3,
-                                                                 gint32   last_index,
-                                                                 gboolean is_writeable,
-                                                                 gdouble  quality);
+gboolean                        hyscan_location_thresholder             (GArray  *source,
+                                                                         gint32  *point1,
+                                                                         gint32   point2,
+                                                                         gint32  *point3,
+                                                                         gint32   last_index,
+                                                                         gboolean is_writeable,
+                                                                         gdouble  quality);
 
-/**
+/*
  *
  * Линеаризация данных.
  *
@@ -384,15 +415,15 @@ gboolean                hyscan_location_thresholder             (GArray  *source
  * \param quality качество (степень сглаживания).
  *
  */
-gboolean                hyscan_location_thresholder2            (GArray  *source,
-                                                                 gint32  *point2,
-                                                                 gint32   point3,
-                                                                 gint32  *point4,
-                                                                 gint32   last_index,
-                                                                 gboolean is_writeable,
-                                                                 gdouble  quality);
+gboolean                        hyscan_location_thresholder2            (GArray  *source,
+                                                                         gint32  *point2,
+                                                                         gint32   point3,
+                                                                         gint32  *point4,
+                                                                         gint32   last_index,
+                                                                         gboolean is_writeable,
+                                                                         gdouble  quality);
 
-/**
+/*
  *
  * Сдвижка данных во времени
  *
@@ -405,15 +436,15 @@ gboolean                hyscan_location_thresholder2            (GArray  *source
  * \param index индекс точки в локальном кэше.
  *
  */
-void                    hyscan_location_timeshift               (HyScanDB *db,
-                                                                 GArray *source_list,
-                                                                 gint32  source,
-                                                                 GArray *cache,
-                                                                 gint32  datetime_source,
-                                                                 GArray *datetime_cache,
-                                                                 gint32  index);
+void                            hyscan_location_timeshift               (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         gint32    source,
+                                                                         GArray   *cache,
+                                                                         gint32    datetime_source,
+                                                                         GArray   *datetime_cache,
+                                                                         gint32    index);
 
-/**
+/*
  *
  * Сдвижка данных в пространстве.
  *
@@ -430,15 +461,15 @@ void                    hyscan_location_timeshift               (HyScanDB *db,
  * \param theta угловой сдвиг (в радианах), соответствующий дифференту.
  *
  */
-void                    hyscan_location_shift                   (HyScanLocationData *data,
-                                                                 gdouble             x,
-                                                                 gdouble             y,
-                                                                 gdouble             z,
-                                                                 gdouble             psi,
-                                                                 gdouble             gamma,
-                                                                 gdouble             theta);
+void                            hyscan_location_shift                   (HyScanLocationData *data,
+                                                                         gdouble             x,
+                                                                         gdouble             y,
+                                                                         gdouble             z,
+                                                                         gdouble             psi,
+                                                                         gdouble             gamma,
+                                                                         gdouble             theta);
 
-/**
+/*
  *
  * Сдвижка данных в пространстве.
  *
@@ -455,15 +486,15 @@ void                    hyscan_location_shift                   (HyScanLocationD
  * \param theta угловой сдвиг (в радианах), соответствующий дифференту.
  *
  */
-void                    hyscan_location_shift2                  (HyScanLocationData *data,
-                                                                 gdouble             x,
-                                                                 gdouble             y,
-                                                                 gdouble             z,
-                                                                 gdouble             psi,
-                                                                 gdouble             gamma,
-                                                                 gdouble             theta);
+void                            hyscan_location_shift2                  (HyScanLocationData *data,
+                                                                         gdouble             x,
+                                                                         gdouble             y,
+                                                                         gdouble             z,
+                                                                         gdouble             psi,
+                                                                         gdouble             gamma,
+                                                                         gdouble             theta);
 
-/**
+/*
  *
  * Функция вычисления курса.
  *
@@ -476,12 +507,12 @@ void                    hyscan_location_shift2                  (HyScanLocationD
  * \return значение курса в градусах. 0 соответствует северу.
  *
  */
-gdouble                 hyscan_location_track_calculator        (gdouble lat1,
-                                                                 gdouble lon1,
-                                                                 gdouble lat2,
-                                                                 gdouble lon2);
+gdouble                         hyscan_location_track_calculator        (gdouble lat1,
+                                                                         gdouble lon1,
+                                                                         gdouble lat2,
+                                                                         gdouble lon2);
 
-/**
+/*
  *
  * Функция вычисления курса.
  *
@@ -495,13 +526,13 @@ gdouble                 hyscan_location_track_calculator        (gdouble lat1,
  * \return скорость в м/с.
  *
  */
-gdouble                 hyscan_location_speed_calculator        (gdouble lat1,
-                                                                 gdouble lon1,
-                                                                 gdouble lat2,
-                                                                 gdouble lon2,
-                                                                 gdouble time);
+gdouble                         hyscan_location_speed_calculator        (gdouble lat1,
+                                                                         gdouble lon1,
+                                                                         gdouble lat2,
+                                                                         gdouble lon2,
+                                                                         gdouble time);
 
-/**
+/*
  *
  * Функция поиска временных данных.
  *
@@ -517,14 +548,14 @@ gdouble                 hyscan_location_speed_calculator        (gdouble lat1,
  * \return TRUE, если данные удалось найти
  *
  */
-gboolean                hyscan_location_find_time               (GArray *cache,
-                                                                 GArray *source_list,
-                                                                 gint32  source,
-                                                                 gint64  time,
-                                                                 gint32 *lindex,
-                                                                 gint32 *rindex);
+gboolean                        hyscan_location_find_time               (GArray *cache,
+                                                                         GArray *source_list,
+                                                                         gint32  source,
+                                                                         gint64  time,
+                                                                         gint32 *lindex,
+                                                                         gint32 *rindex);
 
-/**
+/*
  *
  * Функция поиска данных.
  *
@@ -545,62 +576,55 @@ gboolean                hyscan_location_find_time               (GArray *cache,
  *
  */
 
-gboolean                hyscan_location_find_data               (GArray *cache,
-                                                                 GArray *source_list,
-                                                                 gint32  source,
-                                                                 gint64  time,
-                                                                 gint32 *lindex,
-                                                                 gint32 *rindex,
-                                                                 gint64 *ltime,
-                                                                 gint64 *rtime);
+gboolean                        hyscan_location_find_data               (GArray *cache,
+                                                                         GArray *source_list,
+                                                                         gint32  source,
+                                                                         gint64  time,
+                                                                         gint32 *lindex,
+                                                                         gint32 *rindex,
+                                                                         gint64 *ltime,
+                                                                         gint64 *rtime);
 
 /* Вспомогательные функции надзирателя. */
 
-/**
+/*
  *
  * Функция слежения за широтой и долготой.
  * \param db указатель на БД;
  * \param source_list список источников;
  * \param params пользовательские параметры обработки;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param cache указатель на локальный кэш;
  * \param source индекс источника;
- * \param datetime_cache указатель на локальный кэш даты и времени;
- * \param datetime_source индекс источника даты и времени;
  * \param quality качество.
  *
  */
 
+void                            hyscan_location_overseer_latlong        (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         GArray                      *params,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
 
-void                    hyscan_location_overseer_latlong         (HyScanDB *db,
-                                                                  GArray   *source_list,
-                                                                  GArray   *params,
-                                                                  GArray   *cache,
-                                                                  gint32    source,
-                                                                  GArray   *datetime_cache,
-                                                                  gint32    datetime_source,
-                                                                  gdouble   quality);
-
-/**
+/*
  *
  * Функция слежения за высотой.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
- * \param datetime_cache указатель на локальный кэш даты и времени;
- * \param datetime_source индекс источника даты и времени;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param quality качество.
  *
  */
-void                    hyscan_location_overseer_altitude        (HyScanDB *db,
-                                                                  GArray   *source_list,
-                                                                  GArray   *cache,
-                                                                  gint32    source,
-                                                                  GArray   *datetime_cache,
-                                                                  gint32    datetime_source,
-                                                                  gdouble   quality);
+void                            hyscan_location_overseer_altitude       (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
 
-/**
+/*
  *
  * Функция слежения за курсом.
  *
@@ -608,65 +632,53 @@ void                    hyscan_location_overseer_altitude        (HyScanDB *db,
  * \param db указатель на БД;
  * \param source_list список источников;
  * \param params пользовательские параметры обработки;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
- * \param datetime_cache указатель на локальный кэш даты и времени;
- * \param datetime_source индекс источника даты и времени;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param quality качество.
  *
  */
-void                    hyscan_location_overseer_track           (HyScanDB *db,
-                                                                  GArray   *source_list,
-                                                                  GArray   *params,
-                                                                  GArray   *cache,
-                                                                  gint32    source,
-                                                                  GArray   *datetime_cache,
-                                                                  gint32    datetime_source,
-                                                                  gdouble   quality);
+void                            hyscan_location_overseer_track          (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         GArray                      *params,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
 
-/**
+/*
  *
  * Функция слежения за креном.
  * \param db указатель на БД;
  * \param source_list список источников;
  * \param params пользовательские параметры обработки;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
- * \param datetime_cache указатель на локальный кэш даты и времени;
- * \param datetime_source индекс источника даты и времени;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param quality качество.
  *
  */
-void                    hyscan_location_overseer_roll            (HyScanDB *db,
-                                                                  GArray   *source_list,
-                                                                  GArray   *params,
-                                                                  GArray   *cache,
-                                                                  gint32    source,
-                                                                  GArray   *datetime_cache,
-                                                                  gint32    datetime_source,
-                                                                  gdouble   quality);
-/**
+void                            hyscan_location_overseer_roll           (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         GArray                      *params,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
+/*
  *
  * Функция слежения за дифферентом.
  * \param db указатель на БД;
  * \param source_list список источников;
  * \param params пользовательские параметры обработки;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
- * \param datetime_cache указатель на локальный кэш даты и времени;
- * \param datetime_source индекс источника даты и времени;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param quality качество.
  *
  */
- void                    hyscan_location_overseer_pitch           (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   GArray   *datetime_cache,
-                                                                   gint32    datetime_source,
-                                                                   gdouble   quality);
-/**
+void                            hyscan_location_overseer_pitch          (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         GArray                      *params,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
+/*
  *
  * Функция слежения за скоростью.
  *
@@ -674,57 +686,53 @@ void                    hyscan_location_overseer_roll            (HyScanDB *db,
  * \param db указатель на БД;
  * \param source_list список источников;
  * \param params пользовательские параметры обработки;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
- * \param datetime_cache указатель на локальный кэш даты и времени;
- * \param datetime_source индекс источника даты и времени;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param quality качество.
  *
  */
- void                    hyscan_location_overseer_speed           (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   GArray   *datetime_cache,
-                                                                   gint32    datetime_source,
-                                                                   gdouble   quality);
-/**
+void                            hyscan_location_overseer_speed          (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         GArray                      *params,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
+/*
  *
  * Функция слежения за глубиной.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param soundspeed указатель на таблицу скорости звука;
  * \param quality качество.
  *
  */
-void                    hyscan_location_overseer_depth           (HyScanDB *db,
-                                                                  GArray   *source_list,
-                                                                  GArray   *cache,
-                                                                  gint32    source,
-                                                                  GArray   *soundspeed,
-                                                                  gdouble   quality);
-/**
+void                            hyscan_location_overseer_depth          (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         GArray                      *soundspeed,
+                                                                         gdouble                      quality);
+/*
  *
  * Функция слежения за датой и временем.
  * \param db указатель на БД;
  * \param source_list список источников;
- * \param cache указатель на локальный кэш;
- * \param source индекс источника;
+ * \param caches - структура с локальными кэшами;
+ * \param indices - структура с индексами источников;
  * \param quality качество.
  *
  */
-void                    hyscan_location_overseer_datetime        (HyScanDB *db,
-                                                                  GArray   *source_list,
-                                                                  GArray   *cache,
-                                                                  gint32    source,
-                                                                  gdouble   quality);
+void                            hyscan_location_overseer_datetime       (HyScanDB                    *db,
+                                                                         GArray                      *source_list,
+                                                                         HyScanLocationLocalCaches   *caches,
+                                                                         HyScanLocationSourceIndices *indices,
+                                                                         gdouble                      quality);
 
 /* Функции для аппроксимации и выдачи данных. */
 
-/**
+/*
  *
  * Функция выдачи широты и долготы для заданного момента времени.
  *
@@ -736,14 +744,14 @@ void                    hyscan_location_overseer_datetime        (HyScanDB *db,
  * \param quality качество.
  *
  */
-HyScanLocationInternalData   hyscan_location_getter_latlong          (HyScanDB *db,
-                                                                   GArray  *source_list,
-                                                                   GArray  *cache,
-                                                                   gint32   source,
-                                                                   gint64   time,
-                                                                   gdouble  quality);
+HyScanLocationInternalData      hyscan_location_getter_latlong          (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Функция выдачи высоты для заданного момента времени.
  *
@@ -755,14 +763,14 @@ HyScanLocationInternalData   hyscan_location_getter_latlong          (HyScanDB *
  * \param quality качество.
  *
  */
-HyScanLocationInternalData   hyscan_location_getter_altitude         (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalData      hyscan_location_getter_altitude         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Функция выдачи курса для заданного момента времени.
  *
@@ -775,14 +783,14 @@ HyScanLocationInternalData   hyscan_location_getter_altitude         (HyScanDB *
  * \param quality качество.
  *
  */
- HyScanLocationInternalData   hyscan_location_getter_track            (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalData      hyscan_location_getter_track            (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Функция выдачи крена для заданного момента времени.
  *
@@ -794,14 +802,14 @@ HyScanLocationInternalData   hyscan_location_getter_altitude         (HyScanDB *
  * \param quality качество.
  *
  */
- HyScanLocationInternalData   hyscan_location_getter_roll             (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalData      hyscan_location_getter_roll             (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Функция выдачи дифферента для заданного момента времени.
  *
@@ -813,14 +821,14 @@ HyScanLocationInternalData   hyscan_location_getter_altitude         (HyScanDB *
  * \param quality качество.
  *
  */
- HyScanLocationInternalData   hyscan_location_getter_pitch            (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalData      hyscan_location_getter_pitch            (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Функция выдачи скорости для заданного момента времени.
  *
@@ -832,14 +840,14 @@ HyScanLocationInternalData   hyscan_location_getter_altitude         (HyScanDB *
  * \param quality качество.
  *
  */
-HyScanLocationInternalData   hyscan_location_getter_speed            (HyScanDB *db,
-                                                                   GArray  *source_list,
-                                                                   GArray  *cache,
-                                                                   gint32   source,
-                                                                   gint64   time,
-                                                                   gdouble  quality);
+HyScanLocationInternalData      hyscan_location_getter_speed            (HyScanDB *db,
+                                                                         GArray  *source_list,
+                                                                         GArray  *cache,
+                                                                         gint32   source,
+                                                                         gint64   time,
+                                                                         gdouble  quality);
 
-/**
+/*
  *
  * Функция выдачи глубины для заданного момента времени.
  *
@@ -852,14 +860,14 @@ HyScanLocationInternalData   hyscan_location_getter_speed            (HyScanDB *
  * \param quality качество.
  *
  */
- HyScanLocationInternalData   hyscan_location_getter_depth            (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalData      hyscan_location_getter_depth            (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Функция выдачи даты и времени для заданного момента времени.
  *
@@ -871,14 +879,14 @@ HyScanLocationInternalData   hyscan_location_getter_speed            (HyScanDB *
  * \param quality качество.
  *
  */
- HyScanLocationInternalTime      hyscan_location_getter_datetime         (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalTime      hyscan_location_getter_datetime         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
-/**
+/*
  *
  * Внутренняя функция выдачи значений типа HyScanLocationInternalData для заданного момента времени.
  *
@@ -891,15 +899,15 @@ HyScanLocationInternalData   hyscan_location_getter_speed            (HyScanDB *
  * \param[out] prev_point предыдущая точка, относительно которой нужно вычислять курс или скорость.
  *
  */
-HyScanLocationInternalData   hyscan_location_getter_gdouble2         (HyScanDB                 *db,
-                                                                   GArray                  *source_list,
-                                                                   GArray                  *cache,
-                                                                   gint32                   source,
-                                                                   gint64                   time,
-                                                                   gdouble                  quality,
-                                                                   HyScanLocationInternalData  *prev_point);
+HyScanLocationInternalData      hyscan_location_getter_gdouble2         (HyScanDB                   *db,
+                                                                         GArray                     *source_list,
+                                                                         GArray                     *cache,
+                                                                         gint32                      source,
+                                                                         gint64                      time,
+                                                                         gdouble                     quality,
+                                                                         HyScanLocationInternalData *prev_point);
 
-/**
+/*
  *
  * Внутренняя функция выдачи значений типа HyScanLocationInternalData для заданного момента времени.
  *
@@ -911,102 +919,65 @@ HyScanLocationInternalData   hyscan_location_getter_gdouble2         (HyScanDB  
  * \param quality качество;
  *
  */
- HyScanLocationInternalData   hyscan_location_getter_gdouble1     (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    time,
-                                                                   gdouble   quality);
+HyScanLocationInternalData      hyscan_location_getter_gdouble1         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *cache,
+                                                                         gint32    source,
+                                                                         gint64    time,
+                                                                         gdouble   quality);
 
 /* Функция сборки даты и времени.*/
-HyScanLocationInternalTime    hyscan_location_assembler_datetime  (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
+HyScanLocationInternalTime      hyscan_location_assembler_datetime      (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         gint32    source,
+                                                                         gint64    index);
 
 /* Функция сборки координат.*/
-HyScanLocationInternalData    hyscan_location_assembler_latlong   (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
+HyScanLocationInternalData      hyscan_location_assembler_latlong       (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *params,
+                                                                         gint32    source,
+                                                                         gint64    index);
 
 /* Функция сборки высоты.*/
-HyScanLocationInternalData    hyscan_location_assembler_altitude  (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
-
+HyScanLocationInternalData      hyscan_location_assembler_altitude      (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         gint32    source,
+                                                                         gint64    index);
 /* Функция сборки курса.*/
-HyScanLocationInternalData    hyscan_location_assembler_track     (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
+HyScanLocationInternalData      hyscan_location_assembler_track         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *params,
+                                                                         gint32    source,
+                                                                         gint64    index);
 
 /* Функция сборки крена.*/
-HyScanLocationInternalData    hyscan_location_assembler_roll      (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
+HyScanLocationInternalData      hyscan_location_assembler_roll          (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *params,
+                                                                         gint32    source,
+                                                                         gint64    index);
 
 /* Функция сборки дифферента.*/
-HyScanLocationInternalData    hyscan_location_assembler_pitch     (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
+HyScanLocationInternalData      hyscan_location_assembler_pitch         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *params,
+                                                                         gint32    source,
+                                                                         gint64    index);
 
 /* Функция сборки скорости.*/
-HyScanLocationInternalData    hyscan_location_assembler_speed     (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *params,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   gint64    index);
+HyScanLocationInternalData      hyscan_location_assembler_speed         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         GArray   *params,
+                                                                         gint32    source,
+                                                                         gint64    index);
 
 /* Функция сборки глубины.*/
-HyScanLocationInternalData    hyscan_location_assembler_depth     (HyScanDB *db,
-                                                                   GArray   *source_list,
-                                                                   GArray   *cache,
-                                                                   gint32    source,
-                                                                   GArray   *soundspeed,
-                                                                   gint64    index);
-
-void                      hyscan_location_editor_latlong          (GArray *cache,
-                                                                   gint64  index,
-                                                                   gdouble latitude,
-                                                                   gdouble longitude);
-
-void                      hyscan_location_editor_track            (GArray *cache,
-                                                                   GArray *source_list,
-                                                                   gint32  source,
-                                                                   gint64  index,
-                                                                   gdouble value);
-
-void                      hyscan_location_editor_roll             (GArray *cache,
-                                                                   GArray *source_list,
-                                                                   gint32  source,
-                                                                   gint64  index,
-                                                                   gdouble value);
-
-void                      hyscan_location_editor_pitch            (GArray *cache,
-                                                                   GArray *source_list,
-                                                                   gint32  source,
-                                                                   gint64  index,
-                                                                   gdouble value);
-
-void                      hyscan_location_editor_remove           (GArray *cache,
-                                                                   GArray *source_list,
-                                                                   gint32  source,
-                                                                   gint64  index);
+HyScanLocationInternalData      hyscan_location_assembler_depth         (HyScanDB *db,
+                                                                         GArray   *source_list,
+                                                                         gint32    source,
+                                                                         GArray   *soundspeed,
+                                                                         gint64    index);
 
 G_END_DECLS
 #endif /* __HYSCAN_LOCATION_TOOLS_H__ */

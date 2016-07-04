@@ -43,32 +43,13 @@ struct _HyScanLocationPrivate
   gchar                *param_prefix;                   /* Префикс группы параметров. */
   GArray               *user_params;                    /* Пользовательские параметры обработки. */
 
-  GThread              *overseer_thread;                /* Поток надзирателя. */
-  gint                  overseer_started;               /* Надзиратель запустился. */
-  gint                  overseer_pause;                 /* Поставить надзирателя на паузу. */
-  gint                  overseer_paused;                /* Надзиратель стоит на паузе. */
-  gint                  overseer_stop;                  /* Сигнализирует, что надзирателю пора остановиться. */
-  gint32                overseer_period;                /* Время ожидания надзирателя. */
-
   GArray               *source_list;                    /* Внутренний список источников. */
 
-  gint32                latlong_source;                 /* Индекс КД координат в source_list. */
-  gint32                altitude_source;                /* Индекс КД высоты в source_list. */
-  gint32                track_source;                   /* Индекс КД курса в source_list. */
-  gint32                roll_source;                    /* Индекс КД крена в source_list. */
-  gint32                pitch_source;                   /* Индекс КД дифферента в source_list. */
-  gint32                speed_source;                   /* Индекс КД скорости в source_list. */
-  gint32                depth_source;                   /* Индекс КД глубины в source_list. */
-  gint32                datetime_source;                /* Индекс КД времени в source_list. */
+  HyScanLocationSourceIndices source_indices;           /* Индексы источников данных. */
 
-  GArray               *latlong_cache;                  /* Локальный кэш координат. */
-  GArray               *altitude_cache;                 /* Локальный кэш высоты. */
-  GArray               *track_cache;                    /* Локальный кэш курса. */
-  GArray               *roll_cache;                     /* Локальный кэш крена. */
-  GArray               *pitch_cache;                    /* Локальный кэш дифферента. */
-  GArray               *speed_cache;                    /* Локальный кэш скорости. */
-  GArray               *depth_cache;                    /* Локальный кэш глубины. */
-  GArray               *datetime_cache;                 /* Локальный кэш времени. */
+  HyScanLocationLocalCaches local_caches;               /* Локальные кэши. */
+
+  HyScanLocationOverseerParams overseer;                /* Параметры надзирателя. */
 
   GArray                soundspeedtable;                /* Таблица скорости звука. */
 
@@ -84,6 +65,10 @@ static void             hyscan_location_set_property    (GObject            *obj
                                                          GParamSpec         *pspec);
 static void             hyscan_location_constructed     (GObject            *object);
 static void             hyscan_location_finalize        (GObject            *object);
+
+static void             hyscan_location_geo_initialize  (HyScanLocation     *location,
+                                                         gboolean            uninit);
+
 static void             hyscan_location_source_list_int (HyScanLocation     *location);
 static void             hyscan_location_source_defaults (HyScanLocation     *location);
 static gboolean         hyscan_location_param_load      (HyScanLocation     *location,
@@ -105,7 +90,7 @@ static void             hyscan_location_source_list_add (GArray             *sou
                                                          gchar             **channel_list,
                                                          gint                channel_list_index);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanLocation, hyscan_location, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanLocation, hyscan_location, HYSCAN_TYPE_GEO);
 
 static void
 hyscan_location_class_init (HyScanLocationClass *klass)
@@ -130,7 +115,7 @@ hyscan_location_class_init (HyScanLocationClass *klass)
     g_param_spec_string ("cache_prefix", "CachePrefix", "Cache key prefix", NULL,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property ( object_class, PROP_PROJECT,
+  g_object_class_install_property (object_class, PROP_PROJECT,
       g_param_spec_string ("project_name", "ProjectName", "project name", NULL,
                            G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
@@ -196,7 +181,7 @@ hyscan_location_set_property (GObject      *object,
       break;
 
     case PROP_OVERSEER_PERIOD:
-      priv->overseer_period = g_value_get_int64 (value);
+      priv->overseer.overseer_period = g_value_get_int64 (value);
       break;
 
     case PROP_Q:
@@ -219,9 +204,12 @@ hyscan_location_constructed (GObject *object)
 
   gchar *param_name = NULL;
 
-  priv->overseer_thread = NULL;
-  priv->overseer_pause = 0;
-  priv->overseer_paused = 0;
+  /* Вызываем конструктор родительского класса. */
+  G_OBJECT_CLASS (hyscan_location_parent_class)->constructed (object);
+
+  priv->overseer.overseer_thread = NULL;
+  priv->overseer.overseer_pause = 0;
+  priv->overseer.overseer_paused = 0;
 
   priv->mod_count = 0;
 
@@ -239,14 +227,14 @@ hyscan_location_constructed (GObject *object)
       priv->param_id = hyscan_db_project_param_open (priv->db, priv->project_id, param_name);
       priv->user_params = g_array_new (FALSE, TRUE, sizeof(HyScanLocationUserParameters));
 
-      priv->latlong_source = -1;
-      priv->altitude_source = -1;
-      priv->track_source = -1;
-      priv->roll_source = -1;
-      priv->pitch_source = -1;
-      priv->speed_source = -1;
-      priv->depth_source = -1;
-      priv->datetime_source = -1;
+      priv->source_indices.latlong_source = -1;
+      priv->source_indices.altitude_source = -1;
+      priv->source_indices.track_source = -1;
+      priv->source_indices.roll_source = -1;
+      priv->source_indices.pitch_source = -1;
+      priv->source_indices.speed_source = -1;
+      priv->source_indices.depth_source = -1;
+      priv->source_indices.datetime_source = -1;
 
       /* Составляем список источников. */
       hyscan_location_source_list_int (location);
@@ -255,10 +243,10 @@ hyscan_location_constructed (GObject *object)
       hyscan_location_source_defaults (location);
 
       /* Запускаем поток надзирателя. */
-      g_atomic_int_set (&(priv->overseer_stop), 0);
-      priv->overseer_thread = g_thread_new ("overseer thread", hyscan_location_overseer, location);
+      g_atomic_int_set (&(priv->overseer.overseer_stop), 0);
+      priv->overseer.overseer_thread = g_thread_new ("overseer thread", hyscan_location_overseer, location);
       /* Ждем, пока поток не запустится. */
-      while (g_atomic_int_get (&(priv->overseer_started)) != 1)
+      while (g_atomic_int_get (&(priv->overseer.overseer_started)) != 1)
         g_usleep (1000);
     }
 
@@ -301,7 +289,7 @@ hyscan_location_new_with_cache (HyScanDB       *db,
                        NULL);
 }
 
-/* Функция создает новый объект обработки навигационных данных с использованием кэша и префиксом. */
+/* Функция создает новый объект обработки .навигационных данных с использованием кэша и префиксом. */
 HyScanLocation*
 hyscan_location_new_with_cache_prefix (HyScanDB       *db,
                                        HyScanCache    *cache,
@@ -331,35 +319,52 @@ hyscan_location_finalize (GObject *object)
   guint i;
 
   HyScanLocationSourcesList *source_info;
+
   /* Говорим надзирателю, что пора бы и остановиться, и закрываем соответствующий поток. */
-  g_atomic_int_set (&(priv->overseer_stop), 1);
-  g_thread_join (priv->overseer_thread);
+  g_atomic_int_set (&(priv->overseer.overseer_stop), 1);
+  g_thread_join (priv->overseer.overseer_thread);
 
   /* Очищаем кэши. */
-  if (priv->latlong_cache != NULL)
-    g_array_free (priv->latlong_cache, TRUE);
-  priv->latlong_cache = NULL;
-  if (priv->altitude_cache != NULL)
-    g_array_free (priv->altitude_cache, TRUE);
-  priv->altitude_cache = NULL;
-  if (priv->track_cache != NULL)
-    g_array_free (priv->track_cache, TRUE);
-  priv->track_cache = NULL;
-  if (priv->roll_cache != NULL)
-    g_array_free (priv->roll_cache, TRUE);
-  priv->roll_cache = NULL;
-  if (priv->pitch_cache != NULL)
-    g_array_free (priv->pitch_cache, TRUE);
-  priv->pitch_cache = NULL;
-  if (priv->speed_cache != NULL)
-    g_array_free (priv->speed_cache, TRUE);
-  priv->speed_cache = NULL;
-  if (priv->depth_cache != NULL)
-    g_array_free (priv->depth_cache, TRUE);
-  priv->depth_cache = NULL;
-  if (priv->datetime_cache != NULL)
-    g_array_free (priv->datetime_cache, TRUE);
-  priv->datetime_cache = NULL;
+  if (priv->local_caches.latlong_cache != NULL)
+    {
+      g_array_free (priv->local_caches.latlong_cache, TRUE);
+      priv->local_caches.latlong_cache = NULL;
+    }
+  if (priv->local_caches.altitude_cache != NULL)
+    {
+      g_array_free (priv->local_caches.altitude_cache, TRUE);
+      priv->local_caches.altitude_cache = NULL;
+    }
+  if (priv->local_caches.track_cache != NULL)
+    {
+      g_array_free (priv->local_caches.track_cache, TRUE);
+      priv->local_caches.track_cache = NULL;
+    }
+  if (priv->local_caches.roll_cache != NULL)
+    {
+      g_array_free (priv->local_caches.roll_cache, TRUE);
+      priv->local_caches.roll_cache = NULL;
+    }
+  if (priv->local_caches.pitch_cache != NULL)
+    {
+      g_array_free (priv->local_caches.pitch_cache, TRUE);
+      priv->local_caches.pitch_cache = NULL;
+    }
+  if (priv->local_caches.speed_cache != NULL)
+    {
+      g_array_free (priv->local_caches.speed_cache, TRUE);
+      priv->local_caches.speed_cache = NULL;
+    }
+  if (priv->local_caches.depth_cache != NULL)
+    {
+      g_array_free (priv->local_caches.depth_cache, TRUE);
+      priv->local_caches.depth_cache = NULL;
+    }
+  if (priv->local_caches.datetime_cache != NULL)
+    {
+      g_array_free (priv->local_caches.datetime_cache, TRUE);
+      priv->local_caches.datetime_cache = NULL;
+    }
 
   if (priv->user_params != NULL)
     g_array_free (priv->user_params, TRUE);
@@ -375,14 +380,85 @@ hyscan_location_finalize (GObject *object)
         }
     }
 
-  /* Очищаем список источников. */
   g_array_free (priv->source_list, TRUE);
 
   /* Закрываем проект и галс. */
   hyscan_db_close (priv->db, priv->track_id);
   hyscan_db_close (priv->db, priv->project_id);
 
+  g_free (priv->uri);
+  g_free (priv->project_name);
+  g_free (priv->track_name);
+  g_free (priv->cache_prefix);
+  g_free (priv->cache_key);
+  g_free (priv->detail_key);
+  g_free (priv->param_prefix);
+
+  /* Вызываем деструктор родительского класса. */
   G_OBJECT_CLASS (hyscan_location_parent_class)->finalize (object);
+}
+
+/* Функция установки начальной точки для перевода координат в топоцентрическую СК и обратно. */
+static void
+hyscan_location_geo_initialize (HyScanLocation *location,
+                                gboolean        uninit)
+{
+  HyScanLocationPrivate *priv = location->priv;
+  gint32 index;
+  gchar *buffer;
+  gint32 buffer_size;
+  gint64 db_time;
+
+  HyScanGeoGeodetic bla0;
+  HyScanGeoEllipsoidType ellipse_type = 0;
+
+  HyScanLocationInternalData *first_point;
+  HyScanLocationSourcesList *source_info;
+
+  if (priv->local_caches.latlong_cache == NULL || priv->source_list == NULL)
+    {
+      return;
+    }
+  else
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.latlong_source);
+      first_point = &g_array_index (priv->local_caches.latlong_cache, HyScanLocationInternalData, 0);
+    }
+
+
+  if (uninit)
+    {
+      /* Сбрасываем флаг инициализации и выходим из функции.*/
+      hyscan_geo_ready (HYSCAN_GEO (location), TRUE);
+      return;
+    }
+
+  hyscan_location_get_range (location, &index, NULL);
+  if (!hyscan_db_channel_get_data (priv->db, source_info->channel_id, index, NULL, &buffer_size, NULL))
+    return;
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
+  hyscan_db_channel_get_data (priv->db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
+
+  /* Теперь смотрим на следующие 2 символа: GP, GN, GL. */
+  if (g_pattern_match_simple ("?GP*", buffer) || g_pattern_match_simple ("?GN*", buffer))
+    ellipse_type = HYSCAN_GEO_ELLIPSOID_WGS84;
+  if (g_pattern_match_simple ("?GL*", buffer))
+    ellipse_type = HYSCAN_GEO_ELLIPSOID_PZ90;
+
+  if (first_point->validity == HYSCAN_LOCATION_ASSEMBLED    ||
+                               HYSCAN_LOCATION_PREPROCESSED ||
+                               HYSCAN_LOCATION_PROCESSED    ||
+                               HYSCAN_LOCATION_USER_VALID   ||
+                               HYSCAN_LOCATION_VALID)
+     {
+       bla0.lat = first_point->int_latitude;
+       bla0.lon = first_point->int_longitude;
+       bla0.h = 0;
+     }
+  /* TODO: считать СК!!! */
+  hyscan_geo_set_origin (HYSCAN_GEO (location), bla0, ellipse_type);
+
+  g_free (buffer);
 }
 
 /* Внутренняя функция. Составляет список источников. Вызывается один раз в конструкторе. */
@@ -490,7 +566,7 @@ hyscan_location_source_defaults (HyScanLocation *location)
    */
 
   /* HYSCAN_LOCATION_PARAMETER_LATLONG. */
-  for (i = 0; i < priv->source_list->len && priv->latlong_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.latlong_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA,HYSCAN_LOCATION_PARAMETER_LATLONG))
@@ -498,58 +574,89 @@ hyscan_location_source_defaults (HyScanLocation *location)
     }
 
   /* HYSCAN_LOCATION_PARAMETER_ALTITUDE. */
-  for (i = 0; i < priv->source_list->len && priv->altitude_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.altitude_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED, HYSCAN_LOCATION_PARAMETER_ALTITUDE))
         hyscan_location_source_set (location, i, TRUE);
     }
-  for (i = 0; i < priv->source_list->len && priv->altitude_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.altitude_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA, HYSCAN_LOCATION_PARAMETER_ALTITUDE))
         hyscan_location_source_set (location, i, TRUE);
     }
+  for (i = 0; i < priv->source_list->len && priv->source_indices.altitude_source == -1; i++)
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
+      if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ZERO, HYSCAN_LOCATION_PARAMETER_ALTITUDE))
+        hyscan_location_source_set (location, i, TRUE);
+    }
 
   /* HYSCAN_LOCATION_PARAMETER_TRACK. */
-  for (i = 0; i < priv->source_list->len && priv->track_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.track_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED, HYSCAN_LOCATION_PARAMETER_TRACK))
         hyscan_location_source_set (location, i, TRUE);
     }
-  for (i = 0; i < priv->source_list->len && priv->track_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.track_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA, HYSCAN_LOCATION_PARAMETER_TRACK))
         hyscan_location_source_set (location, i, TRUE);
     }
+  for (i = 0; i < priv->source_list->len && priv->source_indices.track_source == -1; i++)
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
+      if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ZERO, HYSCAN_LOCATION_PARAMETER_TRACK))
+        hyscan_location_source_set (location, i, TRUE);
+    }
 
   /* HYSCAN_LOCATION_PARAMETER_ROLL. */
+  for (i = 0; i < priv->source_list->len && priv->source_indices.roll_source == -1; i++)
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
+      if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ZERO, HYSCAN_LOCATION_PARAMETER_ROLL))
+        hyscan_location_source_set (location, i, TRUE);
+    }
+
   /* HYSCAN_LOCATION_PARAMETER_PITCH. */
+  for (i = 0; i < priv->source_list->len && priv->source_indices.pitch_source == -1; i++)
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
+      if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ZERO, HYSCAN_LOCATION_PARAMETER_PITCH))
+        hyscan_location_source_set (location, i, TRUE);
+    }
 
   /* HYSCAN_LOCATION_PARAMETER_SPEED. */
-  for (i = 0; i < priv->source_list->len && priv->speed_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.speed_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED, HYSCAN_LOCATION_PARAMETER_SPEED))
         hyscan_location_source_set (location, i, TRUE);
     }
-  for (i = 0; i < priv->source_list->len && priv->speed_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.speed_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA, HYSCAN_LOCATION_PARAMETER_SPEED))
         hyscan_location_source_set (location, i, TRUE);
     }
+  for (i = 0; i < priv->source_list->len && priv->source_indices.speed_source == -1; i++)
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
+      if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ZERO, HYSCAN_LOCATION_PARAMETER_SPEED))
+        hyscan_location_source_set (location, i, TRUE);
+    }
 
   /* HYSCAN_LOCATION_PARAMETER_DEPTH. */
-  for (i = 0; i < priv->source_list->len && priv->depth_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.depth_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ECHOSOUNDER, HYSCAN_LOCATION_PARAMETER_DEPTH))
-          hyscan_location_source_set (location, i, TRUE);
+        hyscan_location_source_set (location, i, TRUE);
     }
-  for (i = 0; i < priv->source_list->len && priv->depth_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.depth_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (source_info->parameter == HYSCAN_LOCATION_PARAMETER_DEPTH             &&(
@@ -560,13 +667,19 @@ hyscan_location_source_defaults (HyScanLocation *location)
           source_info->source_type == HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD))
         hyscan_location_source_set (location, i, TRUE);
     }
+  for (i = 0; i < priv->source_list->len && priv->source_indices.depth_source == -1; i++)
+    {
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
+      if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_ZERO, HYSCAN_LOCATION_PARAMETER_DEPTH))
+        hyscan_location_source_set (location, i, TRUE);
+    }
 
   /* HYSCAN_LOCATION_PARAMETER_DATETIME. */
-  for (i = 0; i < priv->source_list->len && priv->datetime_source == -1; i++)
+  for (i = 0; i < priv->source_list->len && priv->source_indices.datetime_source == -1; i++)
     {
       source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, i);
       if (SOURCE_LIST_CHECK (HYSCAN_LOCATION_SOURCE_NMEA, HYSCAN_LOCATION_PARAMETER_DATETIME))
-          hyscan_location_source_set (location, i, TRUE);
+        hyscan_location_source_set (location, i, TRUE);
     }
 }
 /* Функция отдает список источников для заданного параметра. */
@@ -574,9 +687,13 @@ HyScanLocationSources **
 hyscan_location_source_list (HyScanLocation *location,
                              gint            parameter)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
   HyScanLocationSourcesList *source_info;
   HyScanLocationSources **output_source_list;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), NULL);
+
+  priv = location->priv;
 
   guint i = 0,
         j = 0;
@@ -627,9 +744,13 @@ gint
 hyscan_location_source_get (HyScanLocation *location,
                             gint            parameter)
 {
-  HyScanLocationPrivate *priv = location->priv;
+
+  HyScanLocationPrivate *priv;
   HyScanLocationSourcesList *source_info;
   guint i = 0;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), 0);
+  priv = location->priv;
 
   if (priv->db == NULL)
     return -1;
@@ -640,7 +761,7 @@ hyscan_location_source_get (HyScanLocation *location,
       if (source_info->parameter == parameter && source_info->active == TRUE)
         return source_info->index;
     }
-  return 0;
+  return -1;
 }
 
 /* Функция задает источник. */
@@ -649,7 +770,7 @@ hyscan_location_source_set (HyScanLocation *location,
                             gint            source,
                             gboolean        turn_on)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
 
   HyScanLocationSourcesList *source_info;
   HyScanLocationParameters parameter;
@@ -659,15 +780,18 @@ hyscan_location_source_set (HyScanLocation *location,
   HyScanDataChannelInfo *dc_info;
   gboolean status = FALSE;
 
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), FALSE);
+  priv = location->priv;
+
   if (priv->db == NULL)
     return FALSE;
 
   /* Ставим надзирателя на паузу. */
-  if (priv->overseer_thread != NULL)
+  if (priv->overseer.overseer_thread != NULL)
     {
-      g_atomic_int_set (&(priv->overseer_pause), 1);
-      while ( g_atomic_int_get (&(priv->overseer_paused)) != 1 )
-        g_usleep (priv->overseer_period);
+      g_atomic_int_set (&(priv->overseer.overseer_pause), 1);
+      while (g_atomic_int_get (&(priv->overseer.overseer_paused)) != 1)
+        g_usleep (priv->overseer.overseer_period);
     }
 
   source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, source);
@@ -677,43 +801,43 @@ hyscan_location_source_set (HyScanLocation *location,
   switch (parameter)
     {
     case HYSCAN_LOCATION_PARAMETER_LATLONG:
-      param_cache = priv->latlong_cache;
-      param_source = &(priv->latlong_source);
+      param_cache = priv->local_caches.latlong_cache;
+      param_source = &(priv->source_indices.latlong_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_ALTITUDE:
-      param_cache = priv->altitude_cache;
-      param_source = &(priv->altitude_source);
+      param_cache = priv->local_caches.altitude_cache;
+      param_source = &(priv->source_indices.altitude_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_TRACK:
-      param_cache = priv->track_cache;
-      param_source = &(priv->track_source);
+      param_cache = priv->local_caches.track_cache;
+      param_source = &(priv->source_indices.track_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_SPEED:
-      param_cache = priv->speed_cache;
-      param_source = &(priv->speed_source);
+      param_cache = priv->local_caches.speed_cache;
+      param_source = &(priv->source_indices.speed_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_ROLL:
-      param_cache = priv->roll_cache;
-      param_source = &(priv->roll_source);
+      param_cache = priv->local_caches.roll_cache;
+      param_source = &(priv->source_indices.roll_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_PITCH:
-      param_cache = priv->pitch_cache;
-      param_source = &(priv->pitch_source);
+      param_cache = priv->local_caches.pitch_cache;
+      param_source = &(priv->source_indices.pitch_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_DEPTH:
-      param_cache = priv->depth_cache;
-      param_source = &(priv->depth_source);
+      param_cache = priv->local_caches.depth_cache;
+      param_source = &(priv->source_indices.depth_source);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_DATETIME:
-      param_cache = priv->datetime_cache;
-      param_source = &(priv->datetime_source);
+      param_cache = priv->local_caches.datetime_cache;
+      param_source = &(priv->source_indices.datetime_source);
       break;
 
     default:
@@ -776,42 +900,43 @@ hyscan_location_source_set (HyScanLocation *location,
   switch (parameter)
     {
     case HYSCAN_LOCATION_PARAMETER_LATLONG:
-      priv->latlong_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+      priv->local_caches.latlong_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
+      hyscan_location_geo_initialize (location, TRUE);
       break;
 
     case HYSCAN_LOCATION_PARAMETER_ALTITUDE:
-      priv->altitude_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+      priv->local_caches.altitude_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
 
       break;
 
     case HYSCAN_LOCATION_PARAMETER_TRACK:
       if (source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
-        priv->track_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+        priv->local_caches.track_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       else
-        priv->track_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+        priv->local_caches.track_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       break;
 
     case HYSCAN_LOCATION_PARAMETER_SPEED:
       if (source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
-        priv->speed_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+        priv->local_caches.speed_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       else
-        priv->speed_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+        priv->local_caches.speed_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       break;
 
     case HYSCAN_LOCATION_PARAMETER_ROLL:
-      priv->roll_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+      priv->local_caches.roll_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       break;
 
     case HYSCAN_LOCATION_PARAMETER_PITCH:
-      priv->pitch_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+      priv->local_caches.pitch_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       break;
 
     case HYSCAN_LOCATION_PARAMETER_DEPTH:
-      priv->depth_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalData));
+      priv->local_caches.depth_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalData));
       break;
 
     case HYSCAN_LOCATION_PARAMETER_DATETIME:
-      priv->datetime_cache = g_array_new (FALSE, TRUE, sizeof (HyScanLocationInternalTime));
+      priv->local_caches.datetime_cache = g_array_new (FALSE, TRUE, sizeof(HyScanLocationInternalTime));
       break;
 
     default:
@@ -863,18 +988,18 @@ hyscan_location_source_set (HyScanLocation *location,
 
   exit:
   /* Снимаем надзирателя с паузы. */
-  if (priv->overseer_thread != NULL)
+  if (priv->overseer.overseer_thread != NULL)
     {
-      g_atomic_int_set (&(priv->overseer_pause), 0);
-      while ( g_atomic_int_get (&(priv->overseer_paused)) != 0 )
-        g_usleep (priv->overseer_period);
+      g_atomic_int_set (&(priv->overseer.overseer_pause), 0);
+      while (g_atomic_int_get (&(priv->overseer.overseer_paused)) != 0)
+        g_usleep (priv->overseer.overseer_period);
     }
 
   return status;
 }
 
 /* Функция загружает параметры КД. */
-gboolean
+static gboolean
 hyscan_location_param_load (HyScanLocation *location,
                             gint32          source)
 {
@@ -882,6 +1007,7 @@ hyscan_location_param_load (HyScanLocation *location,
   HyScanLocationSourceTypes source_type = 0;
   HyScanLocationSourcesList *source_info;
   source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, source);
+
   /* Загружаем параметры источника. */
   if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/position/x", &(source_info->x)))
     return FALSE;
@@ -923,7 +1049,11 @@ hyscan_location_soundspeed_set (HyScanLocation *location,
                                 GArray          soundspeedtable)
 {
 
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), FALSE);
+  priv = location->priv;
+
   priv->soundspeedtable = soundspeedtable;
 
   if (priv->db == NULL)
@@ -950,53 +1080,94 @@ hyscan_location_overseer (gpointer user_data)
   HyScanLocationUserParameters param_info;
 
   gboolean latlong_changed = TRUE,
-           track_changed = TRUE,
-           roll_changed = TRUE,
-           pitch_changed = TRUE;
+           track_changed = TRUE;
+
   /* Сигнализируем, что поток запустился. */
-  g_atomic_int_set (&(priv->overseer_started), 1);
+  g_atomic_int_set (&(priv->overseer.overseer_started), 1);
   if (priv->db == NULL)
     {
-      g_atomic_int_set (&(priv->overseer_stop), 1);
+      g_atomic_int_set (&(priv->overseer.overseer_stop), 1);
       return NULL;
     }
 
   /* Поток работает до тех пор, пока не будет установлен флаг остановки. */
-  while (g_atomic_int_get (&(priv->overseer_stop)) != 1)
+  while (g_atomic_int_get (&(priv->overseer.overseer_stop)) != 1)
     {
       /* Если надо поставить обработку на паузу. */
-      if (g_atomic_int_get (&(priv->overseer_pause)) == 1)
+      if (g_atomic_int_get (&(priv->overseer.overseer_pause)) == 1)
         {
-          g_atomic_int_set (&(priv->overseer_paused), 1);
-          while (g_atomic_int_get (&(priv->overseer_pause)) != 0)
-            g_usleep (priv->overseer_period);
-          g_atomic_int_set (&(priv->overseer_paused), 0);
+          g_atomic_int_set (&(priv->overseer.overseer_paused), 1);
+          while (g_atomic_int_get (&(priv->overseer.overseer_pause)) != 0)
+            g_usleep (priv->overseer.overseer_period);
+          g_atomic_int_set (&(priv->overseer.overseer_paused), 0);
         }
 
       /* Важно: hyscan_location_overseer_datetime должен выполняться первым, т.к. все остальные методы используют его для сдвижки данных во времени. */
 
       /* Ставим блокировку, чтобы никто не прочитал негодные данные.*/
       g_mutex_lock (&priv->lock);
-      hyscan_location_overseer_datetime (priv->db, priv->source_list, priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_latlong  (priv->db, priv->source_list, priv->user_params, priv->latlong_cache,  priv->latlong_source,  priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_altitude (priv->db, priv->source_list, priv->altitude_cache, priv->altitude_source, priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_track    (priv->db, priv->source_list, priv->user_params, priv->track_cache,    priv->track_source,    priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_roll     (priv->db, priv->source_list, priv->user_params, priv->roll_cache,     priv->roll_source,     priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_pitch    (priv->db, priv->source_list, priv->user_params, priv->pitch_cache,    priv->pitch_source,    priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_speed    (priv->db, priv->source_list, priv->user_params, priv->speed_cache,    priv->speed_source,    priv->datetime_cache, priv->datetime_source, priv->quality);
-      hyscan_location_overseer_depth    (priv->db, priv->source_list, priv->depth_cache,    priv->depth_source,    &(priv->soundspeedtable), priv->quality);
+      hyscan_location_overseer_datetime (priv->db,
+                                         priv->source_list,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_latlong  (priv->db,
+                                         priv->source_list,
+                                         priv->user_params,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_altitude (priv->db,
+                                         priv->source_list,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_track    (priv->db,
+                                         priv->source_list,
+                                         priv->user_params,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_roll     (priv->db,
+                                         priv->source_list,
+                                         priv->user_params,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_pitch    (priv->db,
+                                         priv->source_list,
+                                         priv->user_params,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_speed    (priv->db,
+                                         priv->source_list,
+                                         priv->user_params,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         priv->quality);
+      hyscan_location_overseer_depth    (priv->db,
+                                         priv->source_list,
+                                         &(priv->local_caches),
+                                         &(priv->source_indices),
+                                         &(priv->soundspeedtable),
+                                         priv->quality);
+
+      /* Если нужно, устанавливаем начальную точку. */
+      if (hyscan_geo_ready (HYSCAN_GEO (location), FALSE) == 0)
+        {
+          hyscan_location_geo_initialize (location, FALSE);
+        }
+
       /* Снимаем блокировку. */
       g_mutex_unlock (&priv->lock);
 
-      /* TODO: проверяем, не изменились ли параметры обработки, и если да, то считываем их. */
       new_param_mod_count = hyscan_db_get_mod_count (priv->db, priv->param_id);
       if (new_param_mod_count != param_mod_count)
         {
 
           latlong_changed = FALSE;
           track_changed = FALSE;
-          roll_changed = FALSE;
-          pitch_changed = FALSE;
 
           /* Сейчас данные будут значительно изменяться, поэтому ставим блокировку.*/
           g_mutex_lock (&priv->lock);
@@ -1004,7 +1175,7 @@ hyscan_location_overseer (gpointer user_data)
           while (param_mod_count != new_param_mod_count)
             {
               param_mod_count = hyscan_db_get_mod_count (priv->db, priv->param_id);
-              g_usleep (priv->overseer_period);
+              g_usleep (priv->overseer.overseer_period);
               new_param_mod_count = hyscan_db_get_mod_count (priv->db, priv->param_id);
             }
 
@@ -1038,85 +1209,14 @@ hyscan_location_overseer (gpointer user_data)
 
                   latlong_changed = TRUE;
 
-                  source_info = &g_array_index (priv->track_cache, HyScanLocationSourcesList, priv->track_source);
+                  source_info = &g_array_index (priv->local_caches.track_cache, HyScanLocationSourcesList, priv->source_indices.track_source);
                   if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
                     track_changed = TRUE;
 
                   continue;
                 }
-              if (g_strrstr (param_list[i], "location-edit-track") != NULL)
-                {
-                  param_info.type = HYSCAN_LOCATION_EDIT_TRACK;
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.ltime);
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.rtime);
-                  hyscan_db_param_get_double (priv->db, priv->param_id, param_list[i], "/new-track", &param_info.value1);
 
-                  g_array_append_val (priv->user_params, param_info);
-
-                  track_changed = TRUE;
-
-                  continue;
-                }
-              if (g_strrstr (param_list[i], "location-edit-roll") != NULL)
-                {
-                  param_info.type = HYSCAN_LOCATION_EDIT_ROLL;
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.ltime);
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.rtime);
-                  hyscan_db_param_get_double (priv->db, priv->param_id, param_list[i], "/new-roll", &param_info.value1);
-
-                  g_array_append_val (priv->user_params, param_info);
-
-                  roll_changed = TRUE;
-
-                  continue;
-                }
-              if (g_strrstr (param_list[i], "location-edit-pitch") != NULL)
-                {
-                  param_info.type = HYSCAN_LOCATION_EDIT_PITCH;
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.ltime);
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.rtime);
-                  hyscan_db_param_get_double (priv->db, priv->param_id, param_list[i], "/new-pitch", &param_info.value1);
-
-                  g_array_append_val (priv->user_params, param_info);
-
-                  pitch_changed = TRUE;
-
-                  continue;
-                }
-
-              if (g_strrstr(param_list[i], "location-bulk-edit") != NULL)
-                {
-                  param_info.type = HYSCAN_LOCATION_BULK_EDIT;
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/ltime", &param_info.ltime);
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/rtime", &param_info.rtime);
-                  hyscan_db_param_get_double (priv->db, priv->param_id, param_list[i], "/new-track", &param_info.value1);
-                  hyscan_db_param_get_double (priv->db, priv->param_id, param_list[i], "/new-roll", &param_info.value2);
-                  hyscan_db_param_get_double (priv->db, priv->param_id, param_list[i], "/new-pitch", &param_info.value3);
-
-                  g_array_append_val (priv->user_params, param_info);
-
-                  track_changed = TRUE;
-                  roll_changed = TRUE;
-                  pitch_changed = TRUE;
-
-                  continue;
-                }
-              if (g_strrstr(param_list[i], "location-remove") != NULL)
-                {
-                  param_info.type = HYSCAN_LOCATION_REMOVE;
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.ltime);
-                  hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/time", &param_info.rtime);
-                  g_array_append_val (priv->user_params, param_info);
-
-                  latlong_changed = TRUE;
-
-                  source_info = &g_array_index (priv->track_cache, HyScanLocationSourcesList, priv->track_source);
-                  if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
-                    track_changed = TRUE;
-
-                  continue;
-                }
-              if (g_strrstr(param_list[i], "location-bulk-remove") != NULL)
+              if (g_strrstr (param_list[i], "location-bulk-remove") != NULL)
                 {
                   param_info.type = HYSCAN_LOCATION_BULK_REMOVE;
                   hyscan_db_param_get_integer (priv->db, priv->param_id, param_list[i], "/ltime", &param_info.ltime);
@@ -1125,7 +1225,7 @@ hyscan_location_overseer (gpointer user_data)
 
                   latlong_changed = TRUE;
 
-                  source_info = &g_array_index (priv->track_cache, HyScanLocationSourcesList, priv->track_source);
+                  source_info = &g_array_index (priv->local_caches.track_cache, HyScanLocationSourcesList, priv->source_indices.track_source);
                   if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED)
                     track_changed = TRUE;
 
@@ -1139,34 +1239,32 @@ hyscan_location_overseer (gpointer user_data)
            * переинициализировать все индексы, после чего вызываем функцию-надзирателя для соответствующего параметра. */
           if (latlong_changed)
             {
-              source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->latlong_source);
+              source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.latlong_source);
               source_info->shift = -1;
-              hyscan_location_overseer_latlong (priv->db, priv->source_list, priv->user_params, priv->latlong_cache,  priv->latlong_source,  priv->datetime_cache, priv->datetime_source, priv->quality);
+              hyscan_location_overseer_latlong (priv->db,
+                                                priv->source_list,
+                                                priv->user_params,
+                                                &(priv->local_caches),
+                                                &(priv->source_indices),
+                                                priv->quality);
             }
           if (track_changed)
             {
-              source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->track_source);
+              source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.track_source);
               source_info->shift = -1;
-              hyscan_location_overseer_track (priv->db, priv->source_list, priv->user_params, priv->track_cache, priv->track_source, priv->datetime_cache, priv->datetime_source, priv->quality);
-            }
-          if (roll_changed)
-            {
-              source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->roll_source);
-              source_info->shift = -1;
-              hyscan_location_overseer_roll (priv->db, priv->source_list, priv->user_params, priv->roll_cache, priv->roll_source, priv->datetime_cache, priv->datetime_source, priv->quality);
-            }
-          if (pitch_changed)
-            {
-              source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->pitch_source);
-              source_info->shift = -1;
-              hyscan_location_overseer_pitch (priv->db, priv->source_list, priv->user_params, priv->pitch_cache, priv->pitch_source, priv->datetime_cache, priv->datetime_source, priv->quality);
+              hyscan_location_overseer_track (priv->db,
+                                              priv->source_list,
+                                              priv->user_params,
+                                              &(priv->local_caches),
+                                              &(priv->source_indices),
+                                              priv->quality);
             }
 
           g_atomic_int_inc (&priv->mod_count);
           g_mutex_unlock (&priv->lock);
         }
 
-      g_usleep (priv->overseer_period);
+      g_usleep (priv->overseer.overseer_period);
     }
   return NULL;
 }
@@ -1181,10 +1279,14 @@ hyscan_location_get (HyScanLocation *location,
                      gdouble         z,
                      gdouble         psi,
                      gdouble         gamma,
-                     gdouble         theta)
+                     gdouble         theta,
+                     gboolean        topo)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
   HyScanLocationData output = {NAN,NAN,NAN,0,0,0,NAN,NAN,time,HYSCAN_LOCATION_VALID};
+
+  HyScanGeoGeodetic geod_coordinates;
+  HyScanGeoCartesian3D topo_coordinates;
 
   gdouble cache_status;
 
@@ -1198,6 +1300,9 @@ hyscan_location_get (HyScanLocation *location,
           center_psi = 0,
           center_gamma = 0,
           center_theta = 0;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), output);
+  priv = location->priv;
 
   if (priv->db == NULL)
     return output;
@@ -1217,32 +1322,32 @@ hyscan_location_get (HyScanLocation *location,
 
   if ((parameter & HYSCAN_LOCATION_PARAMETER_LATLONG) == HYSCAN_LOCATION_PARAMETER_LATLONG)
     {
-      data = hyscan_location_getter_latlong (priv->db, priv->source_list, priv->latlong_cache, priv->latlong_source, time, priv->quality)  ;
+      data = hyscan_location_getter_latlong (priv->db, priv->source_list, priv->local_caches.latlong_cache, priv->source_indices.latlong_source, time, priv->quality)  ;
       output.latitude = data.int_latitude;
       output.longitude = data.int_longitude;
       if (data.validity != HYSCAN_LOCATION_VALID)
         goto fail;
 
-      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->latlong_source);
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.latlong_source);
       center_x = source_info->x;
       center_y = source_info->y;
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_ALTITUDE) == HYSCAN_LOCATION_PARAMETER_ALTITUDE)
     {
-      data = hyscan_location_getter_altitude (priv->db, priv->source_list, priv->altitude_cache, priv->altitude_source, time, priv->quality);
+      data = hyscan_location_getter_altitude (priv->db, priv->source_list, priv->local_caches.altitude_cache, priv->source_indices.altitude_source, time, priv->quality);
       output.altitude = data.int_value;
       if (data.validity != HYSCAN_LOCATION_VALID)
         goto fail;
 
-      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->altitude_source);
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.altitude_source);
       center_z = source_info->z;
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_TRACK) == HYSCAN_LOCATION_PARAMETER_TRACK)
     {
-      data = hyscan_location_getter_track (priv->db, priv->source_list, priv->track_cache, priv->track_source, time, priv->quality);
+      data = hyscan_location_getter_track (priv->db, priv->source_list, priv->local_caches.track_cache, priv->source_indices.track_source, time, priv->quality);
       output.track = data.int_value;
 
-      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->track_source);
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.track_source);
       center_psi = source_info->psi;
       output.track += center_psi;
 
@@ -1251,10 +1356,10 @@ hyscan_location_get (HyScanLocation *location,
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_ROLL) == HYSCAN_LOCATION_PARAMETER_ROLL)
     {
-      data = hyscan_location_getter_roll (priv->db, priv->source_list, priv->roll_cache, priv->roll_source, time, priv->quality);
+      data = hyscan_location_getter_roll (priv->db, priv->source_list, priv->local_caches.roll_cache, priv->source_indices.roll_source, time, priv->quality);
       output.roll = data.int_value;
 
-      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->roll_source);
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.roll_source);
       center_gamma = source_info->gamma;
       output.roll += center_gamma;
 
@@ -1263,10 +1368,10 @@ hyscan_location_get (HyScanLocation *location,
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_PITCH) == HYSCAN_LOCATION_PARAMETER_PITCH)
     {
-      data = hyscan_location_getter_pitch (priv->db, priv->source_list, priv->pitch_cache, priv->pitch_source, time, priv->quality);
+      data = hyscan_location_getter_pitch (priv->db, priv->source_list, priv->local_caches.pitch_cache, priv->source_indices.pitch_source, time, priv->quality);
       output.pitch = data.int_value;
 
-      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->pitch_source);
+      source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.pitch_source);
       center_theta = source_info->theta;
       output.pitch += center_theta;
 
@@ -1275,21 +1380,21 @@ hyscan_location_get (HyScanLocation *location,
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_SPEED) == HYSCAN_LOCATION_PARAMETER_SPEED)
     {
-      data = hyscan_location_getter_speed (priv->db, priv->source_list, priv->speed_cache, priv->speed_source, time, priv->quality);
+      data = hyscan_location_getter_speed (priv->db, priv->source_list, priv->local_caches.speed_cache, priv->source_indices.speed_source, time, priv->quality);
       output.speed = data.int_value;
       if (data.validity != HYSCAN_LOCATION_VALID)
         goto fail;
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_DEPTH) == HYSCAN_LOCATION_PARAMETER_DEPTH)
     {
-      data = hyscan_location_getter_depth (priv->db, priv->source_list, priv->depth_cache, priv->depth_source, time, priv->quality);
+      data = hyscan_location_getter_depth (priv->db, priv->source_list, priv->local_caches.depth_cache, priv->source_indices.depth_source, time, priv->quality);
       output.depth = data.int_value;
       if (data.validity != HYSCAN_LOCATION_VALID)
         goto fail;
     }
   if ((parameter & HYSCAN_LOCATION_PARAMETER_DATETIME) == HYSCAN_LOCATION_PARAMETER_DATETIME)
     {
-      temp3 = hyscan_location_getter_datetime (priv->db, priv->source_list, priv->datetime_cache, priv->datetime_source, time, priv->quality);
+      temp3 = hyscan_location_getter_datetime (priv->db, priv->source_list, priv->local_caches.datetime_cache, priv->source_indices.datetime_source, time, priv->quality);
       if (temp3.validity != HYSCAN_LOCATION_VALID)
         goto fail;
     }
@@ -1304,6 +1409,24 @@ hyscan_location_get (HyScanLocation *location,
   /* Сдвигаем к запрашиваемой точке. */
   hyscan_location_shift (&output, x, y, z, (output.track)*G_PI/180.0, output.roll, output.pitch);
 
+  /* Переводим в топоцентрические координаты. */
+  if (topo)
+    {
+      geod_coordinates.lat = output.latitude;
+      geod_coordinates.lon = output.longitude;
+      if (isnan (output.altitude))
+        geod_coordinates.h = 0;
+      else
+        geod_coordinates.h = output.altitude;
+
+      if (!hyscan_geo_geo2topo (HYSCAN_GEO (location), &topo_coordinates, geod_coordinates))
+        goto fail;
+
+      output.latitude = topo_coordinates.x;
+      output.longitude = topo_coordinates.y;
+      output.altitude = topo_coordinates.z;
+    }
+
   /* Учет углов установки. */
   output.track += psi;
   output.roll += gamma;
@@ -1317,11 +1440,83 @@ hyscan_location_get (HyScanLocation *location,
   return output;
 }
 
+/* Функция возвращает диапазон сырых данных. */
+gboolean
+hyscan_location_get_range (HyScanLocation *location,
+                           gint32         *lindex,
+                           gint32         *rindex)
+{
+  HyScanLocationPrivate *priv;
+  HyScanLocationSourcesList *source_info;
+
+  gint32 data_range_first = 0,
+         data_range_last = 0,
+         size;
+
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), FALSE);
+  priv = location->priv;
+
+  source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.latlong_source);
+  if (!hyscan_db_channel_get_data_range (priv->db, source_info->channel_id, &data_range_first, &data_range_last))
+    return FALSE;
+  if (lindex != NULL)
+    {
+      if (!hyscan_db_channel_get_data (priv->db, source_info->channel_id, *lindex, NULL, &size, NULL))
+        return FALSE;
+    }
+  if (rindex != NULL)
+    {
+      if (!hyscan_db_channel_get_data (priv->db, source_info->channel_id, *rindex, NULL, &size, NULL))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+/* Функция возвращает сырые данные. */
+HyScanLocationData
+hyscan_location_get_raw_data (HyScanLocation *location,
+                              gint32          index)
+{
+  HyScanLocationPrivate *priv;
+  HyScanLocationSourcesList *source_info;
+
+  HyScanLocationData output = {NAN,NAN,NAN,0,0,0,NAN,NAN,0,HYSCAN_LOCATION_INVALID};
+  HyScanLocationInternalData latlong;
+
+  gchar *buffer = NULL;
+  gint32 buffer_size = 0;
+
+  gint64 db_time = 0;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), output);
+  priv = location->priv;
+
+  source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.latlong_source);
+
+  hyscan_db_channel_get_data (priv->db, source_info->channel_id, index, NULL, &buffer_size, NULL);
+  buffer = g_malloc0 (buffer_size * sizeof(gchar));
+  hyscan_db_channel_get_data (priv->db, source_info->channel_id, index, buffer, &buffer_size, &db_time);
+
+  latlong = hyscan_location_nmea_latlong_get (buffer);
+
+  output.latitude = latlong.int_latitude;
+  output.longitude = latlong.int_longitude;
+  output.validity = latlong.validity;
+  output.time = db_time;
+
+  g_free (buffer);
+  return output;
+}
 /* Функция возвращает счетчик изменений. */
 gint64
 hyscan_location_get_mod_count (HyScanLocation *location)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), 0);
+  priv = location->priv;
 
   if (priv->db == NULL)
     return -1;
@@ -1333,7 +1528,10 @@ hyscan_location_get_mod_count (HyScanLocation *location)
 gint
 hyscan_location_get_progress (HyScanLocation *location)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_LOCATION (location), 0);
+  priv = location->priv;
 
   if (priv->db == NULL)
     return -1;
@@ -1469,9 +1667,12 @@ void
 hyscan_location_overseer_period_set (HyScanLocation *location,
                                      gint32          overseer_period)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
 
-  priv->overseer_period = overseer_period;
+  g_return_if_fail (HYSCAN_IS_LOCATION (location));
+  priv = location->priv;
+
+  priv->overseer.overseer_period = overseer_period;
   g_atomic_int_inc (&priv->mod_count);
 }
 
@@ -1480,7 +1681,10 @@ void
 hyscan_location_quality_set (HyScanLocation *location,
                              gdouble         quality)
 {
-  HyScanLocationPrivate *priv = location->priv;
+  HyScanLocationPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_LOCATION (location));
+  priv = location->priv;
 
   priv->quality = quality;
   g_atomic_int_inc (&priv->mod_count);
@@ -1490,8 +1694,8 @@ hyscan_location_quality_set (HyScanLocation *location,
 static void
 hyscan_location_source_free (HyScanLocationSourcesList *data)
 {
-  g_free(data->channel_name);
-  g_free(data->discretization_type);
+  g_free (data->channel_name);
+  g_free (data->discretization_type);
 }
 
 /* Функция добавляет новый элемент в список источников. */
@@ -1511,8 +1715,12 @@ hyscan_location_source_list_add (GArray                   *source_list,
   new_source.source_type = source_type;
   new_source.sensor_channel = sensor_channel;
   new_source.active = FALSE;
-  new_source.dchannel = 0;
-  new_source.channel_name = g_strdup (channel_list[channel_list_index]);
+  new_source.dchannel = NULL;
+  if (channel_list != NULL)
+    new_source.channel_name = g_strdup (channel_list[channel_list_index]);
+  else
+    new_source.channel_name = NULL;
+
   new_source.channel_id = 0;
   new_source.param_id = 0;
   new_source.shift = -1;
@@ -1529,5 +1737,6 @@ hyscan_location_source_list_add (GArray                   *source_list,
   new_source.gamma = 0.0;
   new_source.theta = 0.0;
   new_source.discretization_frequency = 0.0;
-  g_array_append_val (source_list, new_source);
+  if (source_list != NULL)
+    g_array_append_val (source_list, new_source);
 };

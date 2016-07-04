@@ -18,15 +18,14 @@ hyscan_location_getter_datetime (HyScanDB *db,
                                   gint64   time,
                                   gdouble  quality)
 {
-  GDateTime *dt,
-            *dt2;
-  HyScanLocationInternalTime output = {HYSCAN_LOCATION_INTERNALTIME_INIT},
-                             *p1,
-                             *p2;
-  gint32 lindex = 0,
-         rindex = 0;
+  GDateTime *dt, *dt2;
+  HyScanLocationInternalTime output = {HYSCAN_LOCATION_INTERNALTIME_INIT};
+  HyScanLocationInternalTime *p1, *p2;
+  gint32 lindex = 0;
+  gint32 rindex = 0;
   gint32 year, month, day, hour, minute, second, microsecond;
   gint64 middle;
+
   if (!hyscan_location_find_time (cache, source_list, source, time, &lindex, &rindex))
     return output;
 
@@ -81,20 +80,16 @@ hyscan_location_getter_latlong (HyScanDB *db,
 
   HyScanLocationInternalData *p1, *p2;
 
-  gdouble out_lat,
-          out_lon;
-  gdouble k_lat,
-          k_lon,
-          b_lat,
-          b_lon;
-  gdouble t1 = 0,
-          t2 = 0,
-          tout = 0;
+  gdouble out_lat, out_lon;
+  gdouble k_lat, k_lon, b_lat, b_lon;
+  gdouble t1 = 0;
+  gdouble t2 = 0;
+  gdouble tout = 0;
 
-  gint32 lindex = 0,
-         rindex = 0;
-  gint64 ltime = 0,
-         rtime = 0;
+  gint32 lindex = 0;
+  gint32 rindex = 0;
+  gint64 ltime = 0;
+  gint64 rtime = 0;
 
   if (!hyscan_location_find_data (cache, source_list, source, time, &lindex, &rindex, &ltime, &rtime))
     return output;
@@ -164,8 +159,8 @@ hyscan_location_getter_track (HyScanDB *db,
 {
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
   HyScanLocationInternalData output = {HYSCAN_LOCATION_INTERNALDATA_INIT};
-  HyScanLocationInternalData point  = {HYSCAN_LOCATION_INTERNALDATA_INIT},
-                         prev_point = {HYSCAN_LOCATION_INTERNALDATA_INIT};
+  HyScanLocationInternalData point  = {HYSCAN_LOCATION_INTERNALDATA_INIT};
+  HyScanLocationInternalData prev_point = {HYSCAN_LOCATION_INTERNALDATA_INIT};
 
   /* Если курс берется непосредственно из NMEA. */
   if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA)
@@ -220,8 +215,8 @@ hyscan_location_getter_speed (HyScanDB *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   HyScanLocationInternalData output = {HYSCAN_LOCATION_INTERNALDATA_INIT};
-  HyScanLocationInternalData point  = {HYSCAN_LOCATION_INTERNALDATA_INIT},
-                             prev_point = {HYSCAN_LOCATION_INTERNALDATA_INIT};
+  HyScanLocationInternalData point  = {HYSCAN_LOCATION_INTERNALDATA_INIT};
+  HyScanLocationInternalData prev_point = {HYSCAN_LOCATION_INTERNALDATA_INIT};
 
   /* Если курс берется непосредственно из NMEA. */
   if (source_info->source_type == HYSCAN_LOCATION_SOURCE_NMEA)
@@ -270,10 +265,10 @@ hyscan_location_getter_gdouble1 (HyScanDB *db,
 
   HyScanLocationInternalData output = {0,0,0,0,0};
   HyScanLocationInternalData p1 = {HYSCAN_LOCATION_INTERNALDATA_INIT};
-  gint32 lindex = 0,
-         rindex = 0;
-  gint64 ltime = 0,
-         rtime = 0;
+  gint32 lindex = 0;
+  gint32 rindex = 0;
+  gint64 ltime = 0;
+  gint64 rtime = 0;
 
   /* Окно усреднения зависит от quality. 16 в случае quality = 0, 2 в случае quality = 1. */
   gint window_size = 16 - floor (7 * quality),
@@ -315,28 +310,21 @@ hyscan_location_getter_gdouble2 (HyScanDB                    *db,
                                  gdouble                      quality,
                                  HyScanLocationInternalData  *prev_point)
 {
-  /* TODO: функция в текущем виде предназначена для разработки и отладки.
-   * Когда будет понятно, что она работает надлежащим образом, нужно убрать все
-   * промежуточные переменные и заменить их непосредственно значениями из структур с данными. */
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
   HyScanLocationInternalData output = {HYSCAN_LOCATION_INTERNALDATA_INIT};
 
   HyScanLocationInternalData *p1, *p2;
-  gdouble out_lat,
-          out_lon;
-  gdouble k_lat,
-          k_lon,
-          b_lat,
-          b_lon;
-  gdouble t1 = 0,
-          t2 = 0,
-          tout = 0;
+  gdouble out_lat, out_lon;
+  gdouble k_lat, k_lon, b_lat, b_lon;
+  gdouble t1 = 0;
+  gdouble t2 = 0;
+  gdouble tout = 0;
 
-  gint32 lindex = 0,
-         rindex = 0;
-  gint64 ltime = 0,
-         rtime = 0;
+  gint32 lindex = 0;
+  gint32 rindex = 0;
+  gint64 ltime = 0;
+  gint64 rtime = 0;
 
   if (!hyscan_db_channel_find_data (db, source_info->channel_id, time, &lindex, &rindex, &ltime, &rtime))
     return output;
@@ -395,6 +383,7 @@ hyscan_location_getter_gdouble2 (HyScanDB                    *db,
   /* Поскольку трэк представляет собой ряд прямолинейных участков, то нам достаточно двух точек для нахождения искомой точки. */
   if (prev_point != NULL)
     *prev_point = g_array_index (cache, HyScanLocationInternalData, lindex);
+
   p1 = &g_array_index (cache, HyScanLocationInternalData, lindex);
   p2 = &g_array_index (cache, HyScanLocationInternalData, rindex);
 

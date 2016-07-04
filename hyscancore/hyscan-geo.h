@@ -41,7 +41,7 @@
  * Хранение данных.
  *
  * Данные о координатах хранятся в следующих структурах:
- *  - #HyScanGeoCartesian3D \endlink - прямоугольные координаты вида (x,y,z) или (x,y,h).
+ *  - #HyScanGeoCartesian3D - прямоугольные координаты вида (x,y,z) или (x,y,h).
  *  - #HyScanGeoCartesian2D - прямоугольные координаты вида (x,y).
  *  - #HyScanGeoGeodetic - геодезические координаты вида (B,L,H) или (B,L,A), где: <BR>
  *
@@ -179,128 +179,142 @@ GType                   hyscan_geo_get_type                    (void);
  *
  * Функция создаёт объект HyScanGeo, устанавливает начало топоцентрических координат.
  *
- * \param[in] BLA0 - точка отсчета топоцентрических координат: геодезические координаты (lat, lon) и азимут;
+ * \param[in] origin - точка отсчета топоцентрических координат: геодезические координаты (lat, lon) и азимут;
  * \param[in] ell_type - тип референц - эллипсоида.
  * \return NULL при некорректных входных данных
  */
-HyScanGeo              *hyscan_geo_new                         (HyScanGeoGeodetic                 BLA0,
-                                                                HyScanGeoEllipsoidType            ell_type);
+HYSCAN_CORE_EXPORT
+HyScanGeo              *hyscan_geo_new                         (HyScanGeoGeodetic               origin,
+                                                                HyScanGeoEllipsoidType          ell_type);
 
 /**
  *
  * Функция (конструктор) создаёт объект HyScanGeo, устанавливает начало топоцентрических координат.
  *
- * \param[in] BLA0 - точка отсчета топоцентрических координат: геодезические координаты (lat, lon) и азимут;
- * \param[in] ell_params - параметры референц - эллипсоида, структура \link HyScanGeoEllipsoidParam \endlink;
- *  должна быть инициализирована с помощью функции \link init_user_ellipsoid \endlink или \link hyscan_geo_init_ellipsoid \endlink.
+ * \param[in] origin - точка отсчета топоцентрических координат: геодезические координаты (lat, lon) и азимут;
+ * \param[in] ell_params - параметры референц - эллипсоида, структура #HyScanGeoEllipsoidParam;
+ *  должна быть инициализирована с помощью функции  #hyscan_geo_init_ellipsoid_user или #hyscan_geo_init_ellipsoid.
  * \return указатель на NULL при некорректных входных данных
  */
-HyScanGeo              *hyscan_geo_new_user                    (HyScanGeoGeodetic                 BLA0,
-                                                                HyScanGeoEllipsoidParam           ell_params);
+HYSCAN_CORE_EXPORT
+HyScanGeo              *hyscan_geo_new_user                    (HyScanGeoGeodetic               origin,
+                                                                HyScanGeoEllipsoidParam         ell_params);
 
 /**
  *
  * Эта функция должна быть вызвана при смене начала координат.
  *
- * \param[in] geo - указатель на объект класcа \link HyScanGeo \endlink;
- * \param[in] BLA0 - точка отсчета топоцентрических координат: геодезические координаты и азимут;
+ * \param[in] geo - указатель на объект класcа;
+ * \param[in] origin - точка отсчета топоцентрических координат: геодезические координаты и азимут;
  * \param[in] ell_type - тип референц - эллипсоида.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_set_origin                  (HyScanGeo             *geo,
-                                                                HyScanGeoGeodetic      BLA0,
-                                                                HyScanGeoEllipsoidType ell_type);
+gboolean                hyscan_geo_set_origin                  (HyScanGeo                      *geo,
+                                                                HyScanGeoGeodetic               origin,
+                                                                HyScanGeoEllipsoidType          ell_type);
 
 /**
  *
  * Эта функция должна быть вызвана при смене начала координат.
- * Отличие от \link hyscan_geo_set_origin \endlink в том,
- * что параметры эллипсоида нужно передать как структуру \link HyScanGeoEllipsoidParam \endlink.
+ * Отличие от #hyscan_geo_set_origin  в том,
+ * что параметры эллипсоида нужно передать как структуру #HyScanGeoEllipsoidParam.
  *
- * \param[in] geo - указатель на объект класcа \link HyScanGeo \endlink;
- * \param[in] BLA0 - точка отсчета топоцентрических координат: геодезические координаты и азимут;
- * \param[in] ell_params - параметры референц - эллипсоида, структура \link HyScanGeoEllipsoidParam \endlink;
- * должна быть инициализирована с помощью функции \link init_user_ellipsoid \endlink или \link hyscan_geo_init_ellipsoid \endlink.
+ * \param[in] geo - указатель на объект класcа;
+ * \param[in] origin - точка отсчета топоцентрических координат: геодезические координаты и азимут;
+ * \param[in] ell_params - параметры референц - эллипсоида, структура #HyScanGeoEllipsoidParam;
+ * должна быть инициализирована с помощью функции #hyscan_geo_init_ellipsoid_user или #hyscan_geo_init_ellipsoid.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_set_origin_user             (HyScanGeo              *geo,
-                                                                HyScanGeoGeodetic       BLA0,
-                                                                HyScanGeoEllipsoidParam ell_params);
+gboolean                hyscan_geo_set_origin_user             (HyScanGeo                      *geo,
+                                                                HyScanGeoGeodetic               origin,
+                                                                HyScanGeoEllipsoidParam         ell_params);
+
+/**
+ *
+ * Функция возвращает значение флага initialized.
+ * Иными словами, она показывает, готов ли объект к работе (то есть установлена начальная точка и заданы параметры эллипсоида).
+ *
+ * \param[in] geo - указатель на объект класcа;
+ * \param[in] uninit - TRUE, если нужно сбросить флаг инициализации.
+ *
+ * \return TRUE, если объект инициализирован.
+ *
+ */
+HYSCAN_CORE_EXPORT
+gboolean                hyscan_geo_ready                       (HyScanGeo                      *geo,
+                                                                gboolean                        uninit);
 
 /**
  *
  * Пересчет геодезических координат в топоцентрическую СК.
  *
- * \param[in] geo - указатель на объект класcа \link HyScanGeo \endlink;
- * \param[out] dst_topo - топоцентрические координаты на выходе, указатель на структуру \link HyScanGeoCartesian3D \endlink;
- * \param[in] src_geod - геодезические координаты на входе, структура \link HyScanGeoGeodetic \endlink.
+ * \param[in] geo - указатель на объект класcа;
+ * \param[out] dst_topo - топоцентрические координаты на выходе, указатель на структуру #HyScanGeoCartesian3D;
+ * \param[in] src_geod - геодезические координаты на входе, структура #HyScanGeoGeodetic.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_geo2topo                    (HyScanGeo            *geo,
-                                                                HyScanGeoCartesian3D *dst_topo,
-                                                                HyScanGeoGeodetic     src_geod);
+gboolean                hyscan_geo_geo2topo                    (HyScanGeo                      *geo,
+                                                                HyScanGeoCartesian3D           *dst_topo,
+                                                                HyScanGeoGeodetic               src_geod);
 
 /**
  *
  * Пересчет топоцентрических координат в геодезические.
  *
- * \param[in] geo - указатель на объект класcа \link HyScanGeo \endlink;
- * \param[out] dst_geod - геодезические координаты на выходе, указатель на структуру \link HyScanGeoGeodetic \endlink;
- * \param[in] src_topo - топоцентрические координаты на входе, структура \link HyScanGeoCartesian3D \endlink.
+ * \param[in] geo - указатель на объект класcа;
+ * \param[out] dst_geod - геодезические координаты на выходе, указатель на структуру #HyScanGeoGeodetic;
+ * \param[in] src_topo - топоцентрические координаты на входе, структура #HyScanGeoCartesian3D.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_topo2geo                    (HyScanGeo           *geo,
-                                                                HyScanGeoGeodetic   *dst_geod,
-                                                                HyScanGeoCartesian3D src_topo);
+gboolean                hyscan_geo_topo2geo                    (HyScanGeo                      *geo,
+                                                                HyScanGeoGeodetic              *dst_geod,
+                                                                HyScanGeoCartesian3D            src_topo);
 
 /**
  *
  * Пересчет геодезических координат в топоцентрическую СК в плоскость XOY.
  *
- * \param[in] geo - указатель на объект класcа \link HyScanGeo \endlink;
- * \param[out] dst - топоцентрические координаты X, Y на выходе, указатель на структуру \link HyScanGeoCartesian2D \endlink;
- * \param[in] src - геодезические координаты на входе, структура \link HyScanGeoGeodetic \endlink.
+ * \param[in] geo - указатель на объект класcа;
+ * \param[out] dst_topoXY - топоцентрические координаты X, Y на выходе, указатель на структуру #HyScanGeoCartesian2D;
+ * \param[in] src_geod - геодезические координаты на входе, структура #HyScanGeoGeodetic.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_geo2topoXY                  (HyScanGeo            *geo,
-                                                                HyScanGeoCartesian2D *dst_topoXY,
-                                                                HyScanGeoGeodetic     src_geod);
+gboolean                hyscan_geo_geo2topoXY                  (HyScanGeo                      *geo,
+                                                                HyScanGeoCartesian2D           *dst_topoXY,
+                                                                HyScanGeoGeodetic               src_geod);
 
 /**
  *
  * \brief Пересчет топоцентрических координат X, Y в геодезические B, L, H (широта, долгота, геодезическая высота).
  * При этом применяется итерационный процесс, число итераций задается параметром num_of_iter. Если он равен 0, то для
  * аппроксимации поверхности Земли используется сфера, иначе сфероид. Чем больше число итераций, тем выше точность.
- * <PRE>                 ошибка перерасчета в метрах
- * ╔════════════════════╦═══════════════════════════════════════╗
- * ║                    ║          количество итераций          ║
- * ║ удаление от центра ╠═════════╦═════════╦═════════╦═════════╣
- * ║ координат в плане  ║    0    ║    1    ║    2    ║    3    ║
- * ╠════════════════════╬═════════╬═════════╬═════════╬═════════╣
- * ║      10000 м       ║  0.0001 ║         ║         ║         ║
- * ║      100000 м      ║   0.1   ║ 0.00005 ║         ║         ║
- * ║      1000000 м     ║   200   ║    10   ║   0.5   ║  0.02   ║
- * ╚════════════════════╩═════════╩═════════╩═════════╩═════════╝</PRE>
- * \param[in] geo - указатель на объект класcа \link HyScanGeo \endlink;
+ * |       Ошибка пересчета в метрах         |            |            |            |            |
+ * |:---------------------------------------:|:----------:|:----------:|:----------:|:----------:|
+ * | Удаление от центра координат в плане, м | 0 итераций | 1 итерация | 2 итерации | 3 итерации |
+ * |                  10000                  |   0.0001   |            |            |            |
+ * |                  100000                 |     0.1    |   0.00005  |            |            |
+ * |                  100000                 |     200    |     10     |     0.5    |    0.02    |
+ *
+ * \param[in] geo - указатель на объект класcа;
  * \param[out] dst_geod - геодезические координаты на выходе, указатель на структуру. При этом
       высота копируется из h_geodetic;
- * \param[in] src_topoXY - топоцентрические координаты X, Y на входе, структура \link HyScanGeoCartesian2D \endlink.
+ * \param[in] src_topoXY - топоцентрические координаты X, Y на входе, структура #HyScanGeoCartesian2D.
  * \param[in] h_geodetic - геодезическая высота конечной точки, gdouble;
  * \param[in] num_of_iter - 0, если для аппроксимации используется сфера. Чем больше значение, тем выше точность,
  * но дольше идут вычисления.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo           *geo,
-                                                                HyScanGeoGeodetic   *dst_geod,
-                                                                HyScanGeoCartesian2D src_topoXY,
-                                                                gdouble              h_geodetic,
-                                                                guint                num_of_iter);
+gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo                      *geo,
+                                                                HyScanGeoGeodetic              *dst_geod,
+                                                                HyScanGeoCartesian2D            src_topoXY,
+                                                                gdouble                         h_geodetic,
+                                                                guint                           num_of_iter);
 
 /* Функции для пересчета геодезических координат в различные СК. */
 
@@ -308,17 +322,17 @@ gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo       
  *
  * Пересчет геодезических координат точки src с датумом datum_in в точку dst с датумом datum_out.
  *
- * \param[out] dst - выходная координата, указатель на структуру \link HyScanGeoGeodetic \endlink;
- * \param[in] src - входная координата, структура \link HyScanGeoGeodetic \endlink;
- * \param[in] datum_in - тип входной СК, структура \link HyScanGeoCSType \endlink;
- * \param[in] datum_out - тип выходной СК, структура \link HyScanGeoCSType \endlink.
+ * \param[out] dst - выходная координата, указатель на структуру #HyScanGeoGeodetic;
+ * \param[in] src - входная координата, структура #HyScanGeoGeodetic;
+ * \param[in] cs_in - тип входной СК, структура #HyScanGeoCSType;
+ * \param[in] cs_out - тип выходной СК, структура #HyScanGeoCSType.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_cs_transform                  (HyScanGeoGeodetic                *dst,
-                                                                  HyScanGeoGeodetic                 src,
-                                                                  HyScanGeoCSType                   cs_in,
-                                                                  HyScanGeoCSType                   cs_out);
+gboolean                hyscan_geo_cs_transform                  (HyScanGeoGeodetic            *dst,
+                                                                  HyScanGeoGeodetic             src,
+                                                                  HyScanGeoCSType               cs_in,
+                                                                  HyScanGeoCSType               cs_out);
 
 /**
  *
@@ -326,78 +340,79 @@ gboolean                hyscan_geo_cs_transform                  (HyScanGeoGeode
  * СК с референц-эллипсоидом el_params_out с использованием датума datum_param.
  * Используется при известных параметрах преобрзования (датума, параметров референц-эллипсоида).
  *
- * \param[out] dst - выходная координата, указатель на структуру \link HyScanGeoGeodetic \endlink;
- * \param[in] src - входная координата, структура \link HyScanGeoGeodetic \endlink;
- * \param[in] el_params_in - параметры референц-эллипсоида входной СК, структура \link HyScanGeoEllipsoidParam \endlink;
- * \param[in] el_params_out - параметры референц-эллипсоида выходной СК, структура \link HyScanGeoEllipsoidParam \endlink;
- * \param[in] datum_param - параметры пересчета, структура \link HyScanGeoDatumParam \endlink.
+ * \param[out] dst - выходная координата, указатель на структуру #HyScanGeoGeodetic;
+ * \param[in] src - входная координата, структура #HyScanGeoGeodetic;
+ * \param[in] el_params_in - параметры референц-эллипсоида входной СК, структура #HyScanGeoEllipsoidParam;
+ * \param[in] el_params_out - параметры референц-эллипсоида выходной СК, структура #HyScanGeoEllipsoidParam;
+ * \param[in] datum_param - параметры пересчета, структура #HyScanGeoDatumParam.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_cs_transform_user             (HyScanGeoGeodetic                *dst,
-                                                                  HyScanGeoGeodetic                 src,
-                                                                  HyScanGeoEllipsoidParam           el_params_in,
-                                                                  HyScanGeoEllipsoidParam           el_params_out,
-                                                                  HyScanGeoDatumParam               datum_param);
+gboolean                hyscan_geo_cs_transform_user             (HyScanGeoGeodetic            *dst,
+                                                                  HyScanGeoGeodetic             src,
+                                                                  HyScanGeoEllipsoidParam       el_params_in,
+                                                                  HyScanGeoEllipsoidParam       el_params_out,
+                                                                  HyScanGeoDatumParam           datum_param);
 
 /**
  * Функция для получения параметров преобразования Гельмерта между
  * системами координат sc_in и sc_out
  *
- * \param sc_in - тип входной СК, структура \link HyScanGeoCSType \endlink
- * \param sc_out - тип выходной СК, структура \link HyScanGeoCSType \endlink
+ * \param cs_in - тип входной СК, структура #HyScanGeoCSType
+ * \param cs_out - тип выходной СК, структура #HyScanGeoCSType
  */
 HYSCAN_CORE_EXPORT
-HyScanGeoDatumParam     hyscan_geo_get_datum_params            (HyScanGeoCSType             cs_in,
-                                                                HyScanGeoCSType             cs_out);
+HyScanGeoDatumParam     hyscan_geo_get_datum_params            (HyScanGeoCSType                 cs_in,
+                                                                HyScanGeoCSType                 cs_out);
 
 /**
  * Функция для получения параметров преобразования Гельмерта для пересчета в СК WGS-84
- * по типу СК (локальной системы координат) \link HyScanGeoCSType \endlink
+ * по типу СК (локальной системы координат) #HyScanGeoCSType
  *
- * \param sc_type - тип системы координат \link HyScanGeoCSType \endlink
+ * \param cs_type - тип системы координат #HyScanGeoCSType
  * \return структура с 7 параметрами для пересчета координат в СК WGS-84,
  * возвращает все параметры нулевыми, если передается datum - HYSCAN_GEO_DATUM_WGS84 или HYSCAN_GEO_CS_INVALID,
  * что соответствует единичному преобразованию (домножение на единичную матрицу и нулевой сдвиг)
  */
 HYSCAN_CORE_EXPORT
-HyScanGeoDatumParam     hyscan_geo_get_helmert_params_to_wgs84 (HyScanGeoCSType             cs_type);
+HyScanGeoDatumParam     hyscan_geo_get_helmert_params_to_wgs84 (HyScanGeoCSType                 cs_type);
 
 
-/** Функция вычисления параметров референц-эллипсоида по его типу \link HyScanGeoEllipsoidType \endlink. */
+/** Функция вычисления параметров референц-эллипсоида по его типу #HyScanGeoEllipsoidType. */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_init_ellipsoid              (HyScanGeoEllipsoidParam    *p,
-                                                                HyScanGeoEllipsoidType      ell_type);
+gboolean                hyscan_geo_init_ellipsoid              (HyScanGeoEllipsoidParam        *p,
+                                                                HyScanGeoEllipsoidType          ell_type);
 
 /**
  *
  * Функция вычисления параметров референц-эллипсоида по двум параметрам:
  *
+ * \param[out] p - указатель на структуру с параметрами эллипсоида;
  * \param[in] a - большая полуось (major semiaxis);
  * \param[in] f - полярное сжатие (уплощение, flattening).
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_init_ellipsoid_user         (HyScanGeoEllipsoidParam    *p,
-                                                                gdouble                     a,
-                                                                gdouble                     f);
+gboolean                hyscan_geo_init_ellipsoid_user         (HyScanGeoEllipsoidParam        *p,
+                                                                gdouble                         a,
+                                                                gdouble                         f);
 
 /**
  *
- * Функция получения основных параметров эллипсоида по его типу \link HyScanGeoEllipsoidType \endlink.
+ * Функция получения основных параметров эллипсоида по его типу #HyScanGeoEllipsoidType.
  *
  * \param[out] a - большая полуось (major semiaxis);
  * \param[out] f - полярное сжатие (уплощение, flattening);
  * \param[out] epsg - EPSG код референц-эллипсоида;
- * \param[in] ell_type - тип референц-эллипсоида \link HyScanGeoEllipsoidType \endlink;
+ * \param[in] ell_type - тип референц-эллипсоида #HyScanGeoEllipsoidType;
  * \return TRUE, если эллипсоид найден, иначе FALSE.
  *
  */
 HYSCAN_CORE_EXPORT
-gboolean                hyscan_geo_get_ellipse_params          (gdouble                    *a,
-                                                                gdouble                    *f,
-                                                                gdouble                    *epsg,
-                                                                HyScanGeoEllipsoidType      ell_type);
+gboolean                hyscan_geo_get_ellipse_params          (gdouble                        *a,
+                                                                gdouble                        *f,
+                                                                gdouble                        *epsg,
+                                                                HyScanGeoEllipsoidType          ell_type);
 
 
 G_END_DECLS

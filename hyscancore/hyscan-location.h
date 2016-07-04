@@ -59,18 +59,28 @@
  * - #hyscan_location_get_progress - процент выполнения расчетов (режим пост-обработки)
  *
  * - - -
- * \htmlonly
- * <details>
- *  <summary>Дополнительная информация о таблице скорости звука</summary>
- *  Под профилем скорости звука понимается таблично заданная функция скорости звука от глубины, например, такая:<br>
- *  <table style="border-collapse:collapse;border-spacing:0"><tr><th style="font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;background-color:#329a9d;text-align:center;vertical-align:top">Глубина</th><th style="font-family:Arial, sans-serif;font-size:14px;font-weight:bold;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;background-color:#329a9d;text-align:center;vertical-align:top">Скорость звука</th></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">0</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1500</td></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">2</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1450</td></tr><tr><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">4</td><td style="font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;text-align:center;vertical-align:top">1400</td></tr></table>
- *  Где глубина задается в метрах, а скорость звука в метрах в секунду. <br>
- *  Данный пример говорит о следующем: на глубинах от 0 до 2 метров скорость звука составляет 1500 м/с,
- *  от 2 до 4 метров - 1450 м/с, от 4 и далее - 1400 м/с. <br>
- *  Глубина обязательно должна начинаться от нуля. <br>
- *  Таблица представляет собой GArray, состоящий из структур типа SoundSpeedTable.
- * </details>
- * \endhtmlonly
+ * Поддерживаемые схемы данных:
+ * - location-edit-latlong - правка координат в точке;
+ * - location-edit-track - правка курса для одной или нескольких точек;
+ * - location-edit-roll - правка крена для одной или нескольких точек;
+ * - location-edit-pitch - правка дифферента для одной или нескольких точек;
+ * - location-bulk-remove - удаление одной или нескольких точек из обработки.
+ *
+ * - - -
+ * Дополнительная информация о таблице скорости звука.
+ *
+ *  Под профилем скорости звука понимается таблично заданная функция скорости звука от глубины, например, такая:
+ * | Глубина, м | Скорость звука, м/с |
+ * |:----------:|:-------------------:|
+ * |      0     |         1500        |
+ * |      2     |         1450        |
+ * |      4     |         1400        |
+ * Где глубина задается в метрах, а скорость звука в метрах в секунду. <br>
+ * Данный пример говорит о следующем: на глубинах от 0 до 2 метров скорость звука составляет 1500 м/с,
+ * от 2 до 4 метров - 1450 м/с, от 4 и далее - 1400 м/с. <br>
+ * \warning Глубина обязательно должна начинаться от нуля. <br>
+ * Таблица представляет собой GArray, состоящий из структур типа SoundSpeedTable.
+ *
  */
 #ifndef __HYSCAN_LOCATION_H__
 #define __HYSCAN_LOCATION_H__
@@ -79,6 +89,7 @@
 #include <hyscan-cache.h>
 #include <hyscan-core-types.h>
 #include <hyscan-data-channel.h>
+#include <hyscan-geo.h>
 
 G_BEGIN_DECLS
 
@@ -105,6 +116,7 @@ typedef enum
 /** \brief Типы источников. */
 typedef enum
 {
+  HYSCAN_LOCATION_SOURCE_ZERO,                          /**< Нулевой источник. Всегда выдает нулевые значения. */
   HYSCAN_LOCATION_SOURCE_NMEA,                          /**< NMEA-строки. При этом информация непосредственно берется из строки. */
   HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED,                 /**< NMEA-строки, но значение вычисляется из других значений (курс и скорость из координат). */
   HYSCAN_LOCATION_SOURCE_ECHOSOUNDER,                   /**< Эхолот. */
@@ -151,14 +163,14 @@ typedef struct _HyScanLocationClass HyScanLocationClass;
 
 struct _HyScanLocation
 {
-  GObject parent_instance;
-  
+  HyScanGeo parent_instance;
+
   HyScanLocationPrivate *priv;
 };
 
 struct _HyScanLocationClass
 {
-  GObjectClass parent_class;
+  HyScanGeoClass parent_class;
 };
 
 GType                   hyscan_location_get_type                (void);
@@ -358,7 +370,8 @@ gboolean                hyscan_location_soundspeed_set          (HyScanLocation 
  * \param z сдвижка по оси от центра масс к килю;
  * \param psi угловой сдвиг (в радианах), соответствующий курсу;
  * \param gamma угловой сдвиг (в радианах), соответствующий крену;
- * \param theta угловой сдвиг (в радианах), соответствующий дифференту.
+ * \param theta угловой сдвиг (в радианах), соответствующий дифференту;
+ * \param topo требовать координаты в топоцентрической СК.
  *
  * \return Структура #HyScanLocationData со всей затребованной информацией.
  *
@@ -372,7 +385,45 @@ HyScanLocationData      hyscan_location_get                     (HyScanLocation 
                                                                  gdouble         z,
                                                                  gdouble         psi,
                                                                  gdouble         gamma,
-                                                                 gdouble         theta);
+                                                                 gdouble         theta,
+                                                                 gboolean        topo);
+
+/**
+ *
+ * Функция возвращает диапазон индексов, в которых есть данные широты и долготы.
+ * Вызывается перед #hyscan_location_get_raw_data.
+ *
+ * \param location - указатель на объект обработки навигационных данных;
+ * \param lindex - левый индекс данных;
+ * \param rindex - правый индекс данных.
+ *
+ * \return TRUE, если диапазон успешно определен.
+ *
+ */
+HYSCAN_CORE_EXPORT
+gboolean                hyscan_location_get_range               (HyScanLocation *location,
+                                                                 gint32         *lindex,
+                                                                 gint32         *rindex);
+
+/**
+ *
+ * Функция возвращает сырые координаты для указанного индекса БД.
+ * Вызывается перед #hyscan_location_get_raw_data.
+ *
+ * \warning Перед вызовом этой функции необходимо определить диапазон индексов, в которых
+ * есть данные координат, с помощью функции #hyscan_location_get_range.
+ *
+ * \param location - указатель на объект обработки навигационных данных;
+ * \param index - индекс данных;
+ *
+ * \return Значение, хранящееся в БД по этому индексу. При этом если данные в строке невалидны
+ * (не совпадает контрольная сумма), то поля будут иметь значение NAN, а флаг валидности будет равен HYSCAN_LOCATION_INVALID.
+ * В случае валидных данных флаг будет HYSCAN_LOCATION_PARSED.
+ *
+ */
+HYSCAN_CORE_EXPORT
+HyScanLocationData      hyscan_location_get_raw_data            (HyScanLocation *location,
+                                                                 gint32          index);
 /**
  *
  * Функция возвращает номер изменения в объекте.

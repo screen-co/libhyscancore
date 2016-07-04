@@ -57,13 +57,5 @@
       <key id="frequency" name="Discretization frequency" type="double"/>
     </node>
   </schema>
-  <schema id="location-edit-latlong">
-    <key id="location-edit-version" name="Edit schema version" type="integer" flags="readonly">
-      <default>20160500</default>
-    </key>
-    <key id="index" name="Index of point to edit" type="integer"/>
-    <key id="new-latitude" name="New latitude value" type="double"/>
-    <key id="new-longitude" name="New longitude value" type="double"/>
-  </schema>
 
 </schemalist>

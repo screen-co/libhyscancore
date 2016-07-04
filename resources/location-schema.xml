@@ -10,48 +10,6 @@
     <key id="new-longitude" name="New longitude value" type="double"/>
   </schema>
 
-  <schema id="location-edit-track">
-    <key id="location-edit-version" name="Edit schema version" type="integer" flags="readonly">
-      <default>20160500</default>
-    </key>
-    <key id="time" name="Time of point to edit" type="integer"/>
-    <key id="new-track" name="Track" type="double"/>
-  </schema>
-
-  <schema id="location-edit-roll">
-    <key id="location-edit-version" name="Edit schema version" type="integer" flags="readonly">
-      <default>20160500</default>
-    </key>
-    <key id="time" name="Time of point to edit" type="integer"/>
-    <key id="new-roll" name="Roll" type="double"/>
-  </schema>
-
-  <schema id="location-edit-pitch">
-    <key id="location-edit-version" name="Edit schema version" type="integer" flags="readonly">
-      <default>20160500</default>
-    </key>
-    <key id="time" name="Time of point to edit" type="integer"/>
-    <key id="new-pitch" name="Pitch" type="double"/>
-  </schema>
-
-  <schema id="location-bulk-edit">
-    <key id="location-bulk-edit-version" name="Bulk edit schema version" type="integer" flags="readonly">
-      <default>20160500</default>
-    </key>
-    <key id="ltime" name="Time of first point to edit" type="integer"/>
-    <key id="rtime" name="Time of last point to edit" type="integer"/>
-    <key id="new-track" name="Track" type="double"/>
-    <key id="new-roll" name="Roll" type="double"/>
-    <key id="new-pitch" name="Pitch" type="double"/>
-  </schema>
-
-  <schema id="location-remove">
-    <key id="location-remove-version" name="Remove schema version" type="integer" flags="readonly">
-      <default>20160500</default>
-    </key>
-    <key id="time" name="Time of point to remove" type="integer"/>
-  </schema>
-
   <schema id="location-bulk-remove">
     <key id="location-bulk-remove-version" name="Bulk remove schema version" type="integer" flags="readonly">
       <default>20160500</default>

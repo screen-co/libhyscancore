@@ -19,23 +19,26 @@
 #define KRED "\x1b[31;22m"
 #define KNRM "\x1b[0m"
 
-gdouble location_metrics (gdouble orig_lat[10000],
-                          gdouble orig_lon[10000],
-                          gdouble orig_trk[10000],
-                          gdouble lat[10000],
-                          gdouble lon[10000],
-                          gdouble trk[10000]);
-
-gdouble location_metrics2 (gdouble orig_lat[10000],
-                          gdouble orig_lon[10000],
-                          gdouble orig_trk[10000],
-                          gdouble lat[10000],
-                          gdouble lon[10000],
-                          gdouble trk[10000]);
+gboolean location_metrics (gdouble orig_lat[10000],
+                           gdouble orig_lon[10000],
+                           gdouble orig_trk[10000],
+                           gdouble lat[10000],
+                           gdouble lon[10000],
+                           gdouble trk[10000]);
 
 int
 main (int argc, char **argv)
 {
+  gchar *source_types[8] = {
+    "NMEA",
+    "NMEA_COMPUTED",
+    "ECHOSOUNDER",
+    "SONAR_PORT",
+    "SONAR_STARBOARD",
+    "SONAR_HIRES_PORT",
+    "SONAR_HIRES_STARBOARD",
+    "SAS"};
+
   GError *error = NULL;
   gchar *db_uri = NULL; /* Путь к каталогу с базой данных. */
   gint cache_size = 0; /* Размер кэша, Мб. */
@@ -85,7 +88,7 @@ main (int argc, char **argv)
   gdouble lat[10000] = {0};
   gdouble lon[10000] = {0};
   gdouble trk[10000] = {0};
-  gdouble metric;
+  gboolean metric;
 
   gint i;
   gchar *char_ptr;
@@ -196,7 +199,7 @@ main (int argc, char **argv)
 
   /* Создаём галс. */
   if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
-    g_error( "can't create track");
+    g_error ( "can't create track");
 
   /* Создаём каналы данных. */
   /* РМЦ. */
@@ -209,14 +212,14 @@ main (int argc, char **argv)
 
   /* Глубина. */
   channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SONAR_DATA_ECHOSOUNDER, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1);
-  dc_writer = hyscan_data_channel_writer_new(db, "project", "track", channel_name3, &dc_info);
+  dc_writer = hyscan_data_channel_writer_new (db, "project", "track", channel_name3, &dc_info);
 
   /* Заполняем каналы тестовыми данными. */
   for (i = 0, db_time = 1e10, db_index = 2^16; i < 10000; i++, db_index++, db_time+=1e6)
     {
       hyscan_db_channel_add_data (db, channel_id1, db_time, rmc_test_data[i], strlen(rmc_test_data[i]), NULL);
       hyscan_db_channel_add_data (db, channel_id2, db_time, gga_test_data[i], strlen(gga_test_data[i]), NULL);
-      hyscan_data_channel_writer_add_data (dc_writer, db_time, &depth_test_data, 5000 * sizeof(gfloat));
+      hyscan_data_channel_writer_add_data (dc_writer, db_time, &depth_test_data, 5000 * sizeof (gfloat));
     }
 
   /* Переводим каналы в режим "только для чтения". */
@@ -229,38 +232,38 @@ main (int argc, char **argv)
   /* Проверка получения списка источников. */
   source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_LATLONG);
   for (i = 0; source_list[i] != NULL; i++)
-    g_printf(KYLW "LATLONG:" KNRM " index %i, source_type %i, sensor_channel %i\n",
-             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+    g_printf (KYLW "%-8s" KNRM " index: %i type: %-13s channel: %i\n","LATLONG",
+             source_list[i]->index, source_types[(source_list[i]->source_type)], source_list[i]->sensor_channel);
   hyscan_location_source_list_free (&source_list);
 
   source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_TRACK);
   for (i = 0; source_list[i] != NULL; i++)
-    g_printf(KYLW "TRACK:" KNRM " index %i, source_type %i, sensor_channel %i\n",
-             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+    g_printf (KYLW "%-8s" KNRM " index: %i type: %-13s channel: %i\n","TRACK",
+             source_list[i]->index, source_types[(source_list[i]->source_type)], source_list[i]->sensor_channel);
   hyscan_location_source_list_free (&source_list);
 
   source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_SPEED);
   for (i = 0; source_list[i] != NULL; i++)
-    g_printf(KYLW "SPEED:" KNRM " index %i, source_type %i, sensor_channel %i\n",
-             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+    g_printf (KYLW "%-8s" KNRM " index: %i type: %-13s channel: %i\n","SPEED",
+             source_list[i]->index, source_types[(source_list[i]->source_type)], source_list[i]->sensor_channel);
   hyscan_location_source_list_free (&source_list);
 
   source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_DEPTH);
   for (i = 0; source_list[i] != NULL; i++)
-    g_printf(KYLW "DEPTH:" KNRM " index %i, source_type %i, sensor_channel %i\n",
-             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+    g_printf (KYLW "%-8s" KNRM " index: %i type: %-13s channel: %i\n","DEPTH",
+             source_list[i]->index, source_types[(source_list[i]->source_type)], source_list[i]->sensor_channel);
   hyscan_location_source_list_free (&source_list);
 
   source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_ALTITUDE);
   for (i = 0; source_list[i] != NULL; i++)
-    g_printf(KYLW "ALTITUDE:" KNRM " index %i, source_type %i, sensor_channel %i\n",
-             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+    g_printf (KYLW "%-8s" KNRM " index: %i type: %-13s channel: %i\n","ALTITUDE",
+             source_list[i]->index, source_types[(source_list[i]->source_type)], source_list[i]->sensor_channel);
   hyscan_location_source_list_free (&source_list);
 
   source_list = hyscan_location_source_list (location, HYSCAN_LOCATION_PARAMETER_DATETIME);
   for (i = 0; source_list[i] != NULL; i++)
-    g_printf(KYLW "DATETIME:" KNRM " index %i, source_type %i, sensor_channel %i\n",
-             source_list[i]->index, source_list[i]->source_type, source_list[i]->sensor_channel);
+    g_printf (KYLW "%-8s" KNRM " index: %i type: %-13s channel: %i\n","DATETIME",
+             source_list[i]->index, source_types[(source_list[i]->source_type)], source_list[i]->sensor_channel);
   hyscan_location_source_list_free (&source_list);
 
   FILE *outfile = g_fopen(filename, "w+");
@@ -273,28 +276,28 @@ main (int argc, char **argv)
               | HYSCAN_LOCATION_PARAMETER_DATETIME
               ;
 
-  while (i < 5000)
+  while (i < 10000)
     {
       data.validity = 0;
       while (data.validity == 0)
         {
-          data = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0);
+          data = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0, FALSE);
           if (cache != NULL)
             {
-              data_cached = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0);
+              data_cached = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0, FALSE);
               if (data.validity && data.validity != data_cached.validity)
                 g_printf ("cache error @ step %i\n",i);
             }
         }
       //g_fprintf (outfile, "%10.8f,%10.8f,%f,%f,%f,%f\n", data.latitude, data.longitude, data.track, data.speed, data.depth, data.altitude);
-//      g_fprintf (outfile, "%10.8f %10.8f %10.8f\n", data.latitude, data.longitude, data.track);
+      g_fprintf (outfile, "%10.8f %10.8f %10.8f\n", data.latitude, data.longitude, data.track);
       lat[i] = data.latitude;
       lon[i] = data.longitude;
       trk[i] = data.track;
       i++;
     }
 
-g_printf("data points obtained:" KGRN " %i\n" KNRM, i);
+g_printf ("data points obtained:" KGRN " %i\n" KNRM, i);
 g_fprintf (outfile, "latitude,longitude,track\n");
 
 location_mod_count = hyscan_location_get_mod_count (location);
@@ -304,36 +307,28 @@ project_param_id = hyscan_db_project_param_open (db, project_id, "location.defau
 
 /* Создаем объекты обработки. */
 /* latlong-edit. */
-//param_status = hyscan_db_param_object_create (db, project_param_id, "location-edit-latlong3", "location-edit-latlong");
-//param_status = hyscan_db_param_set_integer (db, project_param_id, "location-edit-latlong3", "/time", 1e10+1e6*2);
-//param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-latitude", 55.0);
-//param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-longitude", 36.0);
-
-/* track edit где-то на 10-11 точке*/
-//param_status = hyscan_db_param_object_create (db, project_param_id, "location-edit-track1", "location-edit-track");
-//param_status = hyscan_db_param_set_integer (db, project_param_id, "location-edit-track1", "/time", 1e10+1e6*10);
-//param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-track1", "/new-track", -180.0);
-//
-//param_status = hyscan_db_param_object_create (db, project_param_id, "location-remove1", "location-remove");
-//param_status = hyscan_db_param_set_integer (db, project_param_id, "location-remove1", "/time", 1e10+1e6*20);
+param_status = hyscan_db_param_object_create (db, project_param_id, "location-edit-latlong3", "location-edit-latlong");
+param_status = hyscan_db_param_set_integer (db, project_param_id, "location-edit-latlong3", "/time", 1e10+1e6*2);
+param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-latitude", 55.0);
+param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-longitude", 36.0);
 
 param_status = hyscan_db_param_object_create (db, project_param_id, "location-bulk-remove1", "location-bulk-remove");
 param_status = hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/ltime", 1e10+1e6*450);
-param_status = hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/rtime", 1e10+1e6*650);
+param_status = hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/rtime", 1e10+1e6*500);
 
 while (location_mod_count == hyscan_location_get_mod_count (location));
 location_mod_count = hyscan_location_get_mod_count (location);
 
   i = 0;
-  while (i < 1000)
+  while (i < 10000)
     {
       data.validity = 0;
       while (data.validity == 0)
         {
-          data = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0);
+          data = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0, FALSE);
           if (cache != NULL)
             {
-              data_cached = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0);
+              data_cached = hyscan_location_get (location, parameter, 1e10 + i*points_freq, 0, 0, 0, 0, 0, 0, FALSE);
               if (data.validity && data.validity != data_cached.validity)
                 g_printf ("cache error @ step %i\n",i);
             }
@@ -345,13 +340,13 @@ location_mod_count = hyscan_location_get_mod_count (location);
 
   /* Вычисляем значение метрики. */
   metric = location_metrics (orig_lat, orig_lon, orig_trk, lat, lon, trk);
-  metric = location_metrics2 (orig_lat, orig_lon, orig_trk, lat, lon, trk);
 
-  g_object_unref(location);
-  fclose(outfile);
+  g_object_unref (location);
+  fclose (outfile);
 
   /* Закрываем каналы данных. */
   hyscan_db_close (db, channel_id1);
+  hyscan_db_close (db, channel_id2);
 
   /* Закрываем галс и проект. */
   hyscan_db_close (db, project_id);
@@ -370,13 +365,25 @@ location_mod_count = hyscan_location_get_mod_count (location);
   g_free (gga_test_data);
   g_free (orig_test_data);
 
-  if (metric >= 0.85)
-    return 0;
+  if (metric)
+    {
+      g_printf (KGRN "TEST PASSED\n" KNRM);
+      return 0;
+    }
   else
-    return 1;
+    {
+      g_printf (KRED "TEST NOT PASSED\n" KNRM);
+      return 1;
+    }
 }
 
-gdouble location_metrics (gdouble orig_lat[10000],
+/* Метрика для автоматизации теста.
+ * Для каждой пары точек сглаженного и незашумленного трека вычисляется расстояние и курс.
+ * После чего эти величины усредняются.
+ * Положим, что если средняя разница в расстояниях не должна превышать 0.1 м (10 см),
+ * а по курсу - 0.1 градус. В таком случае вовращается TRUE.
+ */
+gboolean location_metrics (gdouble orig_lat[10000],
                           gdouble orig_lon[10000],
                           gdouble orig_trk[10000],
                           gdouble lat[10000],
@@ -386,25 +393,39 @@ gdouble location_metrics (gdouble orig_lat[10000],
   gint i = 0;
 
   gdouble dlat = 0;
+  gdouble orig_dlat = 0;
   gdouble dlon = 0;
+  gdouble orig_dlon = 0;
 
   gdouble dist_delta[10000] = {0};
   gdouble trk_delta[10000] = {0};
 
   gdouble dist_mean = 0.0,
-          trk_mean = 0.0;
+          trk_mean = 0.0,
+          ok_dist_mean = 0.1,
+          ok_trk_mean = 0.1;
 
   /* Вычисляем значения отклонений по расстоянию и изменения курса. */
   for (i = 0; i < 10000; i++)
     {
-      dlat = (orig_lat[i] - lat[i]) * (G_PI / 180.0) * 6474423.1;
-      dlon = (orig_lon[i] - lon[i]) * (G_PI / 180.0) * cos (orig_lat[i] * (G_PI / 180.0)) * 6474423.1;
-      dist_delta[i] = sqrt (dlat*dlat + dlon*dlon);
-
       if (i == 0)
-        trk_delta[i] = ABS(trk[0] - trk[10000]);
+        {
+          trk_delta[i] = fabs(trk[0] - trk[10000]);
+          dlat = (lat[0] - lat[10000]) * (G_PI / 180.0) * 6474423.1;
+          dlon = (lon[0] - lon[10000]) * (G_PI / 180.0) * 6474423.1 * cos (lat[0] * (G_PI / 180.0));
+          orig_dlat = (orig_lat[0] - orig_lat[10000]) * (G_PI / 180.0) * 6474423.1;
+          orig_dlon = (orig_lon[0] - orig_lon[10000]) * (G_PI / 180.0) * 6474423.1 * cos (orig_lat[0] * (G_PI / 180.0));
+          dist_delta[i] = fabs (sqrt (dlat*dlat + dlon*dlon) - sqrt (orig_dlat*orig_dlat + orig_dlon*orig_dlon));
+        }
       else
-        trk_delta[i] = ABS(trk[i] - trk[i - 1]);
+        {
+          trk_delta[i] = fabs(trk[i] - trk[i - 1]);
+          dlat = (lat[i] - lat[i-1]) * (G_PI / 180.0) * 6474423.1;
+          dlon = (lon[i] - lon[i-1]) * (G_PI / 180.0) * 6474423.1 * cos (lat[i] * (G_PI / 180.0));
+          orig_dlat = (orig_lat[i] - orig_lat[i-1]) * (G_PI / 180.0) * 6474423.1;
+          orig_dlon = (orig_lon[i] - orig_lon[i-1]) * (G_PI / 180.0) * 6474423.1 * cos (orig_lat[i] * (G_PI / 180.0));
+          dist_delta[i] = fabs (sqrt (dlat*dlat + dlon*dlon) - sqrt (orig_dlat*orig_dlat + orig_dlon*orig_dlon));
+        }
 
       if (trk_delta[i] > 180.0)
         trk_delta[i] = 360.0 - trk_delta[i];
@@ -419,73 +440,25 @@ gdouble location_metrics (gdouble orig_lat[10000],
   dist_mean /= 10000.0;
   trk_mean /= 10000.0;
 
-  g_printf ("mean distance: " KYLW "%f\n" KNRM "mean track delta: " KYLW "%f\n" KNRM, dist_mean, trk_mean);
-  if (dist_mean * trk_mean < 0.25)
-    g_printf (KGRN "metric: %f\n" KNRM, dist_mean * trk_mean);
+  if (dist_mean < ok_dist_mean)
+    g_printf ("mean distance delta: " KGRN "%f" KNRM " m.\n" KNRM, dist_mean);
   else
-    g_printf (KRED "metric: %f\n" KNRM, dist_mean * trk_mean);
+    g_printf ("mean distance delta: " KYLW "%f" KNRM " m.\n" KNRM, dist_mean);
 
-  return dist_mean * trk_mean;
-}
-
-gdouble location_metrics2 (gdouble orig_lat[10000],
-                          gdouble orig_lon[10000],
-                          gdouble orig_trk[10000],
-                          gdouble lat[10000],
-                          gdouble lon[10000],
-                          gdouble trk[10000])
-{
-  gint i = 0;
-
-  gdouble dlat = 0;
-  gdouble dlon = 0;
-
-  gdouble dist_or[9999] = {0};
-  gdouble dist_filt[9999] = {0};
-  gdouble dist_q[9999] = {0};
-  gdouble trk_or[9999] = {0};
-  gdouble trk_filt[9999] = {0};
-  gdouble trk_q[9999] = {0};
-
-  gdouble dist_mean = 0.0,
-          trk_mean = 0.0;
-
-  /* Вычисляем значения отклонений по расстоянию и изменения курса. */
-  for (i = 1; i < 10000; i++)
-    {
-      dlat = (orig_lat[i] - orig_lat[i-1]) * (G_PI / 180.0) * 6474423.1;
-      dlon = (orig_lon[i] - orig_lon[i-1]) * (G_PI / 180.0) * cos (orig_lat[i] * (G_PI / 180.0)) * 6474423.1;
-      dist_or[i-1] = sqrt (dlat*dlat + dlon*dlon);
-
-      dlat = (lat[i] - lat[i-1]) * (G_PI / 180.0) * 6474423.1;
-      dlon = (lon[i] - lon[i-1]) * (G_PI / 180.0) * cos (lat[i] * (G_PI / 180.0)) * 6474423.1;
-      dist_filt[i-1] = sqrt (dlat*dlat + dlon*dlon);
-
-      dist_q[i-1] = 1 / pow(G_E, ABS (dist_filt[i-1] - dist_or[i-1]));
-
-      trk_or[i-1] = orig_trk[i] - orig_trk[i-1];
-      trk_filt[i-1] = trk[i] - trk[i-1];
-      if (trk_or[i-1] > 180.0)
-        trk_or[i-1] = 360.0 - trk_or[i-1];
-      if (trk_filt[i-1] > 180.0)
-        trk_filt[i-1] = 360.0 - trk_filt[i-1];
-
-      trk_q[i-1] = 1 / pow(10.0*G_E, ABS (trk_filt[i-1] - trk_or[i-1]));
-    }
-
-  for (i = 0; i < 9999; i++)
-    {
-      dist_mean += dist_q[i];
-      trk_mean += trk_q[i];
-    }
-
-  dist_mean /= 9999.0;
-  trk_mean /= 9999.0;
-
-  g_printf ("distance q: " KYLW "%f\n" KNRM "track q: " KYLW "%f\n" KNRM, dist_mean, trk_mean);
-  if (dist_mean * trk_mean > 0.85)
-    g_printf (KGRN "metric2: %f\n" KNRM, dist_mean * trk_mean);
+  if (trk_mean < ok_trk_mean)
+    g_printf ("mean track delta: " KGRN "%f" KNRM "°\n" , trk_mean);
   else
-    g_printf (KRED "metric2: %f\n" KNRM, dist_mean * trk_mean);
-  return dist_mean * trk_mean;
+    g_printf ("mean track delta: " KYLW "%f" KNRM "°\n" , trk_mean);
+
+
+  if (dist_mean <= 0.1 && trk_mean <= 0.1)
+    {
+      g_printf (KGRN "metric: %f\n" KNRM, dist_mean * trk_mean);
+      return TRUE;
+    }
+  else
+    {
+      g_printf (KRED "metric: %f\n" KNRM, dist_mean * trk_mean);
+      return FALSE;
+    }
 }
