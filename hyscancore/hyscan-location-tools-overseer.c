@@ -819,7 +819,6 @@ hyscan_location_overseer_depth (HyScanDB                    *db,
   GArray *cache = caches->depth_cache;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
-
   gint32 data_range_first = 0;
   gint32 data_range_last = 0;
 

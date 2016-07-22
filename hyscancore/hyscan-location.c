@@ -446,16 +446,15 @@ hyscan_location_geo_initialize (HyScanLocation *location,
     ellipse_type = HYSCAN_GEO_ELLIPSOID_PZ90;
 
   if (first_point->validity == HYSCAN_LOCATION_ASSEMBLED    ||
-                               HYSCAN_LOCATION_PREPROCESSED ||
-                               HYSCAN_LOCATION_PROCESSED    ||
-                               HYSCAN_LOCATION_USER_VALID   ||
-                               HYSCAN_LOCATION_VALID)
+      first_point->validity == HYSCAN_LOCATION_PREPROCESSED ||
+      first_point->validity == HYSCAN_LOCATION_PROCESSED    ||
+      first_point->validity == HYSCAN_LOCATION_USER_VALID   ||
+      first_point->validity == HYSCAN_LOCATION_VALID)
      {
        bla0.lat = first_point->int_latitude;
        bla0.lon = first_point->int_longitude;
        bla0.h = 0;
      }
-  /* TODO: считать СК!!! */
   hyscan_geo_set_origin (HYSCAN_GEO (location), bla0, ellipse_type);
 
   g_free (buffer);
@@ -491,8 +490,6 @@ hyscan_location_source_list_int (HyScanLocation *location)
     hyscan_channel_get_types_by_name (channel_list[i], &data_type, &hi_res, &raw, &sensor_channel);
 
     /* Пропускаем этот источник, если он выдает сырые данные. */
-    if (raw)
-      continue;
 
     switch (data_type)
       {
@@ -878,8 +875,8 @@ hyscan_location_source_set (HyScanLocation *location,
     case HYSCAN_LOCATION_SOURCE_NMEA:
     case HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED:
       source_info->channel_id = hyscan_db_channel_open (priv->db,
-                                                                priv->track_id,
-                                                                source_info->channel_name);
+                                                        priv->track_id,
+                                                        source_info->channel_name);
       break;
     case HYSCAN_LOCATION_SOURCE_ECHOSOUNDER:
     case HYSCAN_LOCATION_SOURCE_SONAR_PORT:
@@ -887,9 +884,9 @@ hyscan_location_source_set (HyScanLocation *location,
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
       source_info->dchannel = hyscan_data_channel_new (priv->db,
-                                                               priv->project_name,
-                                                               priv->track_name,
-                                                               source_info->channel_name);
+                                                       priv->project_name,
+                                                       priv->track_name,
+                                                       source_info->channel_name);
       break;
     default:
       status = FALSE;

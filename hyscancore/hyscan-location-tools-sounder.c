@@ -27,7 +27,6 @@ hyscan_location_echosounder_depth_get (gfloat *input,
 
   gfloat *data_buffer0 = g_memdup (input, input_size * sizeof(gfloat));
   gfloat *data_buffer1 = g_malloc0 (input_size * sizeof(gfloat));
-
   gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты. */
   SoundSpeedTable sst;                  /* Временная таблица скорости звука. */
   gdouble sum = 0;
@@ -184,7 +183,6 @@ hyscan_location_sonar_depth_get (gfloat *input,
 
   gfloat *data_buffer0 = g_memdup (input, input_size * sizeof(gfloat));
   gfloat *data_buffer1 = g_malloc0 (input_size * sizeof(gfloat));
-
   gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты. */
   SoundSpeedTable sst;                  /* Временная таблица скорости звука. */
   gdouble sum = 0;
@@ -243,8 +241,8 @@ hyscan_location_sonar_depth_get (gfloat *input,
 
   stdev /= input_size;
   stdev = 2 * sqrt (stdev);
-  stdev += average_value; /* - это наш порог бинаризации, среднее+2*ско */
-
+  //stdev += average_value; /* - это наш порог бинаризации, среднее+2*ско */
+  stdev = average_value; /* - это наш порог бинаризации, просто среднее*/
   for (i = 0; i < input_size; i++)
    {
      if (data_buffer1[i] > stdev)
@@ -252,7 +250,6 @@ hyscan_location_sonar_depth_get (gfloat *input,
      else
        data_buffer1[i] = 0;
    }
-
   /* Ищем первые DEPTH_MAXPEAKS пиков. */
   for (i = 0; i < input_size && peakcounter < DEPTH_MAXPEAKS; i++)
    {
@@ -276,7 +273,8 @@ hyscan_location_sonar_depth_get (gfloat *input,
     {
       for (j = i + 1; j < peakcounter; j++)
         {
-          if ((float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 0.25)
+          if ((float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 0.25 ||
+              (peaks[0][j] - peaks[1][i])<10 && (peaks[1][j] - peaks[0][i]) < 10 && (float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 1.0)
             {
               for (k = peaks[1][i]; k < peaks[0][j]; k++)
                 data_buffer1[k] = 1;
