@@ -1,15 +1,22 @@
-#define DEPTH_MAXPEAKS 10
+/*
+ * Файл содержит следующие группы функций:
+ *
+ * Функции для работы с сырыми данными (акустические строки).
+ *
+ */
+
 #include <hyscan-location-tools.h>
 
-HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
-                                                                 gint    input_size,
-                                                                 gfloat  discretization_frequency,
-                                                                 GArray *input_soundspeed)
+HyScanLocationInternalData
+hyscan_location_echosounder_depth_get (gfloat *input,
+                                       gint    input_size,
+                                       gfloat  discretization_frequency,
+                                       GArray *input_soundspeed)
 {
-  HyScanLocationGdouble1 output = {0};
-  int i = 0,
-      j = 0,
-      k = 0;
+  HyScanLocationInternalData output = {0};
+  gint i = 0;
+  gint j = 0;
+  gint k = 0;
   gfloat average_value = 0;             /* Потребуется для усреднения. */
   gfloat stdev = 0;                     /* Среднеквадратичное отклонение. */
   gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* Координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы. */
@@ -20,7 +27,6 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
 
   gfloat *data_buffer0 = g_memdup (input, input_size * sizeof(gfloat));
   gfloat *data_buffer1 = g_malloc0 (input_size * sizeof(gfloat));
-
   gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты. */
   SoundSpeedTable sst;                  /* Временная таблица скорости звука. */
   gdouble sum = 0;
@@ -152,20 +158,21 @@ HyScanLocationGdouble1  hyscan_location_echosounder_depth_get   (gfloat *input,
   g_free (data_buffer0);
   g_free (data_buffer1);
 
-  output.value = depthvalue;
-  output.validity = TRUE;
+  output.int_value = depthvalue;
+  output.validity = HYSCAN_LOCATION_PARSED;
   return output;
 }
 
-HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
-                                                                 gint    input_size,
-                                                                 gfloat  discretization_frequency,
-                                                                 GArray *input_soundspeed)
+HyScanLocationInternalData
+hyscan_location_sonar_depth_get (gfloat *input,
+                                 gint    input_size,
+                                 gfloat  discretization_frequency,
+                                 GArray *input_soundspeed)
 {
-  HyScanLocationGdouble1 output = {0};
-  int i = 0,
-      j = 0,
-      k = 0;
+  HyScanLocationInternalData output = {0};
+  gint i = 0;
+  gint j = 0;
+  gint k = 0;
   gfloat average_value = 0;             /* Потребуется для усреднения. */
   gfloat stdev = 0;                     /* Среднеквадратичное отклонение. */
   gint peaks[2][DEPTH_MAXPEAKS] = { {0},{0} };/* Координаты пиков, при этом peaks[0] - это начала, peaks[1] - концы. */
@@ -176,7 +183,6 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
 
   gfloat *data_buffer0 = g_memdup (input, input_size * sizeof(gfloat));
   gfloat *data_buffer1 = g_malloc0 (input_size * sizeof(gfloat));
-
   gint32 soundspeed_max = 0;            /* Индекс наибольшего элемента таблицы скорости звука, меньшего определенного номера дискреты. */
   SoundSpeedTable sst;                  /* Временная таблица скорости звука. */
   gdouble sum = 0;
@@ -235,8 +241,8 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
 
   stdev /= input_size;
   stdev = 2 * sqrt (stdev);
-  stdev += average_value; /* - это наш порог бинаризации, среднее+2*ско */
-
+  //stdev += average_value; /* - это наш порог бинаризации, среднее+2*ско */
+  stdev = average_value; /* - это наш порог бинаризации, просто среднее*/
   for (i = 0; i < input_size; i++)
    {
      if (data_buffer1[i] > stdev)
@@ -244,7 +250,6 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
      else
        data_buffer1[i] = 0;
    }
-
   /* Ищем первые DEPTH_MAXPEAKS пиков. */
   for (i = 0; i < input_size && peakcounter < DEPTH_MAXPEAKS; i++)
    {
@@ -268,7 +273,8 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
     {
       for (j = i + 1; j < peakcounter; j++)
         {
-          if ((float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 0.25)
+          if ((float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 0.25 ||
+              (peaks[0][j] - peaks[1][i])<10 && (peaks[1][j] - peaks[0][i]) < 10 && (float) (peaks[0][j] - peaks[1][i]) / (float) (peaks[1][j] - peaks[0][i]) <= 1.0)
             {
               for (k = peaks[1][i]; k < peaks[0][j]; k++)
                 data_buffer1[k] = 1;
@@ -317,7 +323,7 @@ HyScanLocationGdouble1  hyscan_location_sonar_depth_get         (gfloat *input,
   g_free (data_buffer0);
   g_free (data_buffer1);
 
-  output.value = depthvalue;
-  output.validity = TRUE;
+  output.int_value = depthvalue;
+  output.validity = HYSCAN_LOCATION_PARSED;
   return output;
 }

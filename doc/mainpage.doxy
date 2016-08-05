@@ -10,5 +10,6 @@
  * - \link HyScanDataChannel \endlink - класс обработки акустических данных.
  * - \link HyScanDataChannelWriter \endlink - класс записи акустических данных.
  * - \link HyScanLocation \endlink - класс для определения координат и глубины.
+ * - \link HyScanGeo \endlink - класс для работы с системами координат.
  *
  */
