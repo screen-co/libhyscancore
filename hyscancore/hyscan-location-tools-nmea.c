@@ -17,8 +17,6 @@ hyscan_location_nmea_sentence_check (gchar *input)
   gint sentence_checksum = 0;
   gsize len = strlen(ch);
 
-  HyScanSonarDataType data_type = HYSCAN_SONAR_DATA_INVALID;
-
   /* Контрольная сумма считается как XOR всех элементов между $ и *. */
   ch++; /* Пропускаем $. */
   len--;

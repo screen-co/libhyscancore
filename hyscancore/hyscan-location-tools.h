@@ -120,7 +120,7 @@ typedef struct
 
   HyScanLocationParameters      parameter;                      /*< Параметр, обрабатываемый источником. */
   HyScanLocationSourceTypes     source_type;                    /*< Тип источника. */
-  HyScanSonarChannelIndex       sensor_channel;                 /*< Номер КД. */
+  gint                          sensor_channel;                 /*< Номер КД. */
   gboolean                      active;                         /*< Используется ли источник. */
 
   HyScanDataChannel            *dchannel;                       /*< Для работы с акустическими данными. */

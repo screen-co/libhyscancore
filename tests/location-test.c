@@ -211,7 +211,7 @@ main (int argc, char **argv)
   channel_id2 = hyscan_channel_sensor_create (db,"project", "track", channel_name2, &nmea_channel_info);
 
   /* Глубина. */
-  channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_ECHOSOUNDER, FALSE, FALSE, HYSCAN_SONAR_CHANNEL_1);
+  channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_ECHOSOUNDER, FALSE, 1);
   dc_writer = hyscan_data_channel_writer_new (db, "project", "track", channel_name3, &dc_info);
 
   /* Заполняем каналы тестовыми данными. */

@@ -31,9 +31,9 @@ typedef struct
   GQuark                       quark;
   const gchar                 *name;
 
-  HyScanSourceType             src;
+  HyScanSourceType             source;
   gboolean                     raw;
-  gint                         index;
+  guint                        channel;
 } HyScanChannelTypeInfo;
 
 /* Типы галсов и их названия. */
@@ -49,70 +49,72 @@ static HyScanTrackTypeInfo hyscan_track_type_info[] =
 /* Типы каналов и их названия. */
 static HyScanChannelTypeInfo hyscan_channel_types_info[] =
 {
-  { 0, "echosounder",             HYSCAN_SOURCE_ECHOSOUNDER,     FALSE, 1 },
-  { 0, "echosounder-raw",         HYSCAN_SOURCE_ECHOSOUNDER,     TRUE,  1 },
+  { 0, "ss-starboard",            HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    FALSE, 1 },
+  { 0, "ss-starboard-raw",        HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    TRUE,  1 },
+  { 0, "ss-starboard-raw-2",      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    TRUE,  2 },
+  { 0, "ss-starboard-raw-3",      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    TRUE,  3 },
 
-  { 0, "ss-startboard",           HYSCAN_SOURCE_SS_STARBOARD,    FALSE, 1 },
-  { 0, "ss-startboard-raw",       HYSCAN_SOURCE_SS_STARBOARD,    TRUE,  1 },
-  { 0, "ss-startboard-raw-2",     HYSCAN_SOURCE_SS_STARBOARD,    TRUE,  2 },
-  { 0, "ss-startboard-raw-3",     HYSCAN_SOURCE_SS_STARBOARD,    TRUE,  3 },
+  { 0, "ss-port",                 HYSCAN_SOURCE_SIDE_SCAN_PORT,         FALSE, 1 },
+  { 0, "ss-port-raw",             HYSCAN_SOURCE_SIDE_SCAN_PORT,         TRUE,  1 },
+  { 0, "ss-port-raw-2",           HYSCAN_SOURCE_SIDE_SCAN_PORT,         TRUE,  2 },
+  { 0, "ss-port-raw-3",           HYSCAN_SOURCE_SIDE_SCAN_PORT,         TRUE,  3 },
 
-  { 0, "ss-port",                 HYSCAN_SOURCE_SS_PORT,         FALSE, 1 },
-  { 0, "ss-port-raw",             HYSCAN_SOURCE_SS_PORT,         TRUE,  1 },
-  { 0, "ss-port-raw-2",           HYSCAN_SOURCE_SS_PORT,         TRUE,  2 },
-  { 0, "ss-port-raw-3",           HYSCAN_SOURCE_SS_PORT,         TRUE,  3 },
+  { 0, "ss-starboard-hi",         HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI, FALSE, 1 },
+  { 0, "ss-starboard-hi-raw",     HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI, TRUE,  1 },
 
-  { 0, "ss-startboard-hi",        HYSCAN_SOURCE_SS_STARBOARD_HI, FALSE, 1 },
-  { 0, "ss-startboard-hi-raw",    HYSCAN_SOURCE_SS_STARBOARD_HI, TRUE,  1 },
+  { 0, "ss-port-hi",              HYSCAN_SOURCE_SIDE_SCAN_PORT_HI,      FALSE, 1 },
+  { 0, "ss-port-hi-raw",          HYSCAN_SOURCE_SIDE_SCAN_PORT_HI,      TRUE,  1 },
 
-  { 0, "ss-port-hi",              HYSCAN_SOURCE_SS_PORT_HI,      FALSE, 1 },
-  { 0, "ss-port-hi-raw",          HYSCAN_SOURCE_SS_PORT_HI,      TRUE,  1 },
+  { 0, "bathy-starboard",         HYSCAN_SOURCE_BATHYMETRY_STARBOARD,   FALSE, 1 },
+  { 0, "bathy-port",              HYSCAN_SOURCE_BATHYMETRY_PORT,        FALSE, 1 },
 
-  { 0, "iss-startboard",          HYSCAN_SOURCE_ISS_STARBOARD,   FALSE, 1 },
-  { 0, "iss-port",                HYSCAN_SOURCE_ISS_PORT,        FALSE, 1 },
+  { 0, "echosounder",             HYSCAN_SOURCE_ECHOSOUNDER,            FALSE, 1 },
+  { 0, "echosounder-raw",         HYSCAN_SOURCE_ECHOSOUNDER,            TRUE,  1 },
 
-  { 0, "la-startboard",           HYSCAN_SOURCE_LA_STARBOARD,    FALSE, 1 },
-  { 0, "la-port",                 HYSCAN_SOURCE_LA_PORT,         FALSE, 1 },
+  { 0, "profiler",                HYSCAN_SOURCE_PROFILER,               FALSE, 1 },
+  { 0, "profiler-raw",            HYSCAN_SOURCE_PROFILER,               TRUE,  1 },
 
-  { 0, "profiler",                HYSCAN_SOURCE_PROFILER,        FALSE, 1 },
-  { 0, "profiler-raw",            HYSCAN_SOURCE_PROFILER,        TRUE,  1 },
+  { 0, "look-around",             HYSCAN_SOURCE_LOOK_AROUND,            FALSE, 1 },
+  { 0, "look-around-2",           HYSCAN_SOURCE_LOOK_AROUND,            FALSE, 2 },
+  { 0, "look-around-raw",         HYSCAN_SOURCE_LOOK_AROUND,            TRUE,  1 },
+  { 0, "look-around-raw-2",       HYSCAN_SOURCE_LOOK_AROUND,            TRUE,  2 },
 
-  { 0, "fl",                      HYSCAN_SOURCE_FL,              FALSE, 1 },
-  { 0, "fl-raw-1",                HYSCAN_SOURCE_FL,              TRUE,  1 },
-  { 0, "fl-raw-2",                HYSCAN_SOURCE_FL,              TRUE,  2 },
+  { 0, "forward-look",            HYSCAN_SOURCE_FORWARD_LOOK,           FALSE, 1 },
+  { 0, "forward-look-raw-1",      HYSCAN_SOURCE_FORWARD_LOOK,           TRUE,  1 },
+  { 0, "forward-look-raw-2",      HYSCAN_SOURCE_FORWARD_LOOK,           TRUE,  2 },
 
-  { 0, "sas",                     HYSCAN_SOURCE_SAS,             FALSE, 1 },
-  { 0, "sas-2",                   HYSCAN_SOURCE_SAS,             FALSE, 2 },
-  { 0, "sas-3",                   HYSCAN_SOURCE_SAS,             FALSE, 3 },
-  { 0, "sas-4",                   HYSCAN_SOURCE_SAS,             FALSE, 4 },
-  { 0, "sas-5",                   HYSCAN_SOURCE_SAS,             FALSE, 5 },
+  { 0, "sas",                     HYSCAN_SOURCE_SAS,                    FALSE, 1 },
+  { 0, "sas-2",                   HYSCAN_SOURCE_SAS,                    FALSE, 2 },
+  { 0, "sas-3",                   HYSCAN_SOURCE_SAS,                    FALSE, 3 },
+  { 0, "sas-4",                   HYSCAN_SOURCE_SAS,                    FALSE, 4 },
+  { 0, "sas-5",                   HYSCAN_SOURCE_SAS,                    FALSE, 5 },
 
-  { 0, "nmea",                    HYSCAN_SOURCE_NMEA_ANY,        FALSE, 1 },
-  { 0, "nmea-gga",                HYSCAN_SOURCE_NMEA_GGA,        FALSE, 1 },
-  { 0, "nmea-rmc",                HYSCAN_SOURCE_NMEA_RMC,        FALSE, 1 },
-  { 0, "nmea-dpt",                HYSCAN_SOURCE_NMEA_DPT,        FALSE, 1 },
+  { 0, "nmea",                    HYSCAN_SOURCE_NMEA_ANY,               FALSE, 1 },
+  { 0, "nmea-gga",                HYSCAN_SOURCE_NMEA_GGA,               FALSE, 1 },
+  { 0, "nmea-rmc",                HYSCAN_SOURCE_NMEA_RMC,               FALSE, 1 },
+  { 0, "nmea-dpt",                HYSCAN_SOURCE_NMEA_DPT,               FALSE, 1 },
 
-  { 0, "nmea-2",                  HYSCAN_SOURCE_NMEA_ANY,        FALSE, 2 },
-  { 0, "nmea-gga-2",              HYSCAN_SOURCE_NMEA_GGA,        FALSE, 2 },
-  { 0, "nmea-rmc-2",              HYSCAN_SOURCE_NMEA_RMC,        FALSE, 2 },
-  { 0, "nmea-dpt-2",              HYSCAN_SOURCE_NMEA_DPT,        FALSE, 2 },
+  { 0, "nmea-2",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 2 },
+  { 0, "nmea-gga-2",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 2 },
+  { 0, "nmea-rmc-2",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 2 },
+  { 0, "nmea-dpt-2",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 2 },
 
-  { 0, "nmea-3",                  HYSCAN_SOURCE_NMEA_ANY,        FALSE, 3 },
-  { 0, "nmea-gga-3",              HYSCAN_SOURCE_NMEA_GGA,        FALSE, 3 },
-  { 0, "nmea-rmc-3",              HYSCAN_SOURCE_NMEA_RMC,        FALSE, 3 },
-  { 0, "nmea-dpt-3",              HYSCAN_SOURCE_NMEA_DPT,        FALSE, 3 },
+  { 0, "nmea-3",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 3 },
+  { 0, "nmea-gga-3",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 3 },
+  { 0, "nmea-rmc-3",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 3 },
+  { 0, "nmea-dpt-3",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 3 },
 
-  { 0, "nmea-4",                  HYSCAN_SOURCE_NMEA_ANY,        FALSE, 4 },
-  { 0, "nmea-gga-4",              HYSCAN_SOURCE_NMEA_GGA,        FALSE, 4 },
-  { 0, "nmea-rmc-4",              HYSCAN_SOURCE_NMEA_RMC,        FALSE, 4 },
-  { 0, "nmea-dpt-4",              HYSCAN_SOURCE_NMEA_DPT,        FALSE, 4 },
+  { 0, "nmea-4",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 4 },
+  { 0, "nmea-gga-4",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 4 },
+  { 0, "nmea-rmc-4",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 4 },
+  { 0, "nmea-dpt-4",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 4 },
 
-  { 0, "nmea-5",                  HYSCAN_SOURCE_NMEA_ANY,        FALSE, 5 },
-  { 0, "nmea-gga-5",              HYSCAN_SOURCE_NMEA_GGA,        FALSE, 5 },
-  { 0, "nmea-rmc-5",              HYSCAN_SOURCE_NMEA_RMC,        FALSE, 5 },
-  { 0, "nmea-dpt-5",              HYSCAN_SOURCE_NMEA_DPT,        FALSE, 5 },
+  { 0, "nmea-5",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 5 },
+  { 0, "nmea-gga-5",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 5 },
+  { 0, "nmea-rmc-5",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 5 },
+  { 0, "nmea-dpt-5",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 5 },
 
-  { 0, NULL,                      HYSCAN_SOURCE_INVALID,         FALSE, 0 }
+  { 0, NULL,                      HYSCAN_SOURCE_INVALID,                FALSE, 0 }
 };
 
 /* Функция инициализации статических данных. */
@@ -120,7 +122,7 @@ static void
 hyscan_core_types_initialize (void)
 {
   static gboolean hyscan_core_types_initialized = FALSE;
-  gint i;
+  guint i;
 
   if (hyscan_core_types_initialized)
     return;
@@ -138,7 +140,7 @@ hyscan_core_types_initialize (void)
 static const gchar *
 hyscan_track_get_name_by_type (HyScanTrackType track_type)
 {
-  gint i;
+  guint i;
 
   /* Инициализация статических данных. */
   hyscan_core_types_initialize ();
@@ -159,7 +161,7 @@ static HyScanTrackType
 hyscan_track_get_type_by_name (const gchar *name)
 {
   GQuark quark;
-  gint i;
+  guint i;
 
   /* Инициализация статических данных. */
   hyscan_core_types_initialize ();
@@ -175,11 +177,11 @@ hyscan_track_get_type_by_name (const gchar *name)
 
 /* Функция возвращает название канала для указанных характеристик. */
 const gchar *
-hyscan_channel_get_name_by_types (HyScanSourceType src,
+hyscan_channel_get_name_by_types (HyScanSourceType source,
                                   gboolean         raw,
-                                  gint             index)
+                                  guint            channel)
 {
-  gint i;
+  guint i;
 
   /* Инициализация статических данных. */
   hyscan_core_types_initialize ();
@@ -187,11 +189,11 @@ hyscan_channel_get_name_by_types (HyScanSourceType src,
   /* Ищем название канала для указанных характеристик. */
   for (i = 0; hyscan_channel_types_info[i].quark != 0; i++)
     {
-      if (hyscan_channel_types_info[i].src != src)
+      if (hyscan_channel_types_info[i].source != source)
         continue;
       if (hyscan_channel_types_info[i].raw != raw)
         continue;
-      if (hyscan_channel_types_info[i].index != index)
+      if (hyscan_channel_types_info[i].channel != channel)
         continue;
       return hyscan_channel_types_info[i].name;
     }
@@ -202,12 +204,12 @@ hyscan_channel_get_name_by_types (HyScanSourceType src,
 /* Функция возвращает характеристики канала данных по его имени. */
 gboolean
 hyscan_channel_get_types_by_name (const gchar      *name,
-                                  HyScanSourceType *src,
+                                  HyScanSourceType *source,
                                   gboolean         *raw,
-                                  gint             *index)
+                                  guint            *channel)
 {
   GQuark quark;
-  gint i;
+  guint i;
 
   /* Инициализация статических данных. */
   hyscan_core_types_initialize ();
@@ -218,12 +220,12 @@ hyscan_channel_get_types_by_name (const gchar      *name,
     {
       if (hyscan_channel_types_info[i].quark == quark)
         {
-          if (src != NULL)
-            *src = hyscan_channel_types_info[i].src;
+          if (source != NULL)
+            *source = hyscan_channel_types_info[i].source;
           if (raw != NULL)
             *raw = hyscan_channel_types_info[i].raw;
-          if (index != NULL)
-            *index = hyscan_channel_types_info[i].index;
+          if (channel != NULL)
+            *channel = hyscan_channel_types_info[i].channel;
           return TRUE;
         }
     }

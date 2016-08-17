@@ -86,7 +86,7 @@ static void             hyscan_location_source_list_add (GArray             *sou
                                                          gint32              index,
                                                          HyScanLocationParameters parameter,
                                                          HyScanLocationSourceTypes source_type,
-                                                         HyScanSonarChannelIndex sensor_channel,
+                                                         gint                sensor_channel,
                                                          gchar             **channel_list,
                                                          gint                channel_list_index);
 
@@ -472,8 +472,8 @@ hyscan_location_source_list_int (HyScanLocation *location)
   HyScanSourceType data_type = 0;
   gboolean hi_res = FALSE;
   gboolean raw = FALSE;
-  gint sensor_channel = 0;
-  gint number_of_channels = 0;
+  guint sensor_channel = 0;
+  guint number_of_channels = 0;
 
   /* Получаем список КД и подсчитываем их количество. */
   channel_list = hyscan_db_channel_list (priv->db, priv->track_id);
@@ -518,7 +518,7 @@ hyscan_location_source_list_int (HyScanLocation *location)
         index++;
         break;
 
-      case HYSCAN_SOURCE_SS_PORT:
+      case HYSCAN_SOURCE_SIDE_SCAN_PORT:
 
         if (hi_res == TRUE)
           hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_DEPTH, HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT, sensor_channel, channel_list, i);
@@ -527,7 +527,7 @@ hyscan_location_source_list_int (HyScanLocation *location)
         index++;
         break;
 
-      case HYSCAN_SOURCE_SS_STARBOARD:
+      case HYSCAN_SOURCE_SIDE_SCAN_STARBOARD:
 
         if (hi_res == TRUE)
           hyscan_location_source_list_add (priv->source_list, index, HYSCAN_LOCATION_PARAMETER_DEPTH, HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD, sensor_channel, channel_list, i);
@@ -1701,7 +1701,7 @@ hyscan_location_source_list_add (GArray                   *source_list,
                                  gint32                    index,
                                  HyScanLocationParameters  parameter,
                                  HyScanLocationSourceTypes source_type,
-                                 HyScanSonarChannelIndex   sensor_channel,
+                                 gint                      sensor_channel,
                                  gchar                   **channel_list,
                                  gint                      channel_list_index)
 {
