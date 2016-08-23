@@ -13,8 +13,8 @@
 #include <gio/gio.h>
 #include <string.h>
 
-#define TRACK_SCHEMA_ID                "track"
-#define SENSOR_CHANNEL_SCHEMA_ID       "sensor"
+#define TRACK_SCHEMA                "track"
+#define SENSOR_CHANNEL_SCHEMA       "sensor"
 
 /* Типы галсов и их названия. */
 typedef struct
@@ -49,72 +49,78 @@ static HyScanTrackTypeInfo hyscan_track_type_info[] =
 /* Типы каналов и их названия. */
 static HyScanChannelTypeInfo hyscan_channel_types_info[] =
 {
-  { 0, "ss-starboard",            HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    FALSE, 1 },
-  { 0, "ss-starboard-raw",        HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    TRUE,  1 },
-  { 0, "ss-starboard-raw-2",      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    TRUE,  2 },
-  { 0, "ss-starboard-raw-3",      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,    TRUE,  3 },
+  { 0, "ss-starboard",         HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,      FALSE, 1 },
+  { 0, "ss-starboard-raw",     HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,      TRUE,  1 },
+  { 0, "ss-starboard-raw-2",   HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,      TRUE,  2 },
+  { 0, "ss-starboard-raw-3",   HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,      TRUE,  3 },
 
-  { 0, "ss-port",                 HYSCAN_SOURCE_SIDE_SCAN_PORT,         FALSE, 1 },
-  { 0, "ss-port-raw",             HYSCAN_SOURCE_SIDE_SCAN_PORT,         TRUE,  1 },
-  { 0, "ss-port-raw-2",           HYSCAN_SOURCE_SIDE_SCAN_PORT,         TRUE,  2 },
-  { 0, "ss-port-raw-3",           HYSCAN_SOURCE_SIDE_SCAN_PORT,         TRUE,  3 },
+  { 0, "ss-port",              HYSCAN_SOURCE_SIDE_SCAN_PORT,           FALSE, 1 },
+  { 0, "ss-port-raw",          HYSCAN_SOURCE_SIDE_SCAN_PORT,           TRUE,  1 },
+  { 0, "ss-port-raw-2",        HYSCAN_SOURCE_SIDE_SCAN_PORT,           TRUE,  2 },
+  { 0, "ss-port-raw-3",        HYSCAN_SOURCE_SIDE_SCAN_PORT,           TRUE,  3 },
 
-  { 0, "ss-starboard-hi",         HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI, FALSE, 1 },
-  { 0, "ss-starboard-hi-raw",     HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI, TRUE,  1 },
+  { 0, "ss-starboard-hi",      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI,   FALSE, 1 },
+  { 0, "ss-starboard-hi-raw",  HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI,   TRUE,  1 },
 
-  { 0, "ss-port-hi",              HYSCAN_SOURCE_SIDE_SCAN_PORT_HI,      FALSE, 1 },
-  { 0, "ss-port-hi-raw",          HYSCAN_SOURCE_SIDE_SCAN_PORT_HI,      TRUE,  1 },
+  { 0, "ss-port-hi",           HYSCAN_SOURCE_SIDE_SCAN_PORT_HI,        FALSE, 1 },
+  { 0, "ss-port-hi-raw",       HYSCAN_SOURCE_SIDE_SCAN_PORT_HI,        TRUE,  1 },
 
-  { 0, "bathy-starboard",         HYSCAN_SOURCE_BATHYMETRY_STARBOARD,   FALSE, 1 },
-  { 0, "bathy-port",              HYSCAN_SOURCE_BATHYMETRY_PORT,        FALSE, 1 },
+  { 0, "bathy-starboard",      HYSCAN_SOURCE_INTERFEROMETRY_STARBOARD, FALSE, 1 },
+  { 0, "bathy-port",           HYSCAN_SOURCE_INTERFEROMETRY_PORT,      FALSE, 1 },
 
-  { 0, "echosounder",             HYSCAN_SOURCE_ECHOSOUNDER,            FALSE, 1 },
-  { 0, "echosounder-raw",         HYSCAN_SOURCE_ECHOSOUNDER,            TRUE,  1 },
+  { 0, "echosounder",          HYSCAN_SOURCE_ECHOSOUNDER,              FALSE, 1 },
+  { 0, "echosounder-raw",      HYSCAN_SOURCE_ECHOSOUNDER,              TRUE,  1 },
 
-  { 0, "profiler",                HYSCAN_SOURCE_PROFILER,               FALSE, 1 },
-  { 0, "profiler-raw",            HYSCAN_SOURCE_PROFILER,               TRUE,  1 },
+  { 0, "profiler",             HYSCAN_SOURCE_PROFILER,                 FALSE, 1 },
+  { 0, "profiler-raw",         HYSCAN_SOURCE_PROFILER,                 TRUE,  1 },
 
-  { 0, "look-around",             HYSCAN_SOURCE_LOOK_AROUND,            FALSE, 1 },
-  { 0, "look-around-2",           HYSCAN_SOURCE_LOOK_AROUND,            FALSE, 2 },
-  { 0, "look-around-raw",         HYSCAN_SOURCE_LOOK_AROUND,            TRUE,  1 },
-  { 0, "look-around-raw-2",       HYSCAN_SOURCE_LOOK_AROUND,            TRUE,  2 },
+  { 0, "look-around",          HYSCAN_SOURCE_LOOK_AROUND,              FALSE, 1 },
+  { 0, "look-around-2",        HYSCAN_SOURCE_LOOK_AROUND,              FALSE, 2 },
+  { 0, "look-around-raw",      HYSCAN_SOURCE_LOOK_AROUND,              TRUE,  1 },
+  { 0, "look-around-raw-2",    HYSCAN_SOURCE_LOOK_AROUND,              TRUE,  2 },
 
-  { 0, "forward-look",            HYSCAN_SOURCE_FORWARD_LOOK,           FALSE, 1 },
-  { 0, "forward-look-raw-1",      HYSCAN_SOURCE_FORWARD_LOOK,           TRUE,  1 },
-  { 0, "forward-look-raw-2",      HYSCAN_SOURCE_FORWARD_LOOK,           TRUE,  2 },
+  { 0, "forward-look",         HYSCAN_SOURCE_FORWARD_LOOK,             FALSE, 1 },
+  { 0, "forward-look-raw-1",   HYSCAN_SOURCE_FORWARD_LOOK,             TRUE,  1 },
+  { 0, "forward-look-raw-2",   HYSCAN_SOURCE_FORWARD_LOOK,             TRUE,  2 },
 
-  { 0, "sas",                     HYSCAN_SOURCE_SAS,                    FALSE, 1 },
-  { 0, "sas-2",                   HYSCAN_SOURCE_SAS,                    FALSE, 2 },
-  { 0, "sas-3",                   HYSCAN_SOURCE_SAS,                    FALSE, 3 },
-  { 0, "sas-4",                   HYSCAN_SOURCE_SAS,                    FALSE, 4 },
-  { 0, "sas-5",                   HYSCAN_SOURCE_SAS,                    FALSE, 5 },
+  { 0, "sas",                  HYSCAN_SOURCE_SAS,                      TRUE,  1 },
+  { 0, "sas-2",                HYSCAN_SOURCE_SAS,                      TRUE,  2 },
+  { 0, "sas-3",                HYSCAN_SOURCE_SAS,                      TRUE,  3 },
+  { 0, "sas-4",                HYSCAN_SOURCE_SAS,                      TRUE,  4 },
+  { 0, "sas-5",                HYSCAN_SOURCE_SAS,                      TRUE,  5 },
 
-  { 0, "nmea",                    HYSCAN_SOURCE_NMEA_ANY,               FALSE, 1 },
-  { 0, "nmea-gga",                HYSCAN_SOURCE_NMEA_GGA,               FALSE, 1 },
-  { 0, "nmea-rmc",                HYSCAN_SOURCE_NMEA_RMC,               FALSE, 1 },
-  { 0, "nmea-dpt",                HYSCAN_SOURCE_NMEA_DPT,               FALSE, 1 },
+  { 0, "sas-v2",               HYSCAN_SOURCE_SAS_V2,                   TRUE,  1 },
+  { 0, "sas-v2-2",             HYSCAN_SOURCE_SAS_V2,                   TRUE,  2 },
+  { 0, "sas-v2-3",             HYSCAN_SOURCE_SAS_V2,                   TRUE,  3 },
+  { 0, "sas-v2-4",             HYSCAN_SOURCE_SAS_V2,                   TRUE,  4 },
+  { 0, "sas-v2-5",             HYSCAN_SOURCE_SAS_V2,                   TRUE,  5 },
 
-  { 0, "nmea-2",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 2 },
-  { 0, "nmea-gga-2",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 2 },
-  { 0, "nmea-rmc-2",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 2 },
-  { 0, "nmea-dpt-2",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 2 },
+  { 0, "nmea",                 HYSCAN_SOURCE_NMEA_ANY,                 TRUE,  1 },
+  { 0, "nmea-gga",             HYSCAN_SOURCE_NMEA_GGA,                 TRUE,  1 },
+  { 0, "nmea-rmc",             HYSCAN_SOURCE_NMEA_RMC,                 TRUE,  1 },
+  { 0, "nmea-dpt",             HYSCAN_SOURCE_NMEA_DPT,                 TRUE,  1 },
 
-  { 0, "nmea-3",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 3 },
-  { 0, "nmea-gga-3",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 3 },
-  { 0, "nmea-rmc-3",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 3 },
-  { 0, "nmea-dpt-3",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 3 },
+  { 0, "nmea-2",               HYSCAN_SOURCE_NMEA_ANY,                 TRUE,  2 },
+  { 0, "nmea-gga-2",           HYSCAN_SOURCE_NMEA_GGA,                 TRUE,  2 },
+  { 0, "nmea-rmc-2",           HYSCAN_SOURCE_NMEA_RMC,                 TRUE,  2 },
+  { 0, "nmea-dpt-2",           HYSCAN_SOURCE_NMEA_DPT,                 TRUE,  2 },
 
-  { 0, "nmea-4",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 4 },
-  { 0, "nmea-gga-4",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 4 },
-  { 0, "nmea-rmc-4",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 4 },
-  { 0, "nmea-dpt-4",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 4 },
+  { 0, "nmea-3",               HYSCAN_SOURCE_NMEA_ANY,                 TRUE,  3 },
+  { 0, "nmea-gga-3",           HYSCAN_SOURCE_NMEA_GGA,                 TRUE,  3 },
+  { 0, "nmea-rmc-3",           HYSCAN_SOURCE_NMEA_RMC,                 TRUE,  3 },
+  { 0, "nmea-dpt-3",           HYSCAN_SOURCE_NMEA_DPT,                 TRUE,  3 },
 
-  { 0, "nmea-5",                  HYSCAN_SOURCE_NMEA_ANY,               FALSE, 5 },
-  { 0, "nmea-gga-5",              HYSCAN_SOURCE_NMEA_GGA,               FALSE, 5 },
-  { 0, "nmea-rmc-5",              HYSCAN_SOURCE_NMEA_RMC,               FALSE, 5 },
-  { 0, "nmea-dpt-5",              HYSCAN_SOURCE_NMEA_DPT,               FALSE, 5 },
+  { 0, "nmea-4",               HYSCAN_SOURCE_NMEA_ANY,                 TRUE,  4 },
+  { 0, "nmea-gga-4",           HYSCAN_SOURCE_NMEA_GGA,                 TRUE,  4 },
+  { 0, "nmea-rmc-4",           HYSCAN_SOURCE_NMEA_RMC,                 TRUE,  4 },
+  { 0, "nmea-dpt-4",           HYSCAN_SOURCE_NMEA_DPT,                 TRUE,  4 },
 
-  { 0, NULL,                      HYSCAN_SOURCE_INVALID,                FALSE, 0 }
+  { 0, "nmea-5",               HYSCAN_SOURCE_NMEA_ANY,                 TRUE,  5 },
+  { 0, "nmea-gga-5",           HYSCAN_SOURCE_NMEA_GGA,                 TRUE,  5 },
+  { 0, "nmea-rmc-5",           HYSCAN_SOURCE_NMEA_RMC,                 TRUE,  5 },
+  { 0, "nmea-dpt-5",           HYSCAN_SOURCE_NMEA_DPT,                 TRUE,  5 },
+
+  { 0, NULL,                   HYSCAN_SOURCE_INVALID,                  FALSE, 0 }
 };
 
 /* Функция инициализации статических данных. */
@@ -136,9 +142,59 @@ hyscan_core_types_initialize (void)
   hyscan_core_types_initialized = TRUE;
 }
 
+/* Функция проверяет тип источника данных на соответствие одному из типов датчиков. */
+gboolean
+hyscan_source_is_sensor (HyScanSourceType source)
+{
+  switch (source)
+    {
+    case HYSCAN_SOURCE_SAS:
+    case HYSCAN_SOURCE_SAS_V2:
+    case HYSCAN_SOURCE_NMEA_ANY:
+    case HYSCAN_SOURCE_NMEA_GGA:
+    case HYSCAN_SOURCE_NMEA_RMC:
+    case HYSCAN_SOURCE_NMEA_DPT:
+      return TRUE;
+
+    default:
+      return FALSE;
+    }
+
+  return FALSE;
+}
+
+/* Функция проверяет тип источника данных на соответствие акустическим данным. */
+gboolean
+hyscan_source_is_acoustic (HyScanSourceType source,
+                           gboolean         raw)
+{
+  switch (source)
+    {
+    case HYSCAN_SOURCE_SIDE_SCAN_STARBOARD:
+    case HYSCAN_SOURCE_SIDE_SCAN_PORT:
+    case HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI:
+    case HYSCAN_SOURCE_SIDE_SCAN_PORT_HI:
+    case HYSCAN_SOURCE_ECHOSOUNDER:
+    case HYSCAN_SOURCE_PROFILER:
+    case HYSCAN_SOURCE_LOOK_AROUND:
+      return TRUE;
+
+    /* Для вперёдсмотрящего только "сырые" данные являются акустическими. */
+    case HYSCAN_SOURCE_FORWARD_LOOK:
+      if (raw)
+        return TRUE;
+      return FALSE;
+
+    default:
+      return FALSE;
+    }
+
+  return FALSE;
+}
+
 /* Функция возвращает название типа галса. */
-static const gchar *
-hyscan_track_get_name_by_type (HyScanTrackType track_type)
+const gchar *
+hyscan_track_get_name_by_type (HyScanTrackType type)
 {
   guint i;
 
@@ -148,7 +204,7 @@ hyscan_track_get_name_by_type (HyScanTrackType track_type)
   /* Ищем название типа. */
   for (i = 0; hyscan_track_type_info[i].quark != 0; i++)
     {
-      if (hyscan_track_type_info[i].type != track_type)
+      if (hyscan_track_type_info[i].type != type)
         continue;
       return hyscan_track_type_info[i].name;
     }
@@ -157,7 +213,7 @@ hyscan_track_get_name_by_type (HyScanTrackType track_type)
 }
 
 /* Функция возвращает тип галса по его названию. */
-static HyScanTrackType
+HyScanTrackType
 hyscan_track_get_type_by_name (const gchar *name)
 {
   GQuark quark;
@@ -260,7 +316,7 @@ hyscan_track_create (HyScanDB        *db,
   if (project_id <= 0)
     goto exit;
 
-  track_id = hyscan_db_track_create (db, project_id, track_name, g_bytes_get_data (schema, NULL), TRACK_SCHEMA_ID);
+  track_id = hyscan_db_track_create (db, project_id, track_name, g_bytes_get_data (schema, NULL), TRACK_SCHEMA);
   if (track_id <= 0)
     goto exit;
 
@@ -292,7 +348,7 @@ hyscan_channel_sensor_create (HyScanDB                *db,
                               const gchar             *project_name,
                               const gchar             *track_name,
                               const gchar             *channel_name,
-                              HyScanSensorChannelInfo *channel_info)
+                              HyScanAntennaPosition   *position)
 {
   gint32 project_id = -1;
   gint32 track_id = -1;
@@ -309,7 +365,7 @@ hyscan_channel_sensor_create (HyScanDB                *db,
   if (track_id <= 0)
     goto exit;
 
-  channel_id = hyscan_db_channel_create (db, track_id, channel_name, SENSOR_CHANNEL_SCHEMA_ID);
+  channel_id = hyscan_db_channel_create (db, track_id, channel_name, SENSOR_CHANNEL_SCHEMA);
   if (channel_id <= 0)
     goto exit;
 
@@ -317,22 +373,22 @@ hyscan_channel_sensor_create (HyScanDB                *db,
   if (param_id <= 0)
     goto exit;
 
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/x", channel_info->x))
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/x", position->x))
     goto exit;
 
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/y", channel_info->y))
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/y", position->y))
     goto exit;
 
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/z", channel_info->z))
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/position/z", position->z))
     goto exit;
 
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/psi", channel_info->psi))
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/psi", position->psi))
     goto exit;
 
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/gamma", channel_info->gamma))
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/gamma", position->gamma))
     goto exit;
 
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/theta", channel_info->theta))
+  if (!hyscan_db_param_set_double (db, param_id, NULL, "/orientation/theta", position->theta))
     goto exit;
 
   status = TRUE;

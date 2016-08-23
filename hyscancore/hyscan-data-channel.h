@@ -17,8 +17,8 @@
  * один и тот же кэш. Таким образом, данные обработанные в одной части приложения не потребуют повторной
  * обработки в другой его части.
  *
- * Параметры канала данных можно получить функцией #hyscan_data_channel_get_info. Функция возвращает
- * указатель на стркутуру \link HyScanDataChannelInfo \endlink.
+ * Местоположение приёмной антенны гидролокатора можно получить функцией #hyscan_data_channel_get_position.
+ * Параметры акустических данных можно получить функцией #hyscan_data_channel_get_info.
  *
  * Функции #hyscan_data_channel_get_range и #hyscan_data_channel_find_data используются для определения
  * границ записанных данных и их поиска по метке времени. Эти функции аналогичны функциям
@@ -153,16 +153,29 @@ HyScanDataChannel     *hyscan_data_channel_new_with_cache_prefix   (HyScanDB    
 
 /**
  *
- * Функция возвращает параметры канала данных в виде структуры \link HyScanDataChannelInfo \endlink.
- * Пользователь должен освободить память, занимаемую структурой, функцией g_free.
+ * Функция возвращает информацию о местоположении приёмной антенны гидролокатора
+ * в виде значения структуры \link HyScanAntennaPosition \endlink.
  *
  * \param dchannel указатель на объект \link HyScanDataChannel \endlink.
  *
- * \return Указатель на структуру с параметрами канала данных.
+ * \return Местоположение приёмной антенны гидролокатора.
  *
  */
 HYSCAN_CORE_EXPORT
-HyScanDataChannelInfo *hyscan_data_channel_get_info (HyScanDataChannel *dchannel);
+HyScanAntennaPosition  hyscan_data_channel_get_position            (HyScanDataChannel *dchannel);
+
+/**
+ *
+ * Функция возвращает параметры канала акустических данных в виде
+ * значения структуры \link HyScanAcousticDataInfo \endlink.
+ *
+ * \param dchannel указатель на объект \link HyScanDataChannel \endlink.
+ *
+ * \return Параметры канала акустических данных.
+ *
+ */
+HYSCAN_CORE_EXPORT
+HyScanAcousticDataInfo hyscan_data_channel_get_info                (HyScanDataChannel *dchannel);
 
 /**
  *

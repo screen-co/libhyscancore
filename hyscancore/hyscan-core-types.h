@@ -1,7 +1,7 @@
 /**
  * \file hyscan-core-types.h
  *
- * \brief Заголовочный файл вспомогательных функций и определения типов объектов используемых HyScanCore
+ * \brief Заголовочный файл вспомогательных функций и определений типов объектов используемых HyScanCore
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2016
  * \license Проприетарная лицензия ООО "Экран"
@@ -11,16 +11,40 @@
  * В HyScanCoreTypes вводятся определения следующих типов:
  *
  * - \link HyScanSonarSourceType \endlink - источники данных;
- * - \link HyScanTrackType \endlink - типы галсаов.
+ * - \link HyScanTrackType \endlink - типы галсов.
+ *
+ * Все источники данных разделены на два основных вида:
+ *
+ * - датчики
+ * - источники гидролокационных данных.
+ *
+ * Функции #hyscan_track_get_name_by_type и #hyscan_track_get_type_by_name используются для
+ * преобразования типа галсов в строковое представление и наоборот.
+ *
+ * Источники гидролокационных данных разделяются на следующие виды:
+ *
+ * - источники акустических данных;
+ * - источники батиметрических данных.
+ *
+ * Источники акустических данных содержат информацию об амплитуде эхо сигнала
+ * дискретизированной по времени. Источники такого типа могут содержать как
+ * первичные (сырые), так и обработанные данные. Классическим примером таких данных
+ * являются данные бокового обзора, эхолота, профилографа и т.п.
+ *
+ * Источники батиметрических данных содержат обработанную информацию о глубине.
+ * Обычно эта информация получается путём обработки "сырых" акустических данных.
+ *
+ * Функции #hyscan_source_is_sensor и #hyscan_source_is_acoustic могут использоваться
+ * для проверки принадлежности источника данных датчикам или источникам акустических данных.
  *
  * В HyScanCoreTypes вводятся определения следующих структур:
  *
- * - \link HyScanSensorChannelInfo \endlink - параметры канала с данными датчиков;
- * - \link HyScanDataChannelInfo \endlink - параметры канала с акустическими данными.
+ * - \link HyScanAntennaPosition \endlink - параметры местоположения приёмной антенны;
+ * - \link HyScanAcousticDataInfo \endlink - параметры акустических данных.
  *
- * В этих структурах присутствует информация о местоположении приёмных антенн.
- * Смещения приёмной антенны указываются относительно центра масс судна. При этом
- * ось X направлена в нос, ось Y на правый борт, ось Z вверх.
+ * В структуре \link HyScanAntennaPosition \endlink присутствует информация о местоположении
+ * приёмных антенн. Смещения приёмной антенны указываются относительно центра масс судна.
+ * При этом ось X направлена в нос, ось Y на правый борт, ось Z вверх.
  *
  * Углы установки антенны указываются для вектора, перпиндикулярного её рабочей
  * плоскости. Угол psi учитывает разворот антенны по курсу от её нормального положения.
@@ -29,15 +53,11 @@
  *
  * Положительные значения указываются для углов отсчитываемых против часовой стрелки.
  *
+ * Местоположение приёмной антенны должно быть задано для всех источников данных.
+ *
  * Для определения названий каналов, по типу сохраняемых в них данных и их характеристикам,
  * предназначена функция #hyscan_channel_get_name_by_types. Определить характеристики данных
  * по названию канала можно функцией #hyscan_channel_get_types_by_name.
- *
- * Для создания галса в проекте необходимо использовать функцию #hyscan_track_create. При использовании
- * этой функции будет определена схема данных галса и его каналов, используемая библиотекой HyScanCore.
- *
- * Для создания канала для записи данных от датчиков необходимо использовать
- * функцию #hyscan_channel_sensor_create.
  *
  */
 
@@ -59,8 +79,8 @@ typedef enum
   HYSCAN_SOURCE_SIDE_SCAN_PORT                 = 102,          /**< Боковой обзор, левый борт. */
   HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI         = 103,          /**< Боковой обзор, правый борт, высокое разрешение. */
   HYSCAN_SOURCE_SIDE_SCAN_PORT_HI              = 104,          /**< Боковой обзор, левый борт, высокое разрешение. */
-  HYSCAN_SOURCE_BATHYMETRY_STARBOARD           = 105,          /**< Батиметрия, правый борт. */
-  HYSCAN_SOURCE_BATHYMETRY_PORT                = 106,          /**< Батиметрия, левый борт. */
+  HYSCAN_SOURCE_INTERFEROMETRY_STARBOARD       = 105,          /**< Интерферометрия, правый борт. */
+  HYSCAN_SOURCE_INTERFEROMETRY_PORT            = 106,          /**< Интерферометрия, левый борт. */
   HYSCAN_SOURCE_ECHOSOUNDER                    = 107,          /**< Эхолот. */
   HYSCAN_SOURCE_PROFILER                       = 108,          /**< Профилограф. */
   HYSCAN_SOURCE_LOOK_AROUND                    = 109,          /**< Круговой обзор. */
@@ -85,7 +105,7 @@ typedef enum
   HYSCAN_TRACK_TRACK                           = 103           /**< Треки движения судна. */
 } HyScanTrackType;
 
-/** \brief Параметры канала с данными датчиков */
+/** \brief Параметры местоположения приёмной антенны */
 typedef struct
 {
   gdouble                      x;                              /**< Смещение антенны по оси X, метры. */
@@ -95,25 +115,81 @@ typedef struct
   gdouble                      psi;                            /**< Поворот антенны по курсу, радианы. */
   gdouble                      gamma;                          /**< Поворот антенны по крену, радианы. */
   gdouble                      theta;                          /**< Поворот антенны по дифференту, радианы. */
-} HyScanSensorChannelInfo;
+} HyScanAntennaPosition;
 
-/** \brief Параметры канала с акустическими данными */
+/** \brief Параметры акустических данных */
 typedef struct
 {
-  HyScanDataType               discretization_type;            /**< Тип дискретизации данных. */
-  gdouble                      discretization_frequency;       /**< Частота дискретизации данных. */
+  struct                                                       /**< Параметры данных. */
+  {
+    HyScanDataType             type;                           /**< Тип данных. */
+    gdouble                    rate;                           /**< Частота дискретизации, Гц. */
+  } data;
 
-  gdouble                      vertical_pattern;               /**< Диаграмма направленности антенны в вертикальной плоскости. */
-  gdouble                      horizontal_pattern;             /**< Диаграмма направленности антенны в горизонтальной плоскости. */
+  struct                                                       /**< Параметры антенны. */
+  {
+    gdouble                    offset;                         /**< Смещение центра, м. */
+    gdouble                    vertical_pattern;               /**< Диаграмма направленности в вертикальной плоскости, рад. */
+    gdouble                    horizontal_pattern;             /**< Диаграмма направленности в горизонтальной плоскости, рад. */
+  } antenna;
 
-  gdouble                      x;                              /**< Смещение антенны по оси X, метры. */
-  gdouble                      y;                              /**< Смещение антенны по оси Y, метры. */
-  gdouble                      z;                              /**< Смещение антенны по оси Z, метры. */
+  struct                                                       /**< Параметры АЦП. */
+  {
+    gdouble                    vref;                           /**< Опорное напряжение, В. */
+    gint                       offset;                         /**< Смещение нуля, отсчёты. */
+  } adc;
+} HyScanAcousticDataInfo;
 
-  gdouble                      psi;                            /**< Угол поворота антенны по курсу, радианы. */
-  gdouble                      gamma;                          /**< Угол поворота антенны по крену, радианы. */
-  gdouble                      theta;                          /**< Угол поворота антенны по дифференту, радианы. */
-} HyScanDataChannelInfo;
+/**
+ *
+ * Функция проверяет тип источника данных на соответствие одному из типов датчиков.
+ *
+ * \param source тип источника данных;
+ *
+ * \return TRUE - если тип данных относится к данным датчиков, иначе - FALSE;
+ *
+ */
+HYSCAN_CORE_EXPORT
+gboolean               hyscan_source_is_sensor                 (HyScanSourceType               source);
+
+/**
+ *
+ * Функция проверяет тип источника данных на соответствие акустическим данным.
+ * "Сырые" данные всегда относятся к акустическим.
+ *
+ * \param source тип источника данных;
+ * \param raw признак "сырых" данных.
+ *
+ * \return TRUE - если тип данных относится к акустическим, иначе - FALSE;
+ *
+ */
+HYSCAN_CORE_EXPORT
+gboolean               hyscan_source_is_acoustic               (HyScanSourceType               source,
+                                                                gboolean                       raw);
+
+/**
+ *
+ * Функция преобразовывает численное значени типа галса в название типа.
+ *
+ * \param type тип галса.
+ *
+ * \return Строка с названием типа галса.
+ *
+ */
+HYSCAN_CORE_EXPORT
+const gchar           *hyscan_track_get_name_by_type           (HyScanTrackType                type);
+
+/**
+ *
+ * Функция преобразовывает строку с названием типа галса в численное значение.
+ *
+ * \param name название типа галса.
+ *
+ * \return Тип галса \link HyScanTrackType \endlink.
+ *
+ */
+HYSCAN_CORE_EXPORT
+HyScanTrackType        hyscan_track_get_type_by_name           (const gchar                   *name);
 
 /**
  *
@@ -149,46 +225,6 @@ gboolean               hyscan_channel_get_types_by_name        (const gchar     
                                                                 HyScanSourceType              *source,
                                                                 gboolean                      *raw,
                                                                 guint                         *channel);
-
-/**
- *
- * Функция создаёт галс в системе хранения. При создании галса его тип.
- * Проект должен быть создан заранее.
- *
- * \param db указатель на объект \link HyScanDB \endlink;
- * \param project_name название проекта;
- * \param track_name название галса;
- * \param track_type тип галса.
- *
- * \return TRUE - если галс был создан, FALSE - в случае ошибки.
- *
- */
-HYSCAN_CORE_EXPORT
-gboolean               hyscan_track_create                     (HyScanDB                      *db,
-                                                                const gchar                   *project_name,
-                                                                const gchar                   *track_name,
-                                                                HyScanTrackType                track_type);
-
-/**
- *
- * Функция создаёт канал для записи данных от датчиков. Проект и галс
- * должны быть созданы заранее.
- *
- * \param db указатель на объект \link HyScanDB \endlink;
- * \param project_name название проекта;
- * \param track_name название галса;
- * \param channel_name название канала данных;
- * \param channel_info параметры канала данных.
- *
- * \return Идентификатор канала данных или отрицательное число в случае ошибки.
- *
- */
-HYSCAN_CORE_EXPORT
-gint32                 hyscan_channel_sensor_create            (HyScanDB                      *db,
-                                                                const gchar                   *project_name,
-                                                                const gchar                   *track_name,
-                                                                const gchar                   *channel_name,
-                                                                HyScanSensorChannelInfo       *channel_info);
 
 G_END_DECLS
 

@@ -1,5 +1,5 @@
 #include <hyscan-location.h>
-#include <hyscan-data-channel-writer.h>
+#include <hyscan-data-writer.h>
 #include <hyscan-db-file.h>
 #include <hyscan-cached.h>
 #include <hyscan-data-channel.h>
@@ -50,15 +50,12 @@ main (int argc, char **argv)
   HyScanLocationData data = {0},
                      data_cached = {0};
   gint32 project_id;
-  gint32 channel_id1;
-  gint32 channel_id2;
-  const gchar *channel_name1;
-  const gchar *channel_name2;
-  const gchar *channel_name3;
-  HyScanDataChannelInfo dc_info = {HYSCAN_DATA_COMPLEX_ADC_16LE, 750, 0};
-  HyScanDataChannelWriter *dc_writer;
 
-  HyScanLocationSources ** source_list;
+  HyScanAntennaPosition position = {0, 0, 0, 0, 0, 0};
+  HyScanAcousticDataInfo info = {{HYSCAN_DATA_COMPLEX_ADC_16LE, 750}, {0}, {1.0, 0}};
+  HyScanDataWriter *writer;
+
+  HyScanLocationSources **source_list;
 
   gint32 db_index;
   gint64 db_time;
@@ -97,7 +94,6 @@ main (int argc, char **argv)
          points_freq = 0;
 
   gint32 project_param_id;
-  gboolean param_status;
 
   rmc_resource = g_resources_lookup_data ("/org/hyscan/location-test/rmc_test_data", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
   test_data_size = g_bytes_get_size (rmc_resource);
@@ -129,8 +125,6 @@ main (int argc, char **argv)
       orig_lon[i] = g_ascii_strtod (char_ptr,&char_ptr);
       orig_trk[i] = g_ascii_strtod (char_ptr,&char_ptr);
     }
-
-  HyScanSensorChannelInfo nmea_channel_info = {0, 0, 0, 0, 0, 0};
 
   {
     gchar **args;
@@ -198,33 +192,37 @@ main (int argc, char **argv)
     g_error ("can't create project");
 
   /* Создаём галс. */
-  if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
-    g_error ( "can't create track");
+  writer = hyscan_data_writer_new (db);
+  if (!hyscan_data_writer_start (writer, "project", "track", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start write");
 
-  /* Создаём каналы данных. */
-  /* РМЦ. */
-  channel_name1 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_RMC, FALSE, 3);
-  channel_id1 = hyscan_channel_sensor_create (db,"project", "track", channel_name1, &nmea_channel_info);
-
-  /* ГГА. */
-  channel_name2 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_GGA, FALSE, 2);
-  channel_id2 = hyscan_channel_sensor_create (db,"project", "track", channel_name2, &nmea_channel_info);
-
-  /* Глубина. */
-  channel_name3 = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_ECHOSOUNDER, FALSE, 1);
-  dc_writer = hyscan_data_channel_writer_new (db, "project", "track", channel_name3, &dc_info);
+  /* Местоположение приёмных антенн. */
+  hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
+  hyscan_data_writer_acoustic_set_position (writer, HYSCAN_SOURCE_ECHOSOUNDER, &position);
 
   /* Заполняем каналы тестовыми данными. */
   for (i = 0, db_time = 1e10, db_index = 2^16; i < 10000; i++, db_index++, db_time+=1e6)
     {
-      hyscan_db_channel_add_data (db, channel_id1, db_time, rmc_test_data[i], strlen(rmc_test_data[i]), NULL);
-      hyscan_db_channel_add_data (db, channel_id2, db_time, gga_test_data[i], strlen(gga_test_data[i]), NULL);
-      hyscan_data_channel_writer_add_data (dc_writer, db_time, &depth_test_data, 5000 * sizeof (gfloat));
+      HyScanDataWriterData data;
+
+      data.time = db_time;
+      data.size = strlen(rmc_test_data[i]);
+      data.data = rmc_test_data[i];
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_RMC, 3, &data);
+
+      data.time = db_time;
+      data.size = strlen(gga_test_data[i]);
+      data.data = gga_test_data[i];
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_GGA, 2, &data);
+
+      data.time = db_time;
+      data.size = 5000 * sizeof (gfloat);
+      data.data = depth_test_data;
+      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_ECHOSOUNDER, FALSE, 1, &info, &data);
     }
 
-  /* Переводим каналы в режим "только для чтения". */
-  hyscan_db_channel_finalize (db, channel_id1);
-  hyscan_db_channel_finalize (db, channel_id2);
+  hyscan_data_writer_stop (writer);
+  g_object_unref (writer);
 
   /* Создаем объект. */
   location = hyscan_location_new_with_cache_prefix (db, cache, "locacache", "project", "track", NULL , 0);
@@ -307,14 +305,14 @@ project_param_id = hyscan_db_project_param_open (db, project_id, "location.defau
 
 /* Создаем объекты обработки. */
 /* latlong-edit. */
-param_status = hyscan_db_param_object_create (db, project_param_id, "location-edit-latlong3", "location-edit-latlong");
-param_status = hyscan_db_param_set_integer (db, project_param_id, "location-edit-latlong3", "/time", 1e10+1e6*2);
-param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-latitude", 55.0);
-param_status = hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-longitude", 36.0);
+hyscan_db_param_object_create (db, project_param_id, "location-edit-latlong3", "location-edit-latlong");
+hyscan_db_param_set_integer (db, project_param_id, "location-edit-latlong3", "/time", 1e10+1e6*2);
+hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-latitude", 55.0);
+hyscan_db_param_set_double (db, project_param_id, "location-edit-latlong3", "/new-longitude", 36.0);
 
-param_status = hyscan_db_param_object_create (db, project_param_id, "location-bulk-remove1", "location-bulk-remove");
-param_status = hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/ltime", 1e10+1e6*450);
-param_status = hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/rtime", 1e10+1e6*500);
+hyscan_db_param_object_create (db, project_param_id, "location-bulk-remove1", "location-bulk-remove");
+hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/ltime", 1e10+1e6*450);
+hyscan_db_param_set_integer (db, project_param_id, "location-bulk-remove1", "/rtime", 1e10+1e6*500);
 
 while (location_mod_count == hyscan_location_get_mod_count (location));
 location_mod_count = hyscan_location_get_mod_count (location);
@@ -343,10 +341,6 @@ location_mod_count = hyscan_location_get_mod_count (location);
 
   g_object_unref (location);
   fclose (outfile);
-
-  /* Закрываем каналы данных. */
-  hyscan_db_close (db, channel_id1);
-  hyscan_db_close (db, channel_id2);
 
   /* Закрываем галс и проект. */
   hyscan_db_close (db, project_id);

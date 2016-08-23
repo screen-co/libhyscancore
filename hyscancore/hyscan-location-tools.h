@@ -142,8 +142,7 @@ typedef struct
   gdouble                       psi;                            /*< Параметр датчика. */
   gdouble                       gamma;                          /*< Параметр датчика. */
   gdouble                       theta;                          /*< Параметр датчика. */
-  gdouble                       discretization_frequency;       /*< Параметр датчика. */
-  gchar                        *discretization_type;            /*< Параметр датчика. */
+  gdouble                       data_rate;                      /*< Параметр датчика. */
 } HyScanLocationSourcesList;
 
 /* \brief Внутреннее хранилище параметров и состояния потока надзирателя. */

@@ -1,11 +1,13 @@
-#include <hyscan-data-channel-writer.h>
+#include <hyscan-data-writer.h>
 #include <hyscan-data-channel.h>
 #include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
-#include <glib/gstdio.h>
 #include <string.h>
 #include <math.h>
+
+#define PROJECT_NAME           "test"
+#define TRACK_NAME             "track"
 
 int main( int argc, char **argv )
 {
@@ -19,16 +21,19 @@ int main( int argc, char **argv )
 
   HyScanDB *db;
   HyScanCache *cache = NULL;
+  HyScanDataWriter *writer;
   HyScanDataChannel *reader;
-  HyScanDataChannelWriter *writer;
-  HyScanDataChannelInfo channel_info = {0};
+
+  HyScanAntennaPosition position;
+  HyScanAcousticDataInfo info;
+  HyScanDataWriterData data;
+  HyScanDataWriterSignal signal;
 
   gboolean status;
 
   gint32 project_id;
 
   {
-
     gchar **args;
     GError *error = NULL;
     GOptionContext *context;
@@ -72,11 +77,20 @@ int main( int argc, char **argv )
     g_strfreev (args);
   }
 
-  /* Параметры канала данных. */
-  channel_info.discretization_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  channel_info.discretization_frequency = discretization;
-  channel_info.vertical_pattern = 40.0;
-  channel_info.horizontal_pattern = 2.0;
+  /* Параметры данных. */
+  position.x = 0.0;
+  position.y = 0.0;
+  position.z = 0.0;
+  position.psi = 0.0;
+  position.gamma = 0.0;
+  position.theta = 0.0;
+  info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  info.data.rate = discretization;
+  info.antenna.offset = 40.0;
+  info.antenna.vertical_pattern = 40.0;
+  info.antenna.horizontal_pattern = 2.0;
+  info.adc.vref = 1.0;
+  info.adc.offset = 0;
 
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
@@ -88,17 +102,20 @@ int main( int argc, char **argv )
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
 
   /* Создаём проект. */
-  project_id = hyscan_db_project_create (db, "project", NULL);
+  project_id = hyscan_db_project_create (db, PROJECT_NAME, NULL);
   if (project_id < 0)
     g_error( "can't create project");
 
-  /* Создаём галс. */
-  if (!hyscan_track_create (db, "project", "track", HYSCAN_TRACK_SURVEY))
-    g_error( "can't create track");
+  /* Объект записи данных */
+  writer = hyscan_data_writer_new (db);
 
-  /* Объекты обработки данных */
-  writer = hyscan_data_channel_writer_new (db, "project", "track", "channel", &channel_info);
-  reader = hyscan_data_channel_new_with_cache (db, "project", "track", "channel", cache);
+  /* Местоположение приёмной антенны. */
+  if (!hyscan_data_writer_acoustic_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position))
+    g_error ("can't set antenna position");
+
+  /* Создаём галс. */
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY))
+    g_error( "can't start write");
 
   /* Тестовые данные для проверки свёртки. Массив размером 100 * signal_size.
      Сигнал располагается со смещением в две длительности. Все остальные индексы
@@ -106,12 +123,12 @@ int main( int argc, char **argv )
   {
     gint32 signal_size = discretization * duration;
     gint32 data_size = 100 * signal_size;
-    HyScanComplexFloat *signal;
-    guint16 *data;
+    HyScanComplexFloat *signal_points;
+    guint16 *data_values;
     gint i, j;
 
-    signal = g_malloc (signal_size * sizeof (HyScanComplexFloat));
-    data = g_malloc (2 * data_size * sizeof (guint16));
+    signal_points = g_malloc (signal_size * sizeof (HyScanComplexFloat));
+    data_values = g_malloc (2 * data_size * sizeof (guint16));
 
     g_message ("signal size = %d", signal_size);
     g_message ("data size = %d", data_size);
@@ -120,44 +137,59 @@ int main( int argc, char **argv )
       {
         gdouble work_frequency = (frequency - ((j * frequency) / (5.0 * n_signals)));
 
-        memset (signal, 0, 2 * signal_size * sizeof(gfloat));
+        memset (signal_points, 0, 2 * signal_size * sizeof(gfloat));
         for (i = 0; i < signal_size; i++)
-            {
-              gdouble time = (1.0 / discretization) * i;
-              gdouble phase = 2.0 * G_PI * work_frequency * time;
-              signal[i].re = cos (phase);
-              signal[i].im = sin (phase);
-            }
+          {
+            gdouble time = (1.0 / discretization) * i;
+            gdouble phase = 2.0 * G_PI * work_frequency * time;
+            signal_points[i].re = cos (phase);
+            signal_points[i].im = sin (phase);
+          }
 
-        status = hyscan_data_channel_writer_add_signal_image (writer, 1000 * (j + 1),
-                                                              signal, signal_size);
+        signal.time = 1000 * (j + 1);
+        signal.rate = info.data.rate;
+        signal.n_points = signal_size;
+        signal.points = signal_points;
+
+        status = hyscan_data_writer_acoustic_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &signal);
         if (!status)
           g_error ("can't add signal image");
 
         for (i = 0; i < 2 * data_size; i++)
-          data[i] = 32767;
+          data_values[i] = 32767;
 
         for (i = 2 * signal_size; i < 3 * signal_size; i++)
           {
             gdouble time = (1.0 / discretization) * i;
             gdouble phase = 2.0 * G_PI * work_frequency * time;
-            data[2 * i] = 65535.0 * ((0.5 * cos (phase)) + 0.5);
-            data[2 * i + 1] = 65535.0 * ((0.5 * sin (phase)) + 0.5);
+            data_values[2 * i] = 65535.0 * ((0.5 * cos (phase)) + 0.5);
+            data_values[2 * i + 1] = 65535.0 * ((0.5 * sin (phase)) + 0.5);
           }
 
         for (i = 0; i < n_lines; i++)
           {
-            status = hyscan_data_channel_writer_add_data (writer, 1000 * (j + 1) + (i * 10),
-                                                          data, 2 * data_size * sizeof(gint16));
+            data.time = 1000 * (j + 1) + (i * 10);
+            data.size = 2 * data_size * sizeof(gint16);
+            data.data = data_values;
+
+            status = hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,
+                                                           TRUE, 1, &info, &data);
             if (!status)
               g_error ("can't add data");
           }
 
       }
 
-    g_free (signal);
-    g_free (data);
+    g_free (signal_points);
+    g_free (data_values);
   }
+
+  /* Объект чтения данных. */
+  reader = hyscan_data_channel_new_with_cache (db,
+                                               PROJECT_NAME,
+                                               TRACK_NAME,
+                                               hyscan_channel_get_name_by_types (HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, TRUE, 1),
+                                               cache);
 
   /* Для тонального сигнала проверяем, что его свёртка совпадает с треугольником,
      начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
@@ -187,7 +219,9 @@ int main( int argc, char **argv )
     for (j = 0; j < n_signals * n_lines; j++)
       {
         readings = data_size;
-        hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL);
+        if (!hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL))
+          g_error ("can't get amplitude");
+
         for (i = 0; i < data_size; i++)
           delta += fabs (amp1[i] - amp2[i]);
       }
@@ -200,7 +234,9 @@ int main( int argc, char **argv )
         for (j = 0; j < n_signals * n_lines; j++)
           {
             readings = data_size;
-            hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL);
+            if (!hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL))
+              g_error ("can't get amplitude");
+
             for (i = 0; i < data_size; i++)
               delta += fabs (amp1[i] - amp2[i]);
           }
@@ -216,7 +252,7 @@ int main( int argc, char **argv )
 
   hyscan_db_close (db, project_id);
 
-  hyscan_db_project_remove (db, "project");
+  hyscan_db_project_remove (db, PROJECT_NAME);
 
   g_clear_object (&db);
   g_clear_object (&cache);

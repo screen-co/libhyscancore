@@ -327,7 +327,7 @@ hyscan_location_assembler_depth (HyScanDB *db,
       buffer_size = hyscan_data_channel_get_values_count (source_info->dchannel, index);
       float_buffer = g_malloc0 (buffer_size * sizeof(gfloat));
       hyscan_data_channel_get_amplitude_values (source_info->dchannel, index, float_buffer, &buffer_size, &db_time);
-      depth = hyscan_location_echosounder_depth_get (float_buffer, buffer_size, source_info->discretization_frequency, soundspeed);
+      depth = hyscan_location_echosounder_depth_get (float_buffer, buffer_size, source_info->data_rate, soundspeed);
       break;
 
     case HYSCAN_LOCATION_SOURCE_SONAR_PORT:
@@ -337,7 +337,7 @@ hyscan_location_assembler_depth (HyScanDB *db,
       buffer_size = hyscan_data_channel_get_values_count (source_info->dchannel, index);
       float_buffer = g_malloc0 (buffer_size * sizeof(gfloat));
       hyscan_data_channel_get_amplitude_values (source_info->dchannel, index, float_buffer, &buffer_size, &db_time);
-      depth = hyscan_location_sonar_depth_get (float_buffer, buffer_size, source_info->discretization_frequency, soundspeed);
+      depth = hyscan_location_sonar_depth_get (float_buffer, buffer_size, source_info->data_rate, soundspeed);
       break;
     default:
       depth.validity = HYSCAN_LOCATION_INVALID;

@@ -2,10 +2,9 @@
 add_library (hyscancore SHARED
              pffft.c
              hyscan-core-types.c
-             hyscan-state.c
              hyscan-convolution.c
+             hyscan-data-writer.c
              hyscan-data-channel.c
-             hyscan-data-channel-writer.c
              hyscan-geo.c
              hyscan-location-tools-nmea.c
              hyscan-location-tools-sounder.c

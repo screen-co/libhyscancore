@@ -10,15 +10,13 @@
 
 #include "hyscan-data-channel.h"
 #include "hyscan-convolution.h"
+#include "hyscan-core-schemas.h"
 
 #include <math.h>
 #include <string.h>
 
-/* Версия API канала гидролокационных данных. */
-#define DATA_CHANNEL_API                       20160500
-
 /* Постфикс названия канала с образцами сигналов. */
-#define SIGNALS_CHANNEL_POSTFIX                "signals"
+#define SIGNAL_CHANNEL_POSTFIX                 "signal"
 
 enum
 {
@@ -56,7 +54,8 @@ struct _HyScanDataChannelPrivate
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
 
-  HyScanDataChannelInfo info;                                  /* Параметры канала данных. */
+  HyScanAntennaPosition  position;                             /* Местоположение приёмной антенны. */
+  HyScanAcousticDataInfo info;                                 /* Параметры акустических данных. */
 
   gint32               channel_id;                             /* Идентификатор открытого канала данных. */
   gint32               signal_id;                              /* Идентификатор открытого канала с образцами сигналов. */
@@ -83,12 +82,15 @@ static void            hyscan_data_channel_set_property        (GObject         
 static void            hyscan_data_channel_object_constructed  (GObject                       *object);
 static void            hyscan_data_channel_object_finalize     (GObject                       *object);
 
+static gboolean        hyscan_data_channel_load_position       (HyScanDB                      *db,
+                                                                gint32                         param_id,
+                                                                HyScanAntennaPosition         *position);
 static gboolean        hyscan_data_channel_load_data_params    (HyScanDB                      *db,
                                                                 gint32                         param_id,
-                                                                HyScanDataChannelInfo         *info);
+                                                                HyScanAcousticDataInfo        *info);
 static gboolean        hyscan_data_channel_load_signals_params (HyScanDB                      *db,
                                                                 gint32                         param_id,
-                                                                gdouble                       *discretization_frequency);
+                                                                gdouble                       *signal_rate);
 
 static void            hyscan_data_channel_update_cache_key    (HyScanDataChannelPrivate      *priv,
                                                                 gint                           data_type,
@@ -208,7 +210,7 @@ hyscan_data_channel_object_constructed (GObject *object)
   gint32 param_id = -1;
 
   gchar *signals_name = NULL;
-  gdouble signal_discretization_frequency;
+  gdouble signal_rate;
 
   gboolean status = FALSE;
 
@@ -261,14 +263,21 @@ hyscan_data_channel_object_constructed (GObject *object)
   param_id = hyscan_db_channel_param_open (priv->db, priv->channel_id);
   if (param_id < 0)
     {
-      g_warning ("HyScanDataChannel: can't open channel '%s.%s.%s' parameters",
+      g_warning ("HyScanDataChannel: can't open '%s.%s.%s' parameters",
+                 priv->project_name, priv->track_name, priv->channel_name);
+      goto exit;
+    }
+
+  if (!hyscan_data_channel_load_position (priv->db, param_id, &priv->position))
+    {
+      g_warning ("HyScanDataChannel: can't read '%s.%s.%s' antenna position",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
 
   if (!hyscan_data_channel_load_data_params (priv->db, param_id, &priv->info))
     {
-      g_warning ("HyScanDataChannel: error in channel '%s.%s.%s' parameters",
+      g_warning ("HyScanDataChannel: can't read '%s.%s.%s' parameters",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
@@ -277,7 +286,7 @@ hyscan_data_channel_object_constructed (GObject *object)
   param_id = -1;
 
   /* Образцы сигналов для свёртки. */
-  signals_name = g_strdup_printf ("%s.%s", priv->channel_name, SIGNALS_CHANNEL_POSTFIX);
+  signals_name = g_strdup_printf ("%s-%s", priv->channel_name, SIGNAL_CHANNEL_POSTFIX);
   if (hyscan_db_is_exist (priv->db, priv->project_name, priv->track_name, signals_name))
     priv->signal_id = hyscan_db_channel_open (priv->db, track_id, signals_name);
   g_free (signals_name);
@@ -296,23 +305,23 @@ hyscan_data_channel_object_constructed (GObject *object)
     {
       g_warning ("HyScanDataChannel: can't open channel '%s.%s.%s.%s' parameters",
                  priv->project_name, priv->track_name, priv->channel_name,
-                 SIGNALS_CHANNEL_POSTFIX);
+                 SIGNAL_CHANNEL_POSTFIX);
       goto exit;
     }
 
-  if (!hyscan_data_channel_load_signals_params (priv->db, param_id, &signal_discretization_frequency))
+  if (!hyscan_data_channel_load_signals_params (priv->db, param_id, &signal_rate))
     {
-      g_warning ("HyScanDataChannel: error in signals '%s.%s.%s' parameters",
+      g_warning ("HyScanDataChannel: can't read '%s.%s.%s' signal parameters",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
   else
     {
-      if (fabs (priv->info.discretization_frequency - signal_discretization_frequency) > 0.001)
+      if (fabs (priv->info.data.rate - signal_rate) > 0.001)
         {
-          g_warning ("HyScanDataChannel: '%s.%s.%s.%s': discretization frequency mismatch",
+          g_warning ("HyScanDataChannel: '%s.%s.%s.%s': signal rate mismatch",
                      priv->project_name, priv->track_name, priv->channel_name,
-                     SIGNALS_CHANNEL_POSTFIX);
+                     SIGNAL_CHANNEL_POSTFIX);
           goto exit;
         }
 
@@ -388,83 +397,148 @@ hyscan_data_channel_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_data_channel_parent_class)->finalize (object);
 }
 
-/* Функция загружает параметры канала данных. */
+/* Функция загружает местоположение приёмной антенны гидролокатора. */
 static gboolean
-hyscan_data_channel_load_data_params (HyScanDB              *db,
-                                      gint32                 param_id,
-                                      HyScanDataChannelInfo *info)
+hyscan_data_channel_load_position (HyScanDB              *db,
+                                   gint32                 param_id,
+                                   HyScanAntennaPosition *position)
 {
-  gchar *discretization_type;
-  gint64 api_version;
-  gboolean status;
+  const gchar *param_names[9];
+  GVariant *param_values[9];
+  gboolean status = FALSE;
 
-  status = hyscan_db_param_get_integer (db, param_id, NULL, "/data-version", &api_version);
-  if (!status || ((api_version / 100) != (DATA_CHANNEL_API / 100)))
+  param_names[0] = "/schema/id";
+  param_names[1] = "/schema/version";
+  param_names[2] = "/position/x";
+  param_names[3] = "/position/y";
+  param_names[4] = "/position/z";
+  param_names[5] = "/position/psi";
+  param_names[6] = "/position/gamma";
+  param_names[7] = "/position/theta";
+  param_names[8] = NULL;
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
 
-  discretization_type = hyscan_db_param_get_string (db, param_id, NULL, "/discretization/type");
-  info->discretization_type = hyscan_data_get_type_by_name (discretization_type);
-  g_free (discretization_type);
-  if (info->discretization_type == HYSCAN_DATA_INVALID)
+  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) )
+    {
+      goto exit;
+    }
+
+  position->x = g_variant_get_double (param_values[2]);
+  position->y = g_variant_get_double (param_values[3]);
+  position->z = g_variant_get_double (param_values[4]);
+  position->psi = g_variant_get_double (param_values[5]);
+  position->gamma = g_variant_get_double (param_values[6]);
+  position->theta = g_variant_get_double (param_values[7]);
+
+  status = TRUE;
+
+exit:
+  g_variant_unref (param_values[0]);
+  g_variant_unref (param_values[1]);
+  g_variant_unref (param_values[2]);
+  g_variant_unref (param_values[3]);
+  g_variant_unref (param_values[4]);
+  g_variant_unref (param_values[5]);
+  g_variant_unref (param_values[6]);
+  g_variant_unref (param_values[7]);
+
+  return status;
+}
+
+/* Функция загружает параметры акустических данных. */
+static gboolean
+hyscan_data_channel_load_data_params (HyScanDB               *db,
+                                      gint32                  param_id,
+                                      HyScanAcousticDataInfo *info)
+{
+  const gchar *param_names[10];
+  GVariant *param_values[10];
+  gboolean status = FALSE;
+
+  param_names[0] = "/schema/id";
+  param_names[1] = "/schema/version";
+  param_names[2] = "/data/type";
+  param_names[3] = "/data/rate";
+  param_names[4] = "/antenna/offset";
+  param_names[5] = "/antenna/vertical-pattern";
+  param_names[6] = "/antenna/horizontal-pattern";
+  param_names[7] = "/adc/vref";
+  param_names[8] = "/adc/offset";
+  param_names[9] = NULL;
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
 
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/discretization/frequency", &info->discretization_frequency))
-    return FALSE;
+  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) )
+    {
+      goto exit;
+    }
 
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/pattern/vertical", &info->vertical_pattern))
-    return FALSE;
+  info->data.type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
+  info->data.rate = g_variant_get_double (param_values[3]);
+  info->antenna.offset = g_variant_get_double (param_values[4]);
+  info->antenna.vertical_pattern = g_variant_get_double (param_values[5]);
+  info->antenna.horizontal_pattern = g_variant_get_double (param_values[6]);
+  info->adc.vref = g_variant_get_double (param_values[7]);
+  info->adc.offset = g_variant_get_int64 (param_values[8]);
 
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/pattern/horizontal", &info->horizontal_pattern))
-    return FALSE;
+  status = TRUE;
 
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/position/x", &info->x))
-    return FALSE;
+exit:
+  g_variant_unref (param_values[0]);
+  g_variant_unref (param_values[1]);
+  g_variant_unref (param_values[2]);
+  g_variant_unref (param_values[3]);
+  g_variant_unref (param_values[4]);
+  g_variant_unref (param_values[5]);
+  g_variant_unref (param_values[6]);
+  g_variant_unref (param_values[7]);
+  g_variant_unref (param_values[8]);
 
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/position/y", &info->y))
-    return FALSE;
-
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/position/z", &info->z))
-    return FALSE;
-
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/orientation/psi", &info->psi))
-    return FALSE;
-
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/orientation/gamma", &info->gamma))
-    return FALSE;
-
-  if (!hyscan_db_param_get_double (db, param_id, NULL, "/orientation/theta", &info->theta))
-    return FALSE;
-
-  return TRUE;
+  return status;
 }
 
 /* Функция загружает параметры канала с образцами сигналов. */
 static gboolean
 hyscan_data_channel_load_signals_params (HyScanDB *db,
                                          gint32    param_id,
-                                         gdouble  *discretization_frequency)
+                                         gdouble  *signal_rate)
 {
-  HyScanDataType discretization_type;
-  gchar *discretization_type_str;
-  gint64 api_version;
-  gboolean status;
+  const gchar *param_names[5];
+  GVariant *param_values[5];
+  gboolean status = FALSE;
 
-  status = hyscan_db_param_get_integer (db, param_id, NULL, "/signal-version", &api_version);
-  if (!status || ((api_version / 100) != (DATA_CHANNEL_API / 100)))
+  param_names[0] = "/schema/id";
+  param_names[1] = "/schema/version";
+  param_names[2] = "/data/type";
+  param_names[3] = "/data/rate";
+  param_names[4] = NULL;
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
 
-  discretization_type_str = hyscan_db_param_get_string (db, param_id, NULL, "/discretization/type");
-  discretization_type = hyscan_data_get_type_by_name (discretization_type_str);
-  g_free (discretization_type_str);
-  if (discretization_type != HYSCAN_DATA_COMPLEX_FLOAT)
-    return FALSE;
+  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) ||
+      (hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL)) != HYSCAN_DATA_COMPLEX_FLOAT))
+    {
+      goto exit;
+    }
 
-  status = hyscan_db_param_get_double (db, param_id, NULL,
-                                       "/discretization/frequency", discretization_frequency);
-  if (!status)
-    return FALSE;
+  *signal_rate = g_variant_get_double (param_values[3]);
 
-  return TRUE;
+  status = TRUE;
+
+exit:
+  g_variant_unref (param_values[0]);
+  g_variant_unref (param_values[1]);
+  g_variant_unref (param_values[2]);
+  g_variant_unref (param_values[3]);
+
+  return status;
 }
 
 /* Функция создаёт ключ кэширования данных. */
@@ -538,7 +612,7 @@ hyscan_data_channel_buffer_realloc (HyScanDataChannelPrivate *priv,
     return;
 
   priv->raw_buffer_size = size + 32;
-  data_buffer_size = priv->raw_buffer_size / hyscan_data_get_point_size (priv->info.discretization_type);
+  data_buffer_size = priv->raw_buffer_size / hyscan_data_get_point_size (priv->info.data.type);
   data_buffer_size *= sizeof (HyScanComplexFloat);
 
   priv->raw_buffer = g_realloc (priv->raw_buffer, priv->raw_buffer_size);
@@ -710,13 +784,13 @@ hyscan_data_channel_read_data (HyScanDataChannelPrivate *priv,
     return -1;
 
   /* Размер считанных данных должен быть кратен размеру точки. */
-  point_size = hyscan_data_get_point_size (priv->info.discretization_type);
+  point_size = hyscan_data_get_point_size (priv->info.data.type);
   if (io_size % point_size != 0)
     return -1;
   n_points = io_size / point_size;
 
   /* Импортируем данные в буфер обработки. */
-  hyscan_data_import_complex_float (priv->info.discretization_type, priv->raw_buffer, io_size,
+  hyscan_data_import_complex_float (priv->info.data.type, priv->raw_buffer, io_size,
                                     priv->data_buffer, &n_points);
 
   /* Выполняем свёртку. */
@@ -832,21 +906,35 @@ hyscan_data_channel_new_with_cache_prefix (HyScanDB    *db,
                        NULL);
 }
 
-/* Функция возвращает параметры канала данных. */
-HyScanDataChannelInfo *
-hyscan_data_channel_get_info (HyScanDataChannel *dchannel)
+HyScanAntennaPosition
+hyscan_data_channel_get_position (HyScanDataChannel *dchannel)
 {
-  HyScanDataChannelInfo *info;
+  HyScanAntennaPosition zero;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), NULL);
+  memset (&zero, 0, sizeof (HyScanAntennaPosition));
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), zero);
 
   if (dchannel->priv->channel_id < 0)
-    return NULL;
+    return zero;
 
-  info = g_new (HyScanDataChannelInfo, 1);
-  memcpy (info, &dchannel->priv->info, sizeof (HyScanDataChannelInfo));
+  return dchannel->priv->position;
+}
 
-  return info;
+/* Функция возвращает параметры канала данных. */
+HyScanAcousticDataInfo
+hyscan_data_channel_get_info (HyScanDataChannel *dchannel)
+{
+  HyScanAcousticDataInfo zero;
+
+  memset (&zero, 0, sizeof (HyScanAcousticDataInfo));
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), zero);
+
+  if (dchannel->priv->channel_id < 0)
+    return zero;
+
+  return dchannel->priv->info;
 }
 
 /* Функция возвращает диапазон значений индексов записанных данных. */
@@ -879,7 +967,7 @@ hyscan_data_channel_get_values_count (HyScanDataChannel *dchannel,
   if (hyscan_db_channel_get_data (dchannel->priv->db, dchannel->priv->channel_id,
                                   index, NULL, &dsize, NULL))
     {
-      dsize /= hyscan_data_get_point_size (dchannel->priv->info.discretization_type);
+      dsize /= hyscan_data_get_point_size (dchannel->priv->info.data.type);
     }
   else
     {

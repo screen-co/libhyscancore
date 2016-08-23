@@ -774,7 +774,8 @@ hyscan_location_source_set (HyScanLocation *location,
   GArray *param_cache;
   gint32 *param_source;
   HyScanLocationSourceTypes source_type;
-  HyScanDataChannelInfo *dc_info;
+  HyScanAcousticDataInfo dc_info;
+  HyScanAntennaPosition dc_position;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_LOCATION (location), FALSE);
@@ -939,7 +940,6 @@ hyscan_location_source_set (HyScanLocation *location,
     default:
       status = FALSE;
       goto exit;
-
     }
 
   /* Загружаем параметры КД. */
@@ -957,7 +957,7 @@ hyscan_location_source_set (HyScanLocation *location,
         source_info->psi = 0;
         source_info->gamma = 0;
         source_info->theta = 0;
-        source_info->discretization_frequency = 0;
+        source_info->data_rate = 0;
       }
       break;
     case HYSCAN_LOCATION_SOURCE_ECHOSOUNDER:
@@ -966,13 +966,14 @@ hyscan_location_source_set (HyScanLocation *location,
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
       dc_info = hyscan_data_channel_get_info (source_info->dchannel);
-      source_info->x = dc_info->x;
-      source_info->y = dc_info->y;
-      source_info->z = dc_info->z;
-      source_info->psi = dc_info->psi;
-      source_info->gamma = dc_info->gamma;
-      source_info->theta = dc_info->theta;
-      source_info->discretization_frequency = dc_info->discretization_frequency;
+      dc_position = hyscan_data_channel_get_position (source_info->dchannel);
+      source_info->x = dc_position.x;
+      source_info->y = dc_position.y;
+      source_info->z = dc_position.z;
+      source_info->psi = dc_position.psi;
+      source_info->gamma = dc_position.gamma;
+      source_info->theta = dc_position.theta;
+      source_info->data_rate = dc_info.data.rate;
       break;
     default:
       status = FALSE;
@@ -1001,7 +1002,6 @@ hyscan_location_param_load (HyScanLocation *location,
                             gint32          source)
 {
   HyScanLocationPrivate *priv = location->priv;
-  HyScanLocationSourceTypes source_type = 0;
   HyScanLocationSourcesList *source_info;
   source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, source);
 
@@ -1012,31 +1012,13 @@ hyscan_location_param_load (HyScanLocation *location,
     return FALSE;
   if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/position/z", &(source_info->z)))
     return FALSE;
-  if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/orientation/psi", &(source_info->psi)))
+  if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/position/psi", &(source_info->psi)))
     return FALSE;
-  if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/orientation/gamma", &(source_info->gamma)))
+  if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/position/gamma", &(source_info->gamma)))
     return FALSE;
-  if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/orientation/theta", &(source_info->theta)))
+  if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/position/theta", &(source_info->theta)))
     return FALSE;
 
-
-  source_type = source_info->source_type;
-  if (source_type == HYSCAN_LOCATION_SOURCE_ECHOSOUNDER      ||
-      source_type == HYSCAN_LOCATION_SOURCE_SONAR_PORT       ||
-      source_type == HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD  ||
-      source_type == HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT ||
-      source_type == HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD)
-    {
-      if (!hyscan_db_param_get_double (priv->db, source_info->param_id, NULL, "/discretization/frequency", &(source_info->discretization_frequency)))
-        return FALSE;
-
-      source_info->discretization_type = hyscan_db_param_get_string (priv->db,
-                                                                            source_info->param_id,
-                                                                            NULL,
-                                                                            "/discretization/type");
-      if (source_info->discretization_type == NULL)
-        return FALSE;
-    }
   return TRUE;
 }
 
@@ -1692,7 +1674,6 @@ static void
 hyscan_location_source_free (HyScanLocationSourcesList *data)
 {
   g_free (data->channel_name);
-  g_free (data->discretization_type);
 }
 
 /* Функция добавляет новый элемент в список источников. */
@@ -1726,14 +1707,13 @@ hyscan_location_source_list_add (GArray                   *source_list,
   new_source.thresholder_prev_index = 0;
   new_source.thresholder_next_index = 0;
   new_source.processing_index = 0;
-  new_source.discretization_type = NULL;
   new_source.x = 0.0;
   new_source.y = 0.0;
   new_source.z = 0.0;
   new_source.psi = 0.0;
   new_source.gamma = 0.0;
   new_source.theta = 0.0;
-  new_source.discretization_frequency = 0.0;
+  new_source.data_rate = 0.0;
   if (source_list != NULL)
     g_array_append_val (source_list, new_source);
 };
