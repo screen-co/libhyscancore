@@ -1,8 +1,6 @@
 
 add_library (hyscancore SHARED
-             pffft.c
              hyscan-core-types.c
-             hyscan-convolution.c
              hyscan-data-writer.c
              hyscan-data-channel.c
              hyscan-geo.c
@@ -13,7 +11,6 @@ add_library (hyscancore SHARED
              hyscan-location-tools-overseer.c
              hyscan-location-tools-getters.c
              hyscan-location.c
-             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
-             )
+             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
 target_link_libraries (hyscancore ${ADDON_LIBRARIES} ${GLIB2_LIBRARIES} ${HYSCAN_LIBRARIES})

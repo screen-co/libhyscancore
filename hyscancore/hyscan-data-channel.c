@@ -9,8 +9,8 @@
  */
 
 #include "hyscan-data-channel.h"
-#include "hyscan-convolution.h"
 #include "hyscan-core-schemas.h"
+#include <hyscan-convolution.h>
 
 #include <math.h>
 #include <string.h>

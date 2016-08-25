@@ -11,30 +11,12 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 #
-# PFFFT SIMD support.
-if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-  add_definitions (-DPFFFT_SIMD_DISABLE)
-endif ()
-
-#
-# OpenMP support.
-if (HYSCAN_CORE_USE_OPENMP)
-  add_definitions (-DHYSCAN_CORE_USE_OPENMP)
-endif ()
-
-#
 # Compilers options.
 if (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
-  if (HYSCAN_CORE_USE_OPENMP)
-    set (OMP_FLAGS "-fopenmp")
-  endif ()
   set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2 -Wall ${OMP_FLAGS} $ENV{CFLAGS}")
   set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall ${OMP_FLAGS} $ENV{CFLAGS}")
   set (ADDON_LIBRARIES m)
 elseif (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
-  if (HYSCAN_CORE_USE_OPENMP)
-    set (OMP_FLAGS "/openmp")
-  endif ()
   set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /wd4244 /wd4305 ${OMP_FLAGS} $ENV{CFLAGS}")
   set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /wd4244 /wd4305 ${OMP_FLAGS} $ENV{CFLAGS}")
 else ()
@@ -72,6 +54,9 @@ link_directories (${GLIB2_LIBRARY_DIRS})
 if (NOT HYSCAN_DB_SOURCE_DIR)
   set (HYSCAN_DB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libhyscandb)
 endif ()
+if (NOT HYSCAN_MATH_SOURCE_DIR)
+  set (HYSCAN_MATH_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libhyscanmath)
+endif ()
 if (NOT HYSCAN_CACHE_SOURCE_DIR)
   set (HYSCAN_CACHE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libhyscancache)
 endif ()
@@ -81,18 +66,20 @@ endif ()
 
 #
 # HyScan dependencies.
-pkg_check_modules (HYSCAN QUIET hyscandb hyscancache hyscantypes)
+pkg_check_modules (HYSCAN QUIET hyscandb hyscanmath hyscancache hyscantypes)
 if (${HYSCAN_FOUND})
   add_definitions (${HYSCAN_CFLAGS})
   link_directories (${HYSCAN_LIBRARY_DIRS})
 else ()
   include_directories ("${HYSCAN_DB_SOURCE_DIR}/hyscandb")
+  include_directories ("${HYSCAN_MATH_SOURCE_DIR}/hyscanmath")
   include_directories ("${HYSCAN_CACHE_SOURCE_DIR}/hyscancache")
   include_directories ("${HYSCAN_TYPES_SOURCE_DIR}/hyscantypes")
   link_directories ("${HYSCAN_DB_SOURCE_DIR}/bin")
+  link_directories ("${HYSCAN_MATH_SOURCE_DIR}/bin")
   link_directories ("${HYSCAN_CACHE_SOURCE_DIR}/bin")
   link_directories ("${HYSCAN_TYPES_SOURCE_DIR}/bin")
-  set (HYSCAN_LIBRARIES hyscandb hyscancache hyscantypes)
+  set (HYSCAN_LIBRARIES hyscandb hyscanmath hyscancache hyscantypes)
 endif ()
 
 #
