@@ -505,6 +505,8 @@ sonar_add_data (HyScanDataWriter *writer,
         {
           if (!hyscan_data_writer_raw_add_data (writer, source, 1, &raw_info, &data) && !fail)
             g_error ("can't add data to '%s'", sonar_get_name (n_channel));
+          if (!hyscan_data_writer_raw_add_noise (writer, source, 1, &raw_info, &data) && !fail)
+            g_error ("can't add noise to '%s'", sonar_get_name (n_channel));
         }
       else
         {
@@ -652,6 +654,39 @@ sonar_check_data (HyScanDB    *db,
 
   hyscan_db_close (db, channel_id);
 
+  /* Проверка шумов. */
+  if (raw)
+    {
+      gchar *noise_name = g_strdup_printf ("%s-noise", channel_name);
+      channel_id = hyscan_db_channel_open (db, track_id, noise_name);
+      g_free (noise_name);
+
+      antenna_check_position (db, channel_id, n_channel + (n_channel % 2));
+      raw_check_info (db, channel_id, n_channel);
+
+      for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
+        {
+          gint32 data_size = buffer_size;
+          guint16 *data_values = buffer;
+          gint64 time;
+
+          if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &data_size, &time))
+            g_error ("can't read noise from channel");
+
+          if (time != timestamp + i)
+            g_error ("time stamp mismatch");
+
+          if (data_size != DATA_SIZE * sizeof (guint16))
+            g_error ("noise size mismatch");
+
+          for (j = 0; j < DATA_SIZE; j++)
+            if (data_values[j] != n_channel + i + j)
+              g_error ("noise content mismatch");
+        }
+
+      hyscan_db_close (db, channel_id);
+    }
+
   /* Проверка сигналов. */
   if (raw)
     {
@@ -692,7 +727,6 @@ sonar_check_data (HyScanDB    *db,
 
       hyscan_db_close (db, channel_id);
     }
-
 
   /* Проверка ВАРУ. */
   if (raw)

@@ -37,6 +37,7 @@
  * - #hyscan_data_writer_sensor_add_data - для записи данных от датчика;
  * - #hyscan_data_writer_sonar_set_position - для установки местоположения приёмной антенны гидролокатора;
  * - #hyscan_data_writer_raw_add_data - для записи "сырых" данных от гидролокатора;
+ * - #hyscan_data_writer_raw_add_noise - для записи "сырых" данных от гидролокатора без излучения;
  * - #hyscan_data_writer_acoustic_add_data -для записи обработанных акустических данных.
  *
  * "Сырые" гидролокационные данные могут содержать вспомогательную информацию: образы сигналов для свёртки
@@ -261,6 +262,25 @@ gboolean               hyscan_data_writer_sonar_set_position           (HyScanDa
  *
  */
 gboolean               hyscan_data_writer_raw_add_data                 (HyScanDataWriter              *writer,
+                                                                        HyScanSourceType               source,
+                                                                        guint                          channel,
+                                                                        HyScanRawDataInfo             *info,
+                                                                        HyScanDataWriterData          *data);
+
+/**
+ *
+ * Функция записывает "сырые" гидролокационные данные без излучения, шум среды.
+ *
+ * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param source тип источника данных;
+ * \param channel индекс канала данных, начиная с 1;
+ * \param info параметры гидролокационных данных - \link HyScanRawDataInfo \endlink;
+ * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+gboolean               hyscan_data_writer_raw_add_noise                (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
                                                                         HyScanRawDataInfo             *info,

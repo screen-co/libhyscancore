@@ -60,6 +60,11 @@
     <node id="adc" schema="adc"/>
   </schema>
 
+  <schema id="noise">
+    <node id="schema" schema="schema"/>
+    <node id="data" schema="data"/>
+  </schema>
+
   <schema id="signal">
     <node id="schema" schema="schema"/>
     <node id="data" schema="data"/>
