@@ -2,7 +2,7 @@
 #include <hyscan-data-writer.h>
 #include <hyscan-db-file.h>
 #include <hyscan-cached.h>
-#include <hyscan-data-channel.h>
+#include <hyscan-raw-data.h>
 #include <hyscan-core-exports.h>
 
 #include <glib/gstdio.h>
@@ -52,7 +52,7 @@ main (int argc, char **argv)
   gint32 project_id;
 
   HyScanAntennaPosition position = {0, 0, 0, 0, 0, 0};
-  HyScanAcousticDataInfo info = {{HYSCAN_DATA_COMPLEX_ADC_16LE, 750}, {0}, {1.0, 0}};
+  HyScanAcousticDataInfo info = {{HYSCAN_DATA_COMPLEX_ADC_16LE, 750}, {{0}}};
   HyScanDataWriter *writer;
 
   HyScanLocationSources **source_list;
@@ -198,7 +198,7 @@ main (int argc, char **argv)
 
   /* Местоположение приёмных антенн. */
   hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
-  hyscan_data_writer_acoustic_set_position (writer, HYSCAN_SOURCE_ECHOSOUNDER, &position);
+  hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_ECHOSOUNDER, &position);
 
   /* Заполняем каналы тестовыми данными. */
   for (i = 0, db_time = 1e10, db_index = 2^16; i < 10000; i++, db_index++, db_time+=1e6)
@@ -218,7 +218,7 @@ main (int argc, char **argv)
       data.time = db_time;
       data.size = 5000 * sizeof (gfloat);
       data.data = depth_test_data;
-      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_ECHOSOUNDER, FALSE, 1, &info, &data);
+      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_ECHOSOUNDER, &info, &data);
     }
 
   hyscan_data_writer_stop (writer);

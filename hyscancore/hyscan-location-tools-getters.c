@@ -6,7 +6,7 @@
  */
 
 #include <hyscan-location-tools.h>
-#include <hyscan-data-channel.h>
+#include <hyscan-raw-data.h>
 #include <math.h>
 
 /* Функция выдачи даты и времени для заданного момента времени. */

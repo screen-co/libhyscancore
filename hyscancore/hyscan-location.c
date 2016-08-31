@@ -774,7 +774,7 @@ hyscan_location_source_set (HyScanLocation *location,
   GArray *param_cache;
   gint32 *param_source;
   HyScanLocationSourceTypes source_type;
-  HyScanAcousticDataInfo dc_info;
+  HyScanRawDataInfo dc_info;
   HyScanAntennaPosition dc_position;
   gboolean status = FALSE;
 
@@ -884,10 +884,10 @@ hyscan_location_source_set (HyScanLocation *location,
     case HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
-      source_info->dchannel = hyscan_data_channel_new (priv->db,
-                                                       priv->project_name,
-                                                       priv->track_name,
-                                                       source_info->channel_name);
+      source_info->dchannel = hyscan_raw_data_new (priv->db,
+                                                   priv->project_name,
+                                                   priv->track_name,
+                                                   source_info->channel_name);
       break;
     default:
       status = FALSE;
@@ -965,8 +965,8 @@ hyscan_location_source_set (HyScanLocation *location,
     case HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
-      dc_info = hyscan_data_channel_get_info (source_info->dchannel);
-      dc_position = hyscan_data_channel_get_position (source_info->dchannel);
+      dc_info = hyscan_raw_data_get_info (source_info->dchannel);
+      dc_position = hyscan_raw_data_get_position (source_info->dchannel);
       source_info->x = dc_position.x;
       source_info->y = dc_position.y;
       source_info->z = dc_position.z;

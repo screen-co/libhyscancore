@@ -88,7 +88,7 @@
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
 #include <hyscan-core-types.h>
-#include <hyscan-data-channel.h>
+#include <hyscan-raw-data.h>
 #include <hyscan-geo.h>
 
 G_BEGIN_DECLS

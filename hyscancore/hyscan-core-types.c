@@ -74,10 +74,10 @@ static HyScanChannelTypeInfo hyscan_channel_types_info[] =
   { 0, "profiler",             HYSCAN_SOURCE_PROFILER,                 FALSE, 1 },
   { 0, "profiler-raw",         HYSCAN_SOURCE_PROFILER,                 TRUE,  1 },
 
-  { 0, "look-around",          HYSCAN_SOURCE_LOOK_AROUND,              FALSE, 1 },
-  { 0, "look-around-2",        HYSCAN_SOURCE_LOOK_AROUND,              FALSE, 2 },
-  { 0, "look-around-raw",      HYSCAN_SOURCE_LOOK_AROUND,              TRUE,  1 },
-  { 0, "look-around-raw-2",    HYSCAN_SOURCE_LOOK_AROUND,              TRUE,  2 },
+  { 0, "around-starboard",     HYSCAN_SOURCE_LOOK_AROUND_STARBOARD,    FALSE, 1 },
+  { 0, "around-port",          HYSCAN_SOURCE_LOOK_AROUND_PORT,         FALSE, 1 },
+  { 0, "around-starboard-raw", HYSCAN_SOURCE_LOOK_AROUND_STARBOARD,    TRUE,  1 },
+  { 0, "around-port-raw",      HYSCAN_SOURCE_LOOK_AROUND_PORT,         TRUE,  1 },
 
   { 0, "forward-look",         HYSCAN_SOURCE_FORWARD_LOOK,             FALSE, 1 },
   { 0, "forward-look-raw-1",   HYSCAN_SOURCE_FORWARD_LOOK,             TRUE,  1 },
@@ -163,10 +163,9 @@ hyscan_source_is_sensor (HyScanSourceType source)
   return FALSE;
 }
 
-/* Функция проверяет тип источника данных на соответствие акустическим данным. */
+/* Функция проверяет тип источника данных на соответствие "сырым" гидролокационным данным. */
 gboolean
-hyscan_source_is_acoustic (HyScanSourceType source,
-                           gboolean         raw)
+hyscan_source_is_raw (HyScanSourceType source)
 {
   switch (source)
     {
@@ -176,14 +175,33 @@ hyscan_source_is_acoustic (HyScanSourceType source,
     case HYSCAN_SOURCE_SIDE_SCAN_PORT_HI:
     case HYSCAN_SOURCE_ECHOSOUNDER:
     case HYSCAN_SOURCE_PROFILER:
-    case HYSCAN_SOURCE_LOOK_AROUND:
+    case HYSCAN_SOURCE_LOOK_AROUND_STARBOARD:
+    case HYSCAN_SOURCE_LOOK_AROUND_PORT:
+    case HYSCAN_SOURCE_FORWARD_LOOK:
       return TRUE;
 
-    /* Для вперёдсмотрящего только "сырые" данные являются акустическими. */
-    case HYSCAN_SOURCE_FORWARD_LOOK:
-      if (raw)
-        return TRUE;
+    default:
       return FALSE;
+    }
+
+  return FALSE;
+}
+
+/* Функция проверяет тип источника данных на соответствие акустическим данным. */
+gboolean
+hyscan_source_is_acoustic (HyScanSourceType source)
+{
+  switch (source)
+    {
+    case HYSCAN_SOURCE_SIDE_SCAN_STARBOARD:
+    case HYSCAN_SOURCE_SIDE_SCAN_PORT:
+    case HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI:
+    case HYSCAN_SOURCE_SIDE_SCAN_PORT_HI:
+    case HYSCAN_SOURCE_ECHOSOUNDER:
+    case HYSCAN_SOURCE_PROFILER:
+    case HYSCAN_SOURCE_LOOK_AROUND_STARBOARD:
+    case HYSCAN_SOURCE_LOOK_AROUND_PORT:
+      return TRUE;
 
     default:
       return FALSE;

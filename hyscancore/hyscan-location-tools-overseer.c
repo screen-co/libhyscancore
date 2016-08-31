@@ -845,7 +845,7 @@ hyscan_location_overseer_depth (HyScanDB                    *db,
         case HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD:
         case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
         case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
-          status = hyscan_data_channel_get_range (source_info->dchannel, &data_range_first, &data_range_last);
+          status = hyscan_raw_data_get_range (source_info->dchannel, &data_range_first, &data_range_last);
           break;
         default:
           status = FALSE;

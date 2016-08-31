@@ -24,10 +24,14 @@
     <key id="rate" name="Data discretization frequency" type="double"/>
   </schema>
 
-  <schema id="antenna">
-    <key id="offset" name="Channel offset" type="double"/>
-    <key id="vertical-pattern" name="Vertical pattern" type="double"/>
-    <key id="horizontal-pattern" name="Horizontal pattern" type="double"/>
+  <schema id="antenna-offset">
+    <key id="vertical" name="Vertical offset" type="double"/>
+    <key id="horizontal" name="Horizontal offset" type="double"/>
+  </schema>
+
+  <schema id="antenna-pattern">
+    <key id="vertical" name="Vertical pattern" type="double"/>
+    <key id="horizontal" name="Horizontal pattern" type="double"/>
   </schema>
 
   <schema id="adc">
@@ -45,11 +49,14 @@
     <node id="position" schema="position"/>
   </schema>
 
-  <schema id="acoustic">
+  <schema id="raw">
     <node id="schema" schema="schema"/>
     <node id="position" schema="position"/>
     <node id="data" schema="data"/>
-    <node id="antenna" schema="antenna"/>
+    <node id="antenna">
+      <node id="offset" schema="antenna-offset"/>
+      <node id="pattern" schema="antenna-pattern"/>
+    </node>
     <node id="adc" schema="adc"/>
   </schema>
 
@@ -61,6 +68,15 @@
   <schema id="tvg">
     <node id="schema" schema="schema"/>
     <node id="data" schema="data"/>
+  </schema>
+
+  <schema id="acoustic">
+    <node id="schema" schema="schema"/>
+    <node id="position" schema="position"/>
+    <node id="data" schema="data"/>
+    <node id="antenna">
+      <node id="pattern" schema="antenna-pattern"/>
+    </node>
   </schema>
 
 </schemalist>

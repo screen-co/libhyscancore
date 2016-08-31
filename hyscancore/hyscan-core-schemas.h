@@ -16,6 +16,7 @@
 
 #define TRACK_SCHEMA                           "track"
 #define SENSOR_CHANNEL_SCHEMA                  "sensor"
+#define RAW_CHANNEL_SCHEMA                     "raw"
 #define ACOUSTIC_CHANNEL_SCHEMA                "acoustic"
 #define SIGNAL_CHANNEL_SCHEMA                  "signal"
 #define TVG_CHANNEL_SCHEMA                     "tvg"

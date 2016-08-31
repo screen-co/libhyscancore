@@ -1,5 +1,5 @@
 #include <hyscan-data-writer.h>
-#include <hyscan-data-channel.h>
+#include <hyscan-raw-data.h>
 #include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
@@ -22,10 +22,10 @@ int main( int argc, char **argv )
   HyScanDB *db;
   HyScanCache *cache = NULL;
   HyScanDataWriter *writer;
-  HyScanDataChannel *reader;
+  HyScanRawData *reader;
 
   HyScanAntennaPosition position;
-  HyScanAcousticDataInfo info;
+  HyScanRawDataInfo info;
   HyScanDataWriterData data;
   HyScanDataWriterSignal signal;
 
@@ -86,9 +86,9 @@ int main( int argc, char **argv )
   position.theta = 0.0;
   info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
   info.data.rate = discretization;
-  info.antenna.offset = 40.0;
-  info.antenna.vertical_pattern = 40.0;
-  info.antenna.horizontal_pattern = 2.0;
+  info.antenna.offset.vertical = 0.0;
+  info.antenna.pattern.vertical = 40.0;
+  info.antenna.pattern.horizontal = 2.0;
   info.adc.vref = 1.0;
   info.adc.offset = 0;
 
@@ -110,7 +110,7 @@ int main( int argc, char **argv )
   writer = hyscan_data_writer_new (db);
 
   /* Местоположение приёмной антенны. */
-  if (!hyscan_data_writer_acoustic_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position))
+  if (!hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position))
     g_error ("can't set antenna position");
 
   /* Создаём галс. */
@@ -151,7 +151,7 @@ int main( int argc, char **argv )
         signal.n_points = signal_size;
         signal.points = signal_points;
 
-        status = hyscan_data_writer_acoustic_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &signal);
+        status = hyscan_data_writer_raw_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &signal);
         if (!status)
           g_error ("can't add signal image");
 
@@ -172,8 +172,8 @@ int main( int argc, char **argv )
             data.size = 2 * data_size * sizeof(gint16);
             data.data = data_values;
 
-            status = hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,
-                                                           TRUE, 1, &info, &data);
+            status = hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1,
+                                                      &info, &data);
             if (!status)
               g_error ("can't add data");
           }
@@ -185,11 +185,9 @@ int main( int argc, char **argv )
   }
 
   /* Объект чтения данных. */
-  reader = hyscan_data_channel_new_with_cache (db,
-                                               PROJECT_NAME,
-                                               TRACK_NAME,
-                                               hyscan_channel_get_name_by_types (HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, TRUE, 1),
-                                               cache);
+  reader = hyscan_raw_data_new_with_cache (db, PROJECT_NAME, TRACK_NAME,
+                                           hyscan_channel_get_name_by_types (HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, TRUE, 1),
+                                           cache);
 
   /* Для тонального сигнала проверяем, что его свёртка совпадает с треугольником,
      начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
@@ -219,7 +217,7 @@ int main( int argc, char **argv )
     for (j = 0; j < n_signals * n_lines; j++)
       {
         readings = data_size;
-        if (!hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL))
+        if (!hyscan_raw_data_get_amplitude_values (reader, j, amp2, &readings, NULL))
           g_error ("can't get amplitude");
 
         for (i = 0; i < data_size; i++)
@@ -234,7 +232,7 @@ int main( int argc, char **argv )
         for (j = 0; j < n_signals * n_lines; j++)
           {
             readings = data_size;
-            if (!hyscan_data_channel_get_amplitude_values (reader, j, amp2, &readings, NULL))
+            if (!hyscan_raw_data_get_amplitude_values (reader, j, amp2, &readings, NULL))
               g_error ("can't get amplitude");
 
             for (i = 0; i < data_size; i++)

@@ -1,5 +1,5 @@
 /*
- * \file hyscan-data-channel.c
+ * \file hyscan-raw-data.c
  *
  * \brief Исходный файл класса обработки акустических данных
  * \author Andrei Fadeev (andrei@webcontrol.ru)
@@ -8,7 +8,7 @@
  *
  */
 
-#include "hyscan-data-channel.h"
+#include "hyscan-raw-data.h"
 #include "hyscan-core-schemas.h"
 #include <hyscan-convolution.h>
 
@@ -40,9 +40,9 @@ typedef struct
 {
   gint64               time;                                   /* Момент времени начала действия сигнала. */
   HyScanConvolution   *convolution;                            /* Образец сигнала для свёртки. */
-} HyScanDataChannelSignal;
+} HyScanRawDataSignal;
 
-struct _HyScanDataChannelPrivate
+struct _HyScanRawDataPrivate
 {
   HyScanDB            *db;                                     /* Интерфейс базы данных. */
   gchar               *db_uri;                                 /* URI базы данных. */
@@ -54,8 +54,8 @@ struct _HyScanDataChannelPrivate
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
 
-  HyScanAntennaPosition  position;                             /* Местоположение приёмной антенны. */
-  HyScanAcousticDataInfo info;                                 /* Параметры акустических данных. */
+  HyScanAntennaPosition position;                              /* Местоположение приёмной антенны. */
+  HyScanRawDataInfo     info;                                  /* Параметры акустических данных. */
 
   gint32               channel_id;                             /* Идентификатор открытого канала данных. */
   gint32               signal_id;                              /* Идентификатор открытого канала с образцами сигналов. */
@@ -75,57 +75,57 @@ struct _HyScanDataChannelPrivate
   gint                 cache_key_length;                       /* Максимальная длина ключа. */
 };
 
-static void            hyscan_data_channel_set_property        (GObject                       *object,
+static void            hyscan_raw_data_set_property            (GObject                       *object,
                                                                 guint                          prop_id,
                                                                 const GValue                  *value,
                                                                 GParamSpec                    *pspec);
-static void            hyscan_data_channel_object_constructed  (GObject                       *object);
-static void            hyscan_data_channel_object_finalize     (GObject                       *object);
+static void            hyscan_raw_data_object_constructed      (GObject                       *object);
+static void            hyscan_raw_data_object_finalize         (GObject                       *object);
 
-static gboolean        hyscan_data_channel_load_position       (HyScanDB                      *db,
+static gboolean        hyscan_raw_data_load_position            (HyScanDB                      *db,
                                                                 gint32                         param_id,
                                                                 HyScanAntennaPosition         *position);
-static gboolean        hyscan_data_channel_load_data_params    (HyScanDB                      *db,
+static gboolean        hyscan_raw_data_load_data_params        (HyScanDB                      *db,
                                                                 gint32                         param_id,
-                                                                HyScanAcousticDataInfo        *info);
-static gboolean        hyscan_data_channel_load_signals_params (HyScanDB                      *db,
+                                                                HyScanRawDataInfo             *info);
+static gboolean        hyscan_raw_data_load_signals_params     (HyScanDB                      *db,
                                                                 gint32                         param_id,
                                                                 gdouble                       *signal_rate);
 
-static void            hyscan_data_channel_update_cache_key    (HyScanDataChannelPrivate      *priv,
+static void            hyscan_raw_data_update_cache_key        (HyScanRawDataPrivate          *priv,
                                                                 gint                           data_type,
                                                                 gint32                         index);
-static void            hyscan_data_channel_buffer_realloc      (HyScanDataChannelPrivate      *priv,
+static void            hyscan_raw_data_buffer_realloc          (HyScanRawDataPrivate          *priv,
                                                                 gint32                         size);
-static gint32          hyscan_data_channel_read_raw_data       (HyScanDataChannelPrivate      *priv,
+static gint32          hyscan_raw_data_read_raw_data           (HyScanRawDataPrivate          *priv,
                                                                 gint32                         channel_id,
                                                                 gint32                         index,
                                                                 gint64                        *time);
 
-static void            hyscan_data_channel_load_signals        (HyScanDataChannelPrivate      *priv);
-static HyScanConvolution *hyscan_data_channel_find_signal      (HyScanDataChannelPrivate      *priv,
+static void            hyscan_raw_data_load_signals            (HyScanRawDataPrivate          *priv);
+static HyScanConvolution *hyscan_raw_data_find_signal          (HyScanRawDataPrivate          *priv,
                                                                 gint64                         time);
 
-static gint32          hyscan_data_channel_read_data           (HyScanDataChannelPrivate      *priv,
+static gint32          hyscan_raw_data_read_data               (HyScanRawDataPrivate          *priv,
                                                                 gint32                         index);
-static gboolean        hyscan_data_channel_check_cache         (HyScanDataChannelPrivate      *priv,
+static gboolean        hyscan_raw_data_check_cache             (HyScanRawDataPrivate          *priv,
                                                                 gint32                         index,
                                                                 gint                           data_type,
                                                                 gpointer                       buffer,
                                                                 gint32                        *buffer_size,
                                                                 gint64                        *time);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanDataChannel, hyscan_data_channel, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanRawData, hyscan_raw_data, G_TYPE_OBJECT);
 
 static void
-hyscan_data_channel_class_init (HyScanDataChannelClass *klass)
+hyscan_raw_data_class_init (HyScanRawDataClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->set_property = hyscan_data_channel_set_property;
+  object_class->set_property = hyscan_raw_data_set_property;
 
-  object_class->constructed = hyscan_data_channel_object_constructed;
-  object_class->finalize = hyscan_data_channel_object_finalize;
+  object_class->constructed = hyscan_raw_data_object_constructed;
+  object_class->finalize = hyscan_raw_data_object_finalize;
 
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
@@ -153,19 +153,19 @@ hyscan_data_channel_class_init (HyScanDataChannelClass *klass)
 }
 
 static void
-hyscan_data_channel_init (HyScanDataChannel *dchannel)
+hyscan_raw_data_init (HyScanRawData *data)
 {
-  dchannel->priv = hyscan_data_channel_get_instance_private (dchannel);
+  data->priv = hyscan_raw_data_get_instance_private (data);
 }
 
 static void
-hyscan_data_channel_set_property (GObject *object,
-                                  guint prop_id,
-                                  const GValue *value,
-                                  GParamSpec *pspec)
+hyscan_raw_data_set_property (GObject      *object,
+                              guint         prop_id,
+                              const GValue *value,
+                              GParamSpec   *pspec)
 {
-  HyScanDataChannel *dchannel = HYSCAN_DATA_CHANNEL (object);
-  HyScanDataChannelPrivate *priv = dchannel->priv;
+  HyScanRawData *data = HYSCAN_RAW_DATA (object);
+  HyScanRawDataPrivate *priv = data->priv;
 
   switch (prop_id)
     {
@@ -194,16 +194,16 @@ hyscan_data_channel_set_property (GObject *object,
       break;
 
     default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (dchannel, prop_id, pspec);
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (data, prop_id, pspec);
       break;
     }
 }
 
 static void
-hyscan_data_channel_object_constructed (GObject *object)
+hyscan_raw_data_object_constructed (GObject *object)
 {
-  HyScanDataChannel *dchannel = HYSCAN_DATA_CHANNEL (object);
-  HyScanDataChannelPrivate *priv = dchannel->priv;
+  HyScanRawData *data = HYSCAN_RAW_DATA (object);
+  HyScanRawDataPrivate *priv = data->priv;
 
   gint32 project_id = -1;
   gint32 track_id = -1;
@@ -227,18 +227,18 @@ hyscan_data_channel_object_constructed (GObject *object)
   if (priv->project_name == NULL || priv->track_name == NULL|| priv->channel_name == NULL)
     {
       if (priv->project_name == NULL)
-        g_warning ("HyScanDataChannel: unknown project name");
+        g_warning ("HyScanRawData: unknown project name");
       if (priv->track_name == NULL)
-        g_warning ("HyScanDataChannel: unknown track name");
+        g_warning ("HyScanRawData: unknown track name");
       if (priv->channel_name == NULL)
-        g_warning ("HyScanDataChannel: unknown channel name");
+        g_warning ("HyScanRawData: unknown channel name");
       goto exit;
     }
 
   project_id = hyscan_db_project_open (priv->db, priv->project_name);
   if (project_id < 0)
     {
-      g_warning ("HyScanDataChannel: can't open project '%s'",
+      g_warning ("HyScanRawData: can't open project '%s'",
                  priv->project_name);
       goto exit;
     }
@@ -246,7 +246,7 @@ hyscan_data_channel_object_constructed (GObject *object)
   track_id = hyscan_db_track_open (priv->db, project_id, priv->track_name);
   if (track_id < 0)
     {
-      g_warning ("HyScanDataChannel: can't open track '%s.%s'",
+      g_warning ("HyScanRawData: can't open track '%s.%s'",
                  priv->project_name, priv->track_name);
       goto exit;
     }
@@ -254,7 +254,7 @@ hyscan_data_channel_object_constructed (GObject *object)
   priv->channel_id = hyscan_db_channel_open (priv->db, track_id, priv->channel_name);
   if (priv->channel_id < 0)
     {
-      g_warning ("HyScanDataChannel: can't open channel '%s.%s.%s'",
+      g_warning ("HyScanRawData: can't open channel '%s.%s.%s'",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
@@ -263,21 +263,21 @@ hyscan_data_channel_object_constructed (GObject *object)
   param_id = hyscan_db_channel_param_open (priv->db, priv->channel_id);
   if (param_id < 0)
     {
-      g_warning ("HyScanDataChannel: can't open '%s.%s.%s' parameters",
+      g_warning ("HyScanRawData: can't open '%s.%s.%s' parameters",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
 
-  if (!hyscan_data_channel_load_position (priv->db, param_id, &priv->position))
+  if (!hyscan_raw_data_load_position (priv->db, param_id, &priv->position))
     {
-      g_warning ("HyScanDataChannel: can't read '%s.%s.%s' antenna position",
+      g_warning ("HyScanRawData: can't read '%s.%s.%s' antenna position",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
 
-  if (!hyscan_data_channel_load_data_params (priv->db, param_id, &priv->info))
+  if (!hyscan_raw_data_load_data_params (priv->db, param_id, &priv->info))
     {
-      g_warning ("HyScanDataChannel: can't read '%s.%s.%s' parameters",
+      g_warning ("HyScanRawData: can't read '%s.%s.%s' parameters",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
@@ -303,15 +303,15 @@ hyscan_data_channel_object_constructed (GObject *object)
   param_id = hyscan_db_channel_param_open (priv->db, priv->signal_id);
   if (param_id < 0)
     {
-      g_warning ("HyScanDataChannel: can't open channel '%s.%s.%s.%s' parameters",
+      g_warning ("HyScanRawData: can't open channel '%s.%s.%s.%s' parameters",
                  priv->project_name, priv->track_name, priv->channel_name,
                  SIGNAL_CHANNEL_POSTFIX);
       goto exit;
     }
 
-  if (!hyscan_data_channel_load_signals_params (priv->db, param_id, &signal_rate))
+  if (!hyscan_raw_data_load_signals_params (priv->db, param_id, &signal_rate))
     {
-      g_warning ("HyScanDataChannel: can't read '%s.%s.%s' signal parameters",
+      g_warning ("HyScanRawData: can't read '%s.%s.%s' signal parameters",
                  priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
@@ -319,14 +319,14 @@ hyscan_data_channel_object_constructed (GObject *object)
     {
       if (fabs (priv->info.data.rate - signal_rate) > 0.001)
         {
-          g_warning ("HyScanDataChannel: '%s.%s.%s.%s': signal rate mismatch",
+          g_warning ("HyScanRawData: '%s.%s.%s.%s': signal rate mismatch",
                      priv->project_name, priv->track_name, priv->channel_name,
                      SIGNAL_CHANNEL_POSTFIX);
           goto exit;
         }
 
       priv->signals_mod_count = hyscan_db_get_mod_count (priv->db, priv->signal_id) - 1;
-      hyscan_data_channel_load_signals (priv);
+      hyscan_raw_data_load_signals (priv);
 
       priv->convolve = TRUE;
     }
@@ -356,10 +356,10 @@ exit:
 }
 
 static void
-hyscan_data_channel_object_finalize (GObject *object)
+hyscan_raw_data_object_finalize (GObject *object)
 {
-  HyScanDataChannel *dchannel = HYSCAN_DATA_CHANNEL (object);
-  HyScanDataChannelPrivate *priv = dchannel->priv;
+  HyScanRawData *data = HYSCAN_RAW_DATA (object);
+  HyScanRawDataPrivate *priv = data->priv;
 
   guint i;
 
@@ -372,8 +372,8 @@ hyscan_data_channel_object_finalize (GObject *object)
     {
       for (i = 0; i < priv->signals->len; i++)
         {
-          HyScanDataChannelSignal *signal = &g_array_index (priv->signals,
-                                                            HyScanDataChannelSignal, i);
+          HyScanRawDataSignal *signal = &g_array_index (priv->signals,
+                                                            HyScanRawDataSignal, i);
           g_clear_object (&signal->convolution);
         }
       g_array_unref (priv->signals);
@@ -394,14 +394,14 @@ hyscan_data_channel_object_finalize (GObject *object)
   g_clear_object (&priv->db);
   g_clear_object (&priv->cache);
 
-  G_OBJECT_CLASS (hyscan_data_channel_parent_class)->finalize (object);
+  G_OBJECT_CLASS (hyscan_raw_data_parent_class)->finalize (object);
 }
 
 /* Функция загружает местоположение приёмной антенны гидролокатора. */
 static gboolean
-hyscan_data_channel_load_position (HyScanDB              *db,
-                                   gint32                 param_id,
-                                   HyScanAntennaPosition *position)
+hyscan_raw_data_load_position (HyScanDB              *db,
+                               gint32                 param_id,
+                               HyScanAntennaPosition *position)
 {
   const gchar *param_names[9];
   GVariant *param_values[9];
@@ -450,24 +450,25 @@ exit:
 
 /* Функция загружает параметры акустических данных. */
 static gboolean
-hyscan_data_channel_load_data_params (HyScanDB               *db,
-                                      gint32                  param_id,
-                                      HyScanAcousticDataInfo *info)
+hyscan_raw_data_load_data_params (HyScanDB          *db,
+                                  gint32             param_id,
+                                  HyScanRawDataInfo *info)
 {
-  const gchar *param_names[10];
-  GVariant *param_values[10];
+  const gchar *param_names[11];
+  GVariant *param_values[11];
   gboolean status = FALSE;
 
   param_names[0] = "/schema/id";
   param_names[1] = "/schema/version";
   param_names[2] = "/data/type";
   param_names[3] = "/data/rate";
-  param_names[4] = "/antenna/offset";
-  param_names[5] = "/antenna/vertical-pattern";
-  param_names[6] = "/antenna/horizontal-pattern";
-  param_names[7] = "/adc/vref";
-  param_names[8] = "/adc/offset";
-  param_names[9] = NULL;
+  param_names[4] = "/antenna/offset/vertical";
+  param_names[5] = "/antenna/offset/horizontal";
+  param_names[6] = "/antenna/pattern/vertical";
+  param_names[7] = "/antenna/pattern/horizontal";
+  param_names[8] = "/adc/vref";
+  param_names[9] = "/adc/offset";
+  param_names[10] = NULL;
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
@@ -480,11 +481,12 @@ hyscan_data_channel_load_data_params (HyScanDB               *db,
 
   info->data.type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
   info->data.rate = g_variant_get_double (param_values[3]);
-  info->antenna.offset = g_variant_get_double (param_values[4]);
-  info->antenna.vertical_pattern = g_variant_get_double (param_values[5]);
-  info->antenna.horizontal_pattern = g_variant_get_double (param_values[6]);
-  info->adc.vref = g_variant_get_double (param_values[7]);
-  info->adc.offset = g_variant_get_int64 (param_values[8]);
+  info->antenna.offset.vertical = g_variant_get_double (param_values[4]);
+  info->antenna.offset.horizontal = g_variant_get_double (param_values[5]);
+  info->antenna.pattern.vertical = g_variant_get_double (param_values[6]);
+  info->antenna.pattern.horizontal = g_variant_get_double (param_values[7]);
+  info->adc.vref = g_variant_get_double (param_values[8]);
+  info->adc.offset = g_variant_get_int64 (param_values[9]);
 
   status = TRUE;
 
@@ -498,15 +500,16 @@ exit:
   g_variant_unref (param_values[6]);
   g_variant_unref (param_values[7]);
   g_variant_unref (param_values[8]);
+  g_variant_unref (param_values[9]);
 
   return status;
 }
 
 /* Функция загружает параметры канала с образцами сигналов. */
 static gboolean
-hyscan_data_channel_load_signals_params (HyScanDB *db,
-                                         gint32    param_id,
-                                         gdouble  *signal_rate)
+hyscan_raw_data_load_signals_params (HyScanDB *db,
+                                     gint32    param_id,
+                                     gdouble  *signal_rate)
 {
   const gchar *param_names[5];
   GVariant *param_values[5];
@@ -543,9 +546,9 @@ exit:
 
 /* Функция создаёт ключ кэширования данных. */
 static void
-hyscan_data_channel_update_cache_key (HyScanDataChannelPrivate *priv,
-                                      gint                      data_type,
-                                      gint32                    index)
+hyscan_raw_data_update_cache_key (HyScanRawDataPrivate *priv,
+                                  gint                  data_type,
+                                  gint32                index)
 {
   gchar *data_type_str;
 
@@ -603,8 +606,8 @@ hyscan_data_channel_update_cache_key (HyScanDataChannelPrivate *priv,
 
 /* Функция проверяет размер буферов и увеличивает его при необходимости. */
 static void
-hyscan_data_channel_buffer_realloc (HyScanDataChannelPrivate *priv,
-                                    gint32                    size)
+hyscan_raw_data_buffer_realloc (HyScanRawDataPrivate *priv,
+                                gint32                size)
 {
   gsize data_buffer_size;
 
@@ -621,10 +624,10 @@ hyscan_data_channel_buffer_realloc (HyScanDataChannelPrivate *priv,
 
 /* Функция считывает запись из канала данных в буфер. */
 static gint32
-hyscan_data_channel_read_raw_data (HyScanDataChannelPrivate *priv,
-                                   gint32                    channel_id,
-                                   gint32                    index,
-                                   gint64                   *time)
+hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
+                               gint32                channel_id,
+                               gint32                index,
+                               gint64               *time)
 {
   gint32 io_size;
   gboolean status;
@@ -645,7 +648,7 @@ hyscan_data_channel_read_raw_data (HyScanDataChannelPrivate *priv,
       if (!status)
         return -1;
 
-      hyscan_data_channel_buffer_realloc (priv, io_size);
+      hyscan_raw_data_buffer_realloc (priv, io_size);
       io_size = priv->raw_buffer_size;
 
       status = hyscan_db_channel_get_data (priv->db, channel_id, index,
@@ -659,7 +662,7 @@ hyscan_data_channel_read_raw_data (HyScanDataChannelPrivate *priv,
 
 /* Функция загружает образцы сигналов для свёртки. */
 static void
-hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
+hyscan_raw_data_load_signals (HyScanRawDataPrivate *priv)
 {
   gint32 first_signal_index;
   gint32 last_signal_index;
@@ -679,7 +682,7 @@ hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
 
   /* Массив образцов сигналов. */
   if (priv->signals == NULL)
-    priv->signals = g_array_new (TRUE, TRUE, sizeof (HyScanDataChannelSignal));
+    priv->signals = g_array_new (TRUE, TRUE, sizeof (HyScanRawDataSignal));
 
   /* Проверяем индекс последнего загруженного образца сигнала. */
   status = hyscan_db_channel_get_data_range (priv->db, priv->signal_id,
@@ -698,10 +701,10 @@ hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
     {
       gint32 io_size;
       HyScanComplexFloat *signal;
-      HyScanDataChannelSignal signal_info;
+      HyScanRawDataSignal signal_info;
 
       /* Считываем образец сигнала и проверяем его размер. */
-      io_size = hyscan_data_channel_read_raw_data (priv, priv->signal_id, i, &signal_info.time);
+      io_size = hyscan_raw_data_read_raw_data (priv, priv->signal_id, i, &signal_info.time);
       if (io_size < 0 || (io_size % sizeof(HyScanComplexFloat)) != 0)
         return;
 
@@ -740,8 +743,8 @@ hyscan_data_channel_load_signals (HyScanDataChannelPrivate *priv)
 
 /* Функция ищет образец сигнала для свёртки для указанного момента времени. */
 static HyScanConvolution *
-hyscan_data_channel_find_signal (HyScanDataChannelPrivate *priv,
-                                 gint64                    time)
+hyscan_raw_data_find_signal (HyScanRawDataPrivate *priv,
+                                 gint64            time)
 {
   gint i;
 
@@ -751,7 +754,7 @@ hyscan_data_channel_find_signal (HyScanDataChannelPrivate *priv,
   /* Ищем сигнал для момента времени time. */
   for (i = priv->signals->len - 1; i >= 0; i--)
     {
-      HyScanDataChannelSignal *signal = &g_array_index (priv->signals, HyScanDataChannelSignal, i);
+      HyScanRawDataSignal *signal = &g_array_index (priv->signals, HyScanRawDataSignal, i);
       if(time >= signal->time)
         return signal->convolution;
     }
@@ -762,8 +765,8 @@ hyscan_data_channel_find_signal (HyScanDataChannelPrivate *priv,
 /* Функция считывает "сырые" акустические данные для указанного индекса,
    импортирует их в буфер данных и при необходимости осуществляет свёртку. */
 static gint32
-hyscan_data_channel_read_data (HyScanDataChannelPrivate *priv,
-                               gint32                    index)
+hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
+                               gint32            index)
 {
   gint32 io_size;
   gint32 n_points;
@@ -776,10 +779,10 @@ hyscan_data_channel_read_data (HyScanDataChannelPrivate *priv,
     return -1;
 
   /* Загружаем образцы сигналов. */
-  hyscan_data_channel_load_signals (priv);
+  hyscan_raw_data_load_signals (priv);
 
   /* Считываем данные канала. */
-  io_size = hyscan_data_channel_read_raw_data (priv, priv->channel_id, index, &priv->data_time);
+  io_size = hyscan_raw_data_read_raw_data (priv, priv->channel_id, index, &priv->data_time);
   if (io_size < 0)
     return -1;
 
@@ -796,7 +799,7 @@ hyscan_data_channel_read_data (HyScanDataChannelPrivate *priv,
   /* Выполняем свёртку. */
   if (priv->convolve)
     {
-      convolution = hyscan_data_channel_find_signal (priv, priv->data_time);
+      convolution = hyscan_raw_data_find_signal (priv, priv->data_time);
       if (convolution != NULL)
         {
         if (!hyscan_convolution_convolve (convolution, priv->data_buffer, n_points))
@@ -809,12 +812,12 @@ hyscan_data_channel_read_data (HyScanDataChannelPrivate *priv,
 
 /* Функция проверяет кэш на наличие данных указанного типа и если такие есть считывает их. */
 static gboolean
-hyscan_data_channel_check_cache (HyScanDataChannelPrivate *priv,
-                                 gint                      data_type,
-                                 gint32                    index,
-                                 gpointer                  buffer,
-                                 gint32                   *buffer_size,
-                                 gint64                   *time)
+hyscan_raw_data_check_cache (HyScanRawDataPrivate *priv,
+                                 gint              data_type,
+                                 gint32            index,
+                                 gpointer          buffer,
+                                 gint32           *buffer_size,
+                                 gint64           *time)
 {
   gint64 cached_time;
   gint32 time_size;
@@ -833,7 +836,7 @@ hyscan_data_channel_check_cache (HyScanDataChannelPrivate *priv,
     data_type_size = sizeof (HyScanComplexFloat);
 
   /* Ключ кэширования. */
-  hyscan_data_channel_update_cache_key (priv, data_type, index);
+  hyscan_raw_data_update_cache_key (priv, data_type, index);
 
   /* Ищем данные в кэше. */
   time_size = sizeof(cached_time);
@@ -856,11 +859,11 @@ hyscan_data_channel_check_cache (HyScanDataChannelPrivate *priv,
 }
 
 /* Функция создаёт новый объект обработки акустических данных без использования кэша. */
-HyScanDataChannel *
-hyscan_data_channel_new (HyScanDB    *db,
-                         const gchar *project_name,
-                         const gchar *track_name,
-                         const gchar *channel_name)
+HyScanRawData *
+hyscan_raw_data_new (HyScanDB    *db,
+                     const gchar *project_name,
+                     const gchar *track_name,
+                     const gchar *channel_name)
 {
   return g_object_new (HYSCAN_TYPE_DATA_CHANNEL,
                        "db", db,
@@ -871,12 +874,12 @@ hyscan_data_channel_new (HyScanDB    *db,
 }
 
 /* Функция создаёт новый объект обработки акустических данных с использованием кэша. */
-HyScanDataChannel *
-hyscan_data_channel_new_with_cache (HyScanDB    *db,
-                                    const gchar *project_name,
-                                    const gchar *track_name,
-                                    const gchar *channel_name,
-                                    HyScanCache *cache)
+HyScanRawData *
+hyscan_raw_data_new_with_cache (HyScanDB    *db,
+                                const gchar *project_name,
+                                const gchar *track_name,
+                                const gchar *channel_name,
+                                HyScanCache *cache)
 {
   return g_object_new (HYSCAN_TYPE_DATA_CHANNEL,
                        "db", db,
@@ -888,13 +891,13 @@ hyscan_data_channel_new_with_cache (HyScanDB    *db,
 }
 
 /* Функция создаёт новый объект обработки акустических данных с использованием кэша и префикса. */
-HyScanDataChannel *
-hyscan_data_channel_new_with_cache_prefix (HyScanDB    *db,
-                                           const gchar *project_name,
-                                           const gchar *track_name,
-                                           const gchar *channel_name,
-                                           HyScanCache *cache,
-                                           const gchar *cache_prefix)
+HyScanRawData *
+hyscan_raw_data_new_with_cache_prefix (HyScanDB    *db,
+                                       const gchar *project_name,
+                                       const gchar *track_name,
+                                       const gchar *channel_name,
+                                       HyScanCache *cache,
+                                       const gchar *cache_prefix)
 {
   return g_object_new (HYSCAN_TYPE_DATA_CHANNEL,
                        "db", db,
@@ -907,67 +910,67 @@ hyscan_data_channel_new_with_cache_prefix (HyScanDB    *db,
 }
 
 HyScanAntennaPosition
-hyscan_data_channel_get_position (HyScanDataChannel *dchannel)
+hyscan_raw_data_get_position (HyScanRawData *data)
 {
   HyScanAntennaPosition zero;
 
   memset (&zero, 0, sizeof (HyScanAntennaPosition));
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), zero);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), zero);
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return zero;
 
-  return dchannel->priv->position;
+  return data->priv->position;
 }
 
 /* Функция возвращает параметры канала данных. */
-HyScanAcousticDataInfo
-hyscan_data_channel_get_info (HyScanDataChannel *dchannel)
+HyScanRawDataInfo
+hyscan_raw_data_get_info (HyScanRawData *data)
 {
-  HyScanAcousticDataInfo zero;
+  HyScanRawDataInfo zero;
 
-  memset (&zero, 0, sizeof (HyScanAcousticDataInfo));
+  memset (&zero, 0, sizeof (HyScanRawDataInfo));
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), zero);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), zero);
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return zero;
 
-  return dchannel->priv->info;
+  return data->priv->info;
 }
 
 /* Функция возвращает диапазон значений индексов записанных данных. */
 gboolean
-hyscan_data_channel_get_range (HyScanDataChannel *dchannel,
-                               gint32            *first_index,
-                               gint32            *last_index)
+hyscan_raw_data_get_range (HyScanRawData *data,
+                           gint32        *first_index,
+                           gint32        *last_index)
 {
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return FALSE;
 
-  return hyscan_db_channel_get_data_range (dchannel->priv->db, dchannel->priv->channel_id,
+  return hyscan_db_channel_get_data_range (data->priv->db, data->priv->channel_id,
                                            first_index, last_index);
 }
 
 /* Функция возвращает число точек данных для указанного индекса. */
 gint32
-hyscan_data_channel_get_values_count (HyScanDataChannel *dchannel,
-                                      gint32             index)
+hyscan_raw_data_get_values_count (HyScanRawData *data,
+                                  gint32         index)
 {
   gint32 dsize = -1;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return 0;
 
-  if (hyscan_db_channel_get_data (dchannel->priv->db, dchannel->priv->channel_id,
+  if (hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
                                   index, NULL, &dsize, NULL))
     {
-      dsize /= hyscan_data_get_point_size (dchannel->priv->info.data.type);
+      dsize /= hyscan_data_get_point_size (data->priv->info.data.type);
     }
   else
     {
@@ -979,18 +982,18 @@ hyscan_data_channel_get_values_count (HyScanDataChannel *dchannel,
 
 /* Функция возвращает время приёма данных для указанного индекса. */
 gint64
-hyscan_data_channel_get_time (HyScanDataChannel *dchannel,
-                              gint32             index)
+hyscan_raw_data_get_time (HyScanRawData *data,
+                          gint32         index)
 {
   gint32 dsize;
   gint64 time;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return 0;
 
-  if (!hyscan_db_channel_get_data (dchannel->priv->db, dchannel->priv->channel_id,
+  if (!hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
                                    index, NULL, &dsize, &time))
     {
       time = -1;
@@ -1001,62 +1004,62 @@ hyscan_data_channel_get_time (HyScanDataChannel *dchannel,
 
 /* Функция ищет индекс данных для указанного момента времени. */
 gboolean
-hyscan_data_channel_find_data (HyScanDataChannel *dchannel,
-                               gint64             time,
-                               gint32            *lindex,
-                               gint32            *rindex,
-                               gint64            *ltime,
-                               gint64            *rtime)
+hyscan_raw_data_find_data (HyScanRawData *data,
+                           gint64         time,
+                           gint32        *lindex,
+                           gint32        *rindex,
+                           gint64        *ltime,
+                           gint64        *rtime)
 {
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return FALSE;
 
-  return hyscan_db_channel_find_data (dchannel->priv->db, dchannel->priv->channel_id,
+  return hyscan_db_channel_find_data (data->priv->db, data->priv->channel_id,
                                       time, lindex, rindex, ltime, rtime);
 }
 
 /* Функция устанавливает необходимость выполнения свёртки акустических данных. */
 void
-hyscan_data_channel_set_convolve (HyScanDataChannel *dchannel,
-                                  gboolean           convolve)
+hyscan_raw_data_set_convolve (HyScanRawData *data,
+                              gboolean       convolve)
 {
-  g_return_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel));
+  g_return_if_fail (HYSCAN_IS_DATA_CHANNEL (data));
 
-  if (dchannel->priv->channel_id < 0)
+  if (data->priv->channel_id < 0)
     return;
 
-  g_atomic_int_set (&dchannel->priv->convolve, convolve ? 1 : 0);
+  g_atomic_int_set (&data->priv->convolve, convolve ? 1 : 0);
 }
 
 /* Функция возвращает значения амплитуды акустического сигнала. */
 gboolean
-hyscan_data_channel_get_amplitude_values (HyScanDataChannel *dchannel,
-                                          gint32             index,
-                                          gfloat            *buffer,
-                                          gint32            *buffer_size,
-                                          gint64            *time)
+hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
+                                      gint32         index,
+                                      gfloat        *buffer,
+                                      gint32        *buffer_size,
+                                      gint64        *time)
 {
-  HyScanDataChannelPrivate *priv;
+  HyScanRawDataPrivate *priv;
 
   gfloat *amplitude;
   gint32 n_points;
   gint32 i;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
 
-  priv = dchannel->priv;
+  priv = data->priv;
 
   if (priv->channel_id < 0)
     return FALSE;
 
   /* Проверяем наличие данных в кэше. */
-  if (hyscan_data_channel_check_cache (priv, DATA_TYPE_AMPLITUDE, index, buffer, buffer_size, time))
+  if (hyscan_raw_data_check_cache (priv, DATA_TYPE_AMPLITUDE, index, buffer, buffer_size, time))
     return TRUE;
 
   /* Считываем данные канала. */
-  n_points = hyscan_data_channel_read_data (priv, index);
+  n_points = hyscan_raw_data_read_data (priv, index);
   if (n_points <= 0)
     return FALSE;
 
@@ -1087,29 +1090,29 @@ hyscan_data_channel_get_amplitude_values (HyScanDataChannel *dchannel,
 
 /* Функция возвращает квадратурные отсчёты акустического сигнала. */
 gboolean
-hyscan_data_channel_get_quadrature_values (HyScanDataChannel  *dchannel,
-                                           gint32              index,
-                                           HyScanComplexFloat *buffer,
-                                           gint32             *buffer_size,
-                                           gint64             *time)
+hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
+                                       gint32              index,
+                                       HyScanComplexFloat *buffer,
+                                       gint32             *buffer_size,
+                                       gint64             *time)
 {
-  HyScanDataChannelPrivate *priv;
+  HyScanRawDataPrivate *priv;
 
   gint32 n_points;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (dchannel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
 
-  priv = dchannel->priv;
+  priv = data->priv;
 
   if (priv->channel_id < 0)
     return FALSE;
 
   /* Проверяем наличие данных в кэше. */
-  if (hyscan_data_channel_check_cache (priv, DATA_TYPE_QUADRATURE, index, buffer, buffer_size, time))
+  if (hyscan_raw_data_check_cache (priv, DATA_TYPE_QUADRATURE, index, buffer, buffer_size, time))
     return TRUE;
 
   /* Считываем данные канала. */
-  n_points = hyscan_data_channel_read_data (priv, index);
+  n_points = hyscan_raw_data_read_data (priv, index);
   if (n_points <= 0)
     return FALSE;
 

@@ -33,9 +33,9 @@ sensor_get_name (guint n_channel)
   return NULL;
 }
 
-/* Функция возвращает название источника акустических данных. */
+/* Функция возвращает название источника гидролокационных данных. */
 const gchar *
-acoustic_get_name (guint n_channel)
+sonar_get_name (guint n_channel)
 {
   switch (n_channel)
     {
@@ -50,9 +50,9 @@ acoustic_get_name (guint n_channel)
   return NULL;
 }
 
-/* Функция возвращает тип источника акустических данных. */
+/* Функция возвращает тип источника гидролокационных данных. */
 HyScanSourceType
-acoustic_get_type (guint n_channel)
+sonar_get_type (guint n_channel)
 {
   switch (n_channel)
     {
@@ -83,6 +83,26 @@ antenna_get_position (guint n_channel)
   return position;
 }
 
+/* Функция возвращает информацию о "сырых" данных. */
+HyScanRawDataInfo
+raw_get_info (guint n_channel)
+{
+  HyScanRawDataInfo info;
+
+  info.data.type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
+  info.data.rate = 1000.0 * n_channel;
+
+  info.antenna.offset.vertical = 0.1 * n_channel;
+  info.antenna.offset.horizontal = 0.2 * n_channel;
+  info.antenna.pattern.vertical = 0.3 * n_channel;
+  info.antenna.pattern.horizontal = 0.4 * n_channel;
+
+  info.adc.vref = 1.0 * n_channel;
+  info.adc.offset = 10 * n_channel;
+
+  return info;
+}
+
 /* Функция возвращает информацию об акустических данных. */
 HyScanAcousticDataInfo
 acoustic_get_info (guint n_channel)
@@ -92,12 +112,8 @@ acoustic_get_info (guint n_channel)
   info.data.type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
   info.data.rate = 1000.0 * n_channel;
 
-  info.antenna.offset = 0.1 * n_channel;
-  info.antenna.vertical_pattern = 0.2 * n_channel;
-  info.antenna.horizontal_pattern = 0.3 * n_channel;
-
-  info.adc.vref = 1.0 * n_channel;
-  info.adc.offset = 10 * n_channel;
+  info.antenna.pattern.vertical = 0.1 * n_channel;
+  info.antenna.pattern.horizontal = 0.2 * n_channel;
 
   return info;
 }
@@ -161,17 +177,17 @@ antenna_check_position (HyScanDB *db,
   hyscan_db_close (db, param_id);
 }
 
-/* Функция проверяет информацию об акустических данных. */
+/* Функция проверяет информацию о "сырых" данных. */
 void
-acoustic_check_info (HyScanDB *db,
-                     gint32    channel_id,
-                     guint     n_channel)
+raw_check_info (HyScanDB *db,
+                gint32    channel_id,
+                guint     n_channel)
 {
   gint32 param_id;
 
-  HyScanAcousticDataInfo info;
-  const gchar *param_names[10];
-  GVariant *param_values[10];
+  HyScanRawDataInfo info;
+  const gchar *param_names[11];
+  GVariant *param_values[11];
 
   HyScanDataType data_type;
 
@@ -179,18 +195,19 @@ acoustic_check_info (HyScanDB *db,
   if (param_id < 0)
     g_error ("can't open parameters");
 
-  info = acoustic_get_info (n_channel);
+  info = raw_get_info (n_channel);
 
   param_names[0] = "/schema/id";
   param_names[1] = "/schema/version";
   param_names[2] = "/data/type";
   param_names[3] = "/data/rate";
-  param_names[4] = "/antenna/offset";
-  param_names[5] = "/antenna/vertical-pattern";
-  param_names[6] = "/antenna/horizontal-pattern";
-  param_names[7] = "/adc/vref";
-  param_names[8] = "/adc/offset";
-  param_names[9] = NULL;
+  param_names[4] = "/antenna/offset/vertical";
+  param_names[5] = "/antenna/offset/horizontal";
+  param_names[6] = "/antenna/pattern/vertical";
+  param_names[7] = "/antenna/pattern/horizontal";
+  param_names[8] = "/adc/vref";
+  param_names[9] = "/adc/offset";
+  param_names[10] = NULL;
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read parameters");
@@ -205,11 +222,12 @@ acoustic_check_info (HyScanDB *db,
 
   if ((info.data.type != data_type) ||
       (info.data.rate != g_variant_get_double (param_values[3])) ||
-      (info.antenna.offset != g_variant_get_double (param_values[4])) ||
-      (info.antenna.vertical_pattern != g_variant_get_double (param_values[5])) ||
-      (info.antenna.horizontal_pattern != g_variant_get_double (param_values[6])) ||
-      (info.adc.vref != g_variant_get_double (param_values[7])) ||
-      (info.adc.offset != g_variant_get_int64 (param_values[8])))
+      (info.antenna.offset.vertical != g_variant_get_double (param_values[4])) ||
+      (info.antenna.offset.horizontal != g_variant_get_double (param_values[5])) ||
+      (info.antenna.pattern.vertical != g_variant_get_double (param_values[6])) ||
+      (info.antenna.pattern.horizontal != g_variant_get_double (param_values[7])) ||
+      (info.adc.vref != g_variant_get_double (param_values[8])) ||
+      (info.adc.offset != g_variant_get_int64 (param_values[9])))
     {
       g_error ("error in parameters");
     }
@@ -223,6 +241,64 @@ acoustic_check_info (HyScanDB *db,
   g_variant_unref (param_values[6]);
   g_variant_unref (param_values[7]);
   g_variant_unref (param_values[8]);
+  g_variant_unref (param_values[9]);
+
+  hyscan_db_close (db, param_id);
+}
+
+/* Функция проверяет информацию об акустических данных. */
+void
+acoustic_check_info (HyScanDB *db,
+                     gint32    channel_id,
+                     guint     n_channel)
+{
+  gint32 param_id;
+
+  HyScanAcousticDataInfo info;
+  const gchar *param_names[7];
+  GVariant *param_values[7];
+
+  HyScanDataType data_type;
+
+  param_id = hyscan_db_channel_param_open (db, channel_id);
+  if (param_id < 0)
+    g_error ("can't open parameters");
+
+  info = acoustic_get_info (n_channel);
+
+  param_names[0] = "/schema/id";
+  param_names[1] = "/schema/version";
+  param_names[2] = "/data/type";
+  param_names[3] = "/data/rate";
+  param_names[4] = "/antenna/pattern/vertical";
+  param_names[5] = "/antenna/pattern/horizontal";
+  param_names[6] = NULL;
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
+    g_error ("can't read parameters");
+
+  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION))
+    {
+      g_error ("error in schema");
+    }
+
+  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
+
+  if ((info.data.type != data_type) ||
+      (info.data.rate != g_variant_get_double (param_values[3])) ||
+      (info.antenna.pattern.vertical != g_variant_get_double (param_values[4])) ||
+      (info.antenna.pattern.horizontal != g_variant_get_double (param_values[5])))
+    {
+      g_error ("error in parameters");
+    }
+
+  g_variant_unref (param_values[0]);
+  g_variant_unref (param_values[1]);
+  g_variant_unref (param_values[2]);
+  g_variant_unref (param_values[3]);
+  g_variant_unref (param_values[4]);
+  g_variant_unref (param_values[5]);
 
   hyscan_db_close (db, param_id);
 }
@@ -352,14 +428,15 @@ sensor_add_data (HyScanDataWriter *writer,
 
 /* Функция записывает гидролокационные данные. */
 void
-acoustic_add_data (HyScanDataWriter *writer,
-                   gint64            timestamp,
-                   guint             n_channel,
-                   gboolean          raw,
-                   gboolean          fail)
+sonar_add_data (HyScanDataWriter *writer,
+               gint64            timestamp,
+               guint             n_channel,
+               gboolean          raw,
+               gboolean          fail)
 {
   HyScanDataWriterData data;
-  HyScanAcousticDataInfo info;
+  HyScanRawDataInfo raw_info;
+  HyScanAcousticDataInfo acoustic_info;
   HyScanDataWriterSignal signal;
   HyScanDataWriterTVG tvg;
 
@@ -369,7 +446,8 @@ acoustic_add_data (HyScanDataWriter *writer,
   gfloat *tvg_gains;
   guint i, j;
 
-  info = acoustic_get_info (n_channel);
+  raw_info = raw_get_info (n_channel);
+  acoustic_info = acoustic_get_info (n_channel);
 
   data.size = DATA_SIZE * sizeof (guint16);
   data_values = g_malloc (data.size);
@@ -378,14 +456,14 @@ acoustic_add_data (HyScanDataWriter *writer,
   signal.n_points = SIGNAL_SIZE;
   signal_points = g_new (HyScanComplexFloat, SIGNAL_SIZE);
   signal.points = signal_points;
-  signal.rate = info.data.rate;
+  signal.rate = raw_info.data.rate;
 
   tvg.n_gains = TVG_SIZE;
   tvg_gains = g_new (gfloat, TVG_SIZE);
   tvg.gains = tvg_gains;
-  tvg.rate = info.data.rate / 2;
+  tvg.rate = raw_info.data.rate / 2;
 
-  source = acoustic_get_type (n_channel);
+  source = sonar_get_type (n_channel);
 
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
     {
@@ -402,7 +480,7 @@ acoustic_add_data (HyScanDataWriter *writer,
 
               signal.time = timestamp + i;
 
-              hyscan_data_writer_acoustic_add_signal (writer, source, &signal);
+              hyscan_data_writer_raw_add_signal (writer, source, &signal);
             }
 
           /* Параметры ВАРУ. */
@@ -413,7 +491,7 @@ acoustic_add_data (HyScanDataWriter *writer,
 
               tvg.time = timestamp + i;
 
-              hyscan_data_writer_acoustic_add_tvg (writer, source, &tvg);
+              hyscan_data_writer_raw_add_tvg (writer, source, &tvg);
             }
         }
 
@@ -423,8 +501,16 @@ acoustic_add_data (HyScanDataWriter *writer,
 
       data.time = timestamp + i;
 
-      if (!hyscan_data_writer_acoustic_add_data (writer, source, raw, 1, &info, &data) && !fail)
-        g_error ("can't add data to '%s'", acoustic_get_name (n_channel));
+      if (raw)
+        {
+          if (!hyscan_data_writer_raw_add_data (writer, source, 1, &raw_info, &data) && !fail)
+            g_error ("can't add data to '%s'", sonar_get_name (n_channel));
+        }
+      else
+        {
+          if (!hyscan_data_writer_acoustic_add_data (writer, source, &acoustic_info, &data) && !fail)
+            g_error ("can't add data to '%s'", sonar_get_name (n_channel));
+        }
     }
 
   g_free (data_values);
@@ -498,11 +584,11 @@ sensor_check_data (HyScanDB    *db,
 
 /* Функция проверяет гидролокационные данные. */
 void
-acoustic_check_data (HyScanDB    *db,
-                     const gchar *track_name,
-                     gint64       timestamp,
-                     guint        n_channel,
-                     gboolean     raw)
+sonar_check_data (HyScanDB    *db,
+                  const gchar *track_name,
+                  gint64       timestamp,
+                  guint        n_channel,
+                  gboolean     raw)
 {
   gint32 project_id;
   gint32 track_id;
@@ -518,7 +604,7 @@ acoustic_check_data (HyScanDB    *db,
 
   buffer_size = DATA_SIZE * sizeof (guint16);
   buffer = g_malloc (buffer_size);
-  source = acoustic_get_type (n_channel);
+  source = sonar_get_type (n_channel);
   channel_name = hyscan_channel_get_name_by_types (source, raw, 1);
 
   g_message ("Checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
@@ -538,7 +624,10 @@ acoustic_check_data (HyScanDB    *db,
 
   /* Проверка параметров. */
   antenna_check_position (db, channel_id, n_channel + (n_channel % 2));
-  acoustic_check_info (db, channel_id, n_channel);
+  if (raw)
+    raw_check_info (db, channel_id, n_channel);
+  else
+    acoustic_check_info (db, channel_id, n_channel);
 
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
@@ -697,7 +786,7 @@ main (int    argc,
     {
       HyScanAntennaPosition position = antenna_get_position (i);
 
-      hyscan_data_writer_acoustic_set_position (writer, acoustic_get_type (i), &position);
+      hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), &position);
     }
 
   timestamp = 0;
@@ -709,7 +798,7 @@ main (int    argc,
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
       sensor_add_data (writer, timestamp, i, TRUE);
-      acoustic_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, TRUE);
+      sonar_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, TRUE);
     }
 
   hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY);
@@ -724,7 +813,7 @@ main (int    argc,
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
       sensor_add_data (writer, timestamp, i, FALSE);
-      acoustic_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, FALSE);
+      sonar_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, FALSE);
     }
 
   /* Второй галс. */
@@ -737,7 +826,7 @@ main (int    argc,
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
       sensor_add_data (writer, timestamp, i, FALSE);
-      acoustic_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, FALSE);
+      sonar_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, FALSE);
     }
 
   /* Отключаем запись. */
@@ -754,7 +843,7 @@ main (int    argc,
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
       sensor_check_data (db, "track-1", timestamp, i);
-      acoustic_check_data (db, "track-1", timestamp, i, (i % 2) ? TRUE : FALSE);
+      sonar_check_data (db, "track-1", timestamp, i, (i % 2) ? TRUE : FALSE);
     }
 
   /* Второй галс. */
@@ -762,7 +851,7 @@ main (int    argc,
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
       sensor_check_data (db, "track-2", timestamp, i);
-      acoustic_check_data (db, "track-2", timestamp, i, (i % 2) ? TRUE : FALSE);
+      sonar_check_data (db, "track-2", timestamp, i, (i % 2) ? TRUE : FALSE);
     }
 
   /* Удаляем проект. */

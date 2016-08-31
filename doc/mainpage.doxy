@@ -7,7 +7,7 @@
  * - \link HyScanCoreTypes \endlink - вспомогательные функции и определения типов объектов используемых HyScanCore;
  * - \link HyScanConvolution \endlink - класс свёртки данных;
  * - \link HyScanDataWriter \endlink - класс управления записью данных;
- * - \link HyScanDataChannel \endlink - класс обработки акустических данных;
+ * - \link HyScanRawData \endlink - класс обработки "сырых" данных;
  * - \link HyScanLocation \endlink - класс для определения координат и глубины;
  * - \link HyScanGeo \endlink - класс для работы с системами координат.
  *

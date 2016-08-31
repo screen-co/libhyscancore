@@ -35,14 +35,15 @@
  *
  * - #hyscan_data_writer_sensor_set_position - для установки местоположения приёмной антенны датчика;
  * - #hyscan_data_writer_sensor_add_data - для записи данных от датчика;
- * - #hyscan_data_writer_acoustic_set_position - для установки местоположения приёмной антенны гидролокатора;
- * - #hyscan_data_writer_acoustic_add_data - для записи акустических данных от гидролокатора.
+ * - #hyscan_data_writer_sonar_set_position - для установки местоположения приёмной антенны гидролокатора;
+ * - #hyscan_data_writer_raw_add_data - для записи "сырых" данных от гидролокатора;
+ * - #hyscan_data_writer_acoustic_add_data -для записи обработанных акустических данных.
  *
- * "Сырые" акустические данные могут содержать вспомогательную информацию: образы сигналов для свёртки
+ * "Сырые" гидролокационные данные могут содержать вспомогательную информацию: образы сигналов для свёртки
  * и параметры системы ВАРУ. Для записи этой информации предназначены функции:
  *
- * - #hyscan_data_writer_acoustic_add_signal - для записи образа сигнала;
- * - #hyscan_data_writer_acoustic_add_tvg - для записи параметров ВАРУ.
+ * - #hyscan_data_writer_raw_add_signal - для записи образа сигнала;
+ * - #hyscan_data_writer_raw_add_tvg - для записи параметров ВАРУ.
  *
  * Класс HyScanDataWriter сохраняет во внутреннем буфере текущий образ сигнала и параметры ВАРУ
  * для каждого из источников данных. В дальнейшем эта информация записывается в новые галсы автоматически,
@@ -242,29 +243,27 @@ gboolean               hyscan_data_writer_sensor_add_data              (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-gboolean               hyscan_data_writer_acoustic_set_position        (HyScanDataWriter              *writer,
+gboolean               hyscan_data_writer_sonar_set_position           (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanAntennaPosition         *position);
 
 /**
  *
- * Функция записывает акустические данные.
+ * Функция записывает "сырые" гидролокационные данные.
  *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
- * \param raw признак "сырых" данных;
  * \param channel индекс канала данных, начиная с 1;
- * \param info параметры акустических данных;
- * \param data акустические данные.
+ * \param info параметры гидролокационных данных - \link HyScanRawDataInfo \endlink;
+ * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-gboolean               hyscan_data_writer_acoustic_add_data            (HyScanDataWriter              *writer,
+gboolean               hyscan_data_writer_raw_add_data                 (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
-                                                                        gboolean                       raw,
                                                                         guint                          channel,
-                                                                        HyScanAcousticDataInfo        *info,
+                                                                        HyScanRawDataInfo             *info,
                                                                         HyScanDataWriterData          *data);
 
 /**
@@ -280,7 +279,7 @@ gboolean               hyscan_data_writer_acoustic_add_data            (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-gboolean               hyscan_data_writer_acoustic_add_signal          (HyScanDataWriter              *writer,
+gboolean               hyscan_data_writer_raw_add_signal               (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanDataWriterSignal        *signal);
 
@@ -297,9 +296,26 @@ gboolean               hyscan_data_writer_acoustic_add_signal          (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-gboolean               hyscan_data_writer_acoustic_add_tvg             (HyScanDataWriter              *writer,
+gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanDataWriterTVG           *tvg);
+
+/**
+ *
+ * Функция записывает акустические данные.
+ *
+ * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param source тип источника данных;
+ * \param info параметры акустических данных - \link HyScanAcousticDataInfo \endlink;
+ * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+gboolean               hyscan_data_writer_acoustic_add_data            (HyScanDataWriter              *writer,
+                                                                        HyScanSourceType               source,
+                                                                        HyScanAcousticDataInfo        *info,
+                                                                        HyScanDataWriterData          *data);
 
 G_END_DECLS
 
