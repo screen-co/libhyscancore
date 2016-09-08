@@ -189,7 +189,7 @@ GType                   hyscan_location_get_type                (void);
  * \return location указатель на объект обработки навигационных данных.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanLocation         *hyscan_location_new                     (HyScanDB       *db,
                                                                  gchar          *project,
                                                                  gchar          *track,
@@ -211,7 +211,7 @@ HyScanLocation         *hyscan_location_new                     (HyScanDB       
  * \return location указатель на объект обработки навигационных данных.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanLocation         *hyscan_location_new_with_cache          (HyScanDB       *db,
                                                                  HyScanCache    *cache,
                                                                  gchar          *project,
@@ -235,7 +235,7 @@ HyScanLocation         *hyscan_location_new_with_cache          (HyScanDB       
  * \return location указатель на объект обработки навигационных данных.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanLocation         *hyscan_location_new_with_cache_prefix   (HyScanDB       *db,
                                                                  HyScanCache    *cache,
                                                                  gchar          *cache_prefix,
@@ -253,7 +253,7 @@ HyScanLocation         *hyscan_location_new_with_cache_prefix   (HyScanDB       
  *
  */
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 void                    hyscan_location_overseer_period_set     (HyScanLocation  *location,
                                                                  gint32           overseer_period);
 
@@ -266,7 +266,7 @@ void                    hyscan_location_overseer_period_set     (HyScanLocation 
  *
  */
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 void                    hyscan_location_quality_set             (HyScanLocation  *location,
                                                                  gdouble          quality);
 /**
@@ -283,7 +283,7 @@ void                    hyscan_location_quality_set             (HyScanLocation 
  * \return указатель на массив со списком источников.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanLocationSources **hyscan_location_source_list             (HyScanLocation *location,
                                                                  gint            parameter);
 
@@ -298,7 +298,7 @@ HyScanLocationSources **hyscan_location_source_list             (HyScanLocation 
  *
  */
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 void                    hyscan_location_source_list_free        (HyScanLocationSources ***data);
 
 /**
@@ -312,7 +312,7 @@ void                    hyscan_location_source_list_free        (HyScanLocationS
  * что либо параметр исключен из обработки, либо есть проблемы с БД.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gint                    hyscan_location_source_get              (HyScanLocation *location,
                                                                  gint            parameter);
 
@@ -332,7 +332,7 @@ gint                    hyscan_location_source_get              (HyScanLocation 
  * \return TRUE, если источник корректно установился.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_location_source_set              (HyScanLocation *location,
                                                                  gint            source,
                                                                  gboolean        turn_on);
@@ -348,7 +348,7 @@ gboolean                hyscan_location_source_set              (HyScanLocation 
  * \return FALSE, если база данных недоступна, TRUE во всех остальных случаях.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_location_soundspeed_set          (HyScanLocation *location,
                                                                  GArray          soundspeedtable);
 
@@ -376,7 +376,7 @@ gboolean                hyscan_location_soundspeed_set          (HyScanLocation 
  * \return Структура #HyScanLocationData со всей затребованной информацией.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanLocationData      hyscan_location_get                     (HyScanLocation *location,
                                                                  gint            parameter,
                                                                  gint64          time,
@@ -400,7 +400,7 @@ HyScanLocationData      hyscan_location_get                     (HyScanLocation 
  * \return TRUE, если диапазон успешно определен.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_location_get_range               (HyScanLocation *location,
                                                                  gint32         *lindex,
                                                                  gint32         *rindex);
@@ -421,7 +421,7 @@ gboolean                hyscan_location_get_range               (HyScanLocation 
  * В случае валидных данных флаг будет HYSCAN_LOCATION_PARSED.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanLocationData      hyscan_location_get_raw_data            (HyScanLocation *location,
                                                                  gint32          index);
 /**
@@ -438,9 +438,9 @@ HyScanLocationData      hyscan_location_get_raw_data            (HyScanLocation 
  * \return Номер изменения.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gint64                  hyscan_location_get_mod_count           (HyScanLocation *location);
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gint                    hyscan_location_get_progress            (HyScanLocation *location);
 
 G_END_DECLS

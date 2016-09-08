@@ -69,7 +69,6 @@
 
 #include <hyscan-db.h>
 #include <hyscan-data.h>
-#include <hyscan-core-exports.h>
 
 G_BEGIN_DECLS
 
@@ -179,7 +178,7 @@ typedef struct
  * \return TRUE - если тип относится к данным датчиков, иначе - FALSE;
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_source_is_sensor                 (HyScanSourceType               source);
 
 /**
@@ -191,7 +190,7 @@ gboolean               hyscan_source_is_sensor                 (HyScanSourceType
  * \return TRUE - если тип относится к "сырым" гидролокационным данным, иначе - FALSE;
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_source_is_raw                    (HyScanSourceType               source);
 
 /**
@@ -203,7 +202,7 @@ gboolean               hyscan_source_is_raw                    (HyScanSourceType
  * \return TRUE - если тип относится к акустическим данным, иначе - FALSE;
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_source_is_acoustic               (HyScanSourceType               source);
 
 /**
@@ -215,7 +214,7 @@ gboolean               hyscan_source_is_acoustic               (HyScanSourceType
  * \return Строка с названием типа галса.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 const gchar           *hyscan_track_get_name_by_type           (HyScanTrackType                type);
 
 /**
@@ -227,7 +226,7 @@ const gchar           *hyscan_track_get_name_by_type           (HyScanTrackType 
  * \return Тип галса \link HyScanTrackType \endlink.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanTrackType        hyscan_track_get_type_by_name           (const gchar                   *name);
 
 /**
@@ -242,7 +241,7 @@ HyScanTrackType        hyscan_track_get_type_by_name           (const gchar     
  * \return Строка с названием канала или NULL - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 const gchar           *hyscan_channel_get_name_by_types        (HyScanSourceType               source,
                                                                 gboolean                       raw,
                                                                 guint                          channel);
@@ -259,7 +258,7 @@ const gchar           *hyscan_channel_get_name_by_types        (HyScanSourceType
  * \return TRUE - если характеристики канала определены, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_channel_get_types_by_name        (const gchar                   *name,
                                                                 HyScanSourceType              *source,
                                                                 gboolean                      *raw,

@@ -1,9 +1,6 @@
 #include <hyscan-location.h>
 #include <hyscan-data-writer.h>
-#include <hyscan-db-file.h>
 #include <hyscan-cached.h>
-#include <hyscan-raw-data.h>
-#include <hyscan-core-exports.h>
 
 #include <glib/gstdio.h>
 #include <gio/gio.h>
@@ -60,18 +57,15 @@ main (int argc, char **argv)
   gint32 db_index;
   gint64 db_time;
 
-  gchar *location_schema_string;
-  gsize location_schema_size;
-  gchar *current_dir;
-
-  gsize test_data_size;
   GBytes *rmc_resource;
   GBytes *gga_resource;
   GBytes *orig_resource;
+  GBytes *schema_resource;
 
   const gchar *rmc_data;
   const gchar *gga_data;
   const gchar *orig_data;
+  const gchar *schema_data;
 
   gchar **rmc_test_data;
   gchar **gga_test_data;
@@ -95,28 +89,25 @@ main (int argc, char **argv)
 
   gint32 project_param_id;
 
-  rmc_resource = g_resources_lookup_data ("/org/hyscan/location-test/rmc_test_data", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
-  test_data_size = g_bytes_get_size (rmc_resource);
-  rmc_data = (const gchar*) g_bytes_get_data (rmc_resource, &test_data_size);
+  rmc_resource = g_resources_lookup_data ("/org/hyscan/data/location-test-rmc", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
+  rmc_data = (const gchar*) g_bytes_get_data (rmc_resource, NULL);
 
-  gga_resource = g_resources_lookup_data ("/org/hyscan/location-test/gga_test_data", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
-  test_data_size = g_bytes_get_size (gga_resource);
-  gga_data = (const gchar*) g_bytes_get_data (gga_resource, &test_data_size);
+  gga_resource = g_resources_lookup_data ("/org/hyscan/data/location-test-gga", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
+  gga_data = (const gchar*) g_bytes_get_data (gga_resource, NULL);
 
-  orig_resource = g_resources_lookup_data ("/org/hyscan/location-test/clean_track_data", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
-  test_data_size = g_bytes_get_size (orig_resource);
-  orig_data = (const gchar*) g_bytes_get_data (orig_resource, &test_data_size);
+  orig_resource = g_resources_lookup_data ("/org/hyscan/data/location-test-clean-track", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
+  orig_data = (const gchar*) g_bytes_get_data (orig_resource, NULL);
 
-  for (i = 0; i < 5000; i++)
-    depth_test_data[i] = (i > 1000 && i < 1010) ? 32767 : 0;
+  rmc_test_data = g_strsplit (rmc_data, "\n", -1);
+  gga_test_data = g_strsplit (gga_data, "\n", -1);
+  orig_test_data = g_strsplit (orig_data, "\n", -1);
 
   g_bytes_unref (rmc_resource);
   g_bytes_unref (gga_resource);
   g_bytes_unref (orig_resource);
 
-  rmc_test_data = g_strsplit (rmc_data, "\n", -1);
-  gga_test_data = g_strsplit (gga_data, "\n", -1);
-  orig_test_data = g_strsplit (orig_data, "\n", -1);
+  for (i = 0; i < 5000; i++)
+    depth_test_data[i] = (i > 1000 && i < 1010) ? 32767 : 0;
 
   for (i = 0; i < 10000; i++)
     {
@@ -181,15 +172,15 @@ main (int argc, char **argv)
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
 
   /* Считываем содержание xml-файла со схемой данных. */
-  current_dir = g_get_current_dir ();
-  current_dir = g_strconcat (current_dir, "/resources/location-schema.xml", NULL);
-
-  g_file_get_contents (current_dir, &location_schema_string, &location_schema_size, &error);
+  schema_resource = g_resources_lookup_data ("/org/hyscan/schema/location-schema.xml", G_RESOURCE_LOOKUP_FLAGS_NONE, &error);
+  schema_data = (const gchar*) g_bytes_get_data (orig_resource, NULL);
 
   /* Создаём проект. */
-  project_id = hyscan_db_project_create (db, "project", location_schema_string);
+  project_id = hyscan_db_project_create (db, "project", schema_data);
   if (project_id < 0)
     g_error ("can't create project");
+
+  g_bytes_unref (schema_resource);
 
   /* Создаём галс. */
   writer = hyscan_data_writer_new (db);

@@ -865,7 +865,7 @@ hyscan_raw_data_new (HyScanDB    *db,
                      const gchar *track_name,
                      const gchar *channel_name)
 {
-  return g_object_new (HYSCAN_TYPE_DATA_CHANNEL,
+  return g_object_new (HYSCAN_TYPE_RAW_DATA,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
@@ -881,7 +881,7 @@ hyscan_raw_data_new_with_cache (HyScanDB    *db,
                                 const gchar *channel_name,
                                 HyScanCache *cache)
 {
-  return g_object_new (HYSCAN_TYPE_DATA_CHANNEL,
+  return g_object_new (HYSCAN_TYPE_RAW_DATA,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
@@ -899,7 +899,7 @@ hyscan_raw_data_new_with_cache_prefix (HyScanDB    *db,
                                        HyScanCache *cache,
                                        const gchar *cache_prefix)
 {
-  return g_object_new (HYSCAN_TYPE_DATA_CHANNEL,
+  return g_object_new (HYSCAN_TYPE_RAW_DATA,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
@@ -916,7 +916,7 @@ hyscan_raw_data_get_position (HyScanRawData *data)
 
   memset (&zero, 0, sizeof (HyScanAntennaPosition));
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), zero);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), zero);
 
   if (data->priv->channel_id < 0)
     return zero;
@@ -932,7 +932,7 @@ hyscan_raw_data_get_info (HyScanRawData *data)
 
   memset (&zero, 0, sizeof (HyScanRawDataInfo));
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), zero);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), zero);
 
   if (data->priv->channel_id < 0)
     return zero;
@@ -946,7 +946,7 @@ hyscan_raw_data_get_range (HyScanRawData *data,
                            gint32        *first_index,
                            gint32        *last_index)
 {
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   if (data->priv->channel_id < 0)
     return FALSE;
@@ -962,7 +962,7 @@ hyscan_raw_data_get_values_count (HyScanRawData *data,
 {
   gint32 dsize = -1;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   if (data->priv->channel_id < 0)
     return 0;
@@ -988,7 +988,7 @@ hyscan_raw_data_get_time (HyScanRawData *data,
   gint32 dsize;
   gint64 time;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   if (data->priv->channel_id < 0)
     return 0;
@@ -1011,7 +1011,7 @@ hyscan_raw_data_find_data (HyScanRawData *data,
                            gint64        *ltime,
                            gint64        *rtime)
 {
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   if (data->priv->channel_id < 0)
     return FALSE;
@@ -1025,7 +1025,7 @@ void
 hyscan_raw_data_set_convolve (HyScanRawData *data,
                               gboolean       convolve)
 {
-  g_return_if_fail (HYSCAN_IS_DATA_CHANNEL (data));
+  g_return_if_fail (HYSCAN_IS_RAW_DATA (data));
 
   if (data->priv->channel_id < 0)
     return;
@@ -1047,7 +1047,7 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
   gint32 n_points;
   gint32 i;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
 
@@ -1100,7 +1100,7 @@ hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
 
   gint32 n_points;
 
-  g_return_val_if_fail (HYSCAN_IS_DATA_CHANNEL (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
 

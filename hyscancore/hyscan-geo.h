@@ -172,7 +172,7 @@ struct HyScanGeoClass
   GObjectClass       parent_class;
 };
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 GType                   hyscan_geo_get_type                    (void);
 
 /**
@@ -183,7 +183,7 @@ GType                   hyscan_geo_get_type                    (void);
  * \param[in] ell_type - тип референц - эллипсоида.
  * \return NULL при некорректных входных данных
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanGeo              *hyscan_geo_new                         (HyScanGeoGeodetic               origin,
                                                                 HyScanGeoEllipsoidType          ell_type);
 
@@ -196,7 +196,7 @@ HyScanGeo              *hyscan_geo_new                         (HyScanGeoGeodeti
  *  должна быть инициализирована с помощью функции  #hyscan_geo_init_ellipsoid_user или #hyscan_geo_init_ellipsoid.
  * \return указатель на NULL при некорректных входных данных
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanGeo              *hyscan_geo_new_user                    (HyScanGeoGeodetic               origin,
                                                                 HyScanGeoEllipsoidParam         ell_params);
 
@@ -209,7 +209,7 @@ HyScanGeo              *hyscan_geo_new_user                    (HyScanGeoGeodeti
  * \param[in] ell_type - тип референц - эллипсоида.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_set_origin                  (HyScanGeo                      *geo,
                                                                 HyScanGeoGeodetic               origin,
                                                                 HyScanGeoEllipsoidType          ell_type);
@@ -226,7 +226,7 @@ gboolean                hyscan_geo_set_origin                  (HyScanGeo       
  * должна быть инициализирована с помощью функции #hyscan_geo_init_ellipsoid_user или #hyscan_geo_init_ellipsoid.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_set_origin_user             (HyScanGeo                      *geo,
                                                                 HyScanGeoGeodetic               origin,
                                                                 HyScanGeoEllipsoidParam         ell_params);
@@ -242,7 +242,7 @@ gboolean                hyscan_geo_set_origin_user             (HyScanGeo       
  * \return TRUE, если объект инициализирован.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_ready                       (HyScanGeo                      *geo,
                                                                 gboolean                        uninit);
 
@@ -255,7 +255,7 @@ gboolean                hyscan_geo_ready                       (HyScanGeo       
  * \param[in] src_geod - геодезические координаты на входе, структура #HyScanGeoGeodetic.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_geo2topo                    (HyScanGeo                      *geo,
                                                                 HyScanGeoCartesian3D           *dst_topo,
                                                                 HyScanGeoGeodetic               src_geod);
@@ -269,7 +269,7 @@ gboolean                hyscan_geo_geo2topo                    (HyScanGeo       
  * \param[in] src_topo - топоцентрические координаты на входе, структура #HyScanGeoCartesian3D.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_topo2geo                    (HyScanGeo                      *geo,
                                                                 HyScanGeoGeodetic              *dst_geod,
                                                                 HyScanGeoCartesian3D            src_topo);
@@ -283,7 +283,7 @@ gboolean                hyscan_geo_topo2geo                    (HyScanGeo       
  * \param[in] src_geod - геодезические координаты на входе, структура #HyScanGeoGeodetic.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_geo2topoXY                  (HyScanGeo                      *geo,
                                                                 HyScanGeoCartesian2D           *dst_topoXY,
                                                                 HyScanGeoGeodetic               src_geod);
@@ -309,7 +309,7 @@ gboolean                hyscan_geo_geo2topoXY                  (HyScanGeo       
  * но дольше идут вычисления.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo                      *geo,
                                                                 HyScanGeoGeodetic              *dst_geod,
                                                                 HyScanGeoCartesian2D            src_topoXY,
@@ -328,7 +328,7 @@ gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo       
  * \param[in] cs_out - тип выходной СК, структура #HyScanGeoCSType.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_cs_transform                  (HyScanGeoGeodetic            *dst,
                                                                   HyScanGeoGeodetic             src,
                                                                   HyScanGeoCSType               cs_in,
@@ -347,7 +347,7 @@ gboolean                hyscan_geo_cs_transform                  (HyScanGeoGeode
  * \param[in] datum_param - параметры пересчета, структура #HyScanGeoDatumParam.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_cs_transform_user             (HyScanGeoGeodetic            *dst,
                                                                   HyScanGeoGeodetic             src,
                                                                   HyScanGeoEllipsoidParam       el_params_in,
@@ -361,7 +361,7 @@ gboolean                hyscan_geo_cs_transform_user             (HyScanGeoGeode
  * \param cs_in - тип входной СК, структура #HyScanGeoCSType
  * \param cs_out - тип выходной СК, структура #HyScanGeoCSType
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanGeoDatumParam     hyscan_geo_get_datum_params            (HyScanGeoCSType                 cs_in,
                                                                 HyScanGeoCSType                 cs_out);
 
@@ -374,12 +374,12 @@ HyScanGeoDatumParam     hyscan_geo_get_datum_params            (HyScanGeoCSType 
  * возвращает все параметры нулевыми, если передается datum - HYSCAN_GEO_DATUM_WGS84 или HYSCAN_GEO_CS_INVALID,
  * что соответствует единичному преобразованию (домножение на единичную матрицу и нулевой сдвиг)
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanGeoDatumParam     hyscan_geo_get_helmert_params_to_wgs84 (HyScanGeoCSType                 cs_type);
 
 
 /** Функция вычисления параметров референц-эллипсоида по его типу #HyScanGeoEllipsoidType. */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_init_ellipsoid              (HyScanGeoEllipsoidParam        *p,
                                                                 HyScanGeoEllipsoidType          ell_type);
 
@@ -392,7 +392,7 @@ gboolean                hyscan_geo_init_ellipsoid              (HyScanGeoEllipso
  * \param[in] f - полярное сжатие (уплощение, flattening).
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_init_ellipsoid_user         (HyScanGeoEllipsoidParam        *p,
                                                                 gdouble                         a,
                                                                 gdouble                         f);
@@ -408,7 +408,7 @@ gboolean                hyscan_geo_init_ellipsoid_user         (HyScanGeoEllipso
  * \return TRUE, если эллипсоид найден, иначе FALSE.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean                hyscan_geo_get_ellipse_params          (gdouble                        *a,
                                                                 gdouble                        *f,
                                                                 gdouble                        *epsg,

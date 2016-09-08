@@ -108,7 +108,7 @@ struct _HyScanDataWriterClass
   GObjectClass parent_class;
 };
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 GType                  hyscan_data_writer_get_type                     (void);
 
 /**
@@ -120,7 +120,7 @@ GType                  hyscan_data_writer_get_type                     (void);
  * \return Указатель на объект \link HyScanDataWriter \endlink.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanDataWriter      *hyscan_data_writer_new                          (HyScanDB                      *db);
 
 /**
@@ -135,7 +135,7 @@ HyScanDataWriter      *hyscan_data_writer_new                          (HyScanDB
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_start                        (HyScanDataWriter              *writer,
                                                                         const gchar                   *project_name,
                                                                         const gchar                   *track_name,
@@ -150,7 +150,7 @@ gboolean               hyscan_data_writer_start                        (HyScanDa
  * \return Нет.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 void                   hyscan_data_writer_stop                         (HyScanDataWriter              *writer);
 
 /**
@@ -164,7 +164,7 @@ void                   hyscan_data_writer_stop                         (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_set_chunk_size               (HyScanDataWriter              *writer,
                                                                         gint32                         chunk_size);
 
@@ -181,7 +181,7 @@ gboolean               hyscan_data_writer_set_chunk_size               (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_set_save_time                (HyScanDataWriter              *writer,
                                                                         gint64                         save_time);
 
@@ -198,7 +198,7 @@ gboolean               hyscan_data_writer_set_save_time                (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_set_save_size                (HyScanDataWriter              *writer,
                                                                         gint64                         save_size);
 
@@ -215,7 +215,7 @@ gboolean               hyscan_data_writer_set_save_size                (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_sensor_set_position          (HyScanDataWriter              *writer,
                                                                         const gchar                   *sensor,
                                                                         HyScanAntennaPosition         *position);
@@ -233,7 +233,7 @@ gboolean               hyscan_data_writer_sensor_set_position          (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_sensor_add_data              (HyScanDataWriter              *writer,
                                                                         const gchar                   *sensor,
                                                                         HyScanSourceType               source,
@@ -253,7 +253,7 @@ gboolean               hyscan_data_writer_sensor_add_data              (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_sonar_set_position           (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanAntennaPosition         *position);
@@ -271,7 +271,7 @@ gboolean               hyscan_data_writer_sonar_set_position           (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_data                 (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
@@ -291,7 +291,7 @@ gboolean               hyscan_data_writer_raw_add_data                 (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_noise                (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
@@ -311,7 +311,7 @@ gboolean               hyscan_data_writer_raw_add_noise                (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_signal               (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanDataWriterSignal        *signal);
@@ -329,7 +329,7 @@ gboolean               hyscan_data_writer_raw_add_signal               (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanDataWriterTVG           *tvg);
@@ -346,7 +346,7 @@ gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDa
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_data_writer_acoustic_add_data            (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         HyScanAcousticDataInfo        *info,

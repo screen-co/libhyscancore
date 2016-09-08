@@ -62,7 +62,7 @@ hyscan_location_nmea_sentence_check (gchar *input)
   ch = input + 3; /* Пропускаем первые 3 символа "$GPxxx". */
 
   str = g_strndup (ch, 3);
-#warning "Memory leak!!!"
+
   if (g_strcmp0(str, "GGA") == 0)
     return HYSCAN_SOURCE_NMEA_GGA;
   if (g_strcmp0(str, "RMC") == 0)

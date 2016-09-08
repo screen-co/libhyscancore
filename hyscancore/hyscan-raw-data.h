@@ -62,12 +62,12 @@
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_DATA_CHANNEL             (hyscan_raw_data_get_type ())
-#define HYSCAN_RAW_DATA(obj)                 (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DATA_CHANNEL, HyScanRawData))
-#define HYSCAN_IS_DATA_CHANNEL(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DATA_CHANNEL))
-#define HYSCAN_RAW_DATA_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_DATA_CHANNEL, HyScanRawDataClass))
-#define HYSCAN_IS_DATA_CHANNEL_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_DATA_CHANNEL))
-#define HYSCAN_RAW_DATA_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DATA_CHANNEL, HyScanRawDataClass))
+#define HYSCAN_TYPE_RAW_DATA             (hyscan_raw_data_get_type ())
+#define HYSCAN_RAW_DATA(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_RAW_DATA, HyScanRawData))
+#define HYSCAN_IS_RAW_DATA(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_RAW_DATA))
+#define HYSCAN_RAW_DATA_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_RAW_DATA, HyScanRawDataClass))
+#define HYSCAN_IS_RAW_DATA_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_RAW_DATA))
+#define HYSCAN_RAW_DATA_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_RAW_DATA, HyScanRawDataClass))
 
 typedef struct _HyScanRawData HyScanRawData;
 typedef struct _HyScanRawDataPrivate HyScanRawDataPrivate;
@@ -85,7 +85,7 @@ struct _HyScanRawDataClass
   GObjectClass parent_class;
 };
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 GType                  hyscan_raw_data_get_type                (void);
 
 /**
@@ -100,7 +100,7 @@ GType                  hyscan_raw_data_get_type                (void);
  * \return Указатель на объект \link HyScanRawData \endlink.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanRawData         *hyscan_raw_data_new                     (HyScanDB              *db,
                                                                 const gchar           *project_name,
                                                                 const gchar           *track_name,
@@ -120,7 +120,7 @@ HyScanRawData         *hyscan_raw_data_new                     (HyScanDB        
  *
  */
 
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanRawData         *hyscan_raw_data_new_with_cache          (HyScanDB              *db,
                                                                 const gchar           *project_name,
                                                                 const gchar           *track_name,
@@ -143,7 +143,7 @@ HyScanRawData         *hyscan_raw_data_new_with_cache          (HyScanDB        
  * \return Указатель на объект \link HyScanRawData \endlink.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanRawData         *hyscan_raw_data_new_with_cache_prefix   (HyScanDB              *db,
                                                                 const gchar           *project_name,
                                                                 const gchar           *track_name,
@@ -161,7 +161,7 @@ HyScanRawData         *hyscan_raw_data_new_with_cache_prefix   (HyScanDB        
  * \return Местоположение приёмной антенны гидролокатора.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanAntennaPosition  hyscan_raw_data_get_position            (HyScanRawData         *data);
 
 /**
@@ -174,7 +174,7 @@ HyScanAntennaPosition  hyscan_raw_data_get_position            (HyScanRawData   
  * \return Параметры канала акустических данных.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 HyScanRawDataInfo      hyscan_raw_data_get_info                (HyScanRawData         *data);
 
 /**
@@ -189,7 +189,7 @@ HyScanRawDataInfo      hyscan_raw_data_get_info                (HyScanRawData   
  * \return TRUE - если границы записей определены, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_raw_data_get_range               (HyScanRawData         *data,
                                                                 gint32                *first_index,
                                                                 gint32                *last_index);
@@ -204,7 +204,7 @@ gboolean               hyscan_raw_data_get_range               (HyScanRawData   
  * \return Число точек для указанного индекса или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gint32                 hyscan_raw_data_get_values_count        (HyScanRawData         *data,
                                                                 gint32                 index);
 
@@ -218,7 +218,7 @@ gint32                 hyscan_raw_data_get_values_count        (HyScanRawData   
  * \return Время приёма данных для указанного индекса или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gint64                 hyscan_raw_data_get_time                (HyScanRawData         *data,
                                                                 gint32                 index);
 
@@ -236,7 +236,7 @@ gint64                 hyscan_raw_data_get_time                (HyScanRawData   
  * \return TRUE - если данные найдены, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_raw_data_find_data               (HyScanRawData         *data,
                                                                 gint64                 time,
                                                                 gint32                *lindex,
@@ -254,7 +254,7 @@ gboolean               hyscan_raw_data_find_data               (HyScanRawData   
  * \return Нет.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 void                   hyscan_raw_data_set_convolve            (HyScanRawData         *data,
                                                                 gboolean               convolve);
 
@@ -277,7 +277,7 @@ void                   hyscan_raw_data_set_convolve            (HyScanRawData   
  * \return TRUE - если данные успешно считаны и обработаны, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_raw_data_get_amplitude_values    (HyScanRawData         *data,
                                                                 gint32                 index,
                                                                 gfloat                *buffer,
@@ -303,7 +303,7 @@ gboolean               hyscan_raw_data_get_amplitude_values    (HyScanRawData   
  * \return TRUE - если данные успешно считаны и обработаны, FALSE - в случае ошибки.
  *
  */
-HYSCAN_CORE_EXPORT
+HYSCAN_API
 gboolean               hyscan_raw_data_get_quadrature_values   (HyScanRawData         *data,
                                                                 gint32                 index,
                                                                 HyScanComplexFloat    *buffer,

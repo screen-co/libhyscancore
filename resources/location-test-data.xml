@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<gresources>
-  <gresource prefix="/org/hyscan/location-test">
-    <file>rmc_test_data</file>
-    <file>gga_test_data</file>
-    <file>clean_track_data</file>
-  </gresource>
-</gresources>
