@@ -21,7 +21,7 @@ enum
 typedef struct
 {
   HyScanDB                    *db;                             /* Интерфейс системы хранения данных. */
-  gint32                       data_id;                     /* Идентификатор канала данных. */
+  gint32                       data_id;                        /* Идентификатор канала данных. */
 } HyScanDataWriterSensorChannel;
 
 typedef struct
@@ -211,7 +211,7 @@ hyscan_data_writer_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_data_writer_parent_class)->finalize (object);
 }
 
-/* Функция возвращает уникальный идентификатор для триплет: источник данных, признак сырых данных ,индекс канала. */
+/* Функция возвращает уникальный идентификатор для триплета: источник данных, признак сырых данных, индекс канала. */
 static gpointer
 hyscan_data_writer_uniq_channel (HyScanSourceType type,
                                  gboolean         raw,
@@ -808,7 +808,7 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
   priv = writer->priv;
 
   if (priv->db == NULL)
-    return FALSE;
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -869,7 +869,7 @@ hyscan_data_writer_set_chunk_size (HyScanDataWriter *writer,
   priv = writer->priv;
 
   if (priv->db == NULL)
-    return FALSE;
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -918,7 +918,7 @@ hyscan_data_writer_set_save_time (HyScanDataWriter *writer,
   priv = writer->priv;
 
   if (priv->db == NULL)
-    return FALSE;
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -967,7 +967,7 @@ hyscan_data_writer_set_save_size (HyScanDataWriter *writer,
   priv = writer->priv;
 
   if (priv->db == NULL)
-    return FALSE;
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -1046,15 +1046,15 @@ gboolean hyscan_data_writer_sensor_add_data (HyScanDataWriter     *writer,
 
   priv = writer->priv;
 
-  if (priv->db == NULL)
-    return FALSE;
-
   /* Проверяем тип данных на соответствие данным датчиков. */
   if (!hyscan_source_is_sensor (source))
     {
       g_warning ("HyScanDataWriter: incorrect sensor source '%d'", source);
       return FALSE;
     }
+
+  if (priv->db == NULL)
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -1128,15 +1128,15 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
 
   priv = writer->priv;
 
-  if (priv->db == NULL)
-    return FALSE;
-
   /* Проверяем тип данных на соответствие "сырым". */
   if (!hyscan_source_is_raw (source))
     {
       g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
       return FALSE;
     }
+
+  if (priv->db == NULL)
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -1186,15 +1186,15 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
 
   priv = writer->priv;
 
-  if (priv->db == NULL)
-    return FALSE;
-
   /* Проверяем тип данных на соответствие "сырым". */
   if (!hyscan_source_is_raw (source))
     {
       g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
       return FALSE;
     }
+
+  if (priv->db == NULL)
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -1244,8 +1244,15 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
 
   priv = writer->priv;
 
+  /* Проверяем тип данных на соответствие "сырым". */
+  if (!hyscan_source_is_raw (source))
+    {
+      g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
+      return FALSE;
+    }
+
   if (priv->db == NULL)
-    return FALSE;
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -1328,8 +1335,15 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
 
   priv = writer->priv;
 
+  /* Проверяем тип данных на соответствие "сырым". */
+  if (!hyscan_source_is_raw (source))
+    {
+      g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
+      return FALSE;
+    }
+
   if (priv->db == NULL)
-    return FALSE;
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 
@@ -1407,15 +1421,15 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
 
   priv = writer->priv;
 
-  if (priv->db == NULL)
-    return FALSE;
-
   /* Проверяем тип данных на соответствие акустическим. */
   if (!hyscan_source_is_acoustic (source))
     {
       g_warning ("HyScanDataWriter: incorrect acoustic source '%d'", source);
       return FALSE;
     }
+
+  if (priv->db == NULL)
+    return TRUE;
 
   g_mutex_lock (&priv->lock);
 

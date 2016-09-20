@@ -1,6 +1,8 @@
 
 #include <hyscan-data-writer.h>
 #include <hyscan-core-schemas.h>
+
+#include <libxml/parser.h>
 #include <string.h>
 
 #define PROJECT_NAME           "test"
@@ -895,6 +897,8 @@ main (int    argc,
   /* Очищаем память. */
   g_object_unref (writer);
   g_object_unref (db);
+
+  xmlCleanupParser ();
 
   return 0;
 }

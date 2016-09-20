@@ -1,8 +1,10 @@
+
 #include <hyscan-data-writer.h>
 #include <hyscan-raw-data.h>
 #include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
+#include <libxml/parser.h>
 #include <string.h>
 #include <math.h>
 
@@ -87,6 +89,7 @@ int main( int argc, char **argv )
   info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
   info.data.rate = discretization;
   info.antenna.offset.vertical = 0.0;
+  info.antenna.offset.horizontal = 0.0;
   info.antenna.pattern.vertical = 40.0;
   info.antenna.pattern.horizontal = 2.0;
   info.adc.vref = 1.0;
@@ -256,6 +259,8 @@ int main( int argc, char **argv )
   g_clear_object (&cache);
 
   g_free (db_uri);
+
+  xmlCleanupParser ();
 
   return 0;
 }
