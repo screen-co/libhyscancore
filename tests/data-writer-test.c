@@ -42,11 +42,13 @@ sonar_get_name (guint n_channel)
   switch (n_channel)
     {
     case 1:
-    case 2:
       return "side-scan-starboard";
+    case 2:
+      return "side-scan-starboard-hi";
     case 3:
-    case 4:
       return "side-scan-port";
+    case 4:
+      return "side-scan-port-hi";
     }
 
   return NULL;
@@ -59,11 +61,13 @@ sonar_get_type (guint n_channel)
   switch (n_channel)
     {
     case 1:
-    case 2:
       return HYSCAN_SOURCE_SIDE_SCAN_STARBOARD;
+    case 2:
+      return HYSCAN_SOURCE_SIDE_SCAN_STARBOARD_HI;
     case 3:
-    case 4:
       return HYSCAN_SOURCE_SIDE_SCAN_PORT;
+    case 4:
+      return HYSCAN_SOURCE_SIDE_SCAN_PORT_HI;
     }
 
   return HYSCAN_SOURCE_INVALID;
@@ -164,7 +168,7 @@ antenna_check_position (HyScanDB *db,
       (position.gamma != g_variant_get_double (param_values[6])) ||
       (position.theta != g_variant_get_double (param_values[7])))
     {
-      g_error ("error in parameters");
+      g_error ("error in parameters 0");
     }
 
   g_variant_unref (param_values[0]);
@@ -231,7 +235,7 @@ raw_check_info (HyScanDB *db,
       (info.adc.vref != g_variant_get_double (param_values[8])) ||
       (info.adc.offset != g_variant_get_int64 (param_values[9])))
     {
-      g_error ("error in parameters");
+      g_error ("error in parameters 1");
     }
 
   g_variant_unref (param_values[0]);
@@ -342,7 +346,7 @@ signal_check_info (HyScanDB *db,
   if ((data_type != HYSCAN_DATA_COMPLEX_FLOAT) ||
       (g_variant_get_double (param_values[3]) != (1000.0 * n_channel)))
     {
-      g_error ("error in parameters");
+      g_error ("error in parameters 2");
     }
 
   g_variant_unref (param_values[0]);
@@ -391,7 +395,7 @@ tvg_check_info (HyScanDB *db,
   if ((data_type != HYSCAN_DATA_FLOAT) ||
       (g_variant_get_double (param_values[3]) != (500.0 * n_channel)))
     {
-      g_error ("error in parameters");
+      g_error ("error in parameters 3");
     }
 
   g_variant_unref (param_values[0]);
@@ -431,10 +435,9 @@ sensor_add_data (HyScanDataWriter *writer,
 /* Функция записывает гидролокационные данные. */
 void
 sonar_add_data (HyScanDataWriter *writer,
-               gint64            timestamp,
-               guint             n_channel,
-               gboolean          raw,
-               gboolean          fail)
+                gint64            timestamp,
+                guint             n_channel,
+                gboolean          raw)
 {
   HyScanDataWriterData data;
   HyScanRawDataInfo raw_info;
@@ -505,14 +508,14 @@ sonar_add_data (HyScanDataWriter *writer,
 
       if (raw)
         {
-          if (!hyscan_data_writer_raw_add_data (writer, source, 1, &raw_info, &data) && !fail)
+          if (!hyscan_data_writer_raw_add_data (writer, source, 1, &raw_info, &data))
             g_error ("can't add data to '%s'", sonar_get_name (n_channel));
-          if (!hyscan_data_writer_raw_add_noise (writer, source, 1, &raw_info, &data) && !fail)
+          if (!hyscan_data_writer_raw_add_noise (writer, source, 1, &raw_info, &data))
             g_error ("can't add noise to '%s'", sonar_get_name (n_channel));
         }
       else
         {
-          if (!hyscan_data_writer_acoustic_add_data (writer, source, &acoustic_info, &data) && !fail)
+          if (!hyscan_data_writer_acoustic_add_data (writer, source, &acoustic_info, &data))
             g_error ("can't add data to '%s'", sonar_get_name (n_channel));
         }
     }
@@ -542,7 +545,7 @@ sensor_check_data (HyScanDB    *db,
 
   channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_ANY, TRUE, n_channel);
 
-  g_message ("Checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
+  g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 
   project_id = hyscan_db_project_open (db, PROJECT_NAME);
   if (project_id < 0)
@@ -611,7 +614,7 @@ sonar_check_data (HyScanDB    *db,
   source = sonar_get_type (n_channel);
   channel_name = hyscan_channel_get_name_by_types (source, raw, 1);
 
-  g_message ("Checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
+  g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 
   project_id = hyscan_db_project_open (db, PROJECT_NAME);
   if (project_id < 0)
@@ -627,7 +630,7 @@ sonar_check_data (HyScanDB    *db,
     g_error ("can't open channel");
 
   /* Проверка параметров. */
-  antenna_check_position (db, channel_id, n_channel + (n_channel % 2));
+  antenna_check_position (db, channel_id, n_channel);
   if (raw)
     raw_check_info (db, channel_id, n_channel);
   else
@@ -663,7 +666,7 @@ sonar_check_data (HyScanDB    *db,
       channel_id = hyscan_db_channel_open (db, track_id, noise_name);
       g_free (noise_name);
 
-      antenna_check_position (db, channel_id, n_channel + (n_channel % 2));
+      antenna_check_position (db, channel_id, n_channel);
       raw_check_info (db, channel_id, n_channel);
 
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
@@ -777,6 +780,64 @@ sonar_check_data (HyScanDB    *db,
   g_free (buffer);
 }
 
+/* Функция проверяет отсутствие гидролокационных данных. */
+void
+sonar_check_misses (HyScanDB    *db,
+                    const gchar *track_name,
+                    guint        n_channel,
+                    gboolean     raw)
+{
+  gint32 project_id;
+  gint32 track_id;
+
+  HyScanSourceType source;
+  const gchar *channel_name;
+  gchar *signal_name;
+  gchar *tvg_name;
+
+  gchar **channels;
+  guint i;
+
+  source = sonar_get_type (n_channel);
+  channel_name = hyscan_channel_get_name_by_types (source, raw, 1);
+  signal_name = g_strdup_printf ("%s-signal", channel_name);
+  tvg_name = g_strdup_printf ("%s-tvg", channel_name);
+
+  g_message ("checking '%s.%s.%s' misses", PROJECT_NAME, track_name, channel_name);
+
+  project_id = hyscan_db_project_open (db, PROJECT_NAME);
+  if (project_id < 0)
+    g_error ("can't open project");
+
+  track_id = hyscan_db_track_open (db, project_id, track_name);
+  if (track_id < 0)
+    g_error ("can't open track");
+
+  /* Список каналов. */
+  channels = hyscan_db_channel_list (db, track_id);
+  if (channels == NULL)
+    g_error ("can't list channels");
+
+  for (i = 0; channels[i] != NULL; i++)
+    {
+      if (g_strcmp0 (channels[i], channel_name) == 0)
+        g_error ("channel exist");
+
+      if (g_strcmp0 (channels[i], signal_name) == 0)
+        g_error ("signal exist");
+
+      if (g_strcmp0 (channels[i], tvg_name) == 0)
+        g_error ("tvg exist");
+    }
+
+  hyscan_db_close (db, project_id);
+  hyscan_db_close (db, track_id);
+
+  g_strfreev (channels);
+  g_free (signal_name);
+  g_free (tvg_name);
+}
+
 int
 main (int    argc,
       char **argv)
@@ -784,7 +845,6 @@ main (int    argc,
   HyScanDB *db;
   HyScanDataWriter *writer;
 
-  gint64 timestamp;
   gint32 project_id;
   gint32 track_id;
   guint i;
@@ -825,44 +885,72 @@ main (int    argc,
       hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), &position);
     }
 
-  timestamp = 0;
-
   /* Пустой галс. */
-  g_message ("Creating track-0");
+  g_message ("creating track-0");
 
   /* Попытка записи данных при выключенной записи. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
-      sensor_add_data (writer, timestamp, i, TRUE);
-      sonar_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, TRUE);
+      sensor_add_data (writer, 0, i, TRUE);
+      sonar_add_data  (writer, 0, i, TRUE);
+      sonar_add_data  (writer, 0, i, FALSE);
     }
 
   hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY);
 
-  /* Первый галс. */
-  g_message ("Creating track-1");
-  hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_BOTH))
+    g_error ("can't set writer mode: both");
 
-  timestamp = 1000;
+  /* Первый галс. */
+  g_message ("creating track-1");
+  hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY);
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
-      sensor_add_data (writer, timestamp, i, FALSE);
-      sonar_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, FALSE);
+      sensor_add_data (writer, 1000, i, FALSE);
+      sonar_add_data  (writer, 1000, i, TRUE);
+      sonar_add_data  (writer, 1000, i, FALSE);
     }
 
   /* Второй галс. */
-  g_message ("Creating track-2");
+  g_message ("creating track-2");
   hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY);
-
-  timestamp = 2000;
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
-      sensor_add_data (writer, timestamp, i, FALSE);
-      sonar_add_data (writer, timestamp, i, (i % 2) ? TRUE : FALSE, FALSE);
+      sensor_add_data (writer, 2000, i, FALSE);
+      sonar_add_data  (writer, 2000, i, TRUE);
+      sonar_add_data  (writer, 2000, i, FALSE);
+    }
+
+  /* Третий галс - только сырые данные от гидролокатора. */
+  g_message ("creating track-3");
+  hyscan_data_writer_start (writer, PROJECT_NAME, "track-3", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_RAW))
+    g_error ("can't set writer mode: raw");
+
+  /* Запись данных. */
+  for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
+    {
+      sensor_add_data (writer, 3000, i, FALSE);
+      sonar_add_data  (writer, 3000, i, TRUE);
+      sonar_add_data  (writer, 3000, i, FALSE);
+    }
+
+  /* Четвёртый галс - только обработанные данные от гидролокатора. */
+  g_message ("creating track-4");
+  hyscan_data_writer_start (writer, PROJECT_NAME, "track-4", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_COMPUTED))
+    g_error ("can't set writer mode: computed");
+
+  /* Запись данных. */
+  for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
+    {
+      sensor_add_data (writer, 4000, i, FALSE);
+      sonar_add_data  (writer, 4000, i, TRUE);
+      sonar_add_data  (writer, 4000, i, FALSE);
     }
 
   /* Отключаем запись. */
@@ -875,19 +963,35 @@ main (int    argc,
   hyscan_db_close (db, track_id);
 
   /* Первый галс. */
-  timestamp = 1000;
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
-      sensor_check_data (db, "track-1", timestamp, i);
-      sonar_check_data (db, "track-1", timestamp, i, (i % 2) ? TRUE : FALSE);
+      sensor_check_data (db, "track-1", 1000, i);
+      sonar_check_data  (db, "track-1", 1000, i, TRUE);
+      sonar_check_data  (db, "track-1", 1000, i, FALSE);
     }
 
   /* Второй галс. */
-  timestamp = 2000;
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
-      sensor_check_data (db, "track-2", timestamp, i);
-      sonar_check_data (db, "track-2", timestamp, i, (i % 2) ? TRUE : FALSE);
+      sensor_check_data (db, "track-2", 2000, i);
+      sonar_check_data  (db, "track-2", 2000, i, TRUE);
+      sonar_check_data  (db, "track-2", 2000, i, FALSE);
+    }
+
+  /* Третий галс - только сырые данные. */
+  for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
+    {
+      sensor_check_data  (db, "track-3", 3000, i);
+      sonar_check_data   (db, "track-3", 3000, i, TRUE);
+      sonar_check_misses (db, "track-3", i, FALSE);
+    }
+
+  /* Четвёртый галс - только обработанные данные. */
+  for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
+    {
+      sensor_check_data  (db, "track-4", 4000, i);
+      sonar_check_data   (db, "track-4", 4000, i, FALSE);
+      sonar_check_misses (db, "track-4", i, TRUE);
     }
 
   /* Удаляем проект. */

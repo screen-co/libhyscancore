@@ -51,6 +51,7 @@ struct _HyScanDataWriterPrivate
   GHashTable                  *signal;                         /* Список образов сигналов. */
   GHashTable                  *tvg;                            /* Список параметров ВАРУ. */
 
+  HyScanDataWriterMode         mode;                           /* Режим записи данных. */
   gint32                       chunk_size;                     /* Максимальный размер файлов в галсе. */
   gint64                       save_time;                      /* Интервал времени хранения данных. */
   gint64                       save_size;                      /* Максимальный объём данных в канале. */
@@ -170,6 +171,7 @@ hyscan_data_writer_object_constructed (GObject *object)
   g_mutex_init (&priv->lock);
 
   priv->track_id = -1;
+  priv->mode = HYSCAN_DATA_WRITER_BOTH;
   priv->chunk_size = -1;
   priv->save_time = -1;
   priv->save_size = -1;
@@ -853,6 +855,25 @@ hyscan_data_writer_stop (HyScanDataWriter *writer)
   g_mutex_unlock (&priv->lock);
 }
 
+/* Функция устанавливает режим записи данных от гидролокатора. */
+gboolean
+hyscan_data_writer_set_mode (HyScanDataWriter     *writer,
+                             HyScanDataWriterMode  mode)
+{
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
+
+  if ((mode != HYSCAN_DATA_WRITER_RAW) &&
+      (mode != HYSCAN_DATA_WRITER_COMPUTED) &&
+      (mode != HYSCAN_DATA_WRITER_BOTH))
+    {
+      return FALSE;
+    }
+
+  writer->priv->mode = mode;
+
+  return TRUE;
+}
+
 /* Функция устанавливает максимальный размер файлов в галсе. */
 gboolean
 hyscan_data_writer_set_chunk_size (HyScanDataWriter *writer,
@@ -1138,11 +1159,17 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
   if (priv->db == NULL)
     return TRUE;
 
+  if ((priv->mode != HYSCAN_DATA_WRITER_RAW) && (priv->mode != HYSCAN_DATA_WRITER_BOTH))
+    return TRUE;
+
   g_mutex_lock (&priv->lock);
 
   /* Текущий галс. */
   if (priv->track_id < 0)
-    goto exit;
+    {
+      status = TRUE;
+      goto exit;
+    }
 
   /* Ищем канал для записи данных или открываем новый. */
   channel_info = g_hash_table_lookup (priv->sonar_channels,
@@ -1196,11 +1223,17 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
   if (priv->db == NULL)
     return TRUE;
 
+  if ((priv->mode != HYSCAN_DATA_WRITER_RAW) && (priv->mode != HYSCAN_DATA_WRITER_BOTH))
+    return TRUE;
+
   g_mutex_lock (&priv->lock);
 
   /* Текущий галс. */
   if (priv->track_id < 0)
-    goto exit;
+    {
+      status = TRUE;
+      goto exit;
+    }
 
   /* Ищем канал для записи данных или открываем новый. */
   channel_info = g_hash_table_lookup (priv->sonar_channels,
@@ -1252,6 +1285,9 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
     }
 
   if (priv->db == NULL)
+    return TRUE;
+
+  if ((priv->mode != HYSCAN_DATA_WRITER_RAW) && (priv->mode != HYSCAN_DATA_WRITER_BOTH))
     return TRUE;
 
   g_mutex_lock (&priv->lock);
@@ -1345,6 +1381,9 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   if (priv->db == NULL)
     return TRUE;
 
+  if ((priv->mode != HYSCAN_DATA_WRITER_RAW) && (priv->mode != HYSCAN_DATA_WRITER_BOTH))
+    return TRUE;
+
   g_mutex_lock (&priv->lock);
 
   /* Ищем текущие параметры ВАРУ или создаём новую запись. */
@@ -1431,11 +1470,17 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
   if (priv->db == NULL)
     return TRUE;
 
+  if ((priv->mode != HYSCAN_DATA_WRITER_COMPUTED) && (priv->mode != HYSCAN_DATA_WRITER_BOTH))
+    return TRUE;
+
   g_mutex_lock (&priv->lock);
 
   /* Текущий галс. */
   if (priv->track_id < 0)
-    goto exit;
+    {
+      status = TRUE;
+      goto exit;
+    }
 
   /* Ищем канал для записи данных или открываем новый. */
   channel_info = g_hash_table_lookup (priv->sonar_channels,

@@ -21,6 +21,7 @@
  *
  * Для установки параметров записи предназначены функции:
  *
+ * - #hyscan_data_writer_set_mode - устанавливает режим записи данных \link HyScanDataWriterMode \endlink;
  * - #hyscan_data_writer_set_chunk_size - устанавливает максимальный размер файлов в галсе;
  * - #hyscan_data_writer_set_save_time - интервал времени, для которого сохраняются записываемые данные;
  * - #hyscan_data_writer_set_save_size - задаёт объём сохраняемых данных в канале.
@@ -58,6 +59,14 @@
 #include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
+
+/** \brief Режимы записи данных. */
+typedef enum
+{
+  HYSCAN_DATA_WRITER_RAW,                                      /**< Записывать только "сырые" данные. */
+  HYSCAN_DATA_WRITER_COMPUTED,                                 /**< Записывать только обработанные данные. */
+  HYSCAN_DATA_WRITER_BOTH                                      /**< Записывать оба типа данных. */
+} HyScanDataWriterMode;
 
 /** \brief Данные от гидролокатора и датчиков */
 typedef struct
@@ -152,6 +161,20 @@ gboolean               hyscan_data_writer_start                        (HyScanDa
  */
 HYSCAN_API
 void                   hyscan_data_writer_stop                         (HyScanDataWriter              *writer);
+
+/**
+ *
+ * Функция устанавливает режим записи данных от гидролокатора.
+ *
+ * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param mode режим записи данных \link HyScanDataWriterMode \endlink;
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+HYSCAN_API
+gboolean               hyscan_data_writer_set_mode                     (HyScanDataWriter              *writer,
+                                                                        HyScanDataWriterMode           mode);
 
 /**
  *
