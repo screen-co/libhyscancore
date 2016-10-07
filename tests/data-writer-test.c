@@ -898,7 +898,7 @@ main (int    argc,
 
   hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY);
 
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_BOTH))
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_BOTH))
     g_error ("can't set writer mode: both");
 
   /* Первый галс. */
@@ -928,7 +928,7 @@ main (int    argc,
   /* Третий галс - только сырые данные от гидролокатора. */
   g_message ("creating track-3");
   hyscan_data_writer_start (writer, PROJECT_NAME, "track-3", HYSCAN_TRACK_SURVEY);
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_RAW))
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_RAW))
     g_error ("can't set writer mode: raw");
 
   /* Запись данных. */
@@ -942,7 +942,7 @@ main (int    argc,
   /* Четвёртый галс - только обработанные данные от гидролокатора. */
   g_message ("creating track-4");
   hyscan_data_writer_start (writer, PROJECT_NAME, "track-4", HYSCAN_TRACK_SURVEY);
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_COMPUTED))
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_COMPUTED))
     g_error ("can't set writer mode: computed");
 
   /* Запись данных. */

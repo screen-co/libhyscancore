@@ -63,10 +63,12 @@ G_BEGIN_DECLS
 /** \brief Режимы записи данных. */
 typedef enum
 {
-  HYSCAN_DATA_WRITER_RAW,                                      /**< Записывать только "сырые" данные. */
-  HYSCAN_DATA_WRITER_COMPUTED,                                 /**< Записывать только обработанные данные. */
-  HYSCAN_DATA_WRITER_BOTH                                      /**< Записывать оба типа данных. */
-} HyScanDataWriterMode;
+  HYSCAN_DATA_WRITER_MODE_INVALID                      = 0,    /**< Недопустимый режим, ошибка. */
+
+  HYSCAN_DATA_WRITER_MODE_RAW                          = 101,  /**< Записывать только "сырые" данные. */
+  HYSCAN_DATA_WRITER_MODE_COMPUTED                     = 102,  /**< Записывать только обработанные данные. */
+  HYSCAN_DATA_WRITER_MODE_BOTH                         = 103   /**< Записывать оба типа данных. */
+} HyScanDataWriterModeType;
 
 /** \brief Данные от гидролокатора и датчиков */
 typedef struct
@@ -167,14 +169,14 @@ void                   hyscan_data_writer_stop                         (HyScanDa
  * Функция устанавливает режим записи данных от гидролокатора.
  *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param mode режим записи данных \link HyScanDataWriterMode \endlink;
+ * \param mode режим записи данных \link HyScanDataWriterModeType \endlink;
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
 HYSCAN_API
 gboolean               hyscan_data_writer_set_mode                     (HyScanDataWriter              *writer,
-                                                                        HyScanDataWriterMode           mode);
+                                                                        HyScanDataWriterModeType       mode);
 
 /**
  *
