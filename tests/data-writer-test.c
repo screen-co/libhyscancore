@@ -539,7 +539,7 @@ sensor_check_data (HyScanDB    *db,
 
   gint64 time;
   gchar buffer[1024];
-  gint32 data_size;
+  guint32 data_size;
 
   guint i;
 
@@ -605,7 +605,7 @@ sonar_check_data (HyScanDB    *db,
   HyScanSourceType source;
 
   gpointer buffer;
-  gint32 buffer_size;
+  guint32 buffer_size;
 
   guint i, j;
 
@@ -639,7 +639,7 @@ sonar_check_data (HyScanDB    *db,
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
     {
-      gint32 data_size = buffer_size;
+      guint32 data_size = buffer_size;
       guint16 *data_values = buffer;
       gint64 time;
 
@@ -671,7 +671,7 @@ sonar_check_data (HyScanDB    *db,
 
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
         {
-          gint32 data_size = buffer_size;
+          guint32 data_size = buffer_size;
           guint16 *data_values = buffer;
           gint64 time;
 
@@ -708,7 +708,7 @@ sonar_check_data (HyScanDB    *db,
       /* Проверка образов сигналов. */
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
         {
-          gint32 signal_size = buffer_size;
+          guint32 signal_size = buffer_size;
           HyScanComplexFloat *signal_points = buffer;
           gint64 time;
 
@@ -750,7 +750,7 @@ sonar_check_data (HyScanDB    *db,
       /* Проверка данных ВАРУ. */
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
         {
-          gint32 tvg_size = buffer_size;
+          guint32 tvg_size = buffer_size;
           float *tvg_gains = buffer;
           gint64 time;
 

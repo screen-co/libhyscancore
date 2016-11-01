@@ -219,11 +219,11 @@ gboolean               hyscan_raw_data_get_range               (HyScanRawData   
  * \param data указатель на объект \link HyScanRawData \endlink;
  * \param index индекс данных.
  *
- * \return Число точек для указанного индекса или отрицательное число в случае ошибки.
+ * \return Число точек для указанного индекса или ноль в случае ошибки.
  *
  */
 HYSCAN_API
-gint32                 hyscan_raw_data_get_values_count        (HyScanRawData         *data,
+guint32                hyscan_raw_data_get_values_count        (HyScanRawData         *data,
                                                                 gint32                 index);
 
 /**
@@ -299,7 +299,7 @@ HYSCAN_API
 gboolean               hyscan_raw_data_get_amplitude_values    (HyScanRawData         *data,
                                                                 gint32                 index,
                                                                 gfloat                *buffer,
-                                                                gint32                *buffer_size,
+                                                                guint32               *buffer_size,
                                                                 gint64                *time);
 
 /**
@@ -325,7 +325,7 @@ HYSCAN_API
 gboolean               hyscan_raw_data_get_quadrature_values   (HyScanRawData         *data,
                                                                 gint32                 index,
                                                                 HyScanComplexFloat    *buffer,
-                                                                gint32                *buffer_size,
+                                                                guint32               *buffer_size,
                                                                 gint64                *time);
 
 G_END_DECLS

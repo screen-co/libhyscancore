@@ -406,7 +406,7 @@ hyscan_location_geo_initialize (HyScanLocation *location,
   HyScanLocationPrivate *priv = location->priv;
   gint32 index;
   gchar *buffer;
-  gint32 buffer_size;
+  guint32 buffer_size;
   gint64 db_time;
 
   HyScanGeoGeodetic bla0;
@@ -1428,10 +1428,9 @@ hyscan_location_get_range (HyScanLocation *location,
   HyScanLocationPrivate *priv;
   HyScanLocationSourcesList *source_info;
 
-  gint32 data_range_first = 0,
-         data_range_last = 0,
-         size;
-
+  gint32 data_range_first = 0;
+  gint32 data_range_last = 0;
+  guint32 size;
 
   g_return_val_if_fail (HYSCAN_IS_LOCATION (location), FALSE);
   priv = location->priv;
@@ -1465,7 +1464,7 @@ hyscan_location_get_raw_data (HyScanLocation *location,
   HyScanLocationInternalData latlong;
 
   gchar *buffer = NULL;
-  gint32 buffer_size = 0;
+  guint32 buffer_size = 0;
 
   gint64 db_time = 0;
 

@@ -196,9 +196,9 @@ int main( int argc, char **argv )
      начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
   {
 
-    gint32 signal_size = discretization * duration;
-    gint32 data_size = 100 * signal_size;
-    gint32 readings;
+    guint32 signal_size = discretization * duration;
+    guint32 data_size = 100 * signal_size;
+    guint32 readings;
 
     gfloat *amp1;
     gfloat *amp2;

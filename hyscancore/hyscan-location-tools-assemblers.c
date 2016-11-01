@@ -13,7 +13,7 @@ hyscan_location_assembler_datetime (HyScanDB *db,
                                     gint32    source,
                                     gint64    index)
 {
-  gint32 buffer_size;
+  guint32 buffer_size;
   HyScanLocationInternalTime datetime;
   gint64 db_time;
   gchar *buffer = NULL;
@@ -47,7 +47,7 @@ hyscan_location_assembler_latlong (HyScanDB *db,
 
   HyScanLocationInternalData latlong;
 
-  gint32 buffer_size;
+  guint32 buffer_size;
   gint64 db_time;
   gchar *buffer = NULL;
 
@@ -102,7 +102,7 @@ hyscan_location_assembler_altitude (HyScanDB *db,
                                     gint32    source,
                                     gint64    index)
 {
-  gint32 buffer_size;
+  guint32 buffer_size;
   HyScanLocationInternalData altitude;
   gint64 db_time;
   gchar *buffer = NULL;
@@ -131,7 +131,7 @@ hyscan_location_assembler_track (HyScanDB *db,
                                  gint32    source,
                                  gint64    index)
 {
-  gint32 buffer_size;
+  guint32 buffer_size;
   gint32 i;
   HyScanLocationInternalData track;
 
@@ -188,7 +188,7 @@ hyscan_location_assembler_roll (HyScanDB *db,
                                 gint32    source,
                                 gint64    index)
 {
-  gint32 buffer_size;
+  guint32 buffer_size;
   HyScanLocationInternalData roll;
   gint64 db_time;
   gchar *buffer = NULL;
@@ -218,7 +218,7 @@ hyscan_location_assembler_pitch (HyScanDB *db,
                                  gint32    source,
                                  gint64    index)
 {
-  gint32 buffer_size;
+  guint32 buffer_size;
   HyScanLocationInternalData pitch;
   gint64 db_time;
   gchar *buffer = NULL;
@@ -250,7 +250,7 @@ hyscan_location_assembler_speed (HyScanDB *db,
 {
   HyScanLocationUserParameters *param_info;
 
-  gint32 buffer_size;
+  guint32 buffer_size;
   HyScanLocationInternalData speed;
   gint64 db_time;
   gchar *buffer = NULL;
@@ -308,7 +308,7 @@ hyscan_location_assembler_depth (HyScanDB *db,
 {
   HyScanLocationInternalData depth;
   gint64 db_time;
-  gint32 buffer_size;
+  guint32 buffer_size;
   gchar *char_buffer = NULL;
   gfloat *float_buffer = NULL;
 

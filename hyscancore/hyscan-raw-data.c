@@ -112,7 +112,7 @@ static gboolean        hyscan_raw_data_check_cache             (HyScanRawDataPri
                                                                 gint32                         index,
                                                                 gint                           data_type,
                                                                 gpointer                       buffer,
-                                                                gint32                        *buffer_size,
+                                                                guint32                       *buffer_size,
                                                                 gint64                        *time);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanRawData, hyscan_raw_data, G_TYPE_OBJECT);
@@ -629,7 +629,7 @@ hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
                                gint32                index,
                                gint64               *time)
 {
-  gint32 io_size;
+  guint32 io_size;
   gboolean status;
 
   /* Считываем данные канала. */
@@ -816,7 +816,7 @@ hyscan_raw_data_check_cache (HyScanRawDataPrivate *priv,
                                  gint              data_type,
                                  gint32            index,
                                  gpointer          buffer,
-                                 gint32           *buffer_size,
+                                 guint32          *buffer_size,
                                  gint64           *time)
 {
   gint64 cached_time;
@@ -968,11 +968,11 @@ hyscan_raw_data_get_range (HyScanRawData *data,
 }
 
 /* Функция возвращает число точек данных для указанного индекса. */
-gint32
+guint32
 hyscan_raw_data_get_values_count (HyScanRawData *data,
                                   gint32         index)
 {
-  gint32 dsize = -1;
+  guint32 dsize;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
@@ -986,7 +986,7 @@ hyscan_raw_data_get_values_count (HyScanRawData *data,
     }
   else
     {
-      dsize = -1;
+      dsize = 0;
     }
 
   return dsize;
@@ -997,7 +997,7 @@ gint64
 hyscan_raw_data_get_time (HyScanRawData *data,
                           gint32         index)
 {
-  gint32 dsize;
+  guint32 dsize;
   gint64 time;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
@@ -1050,7 +1050,7 @@ gboolean
 hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
                                       gint32         index,
                                       gfloat        *buffer,
-                                      gint32        *buffer_size,
+                                      guint32       *buffer_size,
                                       gint64        *time)
 {
   HyScanRawDataPrivate *priv;
@@ -1105,7 +1105,7 @@ gboolean
 hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
                                        gint32              index,
                                        HyScanComplexFloat *buffer,
-                                       gint32             *buffer_size,
+                                       guint32            *buffer_size,
                                        gint64             *time)
 {
   HyScanRawDataPrivate *priv;
