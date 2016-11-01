@@ -12,12 +12,13 @@
  *
  * Для управления записью предназначены функции:
  *
+ * - #hyscan_data_writer_project_create - создаёт новый проект;
  * - #hyscan_data_writer_start - включает запись данных;
  * - #hyscan_data_writer_stop - останавливает запись данных.
  *
  * При вызове функции #hyscan_data_writer_start создаётся новый галс, в который ничаниется запись
  * данных. Эту функцию можно вызывать если запись уже включена. В этом случае произойдёт переключение
- * записываемого галса.
+ * записываемого галса. Функция автоматически создаёт проект, если он еще не был создан.
  *
  * Для установки параметров записи предназначены функции:
  *
@@ -133,6 +134,20 @@ GType                  hyscan_data_writer_get_type                     (void);
  */
 HYSCAN_API
 HyScanDataWriter      *hyscan_data_writer_new                          (HyScanDB                      *db);
+
+/**
+ *
+ * Функция создаёт новый проект в системе хранения.
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
+ * \param project_name название проекта.
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+HYSCAN_API
+gboolean               hyscan_data_writer_project_create               (HyScanDB                      *db,
+                                                                        const gchar                   *project_name);
 
 /**
  *

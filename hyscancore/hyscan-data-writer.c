@@ -472,17 +472,11 @@ hyscan_data_writer_track_create (HyScanDB        *db,
   gint32 param_id = -1;
 
   const gchar *track_type_name;
-  GBytes *project_schema;
   GBytes *track_schema;
 
-  /* Схема проекта. */
-  project_schema = g_resources_lookup_data ("/org/hyscan/schemas/project-schema.xml",
-                                            G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
-  if (project_schema == NULL)
-    {
-      g_warning ("HyScanCore: can't find project schema");
-      return FALSE;
-    }
+  /* Создаём проект, если он еще не создан. */
+  if (!hyscan_data_writer_project_create (db, project_name))
+    return FALSE;
 
   /* Схема галса. */
   track_schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml",
@@ -493,10 +487,8 @@ hyscan_data_writer_track_create (HyScanDB        *db,
       return FALSE;
     }
 
-  /* Создаём проект, если он еще не создан. */
-  project_id = hyscan_db_project_create (db, project_name, g_bytes_get_data (project_schema, NULL));
-  if (project_id == 0)
-    project_id = hyscan_db_project_open (db, project_name);
+  /* Открываем проект. */
+  project_id = hyscan_db_project_open (db, project_name);
   if (project_id < 0)
     goto exit;
 
@@ -519,7 +511,6 @@ hyscan_data_writer_track_create (HyScanDB        *db,
   status = TRUE;
 
 exit:
-  g_clear_pointer (&project_schema, g_bytes_unref);
   g_clear_pointer (&track_schema, g_bytes_unref);
 
   if (project_id > 0)
@@ -814,6 +805,34 @@ hyscan_data_writer_new (HyScanDB *db)
   return g_object_new (HYSCAN_TYPE_DATA_WRITER,
                        "db", db,
                        NULL);
+}
+
+/* Функция создаёт новый проект в системе хранения. */
+gboolean
+hyscan_data_writer_project_create (HyScanDB    *db,
+                                   const gchar *project_name)
+{
+  gboolean status = FALSE;
+  GBytes *project_schema;
+  gint32 project_id;
+
+  /* Схема проекта. */
+  project_schema = g_resources_lookup_data ("/org/hyscan/schemas/project-schema.xml",
+                                            G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+  if (project_schema == NULL)
+    {
+      g_warning ("HyScanCore: can't find project schema");
+      return FALSE;
+    }
+
+  project_id = hyscan_db_project_create (db, project_name, g_bytes_get_data (project_schema, NULL));
+  if (project_id >= 0)
+    status = TRUE;
+
+  g_clear_pointer (&project_schema, g_bytes_unref);
+  hyscan_db_close (db, project_id);
+
+  return status;
 }
 
 /* Функция включает запись данных. */
