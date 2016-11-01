@@ -472,23 +472,41 @@ hyscan_data_writer_track_create (HyScanDB        *db,
   gint32 param_id = -1;
 
   const gchar *track_type_name;
-  GBytes *schema;
+  GBytes *project_schema;
+  GBytes *track_schema;
 
-  schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml", G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
-  if (schema == NULL)
+  /* Схема проекта. */
+  project_schema = g_resources_lookup_data ("/org/hyscan/schemas/project-schema.xml",
+                                            G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+  if (project_schema == NULL)
+    {
+      g_warning ("HyScanCore: can't find project schema");
+      return FALSE;
+    }
+
+  /* Схема галса. */
+  track_schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml",
+                                          G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+  if (track_schema == NULL)
     {
       g_warning ("HyScanCore: can't find track schema");
       return FALSE;
     }
 
-  project_id = hyscan_db_project_open (db, project_name);
-  if (project_id <= 0)
+  /* Создаём проект, если он еще не создан. */
+  project_id = hyscan_db_project_create (db, project_name, g_bytes_get_data (project_schema, NULL));
+  if (project_id == 0)
+    project_id = hyscan_db_project_open (db, project_name);
+  if (project_id < 0)
     goto exit;
 
-  track_id = hyscan_db_track_create (db, project_id, track_name, g_bytes_get_data (schema, NULL), TRACK_SCHEMA);
+  /* Создаём галс. Галс не должен существовать. */
+  track_id = hyscan_db_track_create (db, project_id, track_name,
+                                     g_bytes_get_data (track_schema, NULL), TRACK_SCHEMA);
   if (track_id <= 0)
     goto exit;
 
+  /* Параметры галса. */
   param_id = hyscan_db_track_param_open (db, track_id);
   if (param_id <= 0)
     goto exit;
@@ -501,15 +519,19 @@ hyscan_data_writer_track_create (HyScanDB        *db,
   status = TRUE;
 
 exit:
-  g_clear_pointer (&schema, g_bytes_unref);
+  g_clear_pointer (&project_schema, g_bytes_unref);
+  g_clear_pointer (&track_schema, g_bytes_unref);
+
   if (project_id > 0)
     hyscan_db_close (db, project_id);
+
   if (param_id > 0)
     hyscan_db_close (db, param_id);
+
   if ((!status) && (track_id > 0))
     {
       hyscan_db_close (db, track_id);
-      return -1;
+      track_id = -1;
     }
 
   return track_id;

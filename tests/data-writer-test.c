@@ -861,11 +861,6 @@ main (int    argc,
   if (db == NULL)
     g_error ("can't open db at: %s", argv[1]);
 
-  /* Создаём новый проект. */
-  project_id = hyscan_db_project_create (db, PROJECT_NAME, NULL);
-  if (project_id < 0)
-    g_error ("can't create project '%s'", PROJECT_NAME);
-
   /* Объект записи данных. */
   writer = hyscan_data_writer_new (db);
 
@@ -957,7 +952,14 @@ main (int    argc,
   hyscan_data_writer_stop (writer);
 
   /* Проверяем записанные данные. */
+  project_id = hyscan_db_project_open (db, PROJECT_NAME);
+  if (project_id < 0)
+    g_error ("can't open project '%s'", PROJECT_NAME);
+
   track_id = hyscan_db_track_open (db, project_id, "track-0");
+  if (track_id < 0)
+    g_error ("can't open track 'track-0'");
+
   if (hyscan_db_channel_list (db, track_id) != NULL)
     g_error ("track-0 isn't empty");
   hyscan_db_close (db, track_id);

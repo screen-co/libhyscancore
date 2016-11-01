@@ -11,9 +11,13 @@
 #ifndef __HYSCAN_CORE_SCHEMAS_H__
 #define __HYSCAN_CORE_SCHEMAS_H__
 
+#define PROJECT_SCHEMA_ID                      5567935968311267914
+#define PROJECT_SCHEMA_VERSION                 20160100
+
 #define TRACK_SCHEMA_ID                        5567935968310940244
 #define TRACK_SCHEMA_VERSION                   20160100
 
+#define PROJECT_SCHEMA                         "project"
 #define TRACK_SCHEMA                           "track"
 #define SENSOR_CHANNEL_SCHEMA                  "sensor"
 #define RAW_CHANNEL_SCHEMA                     "raw"

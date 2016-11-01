@@ -11,6 +11,9 @@ add_custom_command (OUTPUT ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
                             hyscan-core-resources.xml
                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
                     DEPENDS hyscan-core-resources.xml
+                    DEPENDS location-schema.xml
+                    DEPENDS project-schema.xml
+                    DEPENDS track-schema.xml
                     VERBATIM)
 
 add_library (hyscancore SHARED

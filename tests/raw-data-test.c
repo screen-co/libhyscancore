@@ -33,8 +33,6 @@ int main( int argc, char **argv )
 
   gboolean status;
 
-  gint32 project_id;
-
   {
     gchar **args;
     GError *error = NULL;
@@ -103,11 +101,6 @@ int main( int argc, char **argv )
   /* Кэш данных */
   if (cache_size)
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
-
-  /* Создаём проект. */
-  project_id = hyscan_db_project_create (db, PROJECT_NAME, NULL);
-  if (project_id < 0)
-    g_error( "can't create project");
 
   /* Объект записи данных */
   writer = hyscan_data_writer_new (db);
@@ -250,8 +243,6 @@ int main( int argc, char **argv )
 
   g_clear_object (&writer);
   g_clear_object (&reader);
-
-  hyscan_db_close (db, project_id);
 
   hyscan_db_project_remove (db, PROJECT_NAME);
 
