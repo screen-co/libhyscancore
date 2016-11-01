@@ -940,6 +940,18 @@ hyscan_raw_data_get_info (HyScanRawData *data)
   return data->priv->info;
 }
 
+/* Функция определяет возможность изменения акустических данных. */
+gboolean
+hyscan_raw_data_is_writable (HyScanRawData *data)
+{
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
+
+  if (data->priv->channel_id < 0)
+    return FALSE;
+
+  return hyscan_db_channel_is_writable (data->priv->db, data->priv->channel_id);
+}
+
 /* Функция возвращает диапазон значений индексов записанных данных. */
 gboolean
 hyscan_raw_data_get_range (HyScanRawData *data,

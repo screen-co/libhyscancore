@@ -20,6 +20,10 @@
  * Местоположение приёмной антенны гидролокатора можно получить функцией #hyscan_raw_data_get_position.
  * Параметры данных можно получить функцией #hyscan_raw_data_get_info.
  *
+ * Класс поддерживает обработку данных, запись которых производится в настоящий момент. В этом случае
+ * могут появляться новые данные или исчезать уже записанные. Определить возможность изменения данных
+ * можно с помощью функции #hyscan_raw_data_is_writable.
+ *
  * Функции #hyscan_raw_data_get_range и #hyscan_raw_data_find_data используются для определения
  * границ записанных данных и их поиска по метке времени. Эти функции аналогичны функциям
  * \link hyscan_db_channel_get_data_range \endlink и \link hyscan_db_channel_find_data \endlink интерфейса
@@ -176,6 +180,20 @@ HyScanAntennaPosition  hyscan_raw_data_get_position            (HyScanRawData   
  */
 HYSCAN_API
 HyScanRawDataInfo      hyscan_raw_data_get_info                (HyScanRawData         *data);
+
+/**
+ *
+ * Функция определяет возможность изменения акустических данных. Если функция вернёт
+ * значение TRUE, возможна ситуация когда могут появиться новые данные или исчезнуть
+ * уже записанные.
+ *
+ * \param data указатель на объект \link HyScanRawData \endlink.
+ *
+ * \return TRUE - если возможна запись данных, FALSE - если данные в режиме только чтения.
+ *
+ */
+HYSCAN_API
+gboolean               hyscan_raw_data_is_writable             (HyScanRawData         *data);
 
 /**
  *
