@@ -496,7 +496,7 @@ sonar_add_data (HyScanDataWriter *writer,
 
               tvg.time = timestamp + i;
 
-              hyscan_data_writer_raw_add_tvg (writer, source, &tvg);
+              hyscan_data_writer_raw_add_tvg (writer, source, 1, &tvg);
             }
         }
 

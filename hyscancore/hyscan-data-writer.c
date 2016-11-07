@@ -688,13 +688,13 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
 
       if (!status)
         {
-          g_warning ("HyScanDataWriter: can't add signal in channel '%s'", channel_info->name);
+          g_warning ("HyScanDataWriter: can't add signal to channel '%s'", channel_info->name);
           goto exit;
         }
     }
 
   /* Записываем параметры ВАРУ. */
-  tvg = g_hash_table_lookup (priv->tvg, GINT_TO_POINTER (source));
+  tvg = g_hash_table_lookup (priv->tvg, hyscan_data_writer_uniq_channel (source, TRUE, channel));
   if (tvg != NULL && tvg->n_gains > 0)
     {
       if (!hyscan_data_writer_channel_set_tvg_info (priv->db, channel_info->tvg_id, tvg->rate))
@@ -710,7 +710,7 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
 
       if (!status)
         {
-          g_warning ("HyScanDataWriter: can't add tvg in channel '%s'", channel_info->name);
+          g_warning ("HyScanDataWriter: can't add tvg to channel '%s'", channel_info->name);
           goto exit;
         }
     }
@@ -1383,7 +1383,7 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
           status = hyscan_db_channel_add_data (priv->db, channel_info->signal_id,
                                                cur_signal->time, points, size, NULL);
           if (!status)
-            g_warning ("HyScanDataWriter: can't add signal in channel '%s'", channel_info->name);
+            g_warning ("HyScanDataWriter: can't add signal to channel '%s'", channel_info->name);
         }
       else
         {
@@ -1400,13 +1400,13 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
 gboolean
 hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
                                 HyScanSourceType      source,
+                                guint                 channel,
                                 HyScanDataWriterTVG  *tvg)
 {
   HyScanDataWriterPrivate *priv;
+  HyScanDataWriterSonarChannel *channel_info;
   HyScanDataWriterTVG *cur_tvg;
-
-  GHashTableIter iter;
-  gpointer data;
+  gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
 
@@ -1428,11 +1428,11 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   g_mutex_lock (&priv->lock);
 
   /* Ищем текущие параметры ВАРУ или создаём новую запись. */
-  cur_tvg = g_hash_table_lookup (priv->tvg, GINT_TO_POINTER (source));
+  cur_tvg = g_hash_table_lookup (priv->tvg, hyscan_data_writer_uniq_channel (source, TRUE, channel));
   if (cur_tvg == NULL)
     {
       cur_tvg = g_new0 (HyScanDataWriterTVG, 1);
-      g_hash_table_insert (priv->tvg, GINT_TO_POINTER (source), cur_tvg);
+      g_hash_table_insert (priv->tvg, hyscan_data_writer_uniq_channel (source, TRUE, channel), cur_tvg);
     }
 
   /* Освобождаем память занятую предыдущими параметрами ВАРУ. */
@@ -1445,28 +1445,21 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   cur_tvg->n_gains = tvg->n_gains;
   cur_tvg->gains = g_memdup (tvg->gains, tvg->n_gains * sizeof (gfloat));
 
-  /* Записываем параметры ВАРУ в каналы с "сырыми" данными от текущего источника. */
-  g_hash_table_iter_init (&iter, priv->sonar_channels);
-  while (g_hash_table_iter_next (&iter, NULL, &data))
+  /* Записываем параметры ВАРУ в канал с "сырыми" данными от текущего источника. */
+  channel_info = g_hash_table_lookup (priv->sonar_channels,
+                                      hyscan_data_writer_uniq_channel (source, TRUE, channel));
+  if ((channel_info != NULL) && (channel_info->raw_source == source))
     {
-      HyScanDataWriterSonarChannel *channel_info = data;
-
-      /* Проверяем тип источника. */
-      if (channel_info->raw_source != source)
-        continue;
-
       /* Частота дискретизации должна совпадать. */
       if (channel_info->tvg_rate == 0.0 ||
           channel_info->tvg_rate == cur_tvg->rate)
         {
-          gboolean status;
-
           /* Первая запись параметров ВАРУ - устанавливаем значения параметров дискретизации. */
           if (channel_info->tvg_rate == 0.0)
             if (!hyscan_data_writer_channel_set_tvg_info (priv->db, channel_info->tvg_id, cur_tvg->rate))
               {
                 channel_info->tvg_rate = -1.0;
-                continue;
+                goto exit;
               }
 
           status = hyscan_db_channel_add_data (priv->db, channel_info->tvg_id,
@@ -1474,7 +1467,7 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
                                                cur_tvg->n_gains * sizeof (gfloat), NULL);
 
           if (!status)
-            g_warning ("HyScanDataWriter: can't add tvg in channel '%s'", channel_info->name);
+            g_warning ("HyScanDataWriter: can't add tvg to channel '%s'", channel_info->name);
         }
       else
         {
@@ -1482,9 +1475,10 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
         }
     }
 
+exit:
   g_mutex_unlock (&priv->lock);
 
-  return TRUE;
+  return status;
 }
 
 gboolean

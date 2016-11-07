@@ -358,12 +358,13 @@ gboolean               hyscan_data_writer_raw_add_signal               (HyScanDa
 
 /**
  *
- * Функция устанавливает значения параметров усиления ВАРУ для указанного источника данных.
+ * Функция устанавливает значения параметров усиления ВАРУ для указанного канала данных.
  * Эта информация записывает в базу данных для "сырых" гидролокационных данных с указанным
- * типом источника данных
+ * типом источника данных и индексом канала.
  *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
+ * \param channel индекс канала данных, начиная с 1;
  * \param tvg параметры усиления ВАРУ.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
@@ -372,6 +373,7 @@ gboolean               hyscan_data_writer_raw_add_signal               (HyScanDa
 HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
+                                                                        guint                          channel,
                                                                         HyScanDataWriterTVG           *tvg);
 
 /**
