@@ -861,7 +861,7 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
 
   /* Создаём новый галс. */
   priv->track_id = hyscan_data_writer_track_create (priv->db, project_name, track_name, track_type);
-  if (priv->track_id < 0)
+  if (priv->track_id <= 0)
     goto exit;
 
   status = TRUE;
