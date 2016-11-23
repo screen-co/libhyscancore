@@ -891,14 +891,16 @@ main (int    argc,
       sonar_add_data  (writer, 0, i, FALSE);
     }
 
-  hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start writer");
 
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_BOTH))
     g_error ("can't set writer mode: both");
 
   /* Первый галс. */
   g_message ("creating track-1");
-  hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start writer");
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -910,7 +912,8 @@ main (int    argc,
 
   /* Второй галс. */
   g_message ("creating track-2");
-  hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start writer");
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -922,7 +925,9 @@ main (int    argc,
 
   /* Третий галс - только сырые данные от гидролокатора. */
   g_message ("creating track-3");
-  hyscan_data_writer_start (writer, PROJECT_NAME, "track-3", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-3", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start writer");
+
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_RAW))
     g_error ("can't set writer mode: raw");
 
@@ -936,7 +941,9 @@ main (int    argc,
 
   /* Четвёртый галс - только обработанные данные от гидролокатора. */
   g_message ("creating track-4");
-  hyscan_data_writer_start (writer, PROJECT_NAME, "track-4", HYSCAN_TRACK_SURVEY);
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-4", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start writer");
+
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_COMPUTED))
     g_error ("can't set writer mode: computed");
 
@@ -947,6 +954,11 @@ main (int    argc,
       sonar_add_data  (writer, 4000, i, TRUE);
       sonar_add_data  (writer, 4000, i, FALSE);
     }
+
+  /* Дублирование галса. */
+  g_message ("duplicate track-0");
+  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
+    g_error ("can duplicate track");
 
   /* Отключаем запись. */
   hyscan_data_writer_stop (writer);
