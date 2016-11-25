@@ -128,13 +128,13 @@ typedef struct
   gint32                        channel_id;                     /*< Идентификатор открытого КД (для работы с не-акустическими данными). */
   gint32                        param_id;                       /*< Идентификатор параметров КД (для работы с не-акустическими данными). */
 
-  gint32                        shift;                          /*< Сдвиг (по сути, индекс самого первого элемента в КД). */
-  gint32                        db_index;                       /*< Индекс данных в БД. */
-  gint32                        assembler_index;                /*< Индекс сборщика данных. */
-  gint32                        preprocessing_index;            /*< Индекс предобработчика данных. */
-  gint32                        thresholder_prev_index;         /*< Индекс предыдущей точки для функции #hyscan_location_thresholder2. */
-  gint32                        thresholder_next_index;         /*< Индекс следующей точки для функции #hyscan_location_thresholder2. */
-  gint32                        processing_index;               /*< Индекс обработчика данных. */
+  guint32                       shift;                          /*< Сдвиг (по сути, индекс самого первого элемента в КД). */
+  guint32                       db_index;                       /*< Индекс данных в БД. */
+  guint32                       assembler_index;                /*< Индекс сборщика данных. */
+  guint32                       preprocessing_index;            /*< Индекс предобработчика данных. */
+  guint32                       thresholder_prev_index;         /*< Индекс предыдущей точки для функции #hyscan_location_thresholder2. */
+  guint32                       thresholder_next_index;         /*< Индекс следующей точки для функции #hyscan_location_thresholder2. */
+  guint32                       processing_index;               /*< Индекс обработчика данных. */
 
   gdouble                       x;                              /*< Параметр датчика. */
   gdouble                       y;                              /*< Параметр датчика. */
@@ -414,13 +414,13 @@ gboolean                        hyscan_location_thresholder             (GArray 
  * \param quality качество (степень сглаживания).
  *
  */
-gboolean                        hyscan_location_thresholder2            (GArray  *source,
-                                                                         gint32  *point2,
-                                                                         gint32   point3,
-                                                                         gint32  *point4,
-                                                                         gint32   last_index,
-                                                                         gboolean is_writeable,
-                                                                         gdouble  quality);
+gboolean                        hyscan_location_thresholder2            (GArray   *source,
+                                                                         guint32  *point2,
+                                                                         guint32   point3,
+                                                                         guint32  *point4,
+                                                                         guint32   last_index,
+                                                                         gboolean  is_writeable,
+                                                                         gdouble   quality);
 
 /*
  *

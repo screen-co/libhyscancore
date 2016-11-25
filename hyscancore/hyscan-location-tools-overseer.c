@@ -23,16 +23,16 @@ hyscan_location_overseer_datetime (HyScanDB                    *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
   gint i;
   HyScanLocationInternalTime  datetime, *datetime_p;
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   gint64 time_shift;
 
   gint32 channel_id = source_info->channel_id;
 
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *shift = &(source_info->shift);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
 
   GArray *cache = caches->datetime_cache;
   if (source != -1)
@@ -41,7 +41,7 @@ hyscan_location_overseer_datetime (HyScanDB                    *db,
       status = hyscan_db_channel_get_data_range (db, channel_id, &data_range_first, &data_range_last);
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -116,8 +116,8 @@ hyscan_location_overseer_latlong (HyScanDB                    *db,
   GArray *cache = caches->latlong_cache;
   GArray *datetime_cache = caches->datetime_cache;
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   gint i;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -128,13 +128,13 @@ hyscan_location_overseer_latlong (HyScanDB                    *db,
   HyScanLocationInternalData  latlong, *latlong_p;
 
   gint32 channel_id = source_info->channel_id;
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
-  gint32 *preprocessing_index = &(source_info->preprocessing_index);
-  gint32 *thresholder_prev_index = &(source_info->thresholder_prev_index);
-  gint32 *thresholder_next_index = &(source_info->thresholder_next_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
+  guint32 *preprocessing_index = &(source_info->preprocessing_index);
+  guint32 *thresholder_prev_index = &(source_info->thresholder_prev_index);
+  guint32 *thresholder_next_index = &(source_info->thresholder_next_index);
 
   gboolean thresholder_status = TRUE;
   gboolean is_writeable = FALSE;
@@ -146,7 +146,7 @@ hyscan_location_overseer_latlong (HyScanDB                    *db,
       is_writeable = hyscan_db_channel_is_writable (db, channel_id);
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -253,17 +253,17 @@ hyscan_location_overseer_altitude (HyScanDB                    *db,
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
 
   HyScanLocationInternalData  altitude, *altitude_p;
 
   gint32 channel_id = source_info->channel_id;
 
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
 
   if (source != -1)
     {
@@ -271,7 +271,7 @@ hyscan_location_overseer_altitude (HyScanDB                    *db,
       status = hyscan_db_channel_get_data_range (db, channel_id, &data_range_first, &data_range_last);
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -333,8 +333,8 @@ hyscan_location_overseer_track (HyScanDB                    *db,
 
   HyScanLocationInternalData  track, *track_p;
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   gint i;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
@@ -343,13 +343,13 @@ hyscan_location_overseer_track (HyScanDB                    *db,
   GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
-  gint32 *preprocessing_index = &(source_info->preprocessing_index);
-  gint32 *thresholder_prev_index = &(source_info->thresholder_prev_index);
-  gint32 *thresholder_next_index = &(source_info->thresholder_next_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
+  guint32 *preprocessing_index = &(source_info->preprocessing_index);
+  guint32 *thresholder_prev_index = &(source_info->thresholder_prev_index);
+  guint32 *thresholder_next_index = &(source_info->thresholder_next_index);
 
   gboolean thresholder_status = TRUE;
   gboolean is_writeable = FALSE;
@@ -361,7 +361,7 @@ hyscan_location_overseer_track (HyScanDB                    *db,
       is_writeable = hyscan_db_channel_is_writable (db, channel_id);
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -481,8 +481,8 @@ hyscan_location_overseer_roll (HyScanDB                    *db,
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   gint i;
 
   HyScanLocationInternalData *roll_p, roll;
@@ -491,17 +491,17 @@ hyscan_location_overseer_roll (HyScanDB                    *db,
   GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
 
   if (source != -1)
     {
       /* 1. Смотрим, сколько у нас есть данных в канале. */
       status = hyscan_db_channel_get_data_range (db, channel_id, &data_range_first, &data_range_last);
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -575,8 +575,8 @@ hyscan_location_overseer_pitch (HyScanDB                    *db,
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   gint i;
 
   HyScanLocationInternalData *pitch_p, pitch;
@@ -585,10 +585,10 @@ hyscan_location_overseer_pitch (HyScanDB                    *db,
   GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
 
   if (source != -1)
     {
@@ -596,7 +596,7 @@ hyscan_location_overseer_pitch (HyScanDB                    *db,
       status = hyscan_db_channel_get_data_range (db, channel_id, &data_range_first, &data_range_last);
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -669,8 +669,8 @@ hyscan_location_overseer_speed (HyScanDB                    *db,
   GArray *cache = caches->speed_cache;
   GArray *datetime_cache = caches->datetime_cache;
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   gint i;
 
   HyScanLocationInternalData *speed_p, speed;
@@ -681,13 +681,13 @@ hyscan_location_overseer_speed (HyScanDB                    *db,
   GArray *params_temp = NULL;
 
   gint32 channel_id = source_info->channel_id;
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
-  gint32 *preprocessing_index = &(source_info->preprocessing_index);
-  gint32 *thresholder_prev_index = &(source_info->thresholder_prev_index);
-  gint32 *thresholder_next_index = &(source_info->thresholder_next_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
+  guint32 *preprocessing_index = &(source_info->preprocessing_index);
+  guint32 *thresholder_prev_index = &(source_info->thresholder_prev_index);
+  guint32 *thresholder_next_index = &(source_info->thresholder_next_index);
 
   gboolean thresholder_status = TRUE;
   gboolean is_writeable = FALSE;
@@ -699,7 +699,7 @@ hyscan_location_overseer_speed (HyScanDB                    *db,
       is_writeable = hyscan_db_channel_is_writable (db, channel_id);
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;
@@ -819,17 +819,17 @@ hyscan_location_overseer_depth (HyScanDB                    *db,
   GArray *cache = caches->depth_cache;
 
   HyScanLocationSourcesList *source_info = &g_array_index (source_list, HyScanLocationSourcesList, source);
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
 
   HyScanLocationInternalData *depth_p, depth;
 
   gint32 channel_id = source_info->channel_id;
 
-  gint32 *shift = &(source_info->shift);
-  gint32 *db_index = &(source_info->db_index);
-  gint32 *assembler_index = &(source_info->assembler_index);
-  gint32 *processing_index = &(source_info->processing_index);
+  guint32 *shift = &(source_info->shift);
+  guint32 *db_index = &(source_info->db_index);
+  guint32 *assembler_index = &(source_info->assembler_index);
+  guint32 *processing_index = &(source_info->processing_index);
 
   if (source != -1)
     {
@@ -853,7 +853,7 @@ hyscan_location_overseer_depth (HyScanDB                    *db,
         }
 
       /* 2. Устанавливаем сдвиг кэша и начальный индекс. */
-      if (status && *shift == -1)
+      if (status && *shift == G_MAXUINT32)
         {
           *shift = data_range_first;
           *db_index = data_range_first;

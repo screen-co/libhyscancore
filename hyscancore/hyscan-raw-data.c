@@ -67,7 +67,7 @@ struct _HyScanRawDataPrivate
   gint64               data_time;                              /* Метка времени обрабатываемых данных. */
 
   GArray              *signals;                                /* Массив объектов свёртки. */
-  gint32               last_signal_index;                      /* Индекс последнего загруженного сигнала. */
+  guint32              last_signal_index;                      /* Индекс последнего загруженного сигнала. */
   guint64              signals_mod_count;                      /* Номер изменений сигналов. */
   gint                 convolve;                               /* Выполнять или нет свёртку. */
 
@@ -664,8 +664,8 @@ hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
 static void
 hyscan_raw_data_load_signals (HyScanRawDataPrivate *priv)
 {
-  gint32 first_signal_index;
-  gint32 last_signal_index;
+  guint32 first_signal_index;
+  guint32 last_signal_index;
   guint64 signals_mod_count;
 
   gboolean status;
@@ -955,8 +955,8 @@ hyscan_raw_data_is_writable (HyScanRawData *data)
 /* Функция возвращает диапазон значений индексов записанных данных. */
 gboolean
 hyscan_raw_data_get_range (HyScanRawData *data,
-                           gint32        *first_index,
-                           gint32        *last_index)
+                           guint32       *first_index,
+                           guint32       *last_index)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
@@ -970,7 +970,7 @@ hyscan_raw_data_get_range (HyScanRawData *data,
 /* Функция возвращает число точек данных для указанного индекса. */
 guint32
 hyscan_raw_data_get_values_count (HyScanRawData *data,
-                                  gint32         index)
+                                  guint32        index)
 {
   guint32 dsize;
 
@@ -995,7 +995,7 @@ hyscan_raw_data_get_values_count (HyScanRawData *data,
 /* Функция возвращает время приёма данных для указанного индекса. */
 gint64
 hyscan_raw_data_get_time (HyScanRawData *data,
-                          gint32         index)
+                          guint32        index)
 {
   guint32 dsize;
   gint64 time;
@@ -1015,11 +1015,11 @@ hyscan_raw_data_get_time (HyScanRawData *data,
 }
 
 /* Функция ищет индекс данных для указанного момента времени. */
-gboolean
+HyScanDBFindStatus
 hyscan_raw_data_find_data (HyScanRawData *data,
                            gint64         time,
-                           gint32        *lindex,
-                           gint32        *rindex,
+                           guint32       *lindex,
+                           guint32       *rindex,
                            gint64        *ltime,
                            gint64        *rtime)
 {
@@ -1048,7 +1048,7 @@ hyscan_raw_data_set_convolve (HyScanRawData *data,
 /* Функция возвращает значения амплитуды акустического сигнала. */
 gboolean
 hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
-                                      gint32         index,
+                                      guint32        index,
                                       gfloat        *buffer,
                                       guint32       *buffer_size,
                                       gint64        *time)
@@ -1103,7 +1103,7 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
 /* Функция возвращает квадратурные отсчёты акустического сигнала. */
 gboolean
 hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
-                                       gint32              index,
+                                       guint32             index,
                                        HyScanComplexFloat *buffer,
                                        guint32            *buffer_size,
                                        gint64             *time)

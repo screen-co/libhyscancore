@@ -396,13 +396,13 @@ hyscan_location_thresholder (GArray  *source,
 
 /* Линеаризация трека. */
 gboolean
-hyscan_location_thresholder2 (GArray  *source,
-                              gint32  *point2,
-                              gint32   point3,
-                              gint32  *point4,
-                              gint32   last_index,
-                              gboolean is_writeable,
-                              gdouble  quality)
+hyscan_location_thresholder2 (GArray   *source,
+                              guint32  *point2,
+                              guint32   point3,
+                              guint32  *point4,
+                              guint32   last_index,
+                              gboolean  is_writeable,
+                              gdouble   quality)
 {
   HyScanLocationInternalData *p1, *p2, *p3, *p4;
 

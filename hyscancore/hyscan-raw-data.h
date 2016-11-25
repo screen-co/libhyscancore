@@ -209,8 +209,8 @@ gboolean               hyscan_raw_data_is_writable             (HyScanRawData   
  */
 HYSCAN_API
 gboolean               hyscan_raw_data_get_range               (HyScanRawData         *data,
-                                                                gint32                *first_index,
-                                                                gint32                *last_index);
+                                                                guint32               *first_index,
+                                                                guint32               *last_index);
 
 /**
  *
@@ -224,7 +224,7 @@ gboolean               hyscan_raw_data_get_range               (HyScanRawData   
  */
 HYSCAN_API
 guint32                hyscan_raw_data_get_values_count        (HyScanRawData         *data,
-                                                                gint32                 index);
+                                                                guint32                index);
 
 /**
  *
@@ -238,7 +238,7 @@ guint32                hyscan_raw_data_get_values_count        (HyScanRawData   
  */
 HYSCAN_API
 gint64                 hyscan_raw_data_get_time                (HyScanRawData         *data,
-                                                                gint32                 index);
+                                                                guint32                index);
 
 /**
  *
@@ -255,10 +255,10 @@ gint64                 hyscan_raw_data_get_time                (HyScanRawData   
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_find_data               (HyScanRawData         *data,
+HyScanDBFindStatus     hyscan_raw_data_find_data               (HyScanRawData         *data,
                                                                 gint64                 time,
-                                                                gint32                *lindex,
-                                                                gint32                *rindex,
+                                                                guint32               *lindex,
+                                                                guint32               *rindex,
                                                                 gint64                *ltime,
                                                                 gint64                *rtime);
 
@@ -297,7 +297,7 @@ void                   hyscan_raw_data_set_convolve            (HyScanRawData   
  */
 HYSCAN_API
 gboolean               hyscan_raw_data_get_amplitude_values    (HyScanRawData         *data,
-                                                                gint32                 index,
+                                                                guint32                index,
                                                                 gfloat                *buffer,
                                                                 guint32               *buffer_size,
                                                                 gint64                *time);
@@ -323,7 +323,7 @@ gboolean               hyscan_raw_data_get_amplitude_values    (HyScanRawData   
  */
 HYSCAN_API
 gboolean               hyscan_raw_data_get_quadrature_values   (HyScanRawData         *data,
-                                                                gint32                 index,
+                                                                guint32                index,
                                                                 HyScanComplexFloat    *buffer,
                                                                 guint32               *buffer_size,
                                                                 gint64                *time);

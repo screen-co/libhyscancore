@@ -1219,7 +1219,7 @@ hyscan_location_overseer (gpointer user_data)
           if (latlong_changed)
             {
               source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.latlong_source);
-              source_info->shift = -1;
+              source_info->shift = G_MAXUINT32;
               hyscan_location_overseer_latlong (priv->db,
                                                 priv->source_list,
                                                 priv->user_params,
@@ -1230,7 +1230,7 @@ hyscan_location_overseer (gpointer user_data)
           if (track_changed)
             {
               source_info = &g_array_index (priv->source_list, HyScanLocationSourcesList, priv->source_indices.track_source);
-              source_info->shift = -1;
+              source_info->shift = G_MAXUINT32;
               hyscan_location_overseer_track (priv->db,
                                               priv->source_list,
                                               priv->user_params,
@@ -1428,8 +1428,8 @@ hyscan_location_get_range (HyScanLocation *location,
   HyScanLocationPrivate *priv;
   HyScanLocationSourcesList *source_info;
 
-  gint32 data_range_first = 0;
-  gint32 data_range_last = 0;
+  guint32 data_range_first = 0;
+  guint32 data_range_last = 0;
   guint32 size;
 
   g_return_val_if_fail (HYSCAN_IS_LOCATION (location), FALSE);
@@ -1700,7 +1700,7 @@ hyscan_location_source_list_add (GArray                   *source_list,
 
   new_source.channel_id = 0;
   new_source.param_id = 0;
-  new_source.shift = -1;
+  new_source.shift = G_MAXUINT32;
   new_source.assembler_index = 0;
   new_source.preprocessing_index = 0;
   new_source.thresholder_prev_index = 0;

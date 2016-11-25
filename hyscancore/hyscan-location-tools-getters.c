@@ -314,6 +314,7 @@ hyscan_location_getter_gdouble2 (HyScanDB                    *db,
 
   HyScanLocationInternalData output = {HYSCAN_LOCATION_INTERNALDATA_INIT};
 
+  HyScanDBFindStatus find_status;
   HyScanLocationInternalData *p1, *p2;
   gdouble out_lat, out_lon;
   gdouble k_lat, k_lon, b_lat, b_lon;
@@ -321,12 +322,13 @@ hyscan_location_getter_gdouble2 (HyScanDB                    *db,
   gdouble t2 = 0;
   gdouble tout = 0;
 
-  gint32 lindex = 0;
-  gint32 rindex = 0;
+  guint32 lindex = 0;
+  guint32 rindex = 0;
   gint64 ltime = 0;
   gint64 rtime = 0;
 
-  if (!hyscan_db_channel_find_data (db, source_info->channel_id, time, &lindex, &rindex, &ltime, &rtime))
+  find_status = hyscan_db_channel_find_data (db, source_info->channel_id, time, &lindex, &rindex, &ltime, &rtime);
+  if (find_status != HYSCAN_DB_FIND_OK)
     return output;
   lindex -= source_info->shift;
   rindex -= source_info->shift;
