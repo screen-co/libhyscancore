@@ -1023,10 +1023,10 @@ hyscan_raw_data_find_data (HyScanRawData *data,
                            gint64        *ltime,
                            gint64        *rtime)
 {
-  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), HYSCAN_DB_FIND_FAIL);
 
   if (data->priv->channel_id < 0)
-    return FALSE;
+    return HYSCAN_DB_FIND_FAIL;
 
   return hyscan_db_channel_find_data (data->priv->db, data->priv->channel_id,
                                       time, lindex, rindex, ltime, rtime);
