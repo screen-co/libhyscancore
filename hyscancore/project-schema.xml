@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="schema">
-    <key id="id" name="Project schema id" type="integer" flags="readonly">
+    <key id="id" name="Project schema id" type="integer" access="readonly">
       <default>5567935968311267914</default>
     </key>
-    <key id="version" name="Project schema version" type="integer" flags="readonly">
+    <key id="version" name="Project schema version" type="integer" access="readonly">
       <default>20160100</default>
     </key>
   </schema>

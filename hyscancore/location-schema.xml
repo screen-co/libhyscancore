@@ -2,7 +2,7 @@
 <schemalist>
 
   <schema id="location-edit-latlong">
-    <key id="location-edit-version" name="Edit schema version" type="integer" flags="readonly">
+    <key id="location-edit-version" name="Edit schema version" type="integer" access="readonly">
       <default>20160500</default>
     </key>
     <key id="time" name="Time of point to edit" type="integer"/>
@@ -11,7 +11,7 @@
   </schema>
 
   <schema id="location-bulk-remove">
-    <key id="location-bulk-remove-version" name="Bulk remove schema version" type="integer" flags="readonly">
+    <key id="location-bulk-remove-version" name="Bulk remove schema version" type="integer" access="readonly">
       <default>20160500</default>
     </key>
       <key id="ltime" name="Time of first point to remove" type="integer"/>
