@@ -103,9 +103,9 @@ typedef enum
 {
   HYSCAN_TRACK_UNSPECIFIED                     = 0,            /**< Неопределённый тип. */
 
-  HYSCAN_TRACK_SURVEY                          = 101,          /**< Галс с данными съёмки. */
-  HYSCAN_TRACK_TACK                            = 102,          /**< Лавировочный галс. */
-  HYSCAN_TRACK_TRACK                           = 103           /**< Треки движения судна. */
+  HYSCAN_TRACK_CALIBRATION                     = 101,          /**< Галс с данными калибровки. */
+  HYSCAN_TRACK_SURVEY                          = 102,          /**< Галс с данными съёмки. */
+  HYSCAN_TRACK_TACK                            = 103,          /**< Лавировочный галс. */
 } HyScanTrackType;
 
 /** \brief Параметры местоположения приёмной антенны */

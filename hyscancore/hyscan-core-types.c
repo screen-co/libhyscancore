@@ -39,9 +39,9 @@ typedef struct
 /* Типы галсов и их названия. */
 static HyScanTrackTypeInfo hyscan_track_type_info[] =
 {
+  { 0, "calibration", HYSCAN_TRACK_CALIBRATION },
   { 0, "survey", HYSCAN_TRACK_SURVEY },
   { 0, "tack", HYSCAN_TRACK_TACK },
-  { 0, "track", HYSCAN_TRACK_TRACK },
 
   { 0, NULL, HYSCAN_TRACK_UNSPECIFIED }
 };

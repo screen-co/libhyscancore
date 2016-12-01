@@ -5,6 +5,7 @@
 #include <libxml/parser.h>
 #include <string.h>
 
+#define SONAR_INFO             "This is sonar info"
 #define PROJECT_NAME           "test"
 
 #define N_CHANNELS_PER_TYPE    4
@@ -122,6 +123,41 @@ acoustic_get_info (guint n_channel)
   info.antenna.pattern.horizontal = 0.2 * n_channel;
 
   return info;
+}
+
+/* Функция проверяет параметры галса. */
+void track_check_info (HyScanDB *db,
+                       gint32    track_id)
+{
+  gint32 param_id;
+
+  const gchar *param_names[3];
+  GVariant *param_values[3];
+
+  const gchar *track_type;
+  const gchar *track_info;
+
+  param_id = hyscan_db_track_param_open (db, track_id);
+  if (param_id < 0)
+    g_error ("can't open track parameters");
+
+  param_names[0] = "/info";
+  param_names[1] = "/type";
+  param_names[2] = NULL;
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
+    g_error ("can't read parameters");
+
+  track_info = g_variant_get_string (param_values[0], NULL);
+  track_type = g_variant_get_string (param_values[1], NULL);
+
+  if (g_strcmp0 (track_info, SONAR_INFO) != 0)
+    g_error ("sonar info error");
+
+  if (g_strcmp0 (track_type, hyscan_track_get_name_by_type (HYSCAN_TRACK_SURVEY)) != 0)
+    g_error ("track type error");
+
+  hyscan_db_close (db, param_id);
 }
 
 /* Функция проверяет параметры местоположения приёмной антенны. */
@@ -624,6 +660,9 @@ sonar_check_data (HyScanDB    *db,
   if (track_id < 0)
     g_error ("can't open track");
 
+  /* Проверка параметров галса. */
+  track_check_info (db, track_id);
+
   /* Проверка канала данных. */
   channel_id = hyscan_db_channel_open (db, track_id, channel_name);
   if (channel_id < 0)
@@ -863,6 +902,9 @@ main (int    argc,
 
   /* Объект записи данных. */
   writer = hyscan_data_writer_new (db);
+
+  /* Информация о гидролокаторе. */
+  hyscan_data_writer_set_sonar_info (writer, SONAR_INFO);
 
   /* Местоположение антенн "датчиков". */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)

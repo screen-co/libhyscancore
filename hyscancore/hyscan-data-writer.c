@@ -40,6 +40,8 @@ typedef struct
 
 struct _HyScanDataWriterPrivate
 {
+  gchar                       *info;                           /* Информация о гидролокаторе. */
+
   HyScanDB                    *db;                             /* Интерфейс системы хранения данных. */
   gint32                       track_id;                       /* Идентификатор галса для записи данных. */
 
@@ -97,6 +99,7 @@ static gboolean  hyscan_data_writer_channel_set_tvg_info       (HyScanDB        
                                                                 gdouble                        rate);
 
 static gint32    hyscan_data_writer_track_create               (HyScanDB                      *db,
+                                                                const gchar                   *info,
                                                                 const gchar                   *project_name,
                                                                 const gchar                   *track_name,
                                                                 HyScanTrackType                track_type);
@@ -207,6 +210,7 @@ hyscan_data_writer_object_finalize (GObject *object)
     hyscan_db_close (priv->db, priv->track_id);
 
   g_clear_object (&priv->db);
+  g_free (priv->info);
 
   g_mutex_clear (&priv->lock);
 
@@ -461,6 +465,7 @@ hyscan_data_writer_channel_set_tvg_info (HyScanDB *db,
 /* ункция создаёт галс в системе хранения. */
 static gint32
 hyscan_data_writer_track_create (HyScanDB        *db,
+                                 const gchar     *info,
                                  const gchar     *project_name,
                                  const gchar     *track_name,
                                  HyScanTrackType  track_type)
@@ -502,6 +507,10 @@ hyscan_data_writer_track_create (HyScanDB        *db,
   param_id = hyscan_db_track_param_open (db, track_id);
   if (param_id <= 0)
     goto exit;
+
+  if (info != NULL)
+    if (!hyscan_db_param_set_string (db, param_id, NULL, "/info", info))
+      goto exit;
 
   track_type_name = hyscan_track_get_name_by_type (track_type);
   if (track_type_name != NULL)
@@ -860,7 +869,7 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
   g_hash_table_remove_all (priv->sonar_channels);
 
   /* Создаём новый галс. */
-  priv->track_id = hyscan_data_writer_track_create (priv->db, project_name, track_name, track_type);
+  priv->track_id = hyscan_data_writer_track_create (priv->db, priv->info, project_name, track_name, track_type);
   if (priv->track_id <= 0)
     goto exit;
 
@@ -894,6 +903,19 @@ hyscan_data_writer_stop (HyScanDataWriter *writer)
   priv->track_id = -1;
 
   g_mutex_unlock (&priv->lock);
+}
+
+/* Функция устанавливает информацию о гидролокаторе. */
+gboolean
+hyscan_data_writer_set_sonar_info (HyScanDataWriter *writer,
+                                   const gchar      *info)
+{
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
+
+  g_free (writer->priv->info);
+  writer->priv->info = g_strdup (info);
+
+  return TRUE;
 }
 
 /* Функция устанавливает режим записи данных от гидролокатора. */

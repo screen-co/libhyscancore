@@ -35,6 +35,7 @@
  *
  * Для записи данных и вспомогательной информации используются следующие функции:
  *
+ * - #hyscan_data_writer_set_sonar_info - для задания информации о гидролокаторе;
  * - #hyscan_data_writer_sensor_set_position - для установки местоположения приёмной антенны датчика;
  * - #hyscan_data_writer_sensor_add_data - для записи данных от датчика;
  * - #hyscan_data_writer_sonar_set_position - для установки местоположения приёмной антенны гидролокатора;
@@ -178,6 +179,24 @@ gboolean               hyscan_data_writer_start                        (HyScanDa
  */
 HYSCAN_API
 void                   hyscan_data_writer_stop                         (HyScanDataWriter              *writer);
+
+
+
+/**
+ *
+ * Функция устанавливает информацию о гидролокаторе, которая будет записываться
+ * в каждый галс при его создании. Информация о гидролокаторе задаётся в виде XML описания
+ * схемы данных \link HyScanDataSchema \endlink.
+ *
+ * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param info информация о гидролокаторе;
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+HYSCAN_API
+gboolean               hyscan_data_writer_set_sonar_info               (HyScanDataWriter              *writer,
+                                                                        const gchar                   *info);
 
 /**
  *

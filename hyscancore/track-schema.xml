@@ -40,6 +40,7 @@
 
   <schema id="track">
     <node id="schema" schema="schema"/>
+    <key id="info" name="Sonar info" type="string" view="schema"/>
     <key id="type" name="Track type" type="string"/>
   </schema>
 
