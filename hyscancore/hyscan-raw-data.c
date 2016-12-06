@@ -94,23 +94,23 @@ static gboolean        hyscan_raw_data_load_signals_params     (HyScanDB        
 
 static void            hyscan_raw_data_update_cache_key        (HyScanRawDataPrivate          *priv,
                                                                 gint                           data_type,
-                                                                gint32                         index);
+                                                                guint32                        index);
 static void            hyscan_raw_data_buffer_realloc          (HyScanRawDataPrivate          *priv,
                                                                 gint32                         size);
-static gint32          hyscan_raw_data_read_raw_data           (HyScanRawDataPrivate          *priv,
+static guint32         hyscan_raw_data_read_raw_data           (HyScanRawDataPrivate          *priv,
                                                                 gint32                         channel_id,
-                                                                gint32                         index,
+                                                                guint32                        index,
                                                                 gint64                        *time);
 
 static void            hyscan_raw_data_load_signals            (HyScanRawDataPrivate          *priv);
 static HyScanConvolution *hyscan_raw_data_find_signal          (HyScanRawDataPrivate          *priv,
                                                                 gint64                         time);
 
-static gint32          hyscan_raw_data_read_data               (HyScanRawDataPrivate          *priv,
-                                                                gint32                         index);
+static guint32         hyscan_raw_data_read_data               (HyScanRawDataPrivate          *priv,
+                                                                guint32                        index);
 static gboolean        hyscan_raw_data_check_cache             (HyScanRawDataPrivate          *priv,
-                                                                gint32                         index,
                                                                 gint                           data_type,
+                                                                guint32                        index,
                                                                 gpointer                       buffer,
                                                                 guint32                       *buffer_size,
                                                                 gint64                        *time);
@@ -548,7 +548,7 @@ exit:
 static void
 hyscan_raw_data_update_cache_key (HyScanRawDataPrivate *priv,
                                   gint                  data_type,
-                                  gint32                index)
+                                  guint32               index)
 {
   gchar *data_type_str;
 
@@ -623,10 +623,10 @@ hyscan_raw_data_buffer_realloc (HyScanRawDataPrivate *priv,
 }
 
 /* Функция считывает запись из канала данных в буфер. */
-static gint32
+static guint32
 hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
                                gint32                channel_id,
-                               gint32                index,
+                               guint32               index,
                                gint64               *time)
 {
   guint32 io_size;
@@ -637,7 +637,7 @@ hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
   status = hyscan_db_channel_get_data (priv->db, channel_id, index,
                                        priv->raw_buffer, &io_size, time);
   if (!status)
-    return -1;
+    return 0;
 
   /* Если размер считанных данных равен размеру буфера, запрашиваем реальный размер,
      увеличиваем размер буфера и считываем данные еще раз. */
@@ -646,7 +646,7 @@ hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
       status = hyscan_db_channel_get_data (priv->db, channel_id, index,
                                            NULL, &io_size, NULL);
       if (!status)
-        return -1;
+        return 0;
 
       hyscan_raw_data_buffer_realloc (priv, io_size);
       io_size = priv->raw_buffer_size;
@@ -654,7 +654,7 @@ hyscan_raw_data_read_raw_data (HyScanRawDataPrivate *priv,
       status = hyscan_db_channel_get_data (priv->db, channel_id, index,
                                            priv->raw_buffer, &io_size, time);
       if (!status)
-        return -1;
+        return 0;
     }
 
   return io_size;
@@ -669,7 +669,7 @@ hyscan_raw_data_load_signals (HyScanRawDataPrivate *priv)
   guint64 signals_mod_count;
 
   gboolean status;
-  gint i;
+  guint32 i;
 
   /* Если нет канала с образцами сигналов или сигналы не изменяются, выходим. */
   if (priv->signal_id < 0)
@@ -705,7 +705,7 @@ hyscan_raw_data_load_signals (HyScanRawDataPrivate *priv)
 
       /* Считываем образец сигнала и проверяем его размер. */
       io_size = hyscan_raw_data_read_raw_data (priv, priv->signal_id, i, &signal_info.time);
-      if (io_size < 0 || (io_size % sizeof(HyScanComplexFloat)) != 0)
+      if (io_size == 0 || (io_size % sizeof(HyScanComplexFloat)) != 0)
         return;
 
       signal = priv->raw_buffer;
@@ -764,32 +764,32 @@ hyscan_raw_data_find_signal (HyScanRawDataPrivate *priv,
 
 /* Функция считывает "сырые" акустические данные для указанного индекса,
    импортирует их в буфер данных и при необходимости осуществляет свёртку. */
-static gint32
+static guint32
 hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
-                               gint32            index)
+                           guint32               index)
 {
-  gint32 io_size;
-  gint32 n_points;
-  gint32 point_size;
+  guint32 io_size;
+  guint32 n_points;
+  guint32 point_size;
 
   HyScanConvolution *convolution;
 
   /* Проверка состояния объекта. */
   if (priv->channel_id < 0)
-    return -1;
+    return 0;
 
   /* Загружаем образцы сигналов. */
   hyscan_raw_data_load_signals (priv);
 
   /* Считываем данные канала. */
   io_size = hyscan_raw_data_read_raw_data (priv, priv->channel_id, index, &priv->data_time);
-  if (io_size < 0)
-    return -1;
+  if (io_size == 0)
+    return 0;
 
   /* Размер считанных данных должен быть кратен размеру точки. */
   point_size = hyscan_data_get_point_size (priv->info.data.type);
   if (io_size % point_size != 0)
-    return -1;
+    return 0;
   n_points = io_size / point_size;
 
   /* Импортируем данные в буфер обработки. */
@@ -803,7 +803,7 @@ hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
       if (convolution != NULL)
         {
         if (!hyscan_convolution_convolve (convolution, priv->data_buffer, n_points))
-          return -1;
+          return 0;
         }
     }
 
@@ -813,11 +813,11 @@ hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
 /* Функция проверяет кэш на наличие данных указанного типа и если такие есть считывает их. */
 static gboolean
 hyscan_raw_data_check_cache (HyScanRawDataPrivate *priv,
-                                 gint              data_type,
-                                 gint32            index,
-                                 gpointer          buffer,
-                                 guint32          *buffer_size,
-                                 gint64           *time)
+                             gint                  data_type,
+                             guint32               index,
+                             gpointer              buffer,
+                             guint32              *buffer_size,
+                             gint64               *time)
 {
   gint64 cached_time;
   gint32 time_size;
@@ -1056,8 +1056,8 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
   HyScanRawDataPrivate *priv;
 
   gfloat *amplitude;
-  gint32 n_points;
-  gint32 i;
+  guint32 n_points;
+  guint32 i;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
@@ -1072,7 +1072,7 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
 
   /* Считываем данные канала. */
   n_points = hyscan_raw_data_read_data (priv, index);
-  if (n_points <= 0)
+  if (n_points == 0)
     return FALSE;
 
   /* Возвращаем амплитуду. */
@@ -1110,7 +1110,7 @@ hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
 {
   HyScanRawDataPrivate *priv;
 
-  gint32 n_points;
+  guint32 n_points;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
@@ -1125,7 +1125,7 @@ hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
 
   /* Считываем данные канала. */
   n_points = hyscan_raw_data_read_data (priv, index);
-  if (n_points <= 0)
+  if (n_points == 0)
     return FALSE;
 
   /* Возвращаем квадратурные отсчёты. */

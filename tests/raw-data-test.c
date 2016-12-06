@@ -17,9 +17,9 @@ int main( int argc, char **argv )
   gdouble frequency = 0.0;        /* Частота сигнала. */
   gdouble duration = 0.0;         /* Длительность сигнала. */
   gdouble discretization = 0.0;   /* Частота дискретизации. */
-  gint n_signals = 10;            /* Число сигналов. */
-  gint n_lines = 10;              /* Число строк для каждого сигнала. */
-  gint cache_size = 0;            /* Размер кэша, Мб. */
+  guint n_signals = 10;           /* Число сигналов. */
+  guint n_lines = 10;             /* Число строк для каждого сигнала. */
+  guint cache_size = 0;           /* Размер кэша, Мб. */
 
   HyScanDB *db;
   HyScanCache *cache = NULL;
@@ -117,11 +117,11 @@ int main( int argc, char **argv )
      Сигнал располагается со смещением в две длительности. Все остальные индексы
      массива заполнены нулями. Используется тональный сигнал. */
   {
-    gint32 signal_size = discretization * duration;
-    gint32 data_size = 100 * signal_size;
+    guint32 signal_size = discretization * duration;
+    guint32 data_size = 100 * signal_size;
     HyScanComplexFloat *signal_points;
     guint16 *data_values;
-    gint i, j;
+    guint i, j;
 
     signal_points = g_malloc (signal_size * sizeof (HyScanComplexFloat));
     data_values = g_malloc (2 * data_size * sizeof (guint16));
@@ -197,7 +197,7 @@ int main( int argc, char **argv )
     gfloat *amp2;
     gdouble delta;
 
-    gint i, j;
+    guint i, j;
 
     amp1 = g_malloc0 (data_size * sizeof(gfloat));
     amp2 = g_malloc0 (data_size * sizeof(gfloat));

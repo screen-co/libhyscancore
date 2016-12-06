@@ -528,7 +528,7 @@ sonar_add_data (HyScanDataWriter *writer,
           if ((i % N_LINES_PER_TVG) == 0)
             {
               for (j = 0; j < TVG_SIZE; j++)
-                tvg_gains[j] = -(n_channel + i + j);
+                tvg_gains[j] = (n_channel + i + j);
 
               tvg.time = timestamp + i;
 
@@ -806,7 +806,7 @@ sonar_check_data (HyScanDB    *db,
             g_error ("tvg size mismatch");
 
           for (j = 0; j < TVG_SIZE; j++)
-            if (tvg_gains[j] != -(n_channel + i + j))
+            if (tvg_gains[j] != (n_channel + i + j))
               g_error ("tvg content mismatch");
         }
 
