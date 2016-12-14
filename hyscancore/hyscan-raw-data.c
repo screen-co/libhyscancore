@@ -865,12 +865,19 @@ hyscan_raw_data_new (HyScanDB    *db,
                      const gchar *track_name,
                      const gchar *channel_name)
 {
-  return g_object_new (HYSCAN_TYPE_RAW_DATA,
+  HyScanRawData *data;
+
+  data = g_object_new (HYSCAN_TYPE_RAW_DATA,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
                        "channel-name", channel_name,
                        NULL);
+
+  if (data->priv->channel_id <= 0)
+    g_clear_object (&data);
+
+  return data;
 }
 
 /* Функция создаёт новый объект обработки акустических данных с использованием кэша. */
@@ -881,13 +888,20 @@ hyscan_raw_data_new_with_cache (HyScanDB    *db,
                                 const gchar *channel_name,
                                 HyScanCache *cache)
 {
-  return g_object_new (HYSCAN_TYPE_RAW_DATA,
+  HyScanRawData *data;
+
+  data = g_object_new (HYSCAN_TYPE_RAW_DATA,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
                        "channel-name", channel_name,
                        "cache", cache,
                        NULL);
+
+  if (data->priv->channel_id <= 0)
+    g_clear_object (&data);
+
+  return data;
 }
 
 /* Функция создаёт новый объект обработки акустических данных с использованием кэша и префикса. */
@@ -899,7 +913,9 @@ hyscan_raw_data_new_with_cache_prefix (HyScanDB    *db,
                                        HyScanCache *cache,
                                        const gchar *cache_prefix)
 {
-  return g_object_new (HYSCAN_TYPE_RAW_DATA,
+  HyScanRawData *data;
+
+  data = g_object_new (HYSCAN_TYPE_RAW_DATA,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
@@ -907,6 +923,11 @@ hyscan_raw_data_new_with_cache_prefix (HyScanDB    *db,
                        "cache", cache,
                        "cache-prefix", cache_prefix,
                        NULL);
+
+  if (data->priv->channel_id <= 0)
+    g_clear_object (&data);
+
+  return data;
 }
 
 HyScanAntennaPosition

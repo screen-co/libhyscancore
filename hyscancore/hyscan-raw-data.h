@@ -95,13 +95,14 @@ GType                  hyscan_raw_data_get_type                (void);
 /**
  *
  * Функция создаёт новый объект обработки акустических данных без использования кэша.
+ * Если канал данных отсутствует функция вернёт значение NULL.
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param project_name название проекта;
  * \param track_name название галса;
  * \param channel_name название канала данных.
  *
- * \return Указатель на объект \link HyScanRawData \endlink.
+ * \return Указатель на объект \link HyScanRawData \endlink или NULL.
  *
  */
 HYSCAN_API
@@ -113,6 +114,7 @@ HyScanRawData         *hyscan_raw_data_new                     (HyScanDB        
 /**
  *
  * Функция создаёт новый объект обработки акустических данных с использованием кэша.
+ * Если канал данных отсутствует функция вернёт значение NULL.
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param project_name название проекта;
@@ -120,7 +122,7 @@ HyScanRawData         *hyscan_raw_data_new                     (HyScanDB        
  * \param channel_name название канала данных;
  * \param cache указатель на интерфейс \link HyScanCache \endlink.
  *
- * \return Указатель на объект \link HyScanRawData \endlink.
+ * \return Указатель на объект \link HyScanRawData \endlink или NULL.
  *
  */
 
@@ -136,6 +138,7 @@ HyScanRawData         *hyscan_raw_data_new_with_cache          (HyScanDB        
  *
  * Функция создаёт новый объект обработки акустических данных с использованием кэша и префикса.
  * Префикс используется как вспомогательный признак при кэшировании данных.
+ * Если канал данных отсутствует функция вернёт значение NULL.
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param project_name название проекта;
@@ -144,7 +147,7 @@ HyScanRawData         *hyscan_raw_data_new_with_cache          (HyScanDB        
  * \param cache указатель на интерфейс \link HyScanCache \endlink;
  * \param cache_prefix префикс ключа кэширования.
  *
- * \return Указатель на объект \link HyScanRawData \endlink.
+ * \return Указатель на объект \link HyScanRawData \endlink или NULL.
  *
  */
 HYSCAN_API
