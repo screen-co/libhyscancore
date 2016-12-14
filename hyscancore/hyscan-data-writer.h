@@ -67,9 +67,10 @@ typedef enum
 {
   HYSCAN_DATA_WRITER_MODE_INVALID                      = 0,    /**< Недопустимый режим, ошибка. */
 
-  HYSCAN_DATA_WRITER_MODE_RAW                          = 101,  /**< Записывать только "сырые" данные. */
-  HYSCAN_DATA_WRITER_MODE_COMPUTED                     = 102,  /**< Записывать только обработанные данные. */
-  HYSCAN_DATA_WRITER_MODE_BOTH                         = 103   /**< Записывать оба типа данных. */
+  HYSCAN_DATA_WRITER_MODE_NONE                         = 101,  /**< Не записывать данные. */
+  HYSCAN_DATA_WRITER_MODE_RAW                          = 102,  /**< Записывать только "сырые" данные. */
+  HYSCAN_DATA_WRITER_MODE_COMPUTED                     = 103,  /**< Записывать только обработанные данные. */
+  HYSCAN_DATA_WRITER_MODE_BOTH                         = 104   /**< Записывать оба типа данных. */
 } HyScanDataWriterModeType;
 
 /** \brief Данные от гидролокатора и датчиков */

@@ -997,6 +997,22 @@ main (int    argc,
       sonar_add_data  (writer, 4000, i, FALSE);
     }
 
+  /* Пятый галс - запись отключена. */
+  g_message ("creating track-5");
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-5", HYSCAN_TRACK_SURVEY))
+    g_error ("can't start writer");
+
+  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_NONE))
+    g_error ("can't set writer mode: none");
+
+  /* Запись данных. */
+  for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
+    {
+      sensor_add_data (writer, 5000, i, FALSE);
+      sonar_add_data  (writer, 5000, i, TRUE);
+      sonar_add_data  (writer, 5000, i, FALSE);
+    }
+
   /* Дублирование галса. */
   g_message ("duplicate track-0");
   if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
@@ -1010,6 +1026,7 @@ main (int    argc,
   if (project_id < 0)
     g_error ("can't open project '%s'", PROJECT_NAME);
 
+  /* Пустой галс. */
   track_id = hyscan_db_track_open (db, project_id, "track-0");
   if (track_id < 0)
     g_error ("can't open track 'track-0'");
@@ -1049,6 +1066,15 @@ main (int    argc,
       sonar_check_data   (db, "track-4", 4000, i, FALSE);
       sonar_check_misses (db, "track-4", i, TRUE);
     }
+
+  /* Пятый галс - пустой. */
+  track_id = hyscan_db_track_open (db, project_id, "track-5");
+  if (track_id < 0)
+    g_error ("can't open track 'track-5'");
+
+  if (hyscan_db_channel_list (db, track_id) != NULL)
+    g_error ("track-5 isn't empty");
+  hyscan_db_close (db, track_id);
 
   /* Удаляем проект. */
   hyscan_db_close (db, project_id);

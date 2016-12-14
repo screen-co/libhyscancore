@@ -925,14 +925,15 @@ hyscan_data_writer_set_mode (HyScanDataWriter         *writer,
 {
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
 
-  if ((mode != HYSCAN_DATA_WRITER_MODE_RAW) &&
+  if ((mode != HYSCAN_DATA_WRITER_MODE_NONE) &&
+      (mode != HYSCAN_DATA_WRITER_MODE_RAW) &&
       (mode != HYSCAN_DATA_WRITER_MODE_COMPUTED) &&
       (mode != HYSCAN_DATA_WRITER_MODE_BOTH))
     {
       return FALSE;
     }
 
-  writer->priv->mode = mode;
+  g_atomic_int_set (&writer->priv->mode, mode);
 
   return TRUE;
 }
@@ -1124,6 +1125,7 @@ gboolean hyscan_data_writer_sensor_add_data (HyScanDataWriter     *writer,
 {
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSensorChannel *channel_info;
+  HyScanDataWriterModeType mode;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
@@ -1138,6 +1140,10 @@ gboolean hyscan_data_writer_sensor_add_data (HyScanDataWriter     *writer,
     }
 
   if (priv->db == NULL)
+    return TRUE;
+
+  mode = g_atomic_int_get (&writer->priv->mode);
+  if (mode == HYSCAN_DATA_WRITER_MODE_NONE)
     return TRUE;
 
   g_mutex_lock (&priv->lock);
@@ -1206,6 +1212,7 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
 {
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSonarChannel *channel_info;
+  HyScanDataWriterModeType mode;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
@@ -1222,7 +1229,10 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
   if (priv->db == NULL)
     return TRUE;
 
-  if ((priv->mode != HYSCAN_DATA_WRITER_MODE_RAW) && (priv->mode != HYSCAN_DATA_WRITER_MODE_BOTH))
+  mode = g_atomic_int_get (&writer->priv->mode);
+  if (mode == HYSCAN_DATA_WRITER_MODE_NONE)
+    return TRUE;
+  if ((mode != HYSCAN_DATA_WRITER_MODE_RAW) && (mode != HYSCAN_DATA_WRITER_MODE_BOTH))
     return TRUE;
 
   g_mutex_lock (&priv->lock);
@@ -1270,6 +1280,7 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
 {
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSonarChannel *channel_info;
+  HyScanDataWriterModeType mode;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
@@ -1286,7 +1297,10 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
   if (priv->db == NULL)
     return TRUE;
 
-  if ((priv->mode != HYSCAN_DATA_WRITER_MODE_RAW) && (priv->mode != HYSCAN_DATA_WRITER_MODE_BOTH))
+  mode = g_atomic_int_get (&writer->priv->mode);
+  if (mode == HYSCAN_DATA_WRITER_MODE_NONE)
+    return TRUE;
+  if ((mode != HYSCAN_DATA_WRITER_MODE_RAW) && (mode != HYSCAN_DATA_WRITER_MODE_BOTH))
     return TRUE;
 
   g_mutex_lock (&priv->lock);
@@ -1332,6 +1346,7 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
 {
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSignal *cur_signal;
+  HyScanDataWriterModeType mode;
 
   GHashTableIter iter;
   gpointer data;
@@ -1350,7 +1365,10 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
   if (priv->db == NULL)
     return TRUE;
 
-  if ((priv->mode != HYSCAN_DATA_WRITER_MODE_RAW) && (priv->mode != HYSCAN_DATA_WRITER_MODE_BOTH))
+  mode = g_atomic_int_get (&writer->priv->mode);
+  if (mode == HYSCAN_DATA_WRITER_MODE_NONE)
+    return TRUE;
+  if ((mode != HYSCAN_DATA_WRITER_MODE_RAW) && (mode != HYSCAN_DATA_WRITER_MODE_BOTH))
     return TRUE;
 
   g_mutex_lock (&priv->lock);
@@ -1428,6 +1446,7 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSonarChannel *channel_info;
   HyScanDataWriterTVG *cur_tvg;
+  HyScanDataWriterModeType mode;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
@@ -1444,7 +1463,10 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   if (priv->db == NULL)
     return TRUE;
 
-  if ((priv->mode != HYSCAN_DATA_WRITER_MODE_RAW) && (priv->mode != HYSCAN_DATA_WRITER_MODE_BOTH))
+  mode = g_atomic_int_get (&writer->priv->mode);
+  if (mode == HYSCAN_DATA_WRITER_MODE_NONE)
+    return TRUE;
+  if ((mode != HYSCAN_DATA_WRITER_MODE_RAW) && (mode != HYSCAN_DATA_WRITER_MODE_BOTH))
     return TRUE;
 
   g_mutex_lock (&priv->lock);
@@ -1511,6 +1533,7 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
 {
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSonarChannel *channel_info;
+  HyScanDataWriterModeType mode;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
@@ -1527,7 +1550,10 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
   if (priv->db == NULL)
     return TRUE;
 
-  if ((priv->mode != HYSCAN_DATA_WRITER_MODE_COMPUTED) && (priv->mode != HYSCAN_DATA_WRITER_MODE_BOTH))
+  mode = g_atomic_int_get (&writer->priv->mode);
+  if (mode == HYSCAN_DATA_WRITER_MODE_NONE)
+    return TRUE;
+  if ((mode != HYSCAN_DATA_WRITER_MODE_COMPUTED) && (mode != HYSCAN_DATA_WRITER_MODE_BOTH))
     return TRUE;
 
   g_mutex_lock (&priv->lock);
