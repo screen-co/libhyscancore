@@ -20,6 +20,9 @@
  * Местоположение приёмной антенны гидролокатора можно получить функцией #hyscan_raw_data_get_position.
  * Параметры данных можно получить функцией #hyscan_raw_data_get_info.
  *
+ * С помощью функций #hyscan_raw_data_get_source и #hyscan_raw_data_get_channel можно получить параметры
+ * источника данных.
+ *
  * Класс поддерживает обработку данных, запись которых производится в настоящий момент. В этом случае
  * могут появляться новые данные или исчезать уже записанные. Определить возможность изменения данных
  * можно с помощью функции #hyscan_raw_data_is_writable.
@@ -186,6 +189,30 @@ HyScanRawDataInfo      hyscan_raw_data_get_info                (HyScanRawData   
 
 /**
  *
+ * Функция возвращает тип источника данных.
+ *
+ * \param data указатель на объект \link HyScanRawData \endlink;
+ *
+ * \return Тип источника данных из \link HyScanSourceType \endlink.
+ *
+ */
+HYSCAN_API
+HyScanSourceType       hyscan_raw_data_get_source              (HyScanRawData         *data);
+
+/**
+ *
+ * Функция возвращает номер канала для этого канала данных.
+ *
+ * \param data указатель на объект \link HyScanRawData \endlink;
+ *
+ * \return Номер канала.
+ *
+ */
+HYSCAN_API
+guint                  hyscan_raw_data_get_channel             (HyScanRawData         *data);
+
+/**
+ *
  * Функция определяет возможность изменения акустических данных. Если функция вернёт
  * значение TRUE, возможна ситуация когда могут появиться новые данные или исчезнуть
  * уже записанные.
@@ -330,6 +357,7 @@ gboolean               hyscan_raw_data_get_quadrature_values   (HyScanRawData   
                                                                 HyScanComplexFloat    *buffer,
                                                                 guint32               *buffer_size,
                                                                 gint64                *time);
+
 
 G_END_DECLS
 

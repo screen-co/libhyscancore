@@ -774,10 +774,6 @@ hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
 
   HyScanConvolution *convolution;
 
-  /* Проверка состояния объекта. */
-  if (priv->channel_id < 0)
-    return 0;
-
   /* Загружаем образцы сигналов. */
   hyscan_raw_data_load_signals (priv);
 
@@ -939,9 +935,6 @@ hyscan_raw_data_get_position (HyScanRawData *data)
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), zero);
 
-  if (data->priv->channel_id < 0)
-    return zero;
-
   return data->priv->position;
 }
 
@@ -955,20 +948,43 @@ hyscan_raw_data_get_info (HyScanRawData *data)
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), zero);
 
-  if (data->priv->channel_id < 0)
-    return zero;
-
   return data->priv->info;
 }
+
+/* Функция возвращает тип источника данных. */
+HyScanSourceType
+hyscan_raw_data_get_source (HyScanRawData *data)
+{
+  HyScanSourceType type;
+
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), HYSCAN_SOURCE_INVALID);
+
+  if (hyscan_channel_get_types_by_name (data->priv->channel_name, &type, NULL, NULL))
+    return type;
+
+  return HYSCAN_SOURCE_INVALID;
+}
+
+/* Функция возвращает номер канала для этого канала данных. */
+guint
+hyscan_raw_data_get_channel (HyScanRawData *data)
+{
+  guint channel;
+
+  g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), 0);
+
+  if (hyscan_channel_get_types_by_name (data->priv->channel_name, NULL, NULL, &channel))
+    return channel;
+
+  return 0;
+}
+
 
 /* Функция определяет возможность изменения акустических данных. */
 gboolean
 hyscan_raw_data_is_writable (HyScanRawData *data)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
-
-  if (data->priv->channel_id < 0)
-    return FALSE;
 
   return hyscan_db_channel_is_writable (data->priv->db, data->priv->channel_id);
 }
@@ -980,9 +996,6 @@ hyscan_raw_data_get_range (HyScanRawData *data,
                            guint32       *last_index)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
-
-  if (data->priv->channel_id < 0)
-    return FALSE;
 
   return hyscan_db_channel_get_data_range (data->priv->db, data->priv->channel_id,
                                            first_index, last_index);
@@ -996,9 +1009,6 @@ hyscan_raw_data_get_values_count (HyScanRawData *data,
   guint32 dsize;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
-
-  if (data->priv->channel_id < 0)
-    return 0;
 
   if (hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
                                   index, NULL, &dsize, NULL))
@@ -1023,9 +1033,6 @@ hyscan_raw_data_get_time (HyScanRawData *data,
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
-  if (data->priv->channel_id < 0)
-    return 0;
-
   if (!hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
                                    index, NULL, &dsize, &time))
     {
@@ -1046,9 +1053,6 @@ hyscan_raw_data_find_data (HyScanRawData *data,
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), HYSCAN_DB_FIND_FAIL);
 
-  if (data->priv->channel_id < 0)
-    return HYSCAN_DB_FIND_FAIL;
-
   return hyscan_db_channel_find_data (data->priv->db, data->priv->channel_id,
                                       time, lindex, rindex, ltime, rtime);
 }
@@ -1059,9 +1063,6 @@ hyscan_raw_data_set_convolve (HyScanRawData *data,
                               gboolean       convolve)
 {
   g_return_if_fail (HYSCAN_IS_RAW_DATA (data));
-
-  if (data->priv->channel_id < 0)
-    return;
 
   g_atomic_int_set (&data->priv->convolve, convolve ? 1 : 0);
 }
@@ -1083,9 +1084,6 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
-
-  if (priv->channel_id < 0)
-    return FALSE;
 
   /* Проверяем наличие данных в кэше. */
   if (hyscan_raw_data_check_cache (priv, DATA_TYPE_AMPLITUDE, index, buffer, buffer_size, time))
@@ -1136,9 +1134,6 @@ hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
-
-  if (priv->channel_id < 0)
-    return FALSE;
 
   /* Проверяем наличие данных в кэше. */
   if (hyscan_raw_data_check_cache (priv, DATA_TYPE_QUADRATURE, index, buffer, buffer_size, time))
