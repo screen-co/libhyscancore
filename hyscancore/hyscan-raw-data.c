@@ -238,24 +238,24 @@ hyscan_raw_data_object_constructed (GObject *object)
   project_id = hyscan_db_project_open (priv->db, priv->project_name);
   if (project_id < 0)
     {
-      g_warning ("HyScanRawData: can't open project '%s'",
-                 priv->project_name);
+      g_info ("HyScanRawData: can't open project '%s'",
+              priv->project_name);
       goto exit;
     }
 
   track_id = hyscan_db_track_open (priv->db, project_id, priv->track_name);
   if (track_id < 0)
     {
-      g_warning ("HyScanRawData: can't open track '%s.%s'",
-                 priv->project_name, priv->track_name);
+      g_info ("HyScanRawData: can't open track '%s.%s'",
+              priv->project_name, priv->track_name);
       goto exit;
     }
 
   priv->channel_id = hyscan_db_channel_open (priv->db, track_id, priv->channel_name);
   if (priv->channel_id < 0)
     {
-      g_warning ("HyScanRawData: can't open channel '%s.%s.%s'",
-                 priv->project_name, priv->track_name, priv->channel_name);
+      g_info ("HyScanRawData: can't open channel '%s.%s.%s'",
+              priv->project_name, priv->track_name, priv->channel_name);
       goto exit;
     }
 
@@ -372,8 +372,7 @@ hyscan_raw_data_object_finalize (GObject *object)
     {
       for (i = 0; i < priv->signals->len; i++)
         {
-          HyScanRawDataSignal *signal = &g_array_index (priv->signals,
-                                                            HyScanRawDataSignal, i);
+          HyScanRawDataSignal *signal = &g_array_index (priv->signals, HyScanRawDataSignal, i);
           g_clear_object (&signal->convolution);
         }
       g_array_unref (priv->signals);
