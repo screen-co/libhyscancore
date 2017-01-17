@@ -43,6 +43,7 @@ struct _HyScanDataWriterPrivate
   gchar                       *info;                           /* Информация о гидролокаторе. */
 
   HyScanDB                    *db;                             /* Интерфейс системы хранения данных. */
+  gint32                       project_id;                     /* Идентификатор проекта для записи галсов. */
   gint32                       track_id;                       /* Идентификатор галса для записи данных. */
 
   GHashTable                  *sensor_positions;               /* Информация о местоположении антенн датчиков. */
@@ -99,10 +100,10 @@ static gboolean  hyscan_data_writer_channel_set_tvg_info       (HyScanDB        
                                                                 gdouble                        rate);
 
 static gint32    hyscan_data_writer_track_create               (HyScanDB                      *db,
-                                                                const gchar                   *info,
-                                                                const gchar                   *project_name,
+                                                                gint32                         project_id,
                                                                 const gchar                   *track_name,
-                                                                HyScanTrackType                track_type);
+                                                                HyScanTrackType                track_type,
+                                                                const gchar                   *info);
 
 static HyScanDataWriterSensorChannel *
                  hyscan_data_writer_sensor_channel_create      (HyScanDataWriterPrivate       *priv,
@@ -173,6 +174,7 @@ hyscan_data_writer_object_constructed (GObject *object)
 
   g_mutex_init (&priv->lock);
 
+  priv->project_id = -1;
   priv->track_id = -1;
   priv->mode = HYSCAN_DATA_WRITER_MODE_BOTH;
   priv->chunk_size = -1;
@@ -208,6 +210,8 @@ hyscan_data_writer_object_finalize (GObject *object)
 
   if (priv->track_id > 0)
     hyscan_db_close (priv->db, priv->track_id);
+  if (priv->project_id > 0)
+    hyscan_db_close (priv->db, priv->project_id);
 
   g_clear_object (&priv->db);
   g_free (priv->info);
@@ -465,23 +469,18 @@ hyscan_data_writer_channel_set_tvg_info (HyScanDB *db,
 /* ункция создаёт галс в системе хранения. */
 static gint32
 hyscan_data_writer_track_create (HyScanDB        *db,
-                                 const gchar     *info,
-                                 const gchar     *project_name,
+                                 gint32           project_id,
                                  const gchar     *track_name,
-                                 HyScanTrackType  track_type)
+                                 HyScanTrackType  track_type,
+                                 const gchar     *info)
 {
   gboolean status = FALSE;
 
-  gint32 project_id = -1;
   gint32 track_id = -1;
   gint32 param_id = -1;
 
   const gchar *track_type_name;
   GBytes *track_schema;
-
-  /* Создаём проект, если он еще не создан. */
-  if (!hyscan_data_writer_project_create (db, project_name))
-    return FALSE;
 
   /* Схема галса. */
   track_schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml",
@@ -491,11 +490,6 @@ hyscan_data_writer_track_create (HyScanDB        *db,
       g_warning ("HyScanCore: can't find track schema");
       return FALSE;
     }
-
-  /* Открываем проект. */
-  project_id = hyscan_db_project_open (db, project_name);
-  if (project_id < 0)
-    goto exit;
 
   /* Создаём галс. Галс не должен существовать. */
   track_id = hyscan_db_track_create (db, project_id, track_name,
@@ -521,9 +515,6 @@ hyscan_data_writer_track_create (HyScanDB        *db,
 
 exit:
   g_clear_pointer (&track_schema, g_bytes_unref);
-
-  if (project_id > 0)
-    hyscan_db_close (db, project_id);
 
   if (param_id > 0)
     hyscan_db_close (db, param_id);
@@ -844,10 +835,51 @@ hyscan_data_writer_project_create (HyScanDB    *db,
   return status;
 }
 
+
+gboolean
+hyscan_data_writer_project_set (HyScanDataWriter *writer,
+                                const gchar      *project_name)
+{
+  HyScanDataWriterPrivate *priv;
+
+  gboolean status = FALSE;
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
+
+  priv = writer->priv;
+
+  if (priv->db == NULL)
+    return TRUE;
+
+  g_mutex_lock (&priv->lock);
+
+  /* Закрываем текущий проект. */
+  if (priv->project_id > 0)
+    {
+      hyscan_db_close (priv->db, priv->project_id);
+      priv->project_id = -1;
+    }
+
+  /* Создаём проект, если он еще не создан. */
+  if (!hyscan_data_writer_project_create (priv->db, project_name))
+    goto exit;
+
+  /* Открываем проект. */
+  priv->project_id = hyscan_db_project_open (priv->db, project_name);
+  if (priv->project_id < 0)
+    goto exit;
+
+  status = TRUE;
+
+exit:
+  g_mutex_unlock (&priv->lock);
+
+  return status;
+}
+
 /* Функция включает запись данных. */
 gboolean
 hyscan_data_writer_start (HyScanDataWriter *writer,
-                          const gchar      *project_name,
                           const gchar      *track_name,
                           HyScanTrackType   track_type)
 {
@@ -868,8 +900,18 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
   g_hash_table_remove_all (priv->sensor_channels);
   g_hash_table_remove_all (priv->sonar_channels);
 
+  /* Закрываем текущий галс. */
+  if (priv->track_id > 0)
+    hyscan_db_close (priv->db, priv->track_id);
+
+  /* Проект должен быть открыт. */
+  if (priv->project_id < 0)
+    goto exit;
+
   /* Создаём новый галс. */
-  priv->track_id = hyscan_data_writer_track_create (priv->db, priv->info, project_name, track_name, track_type);
+  priv->track_id = hyscan_data_writer_track_create (priv->db, priv->project_id,
+                                                    track_name, track_type,
+                                                    priv->info);
   if (priv->track_id <= 0)
     goto exit;
 
@@ -900,6 +942,9 @@ hyscan_data_writer_stop (HyScanDataWriter *writer)
   g_hash_table_remove_all (priv->sensor_channels);
   g_hash_table_remove_all (priv->sonar_channels);
 
+  /* Закрываем текущий галс. */
+  if (priv->track_id > 0)
+    hyscan_db_close (priv->db, priv->track_id);
   priv->track_id = -1;
 
   g_mutex_unlock (&priv->lock);

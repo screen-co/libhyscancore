@@ -922,6 +922,10 @@ main (int    argc,
       hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), &position);
     }
 
+  /* Проект для записи галсов. */
+  if (!hyscan_data_writer_project_set (writer, PROJECT_NAME))
+    g_error ("can't set working project");
+
   /* Пустой галс. */
   g_message ("creating track-0");
 
@@ -933,7 +937,7 @@ main (int    argc,
       sonar_add_data  (writer, 0, i, FALSE);
     }
 
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, "track-0", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_BOTH))
@@ -941,7 +945,7 @@ main (int    argc,
 
   /* Первый галс. */
   g_message ("creating track-1");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, "track-1", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -954,7 +958,7 @@ main (int    argc,
 
   /* Второй галс. */
   g_message ("creating track-2");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, "track-2", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -967,7 +971,7 @@ main (int    argc,
 
   /* Третий галс - только сырые данные от гидролокатора. */
   g_message ("creating track-3");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-3", HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, "track-3", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_RAW))
@@ -983,7 +987,7 @@ main (int    argc,
 
   /* Четвёртый галс - только обработанные данные от гидролокатора. */
   g_message ("creating track-4");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-4", HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, "track-4", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_COMPUTED))
@@ -999,7 +1003,7 @@ main (int    argc,
 
   /* Пятый галс - запись отключена. */
   g_message ("creating track-5");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-5", HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, "track-5", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
   if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_NONE))
@@ -1015,7 +1019,7 @@ main (int    argc,
 
   /* Дублирование галса. */
   g_message ("duplicate track-0");
-  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
+  if (hyscan_data_writer_start (writer, "track-0", HYSCAN_TRACK_SURVEY))
     g_error ("can duplicate track");
 
   /* Отключаем запись. */

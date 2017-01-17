@@ -109,8 +109,12 @@ int main( int argc, char **argv )
   if (!hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position))
     g_error ("can't set antenna position");
 
+  /* Проект для записи галсов. */
+  if (!hyscan_data_writer_project_set (writer, PROJECT_NAME))
+    g_error ("can't set working project");
+
   /* Создаём галс. */
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, TRACK_NAME, HYSCAN_TRACK_SURVEY))
     g_error( "can't start write");
 
   /* Тестовые данные для проверки свёртки. Массив размером 100 * signal_size.

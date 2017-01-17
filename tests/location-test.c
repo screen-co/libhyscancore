@@ -184,7 +184,11 @@ main (int argc, char **argv)
 
   /* Создаём галс. */
   writer = hyscan_data_writer_new (db);
-  if (!hyscan_data_writer_start (writer, "project", "track", HYSCAN_TRACK_SURVEY))
+
+  if (!hyscan_data_writer_project_set (writer, "project"))
+    g_error ("can't set working project");
+
+  if (!hyscan_data_writer_start (writer, "track", HYSCAN_TRACK_SURVEY))
     g_error ("can't start write");
 
   /* Местоположение приёмных антенн. */
