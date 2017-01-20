@@ -429,7 +429,7 @@ tvg_check_info (HyScanDB *db,
   data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
 
   if ((data_type != HYSCAN_DATA_FLOAT) ||
-      (g_variant_get_double (param_values[3]) != (500.0 * n_channel)))
+      (g_variant_get_double (param_values[3]) != (1000.0 * n_channel)))
     {
       g_error ("error in parameters 3");
     }
@@ -502,7 +502,7 @@ sonar_add_data (HyScanDataWriter *writer,
   tvg.n_gains = TVG_SIZE;
   tvg_gains = g_new (gfloat, TVG_SIZE);
   tvg.gains = tvg_gains;
-  tvg.rate = raw_info.data.rate / 2;
+  tvg.rate = raw_info.data.rate;
 
   source = sonar_get_type (n_channel);
 

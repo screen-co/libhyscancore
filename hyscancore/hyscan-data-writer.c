@@ -11,6 +11,7 @@
 #include "hyscan-data-writer.h"
 #include "hyscan-core-schemas.h"
 #include <gio/gio.h>
+#include <math.h>
 
 enum
 {
@@ -35,7 +36,6 @@ typedef struct
   HyScanSourceType             raw_source;                     /* Тип "сырых" данных. */
   HyScanDataType               data_type;                      /* Тип данных. */
   gdouble                      data_rate;                      /* Частота дискретизации данных, Гц. */
-  gdouble                      tvg_rate;                       /* Частота дискретизации параметров ВАРУ, Гц. */
 } HyScanDataWriterSonarChannel;
 
 struct _HyScanDataWriterPrivate
@@ -43,6 +43,8 @@ struct _HyScanDataWriterPrivate
   gchar                       *info;                           /* Информация о гидролокаторе. */
 
   HyScanDB                    *db;                             /* Интерфейс системы хранения данных. */
+  gchar                       *project_name;                   /* Название проекта для записи галсов.. */
+  gchar                       *track_name;                     /* Название галса для записи данных. */
   gint32                       project_id;                     /* Идентификатор проекта для записи галсов. */
   gint32                       track_id;                       /* Идентификатор галса для записи данных. */
 
@@ -213,7 +215,11 @@ hyscan_data_writer_object_finalize (GObject *object)
   if (priv->project_id > 0)
     hyscan_db_close (priv->db, priv->project_id);
 
+  g_free (priv->project_name);
+  g_free (priv->track_name);
+
   g_clear_object (&priv->db);
+
   g_free (priv->info);
 
   g_mutex_clear (&priv->lock);
@@ -487,7 +493,7 @@ hyscan_data_writer_track_create (HyScanDB        *db,
                                           G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
   if (track_schema == NULL)
     {
-      g_warning ("HyScanCore: can't find track schema");
+      g_warning ("HyScanCore: can't load track schema");
       return FALSE;
     }
 
@@ -555,7 +561,7 @@ hyscan_data_writer_sensor_channel_create (HyScanDataWriterPrivate *priv,
     }
   else
     {
-      g_warning ("HyScanDataWriter: unspecified antenna position for sensor %s", sensor);
+      g_info ("HyScanDataWriter: unspecified antenna position for sensor %s", sensor);
     }
 
   channel_info = g_new0 (HyScanDataWriterSensorChannel, 1);
@@ -606,31 +612,51 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
   if (channel_name == NULL)
     goto exit;
 
-  /* Канал шумовой картины. */
-  name = g_strdup_printf ("%s-noise", channel_name);
-  noise_id = hyscan_db_channel_create (priv->db, priv->track_id, name, RAW_CHANNEL_SCHEMA);
-  g_free (name);
-
   /* Каналы образов сигналов. */
   name = g_strdup_printf ("%s-signal", channel_name);
   signal_id = hyscan_db_channel_create (priv->db, priv->track_id, name, SIGNAL_CHANNEL_SCHEMA);
   g_free (name);
+
+  if (!hyscan_data_writer_channel_set_signal_info (priv->db, signal_id, info->data.rate))
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't set signal parameters",
+                 priv->project_name, priv->track_name, channel_info->name);
+      goto exit;
+    }
 
   /* Каналы параметров ВАРУ. */
   name = g_strdup_printf ("%s-tvg", channel_name);
   tvg_id = hyscan_db_channel_create (priv->db, priv->track_id, name, TVG_CHANNEL_SCHEMA);
   g_free (name);
 
-  if (noise_id < 0 || signal_id < 0 || tvg_id < 0)
-    goto exit;
+  if (!hyscan_data_writer_channel_set_tvg_info (priv->db, tvg_id, info->data.rate))
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't set tvg parameters",
+                 priv->project_name, priv->track_name, channel_info->name);
+      goto exit;
+    }
 
-  if (!hyscan_data_writer_channel_set_signal_info (priv->db, signal_id, info->data.rate))
+  /* Канал шумовой картины. */
+  name = g_strdup_printf ("%s-noise", channel_name);
+  noise_id = hyscan_db_channel_create (priv->db, priv->track_id, name, RAW_CHANNEL_SCHEMA);
+  g_free (name);
+
+  if (noise_id < 0 || signal_id < 0 || tvg_id < 0)
     goto exit;
 
   /* Канал записи данных. */
   data_id = hyscan_db_channel_create (priv->db, priv->track_id, channel_name, RAW_CHANNEL_SCHEMA);
   if (data_id < 0)
     goto exit;
+
+  /* Параметры "сырых" данных. */
+  if (!hyscan_data_writer_channel_set_raw_info (priv->db, data_id, info) ||
+      !hyscan_data_writer_channel_set_raw_info (priv->db, noise_id, info))
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't set data parameters",
+                 priv->project_name, priv->track_name, channel_info->name);
+      goto exit;
+    }
 
   /* Местоположение приёмных антенн. */
   position = g_hash_table_lookup (priv->sonar_positions, GINT_TO_POINTER (source));
@@ -644,14 +670,8 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
     }
   else
     {
-      g_warning ("HyScanDataWriter: unspecified antenna position for channel %s", channel_name);
-    }
-
-  /* Параметры "сырых" данных. */
-  if (!hyscan_data_writer_channel_set_raw_info (priv->db, data_id, info) ||
-      !hyscan_data_writer_channel_set_raw_info (priv->db, noise_id, info))
-    {
-      goto exit;
+      g_info ("HyScanDataWriter: %s.%s.%s: unspecified antenna position",
+              priv->project_name, priv->track_name, channel_name);
     }
 
   channel_info = g_new0 (HyScanDataWriterSonarChannel, 1);
@@ -664,7 +684,6 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
   channel_info->raw_source = source;
   channel_info->data_type = info->data.type;
   channel_info->data_rate = info->data.rate;
-  channel_info->tvg_rate = 0.0;
 
   g_hash_table_insert (priv->sonar_channels,
                        hyscan_data_writer_uniq_channel (source, TRUE, channel),
@@ -679,7 +698,7 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
 
   /* Записываем текущий сигнал. */
   signal = g_hash_table_lookup (priv->signal, GINT_TO_POINTER (source));
-  if (signal != NULL && signal->n_points > 0)
+  if ((signal != NULL) && (signal->n_points > 0) && (signal->rate))
     {
       status = hyscan_db_channel_add_data (priv->db, channel_info->signal_id,
                                            signal->time, signal->points,
@@ -688,7 +707,8 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
 
       if (!status)
         {
-          g_warning ("HyScanDataWriter: can't add signal to channel '%s'", channel_info->name);
+          g_warning ("HyScanDataWriter: %s.%s.%s: can't add signal",
+                     priv->project_name, priv->track_name, channel_info->name);
           goto exit;
         }
     }
@@ -697,24 +717,17 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
   tvg = g_hash_table_lookup (priv->tvg, hyscan_data_writer_uniq_channel (source, TRUE, channel));
   if (tvg != NULL && tvg->n_gains > 0)
     {
-      if (!hyscan_data_writer_channel_set_tvg_info (priv->db, channel_info->tvg_id, tvg->rate))
-        {
-          g_warning ("HyScanDataWriter: can't set tvg parameters in channel '%s'", channel_info->name);
-          channel_info->tvg_rate = -1.0;
-          goto exit;
-        }
-
       status = hyscan_db_channel_add_data (priv->db, channel_info->tvg_id,
                                            tvg->time, tvg->gains,
                                            tvg->n_gains * sizeof (gfloat), NULL);
 
       if (!status)
         {
-          g_warning ("HyScanDataWriter: can't add tvg to channel '%s'", channel_info->name);
+          g_warning ("HyScanDataWriter: %s.%s.%s: can't add tvg",
+                     priv->project_name, priv->track_name, channel_info->name);
           goto exit;
         }
     }
-
 
 exit:
   if (channel_info == NULL)
@@ -762,7 +775,8 @@ hyscan_data_writer_acoustic_channel_create (HyScanDataWriterPrivate *priv,
     }
   else
     {
-      g_warning ("HyScanDataWriter: unspecified antenna position for channel %s", channel_name);
+      g_info ("HyScanDataWriter: %s.%s.%s: unspecified antenna position",
+              priv->project_name, priv->track_name, channel_name);
     }
 
   /* Параметры акустических данных */
@@ -778,7 +792,6 @@ hyscan_data_writer_acoustic_channel_create (HyScanDataWriterPrivate *priv,
   channel_info->raw_source = 0;
   channel_info->data_type = info->data.type;
   channel_info->data_rate = info->data.rate;
-  channel_info->tvg_rate = 0.0;
 
   g_hash_table_insert (priv->sonar_channels,
                        hyscan_data_writer_uniq_channel (source, FALSE, 1),
@@ -821,7 +834,7 @@ hyscan_data_writer_project_create (HyScanDB    *db,
                                             G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
   if (project_schema == NULL)
     {
-      g_warning ("HyScanCore: can't find project schema");
+      g_warning ("HyScanCore: can't load project schema");
       return FALSE;
     }
 
@@ -835,7 +848,7 @@ hyscan_data_writer_project_create (HyScanDB    *db,
   return status;
 }
 
-
+/* Функция устанавливает название проекта, в который будет вестись запись галсов. */
 gboolean
 hyscan_data_writer_project_set (HyScanDataWriter *writer,
                                 const gchar      *project_name)
@@ -856,6 +869,7 @@ hyscan_data_writer_project_set (HyScanDataWriter *writer,
   /* Закрываем текущий проект. */
   if (priv->project_id > 0)
     {
+      g_clear_pointer (&priv->project_name, g_free);
       hyscan_db_close (priv->db, priv->project_id);
       priv->project_id = -1;
     }
@@ -868,6 +882,8 @@ hyscan_data_writer_project_set (HyScanDataWriter *writer,
   priv->project_id = hyscan_db_project_open (priv->db, project_name);
   if (priv->project_id < 0)
     goto exit;
+
+  priv->project_name = g_strdup (project_name);
 
   status = TRUE;
 
@@ -902,7 +918,11 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
 
   /* Закрываем текущий галс. */
   if (priv->track_id > 0)
-    hyscan_db_close (priv->db, priv->track_id);
+    {
+      g_clear_pointer (&priv->track_name, g_free);
+      hyscan_db_close (priv->db, priv->track_id);
+      priv->track_id = -1;
+    }
 
   /* Проект должен быть открыт. */
   if (priv->project_id < 0)
@@ -914,6 +934,8 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
                                                     priv->info);
   if (priv->track_id <= 0)
     goto exit;
+
+  priv->track_name = g_strdup (track_name);
 
   status = TRUE;
 
@@ -944,8 +966,11 @@ hyscan_data_writer_stop (HyScanDataWriter *writer)
 
   /* Закрываем текущий галс. */
   if (priv->track_id > 0)
-    hyscan_db_close (priv->db, priv->track_id);
-  priv->track_id = -1;
+    {
+      g_clear_pointer (&priv->track_name, g_free);
+      hyscan_db_close (priv->db, priv->track_id);
+      priv->track_id = -1;
+    }
 
   g_mutex_unlock (&priv->lock);
 }
@@ -1180,7 +1205,8 @@ gboolean hyscan_data_writer_sensor_add_data (HyScanDataWriter     *writer,
   /* Проверяем тип данных на соответствие данным датчиков. */
   if (!hyscan_source_is_sensor (source))
     {
-      g_warning ("HyScanDataWriter: incorrect sensor source '%d'", source);
+      g_warning ("HyScanDataWriter: incorrect sensor source %s",
+                 hyscan_channel_get_name_by_types (source, FALSE,1));
       return FALSE;
     }
 
@@ -1267,7 +1293,8 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
   /* Проверяем тип данных на соответствие "сырым". */
   if (!hyscan_source_is_raw (source))
     {
-      g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
+      g_warning ("HyScanDataWriter: incorrect raw source %s",
+                 hyscan_channel_get_name_by_types (source, FALSE,1));
       return FALSE;
     }
 
@@ -1300,14 +1327,11 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
     }
 
   /* Проверяем тип данных и частоту дисретизации. */
-  if ((channel_info->data_type != info->data.type) ||
-      (channel_info->data_rate != info->data.rate))
+  if ((channel_info->data_type == info->data.type) &&
+      (fabs (channel_info->data_rate - info->data.rate) < 1.0))
     {
-      goto exit;
+      status = hyscan_db_channel_add_data (priv->db, channel_info->data_id, data->time, data->data, data->size, NULL);
     }
-
-  /* Записываем данные. */
-  status = hyscan_db_channel_add_data (priv->db, channel_info->data_id, data->time, data->data, data->size, NULL);
 
 exit:
   g_mutex_unlock (&priv->lock);
@@ -1335,7 +1359,8 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
   /* Проверяем тип данных на соответствие "сырым". */
   if (!hyscan_source_is_raw (source))
     {
-      g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
+      g_warning ("HyScanDataWriter: incorrect raw source %s",
+                 hyscan_channel_get_name_by_types (source, FALSE,1));
       return FALSE;
     }
 
@@ -1367,15 +1392,12 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
         goto exit;
     }
 
-  /* Проверяем тип данных и частоту дисретизации. */
-  if ((channel_info->data_type != info->data.type) ||
-      (channel_info->data_rate != info->data.rate))
+  /* Проверяем тип данных и частоту дискретизации. */
+  if ((channel_info->data_type == info->data.type) &&
+      (fabs (channel_info->data_rate - info->data.rate) < 1.0))
     {
-      goto exit;
+      status = hyscan_db_channel_add_data (priv->db, channel_info->noise_id, data->time, data->data, data->size, NULL);
     }
-
-  /* Записываем данные. */
-  status = hyscan_db_channel_add_data (priv->db, channel_info->noise_id, data->time, data->data, data->size, NULL);
 
 exit:
   g_mutex_unlock (&priv->lock);
@@ -1403,7 +1425,8 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
   /* Проверяем тип данных на соответствие "сырым". */
   if (!hyscan_source_is_raw (source))
     {
-      g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
+      g_warning ("HyScanDataWriter: incorrect raw source %s",
+                 hyscan_channel_get_name_by_types (source, FALSE,1));
       return FALSE;
     }
 
@@ -1450,7 +1473,7 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
         continue;
 
       /* Частота дискретизации должна совпадать. */
-      if (channel_info->data_rate == cur_signal->rate)
+      if ((fabs (channel_info->data_rate - cur_signal->rate) < 1.0))
         {
           gboolean status;
 
@@ -1468,11 +1491,15 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
           status = hyscan_db_channel_add_data (priv->db, channel_info->signal_id,
                                                cur_signal->time, points, size, NULL);
           if (!status)
-            g_warning ("HyScanDataWriter: can't add signal to channel '%s'", channel_info->name);
+            {
+              g_warning ("HyScanDataWriter: %s.%s.%s: can't add signal",
+                         priv->project_name, priv->track_name, channel_info->name);
+            }
         }
       else
         {
-          g_warning ("HyScanDataWriter: signal rate mismatch in channel '%s'", channel_info->name);
+          g_warning ("HyScanDataWriter: %s.%s.%s: signal rate mismatch",
+                     priv->project_name, priv->track_name, channel_info->name);
         }
     }
 
@@ -1501,7 +1528,8 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   /* Проверяем тип данных на соответствие "сырым". */
   if (!hyscan_source_is_raw (source))
     {
-      g_warning ("HyScanDataWriter: incorrect raw source '%d'", source);
+      g_warning ("HyScanDataWriter: incorrect raw source %s",
+                 hyscan_channel_get_name_by_types (source, FALSE,1));
       return FALSE;
     }
 
@@ -1540,31 +1568,25 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   if ((channel_info != NULL) && (channel_info->raw_source == source))
     {
       /* Частота дискретизации должна совпадать. */
-      if (channel_info->tvg_rate == 0.0 ||
-          channel_info->tvg_rate == cur_tvg->rate)
+      if ((fabs (channel_info->data_rate - cur_tvg->rate) < 1.0))
         {
-          /* Первая запись параметров ВАРУ - устанавливаем значения параметров дискретизации. */
-          if (channel_info->tvg_rate == 0.0)
-            if (!hyscan_data_writer_channel_set_tvg_info (priv->db, channel_info->tvg_id, cur_tvg->rate))
-              {
-                channel_info->tvg_rate = -1.0;
-                goto exit;
-              }
-
           status = hyscan_db_channel_add_data (priv->db, channel_info->tvg_id,
                                                cur_tvg->time, cur_tvg->gains,
                                                cur_tvg->n_gains * sizeof (gfloat), NULL);
 
           if (!status)
-            g_warning ("HyScanDataWriter: can't add tvg to channel '%s'", channel_info->name);
+            {
+              g_warning ("HyScanDataWriter: %s.%s.%s: can't add tvg",
+                         priv->project_name, priv->track_name, channel_info->name);
+            }
         }
       else
         {
-          g_warning ("HyScanDataWriter: tvg rate mismatch in channel '%s'", channel_info->name);
+          g_warning ("HyScanDataWriter: %s.%s.%s: tvg rate mismatch",
+                     priv->project_name, priv->track_name, channel_info->name);
         }
     }
 
-exit:
   g_mutex_unlock (&priv->lock);
 
   return status;
@@ -1588,7 +1610,8 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
   /* Проверяем тип данных на соответствие акустическим. */
   if (!hyscan_source_is_acoustic (source))
     {
-      g_warning ("HyScanDataWriter: incorrect acoustic source '%d'", source);
+      g_warning ("HyScanDataWriter: incorrect acoustic source %s",
+                 hyscan_channel_get_name_by_types (source, FALSE,1));
       return FALSE;
     }
 
@@ -1621,15 +1644,11 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
     }
 
   /* Проверяем тип данных и частоту дисретизации. */
-  if ((channel_info->data_type != info->data.type) ||
-      (channel_info->data_rate != info->data.rate))
+  if ((channel_info->data_type == info->data.type) &&
+      (fabs (channel_info->data_rate - info->data.rate) < 1.0))
     {
-      goto exit;
+      status = hyscan_db_channel_add_data (priv->db, channel_info->data_id, data->time, data->data, data->size, NULL);
     }
-
-  /* Записываем данные. */
-  if (hyscan_db_channel_add_data (priv->db, channel_info->data_id, data->time, data->data, data->size, NULL))
-    status = TRUE;
 
 exit:
   g_mutex_unlock (&priv->lock);
