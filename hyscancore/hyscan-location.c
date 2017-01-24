@@ -875,23 +875,35 @@ hyscan_location_source_set (HyScanLocation *location,
     {
     case HYSCAN_LOCATION_SOURCE_NMEA:
     case HYSCAN_LOCATION_SOURCE_NMEA_COMPUTED:
-      source_info->channel_id = hyscan_db_channel_open (priv->db,
-                                                        priv->track_id,
-                                                        source_info->channel_name);
-      break;
+      {
+        source_info->channel_id = hyscan_db_channel_open (priv->db,
+                                                          priv->track_id,
+                                                          source_info->channel_name);
+        break;
+      }
     case HYSCAN_LOCATION_SOURCE_ECHOSOUNDER:
     case HYSCAN_LOCATION_SOURCE_SONAR_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_STARBOARD:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_PORT:
     case HYSCAN_LOCATION_SOURCE_SONAR_HIRES_STARBOARD:
-      source_info->dchannel = hyscan_raw_data_new (priv->db,
-                                                   priv->project_name,
-                                                   priv->track_name,
-                                                   source_info->channel_name);
-      break;
+      {
+        HyScanSourceType raw_source_type;
+        guint raw_channel_index;
+
+        hyscan_channel_get_types_by_name (source_info->channel_name, &raw_source_type, NULL, &raw_channel_index);
+
+        source_info->dchannel = hyscan_raw_data_new (priv->db,
+                                                     priv->project_name,
+                                                     priv->track_name,
+                                                     raw_source_type,
+                                                     raw_channel_index);
+        break;
+      }
     default:
-      status = FALSE;
-      goto exit;
+      {
+        status = FALSE;
+        goto exit;
+      }
     }
 
   /* Инициализируем локальный кэш. */
