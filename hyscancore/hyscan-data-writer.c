@@ -1418,6 +1418,8 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
   GHashTableIter iter;
   gpointer data;
 
+  gboolean status = TRUE;
+
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
 
   priv = writer->priv;
@@ -1475,8 +1477,6 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
       /* Частота дискретизации должна совпадать. */
       if ((fabs (channel_info->data_rate - cur_signal->rate) < 1.0))
         {
-          gboolean status;
-
           if(cur_signal->n_points == 0)
             {
               size = sizeof (HyScanComplexFloat);
@@ -1494,12 +1494,17 @@ hyscan_data_writer_raw_add_signal (HyScanDataWriter       *writer,
             {
               g_warning ("HyScanDataWriter: %s.%s.%s: can't add signal",
                          priv->project_name, priv->track_name, channel_info->name);
+
+              break;
             }
         }
       else
         {
           g_warning ("HyScanDataWriter: %s.%s.%s: signal rate mismatch",
                      priv->project_name, priv->track_name, channel_info->name);
+
+          status = FALSE;
+          break;
         }
     }
 
@@ -1519,7 +1524,7 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
   HyScanDataWriterSonarChannel *channel_info;
   HyScanDataWriterTVG *cur_tvg;
   HyScanDataWriterModeType mode;
-  gboolean status = FALSE;
+  gboolean status = TRUE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
 
@@ -1584,6 +1589,8 @@ hyscan_data_writer_raw_add_tvg (HyScanDataWriter     *writer,
         {
           g_warning ("HyScanDataWriter: %s.%s.%s: tvg rate mismatch",
                      priv->project_name, priv->track_name, channel_info->name);
+
+          status = FALSE;
         }
     }
 
