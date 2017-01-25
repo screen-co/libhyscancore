@@ -203,6 +203,9 @@ hyscan_raw_data_object_constructed (GObject *object)
   gint32 track_id = -1;
   gint32 param_id = -1;
 
+  guint32 first_index;
+  guint32 last_index;
+
   const gchar *channel_name;
   gchar *signal_name = NULL;
   gchar *tvg_name = NULL;
@@ -231,6 +234,7 @@ hyscan_raw_data_object_constructed (GObject *object)
       goto exit;
     }
 
+  /* Открываем канал данных. */
   project_id = hyscan_db_project_open (priv->db, priv->project_name);
   if (project_id < 0)
     {
@@ -250,6 +254,13 @@ hyscan_raw_data_object_constructed (GObject *object)
     {
       g_info ("HyScanRawData: can't open channel '%s.%s.%s'",
               priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
+
+  /* Проверяем наличие записей в канале. */
+  if (!hyscan_db_channel_get_data_range (priv->db, priv->channel_id, &first_index, &last_index) ||
+      ((first_index == 0) && (last_index == 0)))
+    {
       goto exit;
     }
 
@@ -1089,7 +1100,7 @@ hyscan_raw_data_get_signal_image (HyScanRawData      *data,
   return TRUE;
 }
 
-/*  */
+/* Функция возвращает значения коэффициентов усиления. */
 gboolean
 hyscan_raw_data_get_tvg_values (HyScanRawData *data,
                                 guint32        index,
@@ -1119,8 +1130,8 @@ hyscan_raw_data_get_tvg_values (HyScanRawData *data,
   while (TRUE)
     {
       dtime = hyscan_raw_data_get_time (data, index);
-      find_status = hyscan_db_channel_find_data (priv->db, priv->tvg_id,
-                                            dtime, &lindex, &rindex, &ltime, &rtime);
+      find_status = hyscan_db_channel_find_data (priv->db, priv->tvg_id, dtime,
+                                                 &lindex, &rindex, &ltime, &rtime);
 
       /* Коэффициенты ВАРУ не найдены. */
       if ((find_status == HYSCAN_DB_FIND_FAIL) || (find_status == HYSCAN_DB_FIND_LESS))
