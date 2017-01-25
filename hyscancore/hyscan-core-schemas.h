@@ -11,18 +11,33 @@
 #ifndef __HYSCAN_CORE_SCHEMAS_H__
 #define __HYSCAN_CORE_SCHEMAS_H__
 
-#define PROJECT_SCHEMA_ID                      5567935968311267914
-#define PROJECT_SCHEMA_VERSION                 20160100
+#define PROJECT_SCHEMA_ID                      1495752243900067309
+#define PROJECT_SCHEMA_VERSION                 20170100
 
-#define TRACK_SCHEMA_ID                        5567935968310940244
-#define TRACK_SCHEMA_VERSION                   20160100
+#define TRACK_SCHEMA_ID                        1715033709558529337
+#define TRACK_SCHEMA_VERSION                   20170100
+
+#define SENSOR_CHANNEL_SCHEMA_ID               5474665919775311270
+#define SENSOR_CHANNEL_SCHEMA_VERSION          20170100
+
+#define RAW_CHANNEL_SCHEMA_ID                  8876799399463045887
+#define RAW_CHANNEL_SCHEMA_VERSION             20170100
+
+#define SIGNAL_CHANNEL_SCHEMA_ID               4522835908161425227
+#define SIGNAL_CHANNEL_SCHEMA_VERSION          20170100
+
+#define TVG_CHANNEL_SCHEMA_ID                  8911020404930317035
+#define TVG_CHANNEL_SCHEMA_VERSION             20170100
+
+#define ACOUSTIC_CHANNEL_SCHEMA_ID             1122285168293703474
+#define ACOUSTIC_CHANNEL_SCHEMA_VERSION        20170100
 
 #define PROJECT_SCHEMA                         "project"
 #define TRACK_SCHEMA                           "track"
 #define SENSOR_CHANNEL_SCHEMA                  "sensor"
 #define RAW_CHANNEL_SCHEMA                     "raw"
-#define ACOUSTIC_CHANNEL_SCHEMA                "acoustic"
 #define SIGNAL_CHANNEL_SCHEMA                  "signal"
 #define TVG_CHANNEL_SCHEMA                     "tvg"
+#define ACOUSTIC_CHANNEL_SCHEMA                "acoustic"
 
 #endif /* __HYSCAN_SCHEMAS_H__ */

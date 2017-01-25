@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="schema">
-    <key id="id" name="Track schema id" type="integer" access="readonly">
-      <default>5567935968310940244</default>
-    </key>
-    <key id="version" name="Track schema version" type="integer" access="readonly">
-      <default>20160100</default>
-    </key>
-  </schema>
-
   <schema id="position">
     <key id="x" name="X" type="double"/>
     <key id="y" name="Y" type="double"/>
@@ -39,18 +30,39 @@
   </schema>
 
   <schema id="track">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="Track schema id" type="integer" access="readonly">
+        <default>17150337095585290337</default>
+      </key>
+      <key id="version" name="Track schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <key id="info" name="Sonar info" type="string" view="schema"/>
     <key id="type" name="Track type" type="string"/>
   </schema>
 
   <schema id="sensor">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="Sensor channel schema id" type="integer" access="readonly">
+        <default>5474665919775311270</default>
+      </key>
+      <key id="version" name="Sensor channel schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <node id="position" schema="position"/>
   </schema>
 
   <schema id="raw">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="Raw channel schema id" type="integer" access="readonly">
+        <default>8876799399463045887</default>
+      </key>
+      <key id="version" name="Raw channel schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <node id="position" schema="position"/>
     <node id="data" schema="data"/>
     <node id="antenna">
@@ -60,23 +72,39 @@
     <node id="adc" schema="adc"/>
   </schema>
 
-  <schema id="noise">
-    <node id="schema" schema="schema"/>
-    <node id="data" schema="data"/>
-  </schema>
-
   <schema id="signal">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="Signal channel schema id" type="integer" access="readonly">
+        <default>4522835908161425227</default>
+      </key>
+      <key id="version" name="Signal schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <node id="data" schema="data"/>
   </schema>
 
   <schema id="tvg">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="TVG channel schema id" type="integer" access="readonly">
+        <default>8911020404930317035</default>
+      </key>
+      <key id="version" name="TVG schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <node id="data" schema="data"/>
   </schema>
 
   <schema id="acoustic">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="Acoustic channel schema id" type="integer" access="readonly">
+        <default>1122285168293703474</default>
+      </key>
+      <key id="version" name="Acoustic schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <node id="position" schema="position"/>
     <node id="data" schema="data"/>
     <node id="antenna">

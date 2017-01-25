@@ -617,10 +617,17 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
   signal_id = hyscan_db_channel_create (priv->db, priv->track_id, name, SIGNAL_CHANNEL_SCHEMA);
   g_free (name);
 
+  if (signal_id < 0)
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't create signal channel",
+                 priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
+
   if (!hyscan_data_writer_channel_set_signal_info (priv->db, signal_id, info->data.rate))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set signal parameters",
-                 priv->project_name, priv->track_name, channel_info->name);
+                 priv->project_name, priv->track_name, channel_name);
       goto exit;
     }
 
@@ -629,10 +636,17 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
   tvg_id = hyscan_db_channel_create (priv->db, priv->track_id, name, TVG_CHANNEL_SCHEMA);
   g_free (name);
 
+  if (tvg_id < 0)
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't create tvg channel",
+                 priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
+
   if (!hyscan_data_writer_channel_set_tvg_info (priv->db, tvg_id, info->data.rate))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set tvg parameters",
-                 priv->project_name, priv->track_name, channel_info->name);
+                 priv->project_name, priv->track_name, channel_name);
       goto exit;
     }
 
@@ -641,20 +655,33 @@ hyscan_data_writer_raw_channel_create (HyScanDataWriterPrivate *priv,
   noise_id = hyscan_db_channel_create (priv->db, priv->track_id, name, RAW_CHANNEL_SCHEMA);
   g_free (name);
 
-  if (noise_id < 0 || signal_id < 0 || tvg_id < 0)
-    goto exit;
+  if (noise_id < 0)
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't create noise channel",
+                 priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
+
+  if (!hyscan_data_writer_channel_set_raw_info (priv->db, noise_id, info))
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't set data parameters",
+                 priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
 
   /* Канал записи данных. */
   data_id = hyscan_db_channel_create (priv->db, priv->track_id, channel_name, RAW_CHANNEL_SCHEMA);
   if (data_id < 0)
-    goto exit;
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't create channel",
+                 priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
 
-  /* Параметры "сырых" данных. */
-  if (!hyscan_data_writer_channel_set_raw_info (priv->db, data_id, info) ||
-      !hyscan_data_writer_channel_set_raw_info (priv->db, noise_id, info))
+  if (!hyscan_data_writer_channel_set_raw_info (priv->db, data_id, info))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set data parameters",
-                 priv->project_name, priv->track_name, channel_info->name);
+                 priv->project_name, priv->track_name, channel_name);
       goto exit;
     }
 

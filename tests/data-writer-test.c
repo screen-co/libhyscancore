@@ -164,6 +164,7 @@ void track_check_info (HyScanDB *db,
 void
 antenna_check_position (HyScanDB *db,
                         gint32    channel_id,
+                        gint64    schema_id,
                         guint     n_channel)
 {
   gint32 param_id;
@@ -191,7 +192,7 @@ antenna_check_position (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
+  if ((g_variant_get_int64 (param_values[0]) != schema_id) ||
       (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION))
     {
       g_error ("error in schema");
@@ -254,8 +255,8 @@ raw_check_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION))
+  if ((g_variant_get_int64 (param_values[0]) != RAW_CHANNEL_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != RAW_CHANNEL_SCHEMA_VERSION))
     {
       g_error ("error in schema");
     }
@@ -319,8 +320,8 @@ acoustic_check_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION))
+  if ((g_variant_get_int64 (param_values[0]) != ACOUSTIC_CHANNEL_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != ACOUSTIC_CHANNEL_SCHEMA_VERSION))
     {
       g_error ("error in schema");
     }
@@ -371,8 +372,8 @@ signal_check_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read signal parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) )
+  if ((g_variant_get_int64 (param_values[0]) != SIGNAL_CHANNEL_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != SIGNAL_CHANNEL_SCHEMA_VERSION) )
     {
       g_error ("error in schema");
     }
@@ -420,8 +421,8 @@ tvg_check_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read tvg parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) )
+  if ((g_variant_get_int64 (param_values[0]) != TVG_CHANNEL_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != TVG_CHANNEL_SCHEMA_VERSION))
     {
       g_error ("error in schema");
     }
@@ -596,7 +597,7 @@ sensor_check_data (HyScanDB    *db,
     g_error ("can't open channel");
 
   /* Проверка параметров. */
-  antenna_check_position (db, channel_id, n_channel);
+  antenna_check_position (db, channel_id, SENSOR_CHANNEL_SCHEMA_ID, n_channel);
 
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
@@ -669,11 +670,16 @@ sonar_check_data (HyScanDB    *db,
     g_error ("can't open channel");
 
   /* Проверка параметров. */
-  antenna_check_position (db, channel_id, n_channel);
   if (raw)
-    raw_check_info (db, channel_id, n_channel);
+    {
+      raw_check_info (db, channel_id, n_channel);
+      antenna_check_position (db, channel_id, RAW_CHANNEL_SCHEMA_ID, n_channel);
+    }
   else
-    acoustic_check_info (db, channel_id, n_channel);
+    {
+      acoustic_check_info (db, channel_id, n_channel);
+      antenna_check_position (db, channel_id, ACOUSTIC_CHANNEL_SCHEMA_ID, n_channel);
+    }
 
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
@@ -705,7 +711,7 @@ sonar_check_data (HyScanDB    *db,
       channel_id = hyscan_db_channel_open (db, track_id, noise_name);
       g_free (noise_name);
 
-      antenna_check_position (db, channel_id, n_channel);
+      antenna_check_position (db, channel_id, RAW_CHANNEL_SCHEMA_ID, n_channel);
       raw_check_info (db, channel_id, n_channel);
 
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)

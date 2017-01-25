@@ -90,6 +90,7 @@ static gboolean        hyscan_raw_data_load_data_params        (HyScanDB        
                                                                 HyScanRawDataInfo             *info);
 static gboolean        hyscan_raw_data_check_addon_params      (HyScanDB                      *db,
                                                                 gint32                         param_id,
+                                                                gint64                         schema_id,
                                                                 gdouble                        data_rate,
                                                                 HyScanDataType                 data_type);
 
@@ -295,7 +296,7 @@ hyscan_raw_data_object_constructed (GObject *object)
           goto exit;
         }
 
-      status = hyscan_raw_data_check_addon_params (priv->db, param_id,
+      status = hyscan_raw_data_check_addon_params (priv->db, param_id, SIGNAL_CHANNEL_SCHEMA_ID,
                                                    priv->info.data.rate, HYSCAN_DATA_COMPLEX_FLOAT);
       if (!status)
         {
@@ -333,7 +334,7 @@ hyscan_raw_data_object_constructed (GObject *object)
           goto exit;
         }
 
-      status = hyscan_raw_data_check_addon_params (priv->db, param_id,
+      status = hyscan_raw_data_check_addon_params (priv->db, param_id, TVG_CHANNEL_SCHEMA_ID,
                                                    priv->info.data.rate, HYSCAN_DATA_FLOAT);
       if (!status)
         {
@@ -437,8 +438,8 @@ hyscan_raw_data_load_position (HyScanDB              *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) )
+  if ((g_variant_get_int64 (param_values[0]) != RAW_CHANNEL_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != RAW_CHANNEL_SCHEMA_VERSION) )
     {
       goto exit;
     }
@@ -490,8 +491,8 @@ hyscan_raw_data_load_data_params (HyScanDB          *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
 
-  if ((g_variant_get_int64 (param_values[0]) != TRACK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION) )
+  if ((g_variant_get_int64 (param_values[0]) != RAW_CHANNEL_SCHEMA_ID) ||
+      (g_variant_get_int64 (param_values[1]) != RAW_CHANNEL_SCHEMA_VERSION) )
     {
       goto exit;
     }
@@ -526,6 +527,7 @@ exit:
 static gboolean
 hyscan_raw_data_check_addon_params (HyScanDB       *db,
                                     gint32          param_id,
+                                    gint64          schema_id,
                                     gdouble         data_rate,
                                     HyScanDataType  data_type)
 {
@@ -542,7 +544,7 @@ hyscan_raw_data_check_addon_params (HyScanDB       *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
 
-  if ((g_variant_get_int64 (param_values[0]) == TRACK_SCHEMA_ID) &&
+  if ((g_variant_get_int64 (param_values[0]) == schema_id) &&
       (g_variant_get_int64 (param_values[1]) == TRACK_SCHEMA_VERSION) &&
       (fabs (g_variant_get_double (param_values[3]) - data_rate) < 1.0) &&
       (hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL)) == data_type))

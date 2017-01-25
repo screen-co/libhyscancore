@@ -9,12 +9,10 @@
 */
 
 #include "hyscan-core-types.h"
+#include "hyscan-core-schemas.h"
 
 #include <gio/gio.h>
 #include <string.h>
-
-#define TRACK_SCHEMA                "track"
-#define SENSOR_CHANNEL_SCHEMA       "sensor"
 
 /* Типы галсов и их названия. */
 typedef struct

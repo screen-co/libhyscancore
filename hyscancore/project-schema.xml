@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="schema">
-    <key id="id" name="Project schema id" type="integer" access="readonly">
-      <default>5567935968311267914</default>
-    </key>
-    <key id="version" name="Project schema version" type="integer" access="readonly">
-      <default>20160100</default>
-    </key>
-  </schema>
-
   <schema id="project">
-    <node id="schema" schema="schema"/>
+    <node id="schema">
+      <key id="id" name="Project schema id" type="integer" access="readonly">
+        <default>14957522439000670309</default>
+      </key>
+      <key id="version" name="Project schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
     <key id="description" name="Project description" type="string"/>
   </schema>
 </schemalist>
