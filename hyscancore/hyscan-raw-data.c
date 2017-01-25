@@ -22,7 +22,8 @@ enum
   PROP_PROJECT_NAME,
   PROP_TRACK_NAME,
   PROP_SOURCE_TYPE,
-  PROP_SOURCE_CHANNEL
+  PROP_SOURCE_CHANNEL,
+  PROP_NOISE
 };
 
 enum
@@ -49,6 +50,7 @@ struct _HyScanRawDataPrivate
   gchar               *track_name;                             /* Название галса. */
   HyScanSourceType     source_type;                            /* Тип источника данных. */
   guint                source_channel;                         /* Индекс канала данных. */
+  gboolean             noise;                                  /* Открывать канал с шумами. */
 
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
@@ -148,6 +150,10 @@ hyscan_raw_data_class_init (HyScanRawDataClass *klass)
   g_object_class_install_property (object_class, PROP_SOURCE_CHANNEL,
     g_param_spec_int ("source-channel", "SourceChannel", "Source channel", 1, 5, 1,
                       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (object_class, PROP_NOISE,
+    g_param_spec_boolean ("noise", "Noise", "Use noise channel", FALSE,
+                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -185,6 +191,10 @@ hyscan_raw_data_set_property (GObject      *object,
 
     case PROP_SOURCE_CHANNEL:
       priv->source_channel = g_value_get_int (value);
+      break;
+
+    case PROP_NOISE:
+      priv->noise = g_value_get_boolean (value);
       break;
 
     default:
@@ -234,7 +244,6 @@ hyscan_raw_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  /* Открываем канал данных. */
   project_id = hyscan_db_project_open (priv->db, priv->project_name);
   if (project_id < 0)
     {
@@ -249,7 +258,18 @@ hyscan_raw_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  priv->channel_id = hyscan_db_channel_open (priv->db, track_id, channel_name);
+  /* Открываем канал данных. */
+  if (priv->noise)
+    {
+      gchar *noise_channel_name = g_strdup_printf ("%s-noise", channel_name);
+      priv->channel_id = hyscan_db_channel_open (priv->db, track_id, noise_channel_name);
+      g_free (noise_channel_name);
+    }
+  else
+    {
+      priv->channel_id = hyscan_db_channel_open (priv->db, track_id, channel_name);
+    }
+
   if (priv->channel_id < 0)
     {
       g_info ("HyScanRawData: can't open channel '%s.%s.%s'",
@@ -876,7 +896,7 @@ hyscan_raw_data_check_cache (HyScanRawDataPrivate *priv,
   return TRUE;
 }
 
-/* Функция создаёт новый объект обработки акустических данных без использования кэша. */
+/* Функция создаёт новый объект обработки сырых данных. */
 HyScanRawData *
 hyscan_raw_data_new (HyScanDB         *db,
                      const gchar      *project_name,
@@ -892,6 +912,31 @@ hyscan_raw_data_new (HyScanDB         *db,
                        "track-name", track_name,
                        "source-type", source_type,
                        "source-channel", source_channel,
+                       NULL);
+
+  if (data->priv->channel_id <= 0)
+    g_clear_object (&data);
+
+  return data;
+}
+
+/* Функция создаёт новый объект обработки шумов сырых данных. */
+HyScanRawData *
+hyscan_raw_data_noise_new (HyScanDB         *db,
+                           const gchar      *project_name,
+                           const gchar      *track_name,
+                           HyScanSourceType  source_type,
+                           guint             source_channel)
+{
+  HyScanRawData *data;
+
+  data = g_object_new (HYSCAN_TYPE_RAW_DATA,
+                       "db", db,
+                       "project-name", project_name,
+                       "track-name", track_name,
+                       "source-type", source_type,
+                       "source-channel", source_channel,
+                       "noise", TRUE,
                        NULL);
 
   if (data->priv->channel_id <= 0)

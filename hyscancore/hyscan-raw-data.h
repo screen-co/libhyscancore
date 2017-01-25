@@ -11,7 +11,7 @@
  * Класс HyScanRawData используется для обработки сырых данных, такой как преобразование
  * типов данных, свёртки, вычисления аплитуды сигнала.
  *
- * Объект обработки данных создаётся функцией #hyscan_raw_data_new.
+ * Объект обработки данных создаётся функциями #hyscan_raw_data_new или #hyscan_raw_data_noise_new.
  *
  * В своей работе класс HyScanRawData может использовать внешний кэш для хранения обработанных
  * данных. В случае запроса ранее обработанных данных пользователь получит их копию из кэша. Несколько
@@ -98,8 +98,8 @@ GType                  hyscan_raw_data_get_type                (void);
 
 /**
  *
- * Функция создаёт новый объект обработки акустических данных без использования кэша.
- * Если канал данных отсутствует функция вернёт значение NULL.
+ * Функция создаёт новый объект обработки сырых данных. Если данные отсутствуют,
+ * функция вернёт значение NULL.
  *
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param project_name название проекта;
@@ -112,6 +112,27 @@ GType                  hyscan_raw_data_get_type                (void);
  */
 HYSCAN_API
 HyScanRawData         *hyscan_raw_data_new                     (HyScanDB              *db,
+                                                                const gchar           *project_name,
+                                                                const gchar           *track_name,
+                                                                HyScanSourceType       source_type,
+                                                                guint                  source_channel);
+
+/**
+ *
+ * Функция создаёт новый объект обработки шумов сырых данных. Если данные отсутствуют,
+ * функция вернёт значение NULL.
+ *
+ * \param db указатель на объект \link HyScanDB \endlink;
+ * \param project_name название проекта;
+ * \param track_name название галса;
+ * \param source_type тип источника данных;
+ * \param source_channel индекс канала данных.
+ *
+ * \return Указатель на объект \link HyScanRawData \endlink или NULL.
+ *
+ */
+HYSCAN_API
+HyScanRawData         *hyscan_raw_data_noise_new               (HyScanDB              *db,
                                                                 const gchar           *project_name,
                                                                 const gchar           *track_name,
                                                                 HyScanSourceType       source_type,

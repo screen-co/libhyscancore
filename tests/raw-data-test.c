@@ -21,6 +21,7 @@ int main( int argc, char **argv )
   guint n_lines = 10;             /* Число строк для каждого сигнала. */
   guint n_tvgs = 5;               /* Число "кривых" ВАРУ. */
   guint cache_size = 0;           /* Размер кэша, Мб. */
+  gboolean noise = FALSE;         /* Использовать канал шумов для теста. */
 
   HyScanDB *db;
   HyScanCache *cache = NULL;
@@ -52,6 +53,7 @@ int main( int argc, char **argv )
         { "lines", 'l', 0, G_OPTION_ARG_INT, &n_lines, "Number of lines per signal (1..100)", NULL },
         { "tvgs", 'g', 0, G_OPTION_ARG_INT, &n_tvgs, "Number of tvgs (1..100)", NULL },
         { "cache", 'c', 0, G_OPTION_ARG_INT, &cache_size, "Use cache with size, Mb", NULL },
+        { "noise", 'n', 0, G_OPTION_ARG_NONE, &noise, "Use noise channel for test", NULL },
         { NULL }
       };
 
@@ -201,12 +203,24 @@ int main( int argc, char **argv )
       data.time = index_time;
       data.size = 2 * data_size * sizeof(gint16);
       data.data = data_values;
-      if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &channel_info, &data))
-        g_error ("can't add data");
+      if (noise)
+        {
+          if (!hyscan_data_writer_raw_add_noise (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &channel_info, &data))
+            g_error ("can't add data");
+        }
+      else
+        {
+          if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &channel_info, &data))
+            g_error ("can't add data");
+        }
     }
 
   /* Объект чтения данных. */
-  reader = hyscan_raw_data_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
+  if (noise)
+    reader = hyscan_raw_data_noise_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
+  else
+    reader = hyscan_raw_data_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
+
   if (reader == NULL)
     g_error ("can't open channel");
   hyscan_raw_data_set_cache (reader, cache, NULL);
