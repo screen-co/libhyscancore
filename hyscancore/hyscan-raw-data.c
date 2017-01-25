@@ -226,6 +226,10 @@ hyscan_raw_data_object_constructed (GObject *object)
   priv->signal_id = -1;
   priv->last_signal_index = -1;
 
+  /* Проверяем тип источника данных. */
+  if (!hyscan_source_is_raw (priv->source_type))
+    goto exit;
+
   if (priv->db == NULL)
     goto exit;
 
