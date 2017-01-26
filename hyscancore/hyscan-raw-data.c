@@ -1,7 +1,7 @@
 /*
  * \file hyscan-raw-data.c
  *
- * \brief Исходный файл класса обработки акустических данных
+ * \brief Исходный файл класса обработки сырых данных
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран"
@@ -54,6 +54,8 @@ struct _HyScanRawDataPrivate
 
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
+  gchar               *cache_key;                              /* Ключ кэширования. */
+  gint                 cache_key_length;                       /* Максимальная длина ключа. */
 
   HyScanAntennaPosition position;                              /* Местоположение приёмной антенны. */
   HyScanRawDataInfo     info;                                  /* Параметры сырых данных. */
@@ -62,7 +64,7 @@ struct _HyScanRawDataPrivate
   gint32               signal_id;                              /* Идентификатор открытого канала с образами сигналов. */
   gint32               tvg_id;                                 /* Идентификатор открытого канала с коэффициентами усиления. */
 
-  gpointer             raw_buffer;                             /* Буфер для чтения "сырых" данных канала. */
+  gpointer             raw_buffer;                             /* Буфер для чтения сырых данных канала. */
   gint32               raw_buffer_size;                        /* Размер буфера в байтах. */
 
   HyScanComplexFloat  *data_buffer;                            /* Буфер для обработки данных. */
@@ -72,9 +74,6 @@ struct _HyScanRawDataPrivate
   guint32              last_signal_index;                      /* Индекс последнего загруженного сигнала. */
   guint64              signals_mod_count;                      /* Номер изменений сигналов. */
   gboolean             convolve;                               /* Выполнять или нет свёртку. */
-
-  gchar               *cache_key;                              /* Ключ кэширования. */
-  gint                 cache_key_length;                       /* Максимальная длина ключа. */
 };
 
 static void            hyscan_raw_data_set_property            (GObject                       *object,
@@ -90,7 +89,7 @@ static gboolean        hyscan_raw_data_load_position            (HyScanDB       
 static gboolean        hyscan_raw_data_load_data_params        (HyScanDB                      *db,
                                                                 gint32                         param_id,
                                                                 HyScanRawDataInfo             *info);
-static gboolean        hyscan_raw_data_check_addon_params      (HyScanDB                      *db,
+static gboolean        hyscan_raw_data_load_addon_params       (HyScanDB                      *db,
                                                                 gint32                         param_id,
                                                                 gint64                         schema_id,
                                                                 gdouble                        data_rate,
@@ -331,8 +330,8 @@ hyscan_raw_data_object_constructed (GObject *object)
           goto exit;
         }
 
-      status = hyscan_raw_data_check_addon_params (priv->db, param_id, SIGNAL_CHANNEL_SCHEMA_ID,
-                                                   priv->info.data.rate, HYSCAN_DATA_COMPLEX_FLOAT);
+      status = hyscan_raw_data_load_addon_params (priv->db, param_id, SIGNAL_CHANNEL_SCHEMA_ID,
+                                                  priv->info.data.rate, HYSCAN_DATA_COMPLEX_FLOAT);
       if (!status)
         {
           g_warning ("HyScanRawData: '%s.%s.%s-signal': error in parameters",
@@ -369,8 +368,8 @@ hyscan_raw_data_object_constructed (GObject *object)
           goto exit;
         }
 
-      status = hyscan_raw_data_check_addon_params (priv->db, param_id, TVG_CHANNEL_SCHEMA_ID,
-                                                   priv->info.data.rate, HYSCAN_DATA_FLOAT);
+      status = hyscan_raw_data_load_addon_params (priv->db, param_id, TVG_CHANNEL_SCHEMA_ID,
+                                                  priv->info.data.rate, HYSCAN_DATA_FLOAT);
       if (!status)
         {
           g_warning ("HyScanRawData: '%s.%s.%s-tvg': error in parameters",
@@ -501,7 +500,7 @@ exit:
   return status;
 }
 
-/* Функция загружает параметры акустических данных. */
+/* Функция загружает параметры сырых данных. */
 static gboolean
 hyscan_raw_data_load_data_params (HyScanDB          *db,
                                   gint32             param_id,
@@ -560,11 +559,11 @@ exit:
 
 /* Функция загружает параметры канала с образами сигналов. */
 static gboolean
-hyscan_raw_data_check_addon_params (HyScanDB       *db,
-                                    gint32          param_id,
-                                    gint64          schema_id,
-                                    gdouble         data_rate,
-                                    HyScanDataType  data_type)
+hyscan_raw_data_load_addon_params (HyScanDB       *db,
+                                   gint32          param_id,
+                                   gint64          schema_id,
+                                   gdouble         data_rate,
+                                   HyScanDataType  data_type)
 {
   const gchar *param_names[5];
   GVariant *param_values[5];
@@ -808,8 +807,8 @@ hyscan_raw_data_find_signal (HyScanRawDataPrivate *priv,
   return NULL;
 }
 
-/* Функция считывает "сырые" акустические данные для указанного индекса,
-   импортирует их в буфер данных и при необходимости осуществляет свёртку. */
+/* Функция считывает сырые данные для указанного индекса, импортирует их в
+ * буфер данных и при необходимости осуществляет свёртку. */
 static guint32
 hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
                            guint32               index)
@@ -980,6 +979,9 @@ hyscan_raw_data_get_position (HyScanRawData *data)
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), zero);
 
+  if (data->priv->channel_id <= 0)
+    return zero;
+
   return data->priv->position;
 }
 
@@ -993,6 +995,9 @@ hyscan_raw_data_get_info (HyScanRawData *data)
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), zero);
 
+  if (data->priv->channel_id <= 0)
+    return zero;
+
   return data->priv->info;
 }
 
@@ -1001,6 +1006,9 @@ HyScanSourceType
 hyscan_raw_data_get_source (HyScanRawData *data)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), HYSCAN_SOURCE_INVALID);
+
+  if (data->priv->channel_id <= 0)
+    return HYSCAN_SOURCE_INVALID;
 
   return data->priv->source_type;
 }
@@ -1011,14 +1019,20 @@ hyscan_raw_data_get_channel (HyScanRawData *data)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), 0);
 
+  if (data->priv->channel_id <= 0)
+    return 0;
+
   return data->priv->source_channel;
 }
 
-/* Функция определяет возможность изменения акустических данных. */
+/* Функция определяет возможность изменения данных. */
 gboolean
 hyscan_raw_data_is_writable (HyScanRawData *data)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
+
+  if (data->priv->channel_id <= 0)
+    return FALSE;
 
   return hyscan_db_channel_is_writable (data->priv->db, data->priv->channel_id);
 }
@@ -1030,6 +1044,9 @@ hyscan_raw_data_get_range (HyScanRawData *data,
                            guint32       *last_index)
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
+
+  if (data->priv->channel_id <= 0)
+    return FALSE;
 
   return hyscan_db_channel_get_data_range (data->priv->db, data->priv->channel_id,
                                            first_index, last_index);
@@ -1046,6 +1063,9 @@ hyscan_raw_data_find_data (HyScanRawData *data,
 {
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), HYSCAN_DB_FIND_FAIL);
 
+  if (data->priv->channel_id <= 0)
+    return HYSCAN_DB_FIND_FAIL;
+
   return hyscan_db_channel_find_data (data->priv->db, data->priv->channel_id,
                                       time, lindex, rindex, ltime, rtime);
 }
@@ -1059,15 +1079,16 @@ hyscan_raw_data_get_values_count (HyScanRawData *data,
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), 0);
 
-  if (hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
-                                  index, NULL, &dsize, NULL))
-    {
-      dsize /= hyscan_data_get_point_size (data->priv->info.data.type);
-    }
-  else
+  if (data->priv->channel_id <= 0)
+    return 0;
+
+  if (!hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
+                                   index, NULL, &dsize, NULL))
     {
       dsize = 0;
     }
+
+  dsize /= hyscan_data_get_point_size (data->priv->info.data.type);
 
   return dsize;
 }
@@ -1081,6 +1102,9 @@ hyscan_raw_data_get_signal_size (HyScanRawData *data,
   HyScanRawDataSignal *signal;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), 0);
+
+  if (data->priv->signal_id <= 0)
+    return 0;
 
   hyscan_raw_data_load_signals (data->priv);
 
@@ -1102,6 +1126,9 @@ hyscan_raw_data_get_time (HyScanRawData *data,
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), -1);
 
+  if (data->priv->channel_id <= 0)
+    return -1;
+
   if (!hyscan_db_channel_get_data (data->priv->db, data->priv->channel_id,
                                    index, NULL, &dsize, &time))
     {
@@ -1111,7 +1138,7 @@ hyscan_raw_data_get_time (HyScanRawData *data,
   return time;
 }
 
-/* Функция устанавливает необходимость выполнения свёртки акустических данных. */
+/* Функция устанавливает необходимость выполнения свёртки данных. */
 void
 hyscan_raw_data_set_convolve (HyScanRawData *data,
                               gboolean       convolve)
@@ -1133,6 +1160,9 @@ hyscan_raw_data_get_signal_image (HyScanRawData      *data,
   HyScanRawDataSignal *signal;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
+
+  if (data->priv->signal_id <= 0)
+    return FALSE;
 
   hyscan_raw_data_load_signals (data->priv);
   dtime = hyscan_raw_data_get_time (data, index);
@@ -1174,6 +1204,9 @@ hyscan_raw_data_get_tvg_values (HyScanRawData *data,
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
+
+  if (priv->tvg_id <= 0)
+    return FALSE;
 
   /* Ищем индекс записи с нужными коэффициентами ВАРУ. */
   while (TRUE)
@@ -1226,7 +1259,7 @@ hyscan_raw_data_get_tvg_values (HyScanRawData *data,
   return TRUE;
 }
 
-/* Функция возвращает значения амплитуды акустического сигнала. */
+/* Функция возвращает значения амплитуды сигнала. */
 gboolean
 hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
                                       guint32        index,
@@ -1243,6 +1276,9 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
+
+  if (priv->channel_id <= 0)
+    return FALSE;
 
   /* Проверяем наличие данных в кэше. */
   if (hyscan_raw_data_check_cache (priv, DATA_TYPE_AMPLITUDE, index, buffer, buffer_size, time))
@@ -1278,7 +1314,7 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
   return TRUE;
 }
 
-/* Функция возвращает квадратурные отсчёты акустического сигнала. */
+/* Функция возвращает квадратурные отсчёты сигнала. */
 gboolean
 hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
                                        guint32             index,
@@ -1293,6 +1329,9 @@ hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
 
   priv = data->priv;
+
+  if (priv->channel_id <= 0)
+    return FALSE;
 
   /* Проверяем наличие данных в кэше. */
   if (hyscan_raw_data_check_cache (priv, DATA_TYPE_QUADRATURE, index, buffer, buffer_size, time))
