@@ -212,14 +212,13 @@ hyscan_raw_data_object_constructed (GObject *object)
   gint32 track_id = -1;
   gint32 param_id = -1;
 
-  guint32 first_index;
-  guint32 last_index;
-
   const gchar *channel_name;
   gchar *signal_name = NULL;
   gchar *tvg_name = NULL;
 
   gboolean status = FALSE;
+
+  priv->cache_prefix = g_strdup ("none");
 
   priv->channel_id = -1;
   priv->signal_id = -1;
@@ -227,10 +226,17 @@ hyscan_raw_data_object_constructed (GObject *object)
 
   /* Проверяем тип источника данных. */
   if (!hyscan_source_is_raw (priv->source_type))
-    goto exit;
+    {
+      g_warning ("HyScanRawData: unsupported source type %s",
+                 hyscan_channel_get_name_by_types (priv->source_type, FALSE, 1));
+      goto exit;
+    }
 
   if (priv->db == NULL)
-    goto exit;
+    {
+      g_warning ("HyScanRawData: db is not specified");
+      goto exit;
+    }
 
   priv->db_uri = hyscan_db_get_uri (priv->db);
 
@@ -277,13 +283,6 @@ hyscan_raw_data_object_constructed (GObject *object)
     {
       g_info ("HyScanRawData: can't open channel '%s.%s.%s'",
               priv->project_name, priv->track_name, channel_name);
-      goto exit;
-    }
-
-  /* Проверяем наличие записей в канале. */
-  if (!hyscan_db_channel_get_data_range (priv->db, priv->channel_id, &first_index, &last_index) ||
-      ((first_index == 0) && (last_index == 0)))
-    {
       goto exit;
     }
 
@@ -600,61 +599,29 @@ hyscan_raw_data_update_cache_key (HyScanRawDataPrivate *priv,
                                   gint                  data_type,
                                   guint32               index)
 {
-  const gchar *channel_name;
-  const gchar *data_type_str;
-
-  channel_name = hyscan_channel_get_name_by_types (priv->source_type, TRUE, priv->source_channel);
-
-  if (data_type == DATA_TYPE_AMPLITUDE)
-    data_type_str = "A";
-  else
-    data_type_str = "Q";
-
   if (priv->cache != NULL && priv->cache_key == NULL)
     {
-      if (priv->cache_prefix != NULL)
-        {
-        priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.%s.CV.A.0123456789",
-                                           priv->db_uri,
-                                           priv->cache_prefix,
-                                           priv->project_name,
-                                           priv->track_name,
-                                           channel_name);
-        }
-      else
-        {
-        priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.CV.A.0123456789",
-                                           priv->db_uri,
-                                           priv->project_name,
-                                           priv->track_name,
-                                           channel_name);
-        }
+      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.RAW.%d.%d.XX.X.0123456789",
+                                         priv->cache_prefix,
+                                         priv->db_uri,
+                                         priv->project_name,
+                                         priv->track_name,
+                                         priv->source_type,
+                                         priv->source_channel);
+
       priv->cache_key_length = strlen (priv->cache_key);
     }
 
-  if (priv->cache_prefix != NULL)
-    {
-      g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.%s.%s.%s.%d",
-                  priv->db_uri,
-                  priv->cache_prefix,
-                  priv->project_name,
-                  priv->track_name,
-                  channel_name,
-                  priv->convolve ? "CV" : "NC",
-                  data_type_str,
-                  index);
-    }
-  else
-    {
-      g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.%s.%s.%d",
-                  priv->db_uri,
-                  priv->project_name,
-                  priv->track_name,
-                  channel_name,
-                  priv->convolve ? "CV" : "NC",
-                  data_type_str,
-                  index);
-    }
+  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.RAW.%d.%d.%s.%1d.%d",
+              priv->cache_prefix,
+              priv->db_uri,
+              priv->project_name,
+              priv->track_name,
+              priv->source_type,
+              priv->source_channel,
+              priv->convolve ? "CV" : "NC",
+              data_type,
+              index);
 }
 
 /* Функция проверяет размер буферов и увеличивает его при необходимости. */
@@ -861,8 +828,8 @@ hyscan_raw_data_check_cache (HyScanRawDataPrivate *priv,
                              gint64               *time)
 {
   gint64 cached_time;
-  gint32 time_size;
-  gint32 io_size;
+  guint32 time_size;
+  guint32 io_size;
 
   gint data_type_size;
 
@@ -883,12 +850,11 @@ hyscan_raw_data_check_cache (HyScanRawDataPrivate *priv,
   time_size = sizeof(cached_time);
   io_size = *buffer_size * data_type_size;
   status = hyscan_cache_get2 (priv->cache, priv->cache_key, NULL,
-                              &cached_time, &time_size,
-                              buffer, &io_size);
+                              &cached_time, &time_size, buffer, &io_size);
   if (!status)
     return FALSE;
 
-  if (time_size != sizeof(cached_time) || io_size % data_type_size != 0)
+  if ((time_size != sizeof(cached_time)) || ((io_size % data_type_size) != 0))
     return FALSE;
 
   if (time != NULL)
@@ -962,11 +928,13 @@ hyscan_raw_data_set_cache (HyScanRawData *data,
 
   if (cache == NULL)
     return;
-  data->priv->cache = g_object_ref (cache);
 
   if (prefix == NULL)
-    return;
-  data->priv->cache_prefix = g_strdup (prefix);
+    data->priv->cache_prefix = g_strdup ("none");
+  else
+    data->priv->cache_prefix = g_strdup (prefix);
+
+  data->priv->cache = g_object_ref (cache);
 }
 
 /* Функция возвращает информацию о местоположении приёмной антенны гидролокатора. */
@@ -1301,7 +1269,7 @@ hyscan_raw_data_get_amplitude_values (HyScanRawData *data,
   memcpy (buffer, amplitude, *buffer_size * sizeof(gfloat));
 
   /* Сохраняем данные в кэше. */
-  if (priv->cache != NULL && buffer != NULL)
+  if (priv->cache != NULL)
     {
       hyscan_cache_set2 (priv->cache, priv->cache_key, NULL,
                          &priv->data_time, sizeof(priv->data_time),
@@ -1347,7 +1315,7 @@ hyscan_raw_data_get_quadrature_values (HyScanRawData      *data,
   memcpy (buffer, priv->data_buffer, *buffer_size * sizeof(HyScanComplexFloat));
 
   /* Сохраняем данные в кэше. */
-  if (priv->cache != NULL && buffer != NULL)
+  if (priv->cache != NULL)
     {
       hyscan_cache_set2 (priv->cache, priv->cache_key, NULL,
                          &priv->data_time, sizeof(priv->data_time),
