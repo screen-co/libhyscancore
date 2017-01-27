@@ -72,6 +72,17 @@
 
 G_BEGIN_DECLS
 
+/** \brief Предпочитаемый вид данных */
+typedef enum
+{
+  HYSCAN_PREFERRED_DATA_DEFAULT                = 0,            /**< По умолчанию. */
+
+  HYSCAN_PREFERRED_DATA_COMPUTED               = 101,          /**< Обработанные данные, затем сырые. */
+  HYSCAN_PREFERRED_DATA_RAW                    = 102,          /**< Сырые данные, затем обработанные. */
+  HYSCAN_PREFERRED_DATA_COMPUTED_ONLY          = 103,          /**< Только обработанные данные. */
+  HYSCAN_PREFERRED_DATA_RAW_ONLY               = 104           /**< Только сырые данные. */
+} HyScanPreferredDataType;
+
 /** \brief Типы источников данных */
 typedef enum
 {

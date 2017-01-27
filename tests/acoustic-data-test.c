@@ -1,6 +1,7 @@
 
-#include <hyscan-data-writer.h>
 #include <hyscan-raw-data.h>
+#include <hyscan-acoustic-data.h>
+#include <hyscan-data-writer.h>
 #include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
@@ -26,10 +27,12 @@ int main( int argc, char **argv )
   HyScanDB *db;
   HyScanCache *cache = NULL;
   HyScanDataWriter *writer;
-  HyScanRawData *reader;
+  HyScanRawData *raw_reader;
+  HyScanAcousticData *acoustic_reader;
 
   HyScanAntennaPosition position;
-  HyScanRawDataInfo channel_info;
+  HyScanRawDataInfo raw_info;
+  HyScanAcousticDataInfo acoustic_info;
 
   HyScanComplexFloat *signal_image;
   guint16 *data_values;
@@ -69,7 +72,7 @@ int main( int argc, char **argv )
     g_option_context_set_ignore_unknown_options (context, FALSE);
     if (!g_option_context_parse_strv (context, &args, &error))
       {
-        g_message (error->message);
+        g_print ("%s\n", error->message);
         return -1;
       }
 
@@ -93,14 +96,20 @@ int main( int argc, char **argv )
   position.psi = 0.0;
   position.gamma = 0.0;
   position.theta = 0.0;
-  channel_info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  channel_info.data.rate = discretization;
-  channel_info.antenna.offset.vertical = 0.0;
-  channel_info.antenna.offset.horizontal = 0.0;
-  channel_info.antenna.pattern.vertical = 40.0;
-  channel_info.antenna.pattern.horizontal = 2.0;
-  channel_info.adc.vref = 1.0;
-  channel_info.adc.offset = 0;
+
+  raw_info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  raw_info.data.rate = discretization;
+  raw_info.antenna.offset.vertical = 0.0;
+  raw_info.antenna.offset.horizontal = 0.0;
+  raw_info.antenna.pattern.vertical = 40.0;
+  raw_info.antenna.pattern.horizontal = 2.0;
+  raw_info.adc.vref = 1.0;
+  raw_info.adc.offset = 0;
+
+  acoustic_info.data.type = HYSCAN_DATA_UINT16;
+  acoustic_info.data.rate = discretization;
+  acoustic_info.antenna.pattern.vertical = 40.0;
+  acoustic_info.antenna.pattern.horizontal = 2.0;
 
   signal_size = discretization * duration;
   data_size = 100 * signal_size;
@@ -188,7 +197,7 @@ int main( int argc, char **argv )
             g_error ("can't add tvg");
         }
 
-      /* Записываем данные. */
+      /* Записываем сырые данные. */
       for (j = 0; j < 2 * data_size; j++)
         data_values[j] = 32767;
 
@@ -205,25 +214,48 @@ int main( int argc, char **argv )
       data.data = data_values;
       if (noise)
         {
-          if (!hyscan_data_writer_raw_add_noise (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &channel_info, &data))
-            g_error ("can't add data");
+          if (!hyscan_data_writer_raw_add_noise (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &raw_info, &data))
+            g_error ("can't add noise data");
         }
       else
         {
-          if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &channel_info, &data))
-            g_error ("can't add data");
+          if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &raw_info, &data))
+            g_error ("can't add raw data");
         }
+
+      /* Записываем амплитуду. */
+      memset (data_values, 0, 2 * data_size);
+      for (j = signal_size; j < 3 * signal_size; j++)
+        {
+          if ((j >= signal_size) && (j < 2 * signal_size))
+            data_values[j] = 65535.0 * ((gdouble) (j - signal_size) / signal_size);
+          if ((j >= 2 * signal_size) && (j < 3 * signal_size))
+            data_values[j] = 65535.0 * (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+        }
+
+      data.time = index_time;
+      data.size = data_size * sizeof(guint16);
+      data.data = data_values;
+      if (!hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &acoustic_info, &data))
+        g_error ("can't add acoustic data");
     }
 
-  /* Объект чтения данных. */
+  /* Объект чтения сырых данных. */
   if (noise)
-    reader = hyscan_raw_data_noise_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
+    raw_reader = hyscan_raw_data_noise_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
   else
-    reader = hyscan_raw_data_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
+    raw_reader = hyscan_raw_data_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
 
-  if (reader == NULL)
-    g_error ("can't open channel");
-  hyscan_raw_data_set_cache (reader, cache, NULL);
+  if (raw_reader == NULL)
+    g_error ("can't open raw channel");
+  hyscan_raw_data_set_cache (raw_reader, cache, NULL);
+
+  /* Объект чтения акустических данных. */
+  acoustic_reader = hyscan_acoustic_data_new (db, PROJECT_NAME, TRACK_NAME,
+                                              HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, HYSCAN_PREFERRED_DATA_COMPUTED_ONLY);
+  if (acoustic_reader == NULL)
+    g_error ("can't open acoustic channel");
+  hyscan_acoustic_data_set_cache (acoustic_reader, cache, NULL);
 
   /* Для тонального сигнала проверяем, что его свёртка совпадает с треугольником,
    * начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
@@ -249,10 +281,10 @@ int main( int argc, char **argv )
 
           /* Проверяем образ сигнала. */
           io_size = signal_size + 1;
-          if (!hyscan_raw_data_get_signal_image (reader, i, signal_image, &io_size, NULL))
+          if (!hyscan_raw_data_get_signal_image (raw_reader, i, signal_image, &io_size, NULL))
             g_error ("can't get signal image");
 
-          if ((hyscan_raw_data_get_signal_size (reader, i) != signal_size) || (io_size != signal_size))
+          if ((hyscan_raw_data_get_signal_size (raw_reader, i) != signal_size) || (io_size != signal_size))
             g_error ("signal size mismatch");
 
           for (j = 0; j < signal_size; j++)
@@ -269,7 +301,7 @@ int main( int argc, char **argv )
 
           /* Проверяем "кривую" ВАРУ. */
           io_size = data_size + 1;
-          if (!hyscan_raw_data_get_tvg_values (reader, i, tvg_values, &io_size, NULL))
+          if (!hyscan_raw_data_get_tvg_values (raw_reader, i, tvg_values, &io_size, NULL))
             g_error ("can't get tvg values");
 
           if (io_size != data_size)
@@ -279,13 +311,13 @@ int main( int argc, char **argv )
             if (fabs (tvg_values[j] - (tvg_index + (((gdouble)tvg_index / (gdouble)data_size)) * j)) > 1e-5)
               g_error ("tvg error");
 
-          /* Проверяем амплитуду данных. */
+          /* Проверяем амплитуду сырых данных. */
           io_size = data_size + 1;
-          if (!hyscan_raw_data_get_amplitude_values (reader, i, amplitude, &io_size, NULL))
-            g_error ("can't get amplitude");
+          if (!hyscan_raw_data_get_amplitude_values (raw_reader, i, amplitude, &io_size, NULL))
+            g_error ("can't get raw amplitude");
 
           if (io_size != data_size)
-            g_error ("amplitude size mismatch");
+            g_error ("raw amplitude size mismatch");
 
           square1 = 0.0;
           square2 = 0.0;
@@ -300,7 +332,30 @@ int main( int argc, char **argv )
             }
 
           if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
-            g_error ("amplitude error");
+            g_error ("raw amplitude error");
+
+          /* Проверяем амплитуду акустических данных. */
+          io_size = data_size + 1;
+          if (!hyscan_acoustic_data_get_values (acoustic_reader, i, amplitude, &io_size, NULL))
+            g_error ("can't get acoustic amplitude");
+
+          if (io_size != data_size)
+            g_error ("acoustic amplitude size mismatch");
+
+          square1 = 0.0;
+          square2 = 0.0;
+          for (j = 0; j < data_size; j++)
+            {
+              if ((j >= signal_size) && (j < 2 * signal_size))
+                square1 += ((gdouble) (j - signal_size) / signal_size);
+              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
+                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+
+              square2 += amplitude[j];
+            }
+
+          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
+            g_error ("acoustic amplitude error");
         }
 
       if (cache == NULL)
@@ -310,7 +365,8 @@ int main( int argc, char **argv )
   g_message ("All done");
 
   g_clear_object (&writer);
-  g_clear_object (&reader);
+  g_clear_object (&raw_reader);
+  g_clear_object (&acoustic_reader);
 
   hyscan_db_project_remove (db, PROJECT_NAME);
 
