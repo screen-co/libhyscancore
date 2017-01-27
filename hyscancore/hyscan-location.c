@@ -1604,7 +1604,7 @@ hyscan_location_cache_get (HyScanLocation     *location,
                            HyScanLocationData *data)
 {
   HyScanLocationPrivate *priv = location->priv;
-  gint32 buffer_size = sizeof(HyScanLocationData);
+  guint32 buffer_size = sizeof(HyScanLocationData);
 
   if (!hyscan_cache_get (priv->cache, priv->cache_key, priv->detail_key, data, &buffer_size))
     return FALSE;
