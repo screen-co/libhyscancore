@@ -314,8 +314,7 @@ hyscan_raw_data_object_constructed (GObject *object)
 
   /* Образы сигналов для свёртки. */
   signal_name = g_strdup_printf ("%s-signal", channel_name);
-  if (hyscan_db_is_exist (priv->db, priv->project_name, priv->track_name, signal_name))
-    priv->signal_id = hyscan_db_channel_open (priv->db, track_id, signal_name);
+  priv->signal_id = hyscan_db_channel_open (priv->db, track_id, signal_name);
   g_free (signal_name);
 
   /* Загрузка образов сигналов. */
@@ -352,8 +351,7 @@ hyscan_raw_data_object_constructed (GObject *object)
 
   /* Коэффициенты усиления ВАРУ. */
   tvg_name = g_strdup_printf ("%s-tvg", channel_name);
-  if (hyscan_db_is_exist (priv->db, priv->project_name, priv->track_name, tvg_name))
-    priv->tvg_id = hyscan_db_channel_open (priv->db, track_id, tvg_name);
+  priv->tvg_id = hyscan_db_channel_open (priv->db, track_id, tvg_name);
   g_free (tvg_name);
 
   /* Проверка параметров ВАРУ. */
