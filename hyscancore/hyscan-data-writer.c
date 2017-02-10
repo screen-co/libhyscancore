@@ -63,6 +63,7 @@ struct _HyScanDataWriterPrivate
   gint64                       save_size;                      /* Максимальный объём данных в канале. */
 
   GMutex                       lock;                           /* Блокировка. */
+  GRand                       *rand;                           /* Генератор случайных чисел. */
 };
 
 static void      hyscan_data_writer_set_property               (GObject                       *object,
@@ -110,7 +111,8 @@ static gint32    hyscan_data_writer_create_track               (HyScanDB        
                                                                 const gchar                   *track_name,
                                                                 HyScanTrackType                track_type,
                                                                 const gchar                   *operator,
-                                                                const gchar                   *sonar);
+                                                                const gchar                   *sonar,
+                                                                GRand                         *rand);
 
 static HyScanDataWriterSensorChannel *
                  hyscan_data_writer_create_sensor_channel      (HyScanDataWriterPrivate       *priv,
@@ -179,6 +181,7 @@ hyscan_data_writer_object_constructed (GObject *object)
   HyScanDataWriter *writer = HYSCAN_DATA_WRITER (object);
   HyScanDataWriterPrivate *priv = writer->priv;
 
+  priv->rand = g_rand_new ();
   g_mutex_init (&priv->lock);
 
   priv->project_id = -1;
@@ -229,6 +232,7 @@ hyscan_data_writer_object_finalize (GObject *object)
   g_free (priv->operator_name);
 
   g_mutex_clear (&priv->lock);
+  g_rand_free (priv->rand);
 
   G_OBJECT_CLASS (hyscan_data_writer_parent_class)->finalize (object);
 }
@@ -513,7 +517,8 @@ hyscan_data_writer_create_track (HyScanDB        *db,
                                  const gchar     *track_name,
                                  HyScanTrackType  track_type,
                                  const gchar     *operator,
-                                 const gchar     *sonar)
+                                 const gchar     *sonar,
+                                 GRand           *rand)
 {
   gboolean status = FALSE;
 
@@ -522,6 +527,9 @@ hyscan_data_writer_create_track (HyScanDB        *db,
 
   const gchar *track_type_name;
   GBytes *track_schema;
+
+  gchar id[33] = {0};
+  guint i;
 
   /* Схема галса. */
   track_schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml",
@@ -541,6 +549,21 @@ hyscan_data_writer_create_track (HyScanDB        *db,
   /* Параметры галса. */
   param_id = hyscan_db_track_param_open (db, track_id);
   if (param_id <= 0)
+    goto exit;
+
+  /* Уникальный идентификатор галса. */
+  for (i = 0; i < sizeof (id) - 1; i++)
+    {
+      gint rnd = g_rand_int_range (rand, 0, 63);
+      if (rnd < 10)
+        id[i] = '0' + rnd;
+      else if (rnd < 36)
+        id[i] = 'a' + rnd - 10;
+      else
+        id[i] = 'A' + rnd - 36;
+    }
+
+  if (!hyscan_db_param_set_string (db, param_id, NULL, "/id", id))
     goto exit;
 
   track_type_name = hyscan_track_get_name_by_type (track_type);
@@ -1224,7 +1247,8 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
   /* Создаём новый галс. */
   priv->track_id = hyscan_data_writer_create_track (priv->db, priv->project_id,
                                                     track_name, track_type,
-                                                    priv->operator_name, priv->sonar_info);
+                                                    priv->operator_name, priv->sonar_info,
+                                                    priv->rand);
   if (priv->track_id <= 0)
     goto exit;
 
