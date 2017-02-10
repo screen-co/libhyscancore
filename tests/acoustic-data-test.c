@@ -132,11 +132,10 @@ int main( int argc, char **argv )
   writer = hyscan_data_writer_new (db);
 
   /* Местоположение приёмной антенны. */
-  if (!hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position))
-    g_error ("can't set antenna position");
+  hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);
 
   /* Проект для записи галсов. */
-  if (!hyscan_data_writer_project_set (writer, PROJECT_NAME))
+  if (!hyscan_data_writer_set_project (writer, PROJECT_NAME))
     g_error ("can't set working project");
 
   /* Создаём галс. */

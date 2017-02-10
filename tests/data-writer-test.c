@@ -5,6 +5,7 @@
 #include <libxml/parser.h>
 #include <string.h>
 
+#define OPERATOR_NAME          "tester"
 #define SONAR_INFO             "This is sonar info"
 #define PROJECT_NAME           "test"
 
@@ -131,31 +132,41 @@ void track_check_info (HyScanDB *db,
 {
   gint32 param_id;
 
-  const gchar *param_names[3];
-  GVariant *param_values[3];
+  const gchar *param_names[4];
+  GVariant *param_values[4];
 
   const gchar *track_type;
-  const gchar *track_info;
+  const gchar *operator_name;
+  const gchar *sonar_info;
 
   param_id = hyscan_db_track_param_open (db, track_id);
   if (param_id < 0)
     g_error ("can't open track parameters");
 
-  param_names[0] = "/info";
-  param_names[1] = "/type";
-  param_names[2] = NULL;
+  param_names[0] = "/type";
+  param_names[1] = "/operator";
+  param_names[2] = "/sonar";
+  param_names[3] = NULL;
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read parameters");
 
-  track_info = g_variant_get_string (param_values[0], NULL);
-  track_type = g_variant_get_string (param_values[1], NULL);
-
-  if (g_strcmp0 (track_info, SONAR_INFO) != 0)
-    g_error ("sonar info error");
+  track_type = g_variant_get_string (param_values[0], NULL);
+  operator_name = g_variant_get_string (param_values[1], NULL);
+  sonar_info = g_variant_get_string (param_values[2], NULL);
 
   if (g_strcmp0 (track_type, hyscan_track_get_name_by_type (HYSCAN_TRACK_SURVEY)) != 0)
     g_error ("track type error");
+
+  if (g_strcmp0 (operator_name, OPERATOR_NAME) != 0)
+    g_error ("operator name error");
+
+  if (g_strcmp0 (sonar_info, SONAR_INFO) != 0)
+    g_error ("sonar info error");
+
+  g_variant_unref (param_values[0]);
+  g_variant_unref (param_values[1]);
+  g_variant_unref (param_values[2]);
 
   hyscan_db_close (db, param_id);
 }
@@ -909,6 +920,9 @@ main (int    argc,
   /* Объект записи данных. */
   writer = hyscan_data_writer_new (db);
 
+  /* Имя оператора. */
+  hyscan_data_writer_set_operator_name (writer, OPERATOR_NAME);
+
   /* Информация о гидролокаторе. */
   hyscan_data_writer_set_sonar_info (writer, SONAR_INFO);
 
@@ -929,7 +943,7 @@ main (int    argc,
     }
 
   /* Проект для записи галсов. */
-  if (!hyscan_data_writer_project_set (writer, PROJECT_NAME))
+  if (!hyscan_data_writer_set_project (writer, PROJECT_NAME))
     g_error ("can't set working project");
 
   /* Пустой галс. */
@@ -946,11 +960,9 @@ main (int    argc,
   if (!hyscan_data_writer_start (writer, "track-0", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_BOTH))
-    g_error ("can't set writer mode: both");
-
   /* Первый галс. */
   g_message ("creating track-1");
+  hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_BOTH);
   if (!hyscan_data_writer_start (writer, "track-1", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
 
@@ -977,11 +989,9 @@ main (int    argc,
 
   /* Третий галс - только сырые данные от гидролокатора. */
   g_message ("creating track-3");
+  hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_RAW);
   if (!hyscan_data_writer_start (writer, "track-3", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
-
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_RAW))
-    g_error ("can't set writer mode: raw");
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -993,11 +1003,9 @@ main (int    argc,
 
   /* Четвёртый галс - только обработанные данные от гидролокатора. */
   g_message ("creating track-4");
+  hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_COMPUTED);
   if (!hyscan_data_writer_start (writer, "track-4", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
-
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_COMPUTED))
-    g_error ("can't set writer mode: computed");
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -1009,11 +1017,9 @@ main (int    argc,
 
   /* Пятый галс - запись отключена. */
   g_message ("creating track-5");
+  hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_NONE);
   if (!hyscan_data_writer_start (writer, "track-5", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
-
-  if (!hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_NONE))
-    g_error ("can't set writer mode: none");
 
   /* Запись данных. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)

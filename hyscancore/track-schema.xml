@@ -38,8 +38,9 @@
         <default>20170100</default>
       </key>
     </node>
-    <key id="info" name="Sonar info" type="string" view="schema"/>
     <key id="type" name="Track type" type="string"/>
+    <key id="operator" name="Operator name" type="string"/>
+    <key id="sonar" name="Sonar info" type="string" view="schema"/>
   </schema>
 
   <schema id="sensor">
