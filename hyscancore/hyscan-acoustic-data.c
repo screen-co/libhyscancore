@@ -39,7 +39,7 @@ struct _HyScanAcousticDataPrivate
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
   gchar               *cache_key;                              /* Ключ кэширования. */
-  gint                 cache_key_length;                       /* Максимальная длина ключа. */
+  guint                cache_key_length;                       /* Максимальная длина ключа. */
 
   HyScanAntennaPosition  position;                             /* Местоположение приёмной антенны. */
   HyScanAcousticDataInfo info;                                 /* Параметры сырых данных. */
@@ -47,7 +47,7 @@ struct _HyScanAcousticDataPrivate
   gint32               channel_id;                             /* Идентификатор открытого канала данных. */
 
   gpointer             buffer;                                 /* Буфер для чтения данных канала. */
-  gint32               buffer_size;                            /* Размер буфера в байтах. */
+  guint32              buffer_size;                            /* Размер буфера в байтах. */
 };
 
 static void    hyscan_acoustic_data_set_property       (GObject                       *object,
@@ -711,16 +711,19 @@ hyscan_acoustic_data_get_values (HyScanAcousticData *data,
     return hyscan_raw_data_get_amplitude_values (priv->raw_data, index, buffer, buffer_size, time);
 
   /* Ищем данные в кэше. */
-  time_size = sizeof(cached_time);
-  dsize = *buffer_size * sizeof (gfloat);
-  hyscan_acoustic_data_update_cache_key (priv, index);
-  status = hyscan_cache_get2 (priv->cache, priv->cache_key, NULL,
-                              &cached_time, &time_size, buffer, &dsize);
-  if (status && (time_size == sizeof(cached_time)) && ((dsize % sizeof (gfloat)) == 0))
+  if (priv->cache != NULL)
     {
-      (time != NULL) ? *time = cached_time : 0;
-      *buffer_size = dsize / sizeof (gfloat);
-      return TRUE;
+      time_size = sizeof (cached_time);
+      dsize = *buffer_size * sizeof (gfloat);
+      hyscan_acoustic_data_update_cache_key (priv, index);
+      status = hyscan_cache_get2 (priv->cache, priv->cache_key, NULL,
+                                  &cached_time, &time_size, buffer, &dsize);
+      if (status && (time_size == sizeof (cached_time)) && ((dsize % sizeof (gfloat)) == 0))
+        {
+          (time != NULL) ? *time = cached_time : 0;
+          *buffer_size = dsize / sizeof (gfloat);
+          return TRUE;
+        }
     }
 
   /* Считываем размер данных. */
