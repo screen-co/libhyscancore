@@ -1,14 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="project">
+  <schema id="project-info">
     <node id="schema">
-      <key id="id" name="Project schema id" type="integer" access="readonly">
+      <key id="id" name="Project info schema id" type="integer" access="readonly">
         <default>14957522439000670309</default>
       </key>
-      <key id="version" name="Project schema version" type="integer" access="readonly">
+      <key id="version" name="Project info schema version" type="integer" access="readonly">
         <default>20170100</default>
       </key>
     </node>
     <key id="description" name="Project description" type="string"/>
+  </schema>
+
+  <schema id="track-info">
+    <node id="schema">
+      <key id="id" name="Track info schema id" type="integer" access="readonly">
+        <default>3829672927190415735</default>
+      </key>
+      <key id="version" name="Track info schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
+    <key id="description" name="Track description" type="string"/>
   </schema>
 </schemalist>

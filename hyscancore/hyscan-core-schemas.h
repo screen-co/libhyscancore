@@ -11,8 +11,11 @@
 #ifndef __HYSCAN_CORE_SCHEMAS_H__
 #define __HYSCAN_CORE_SCHEMAS_H__
 
-#define PROJECT_SCHEMA_ID                      1495752243900067309
-#define PROJECT_SCHEMA_VERSION                 20170100
+#define PROJECT_INFO_SCHEMA_ID                 1495752243900067309
+#define PROJECT_INFO_SCHEMA_VERSION            20170100
+
+#define TRACK_INFO_SCHEMA_ID                   3829672927190415735
+#define TRACK_INFO_SCHEMA_VERSION              20170100
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
 #define TRACK_SCHEMA_VERSION                   20170100
@@ -39,5 +42,8 @@
 #define SIGNAL_CHANNEL_SCHEMA                  "signal"
 #define TVG_CHANNEL_SCHEMA                     "tvg"
 #define ACOUSTIC_CHANNEL_SCHEMA                "acoustic"
+
+#define PROJECT_INFO_GROUP                     "info"
+#define PROJECT_INFO_OBJECT                    "project"
 
 #endif /* __HYSCAN_SCHEMAS_H__ */

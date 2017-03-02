@@ -18,6 +18,7 @@ add_custom_command (OUTPUT ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
 
 add_library (hyscancore SHARED
              hyscan-core-types.c
+             hyscan-db-info.c
              hyscan-data-writer.c
              hyscan-raw-data.c
              hyscan-acoustic-data.c
