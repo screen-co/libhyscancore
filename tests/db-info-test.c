@@ -187,20 +187,17 @@ tracks_changed (HyScanDBInfo *info)
   GHashTable *tracks;
   guint i, j;
 
-  /* Ждём пока будут созданы все галсы. */
   tracks = hyscan_db_info_get_tracks (info);
-  if (n_tracks != g_hash_table_size (tracks))
-    goto exit;
-
-  /* Проверяем название текущего проекта. */
   cur_project_name = g_strdup_printf ("project-%d", cur_step);
   project_name = hyscan_db_info_get_project (info);
 
+  /* Проверяем название текущего проекта. */
   if (g_strcmp0 (project_name, cur_project_name) != 0)
-    g_error ("incorrect current project at step %d", cur_step);
+    goto exit;
 
-  g_free (cur_project_name);
-  g_free (project_name);
+  /* Ждём пока будут созданы все галсы. */
+  if (n_tracks != g_hash_table_size (tracks))
+    goto exit;
 
   /* Проверяем текущий список галсов. */
   for (i = 1; i <= n_tracks; i++)
@@ -217,11 +214,15 @@ tracks_changed (HyScanDBInfo *info)
       if (track_info->active && (i != n_tracks))
         g_error ("%s: activity error", track_name);
 
+      g_free (track_name);
+
+      /* Ждём, если еще не все каналы данных обнаружены. */
+      if (i != g_hash_table_size (track_info->sources))
+        goto exit;
+
       /* Проверка списка источников данных. */
       for (j = 0; j < i; j++)
         check_source (track_info, sources[j], (i == n_tracks));
-
-      g_free (track_name);
     }
 
   /* Следующий шаг теста. */
@@ -230,6 +231,8 @@ tracks_changed (HyScanDBInfo *info)
 
 exit:
   g_hash_table_unref (tracks);
+  g_free (cur_project_name);
+  g_free (project_name);
 }
 
 int

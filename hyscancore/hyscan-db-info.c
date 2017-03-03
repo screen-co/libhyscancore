@@ -417,7 +417,10 @@ hyscan_db_info_informer (gpointer data)
 
           mod_counter = hyscan_db_get_mod_count (priv->db, info->id);
           if (mod_counter != info->mod_counter)
-            check_tracks = TRUE;
+            {
+              check_tracks = TRUE;
+              break;
+            }
         }
 
       /* Проверяем изменение списка галсов. */
@@ -747,6 +750,12 @@ hyscan_db_info_get_track_info_int (HyScanDB    *db,
         }
 
       g_strfreev (channels);
+    }
+
+  /* Дополнительно мониторим пустые галсы. */
+  else
+    {
+      track_info->active = TRUE;
     }
 
   if (track_info->active)
