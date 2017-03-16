@@ -348,8 +348,8 @@ hyscan_data_writer_channel_set_raw_info (HyScanDB          *db,
                                          gint32             channel_id,
                                          HyScanRawDataInfo *info)
 {
-  const gchar *param_names[9];
-  GVariant *param_values[9];
+  const gchar *param_names[11];
+  GVariant *param_values[11];
   gint32 param_id;
   gboolean status;
 
@@ -363,9 +363,11 @@ hyscan_data_writer_channel_set_raw_info (HyScanDB          *db,
   param_names[3] = "/antenna/offset/horizontal";
   param_names[4] = "/antenna/pattern/vertical";
   param_names[5] = "/antenna/pattern/horizontal";
-  param_names[6] = "/adc/vref";
-  param_names[7] = "/adc/offset";
-  param_names[8] = NULL;
+  param_names[6] = "/antenna/frequency";
+  param_names[7] = "/antenna/bandwidth";
+  param_names[8] = "/adc/vref";
+  param_names[9] = "/adc/offset";
+  param_names[10] = NULL;
 
   param_values[0] = g_variant_new_string (hyscan_data_get_type_name (info->data.type));
   param_values[1] = g_variant_new_double (info->data.rate);
@@ -373,8 +375,10 @@ hyscan_data_writer_channel_set_raw_info (HyScanDB          *db,
   param_values[3] = g_variant_new_double (info->antenna.offset.horizontal);
   param_values[4] = g_variant_new_double (info->antenna.pattern.vertical);
   param_values[5] = g_variant_new_double (info->antenna.pattern.horizontal);
-  param_values[6] = g_variant_new_double (info->adc.vref);
-  param_values[7] = g_variant_new_int64 (info->adc.offset);
+  param_values[6] = g_variant_new_double (info->antenna.frequency);
+  param_values[7] = g_variant_new_double (info->antenna.bandwidth);
+  param_values[8] = g_variant_new_double (info->adc.vref);
+  param_values[9] = g_variant_new_int64 (info->adc.offset);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
   hyscan_db_close (db, param_id);
@@ -389,6 +393,8 @@ hyscan_data_writer_channel_set_raw_info (HyScanDB          *db,
       g_variant_unref (param_values[5]);
       g_variant_unref (param_values[6]);
       g_variant_unref (param_values[7]);
+      g_variant_unref (param_values[8]);
+      g_variant_unref (param_values[9]);
     }
 
   return status;

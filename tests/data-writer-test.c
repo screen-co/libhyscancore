@@ -104,6 +104,8 @@ raw_get_info (guint n_channel)
   info.antenna.offset.horizontal = 0.2 * n_channel;
   info.antenna.pattern.vertical = 0.3 * n_channel;
   info.antenna.pattern.horizontal = 0.4 * n_channel;
+  info.antenna.frequency = 0.5 * n_channel;
+  info.antenna.bandwidth = 0.6 * n_channel;
 
   info.adc.vref = 1.0 * n_channel;
   info.adc.offset = 10 * n_channel;
@@ -240,8 +242,8 @@ raw_check_info (HyScanDB *db,
   gint32 param_id;
 
   HyScanRawDataInfo info;
-  const gchar *param_names[11];
-  GVariant *param_values[11];
+  const gchar *param_names[13];
+  GVariant *param_values[13];
 
   HyScanDataType data_type;
 
@@ -259,9 +261,11 @@ raw_check_info (HyScanDB *db,
   param_names[5] = "/antenna/offset/horizontal";
   param_names[6] = "/antenna/pattern/vertical";
   param_names[7] = "/antenna/pattern/horizontal";
-  param_names[8] = "/adc/vref";
-  param_names[9] = "/adc/offset";
-  param_names[10] = NULL;
+  param_names[8] = "/antenna/frequency";
+  param_names[9] = "/antenna/bandwidth";
+  param_names[10] = "/adc/vref";
+  param_names[11] = "/adc/offset";
+  param_names[12] = NULL;
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     g_error ("can't read parameters");
@@ -280,10 +284,12 @@ raw_check_info (HyScanDB *db,
       (info.antenna.offset.horizontal != g_variant_get_double (param_values[5])) ||
       (info.antenna.pattern.vertical != g_variant_get_double (param_values[6])) ||
       (info.antenna.pattern.horizontal != g_variant_get_double (param_values[7])) ||
-      (info.adc.vref != g_variant_get_double (param_values[8])) ||
-      (info.adc.offset != g_variant_get_int64 (param_values[9])))
+      (info.antenna.frequency != g_variant_get_double (param_values[8])) ||
+      (info.antenna.bandwidth != g_variant_get_double (param_values[9])) ||
+      (info.adc.vref != g_variant_get_double (param_values[10])) ||
+      (info.adc.offset != g_variant_get_int64 (param_values[11])))
     {
-      g_error ("error in parameters 1");
+      g_error ("error in parameters");
     }
 
   g_variant_unref (param_values[0]);

@@ -70,6 +70,8 @@
     <node id="antenna">
       <node id="offset" schema="antenna-offset"/>
       <node id="pattern" schema="antenna-pattern"/>
+      <key id="frequency" name="Center frequency" type="double"/>
+      <key id="bandwidth" name="Bandwidth" type="double"/>
     </node>
     <node id="adc" schema="adc"/>
   </schema>
