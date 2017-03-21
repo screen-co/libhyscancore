@@ -554,6 +554,8 @@ exit:
   g_variant_unref (param_values[7]);
   g_variant_unref (param_values[8]);
   g_variant_unref (param_values[9]);
+  g_variant_unref (param_values[10]);
+  g_variant_unref (param_values[11]);
 
   return status;
 }

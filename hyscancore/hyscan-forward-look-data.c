@@ -201,6 +201,7 @@ hyscan_forward_look_data_object_finalize (GObject *object)
   HyScanForwardLookData *data = HYSCAN_FORWARD_LOOK_DATA (object);
   HyScanForwardLookDataPrivate *priv = data->priv;
 
+  g_clear_object (&priv->cache);
   g_clear_object (&priv->channel1);
   g_clear_object (&priv->channel2);
   g_clear_object (&priv->db);
@@ -208,6 +209,14 @@ hyscan_forward_look_data_object_finalize (GObject *object)
   g_clear_pointer (&priv->raw_data1, g_array_unref);
   g_clear_pointer (&priv->raw_data2, g_array_unref);
   g_clear_pointer (&priv->doa, g_array_unref);
+
+  g_free (priv->project_name);
+  g_free (priv->track_name);
+  g_free (priv->db_uri);
+
+  g_free (priv->cache_prefix);
+  g_free (priv->cache_key);
+  g_free (priv->detail_key);
 
   G_OBJECT_CLASS (hyscan_forward_look_data_parent_class)->finalize (object);
 }
