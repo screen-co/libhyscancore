@@ -22,6 +22,7 @@ add_library (hyscancore SHARED
              hyscan-data-writer.c
              hyscan-raw-data.c
              hyscan-acoustic-data.c
+             hyscan-forward-look-data.c
              hyscan-geo.c
              hyscan-location-tools-nmea.c
              hyscan-location-tools-sounder.c

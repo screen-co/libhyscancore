@@ -8,6 +8,7 @@
  * - \link HyScanDataWriter \endlink - класс управления записью данных;
  * - \link HyScanRawData \endlink - класс обработки сырых данных;
  * - \link HyScanAcousticData \endlink - класс обработки акустических данных;
+ * - \link HyScanForwardLookData \endlink - класс обработки данных вперёдсмотрящего локатора;
  * - \link HyScanLocation \endlink - класс для определения координат и глубины;
  * - \link HyScanGeo \endlink - класс для работы с системами координат;
  * - \link HyScanDBInfo \endlink - класс асинхронного мониторинга базы данных.
