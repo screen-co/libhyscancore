@@ -503,8 +503,8 @@ hyscan_raw_data_load_data_params (HyScanDB          *db,
                                   gint32             param_id,
                                   HyScanRawDataInfo *info)
 {
-  const gchar *param_names[11];
-  GVariant *param_values[11];
+  const gchar *param_names[13];
+  GVariant *param_values[13];
   gboolean status = FALSE;
 
   param_names[0] = "/schema/id";
@@ -515,9 +515,11 @@ hyscan_raw_data_load_data_params (HyScanDB          *db,
   param_names[5] = "/antenna/offset/horizontal";
   param_names[6] = "/antenna/pattern/vertical";
   param_names[7] = "/antenna/pattern/horizontal";
-  param_names[8] = "/adc/vref";
-  param_names[9] = "/adc/offset";
-  param_names[10] = NULL;
+  param_names[8] = "/antenna/frequency";
+  param_names[9] = "/antenna/bandwidth";
+  param_names[10] = "/adc/vref";
+  param_names[11] = "/adc/offset";
+  param_names[12] = NULL;
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
     return FALSE;
@@ -534,8 +536,10 @@ hyscan_raw_data_load_data_params (HyScanDB          *db,
   info->antenna.offset.horizontal = g_variant_get_double (param_values[5]);
   info->antenna.pattern.vertical = g_variant_get_double (param_values[6]);
   info->antenna.pattern.horizontal = g_variant_get_double (param_values[7]);
-  info->adc.vref = g_variant_get_double (param_values[8]);
-  info->adc.offset = g_variant_get_int64 (param_values[9]);
+  info->antenna.frequency = g_variant_get_double (param_values[8]);
+  info->antenna.bandwidth = g_variant_get_double (param_values[9]);
+  info->adc.vref = g_variant_get_double (param_values[10]);
+  info->adc.offset = g_variant_get_int64 (param_values[11]);
 
   status = TRUE;
 
@@ -599,18 +603,21 @@ hyscan_raw_data_update_cache_key (HyScanRawDataPrivate *priv,
 {
   if (priv->cache != NULL && priv->cache_key == NULL)
     {
-      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.RAW.%d.%d.XX.X.0123456789",
+      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.RAW.%d.%d.%2s.%d.%u",
                                          priv->cache_prefix,
                                          priv->db_uri,
                                          priv->project_name,
                                          priv->track_name,
                                          priv->source_type,
-                                         priv->source_channel);
+                                         priv->source_channel,
+                                         "XX",
+                                         G_MININT32,
+                                         G_MAXUINT32);
 
       priv->cache_key_length = strlen (priv->cache_key);
     }
 
-  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.RAW.%d.%d.%s.%1d.%d",
+  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.RAW.%d.%d.%2s.%d.%u",
               priv->cache_prefix,
               priv->db_uri,
               priv->project_name,
