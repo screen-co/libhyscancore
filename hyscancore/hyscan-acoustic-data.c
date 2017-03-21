@@ -21,7 +21,7 @@ enum
   PROP_PROJECT_NAME,
   PROP_TRACK_NAME,
   PROP_SOURCE_TYPE,
-  PROP_USE_RAW
+  PROP_RAW
 };
 
 struct _HyScanAcousticDataPrivate
@@ -32,7 +32,7 @@ struct _HyScanAcousticDataPrivate
   gchar               *project_name;                           /* Название проекта. */
   gchar               *track_name;                             /* Название галса. */
   HyScanSourceType     source_type;                            /* Тип источника данных. */
-  gboolean             use_raw;                                /* Использовать сырые данные. */
+  gboolean             raw;                                    /* Использовать сырые данные. */
 
   HyScanRawData       *raw_data;                               /* Обработчик сырых данных. */
 
@@ -95,8 +95,8 @@ hyscan_acoustic_data_class_init (HyScanAcousticDataClass *klass)
     g_param_spec_int ("source-type", "SourceType", "Source type", 0, G_MAXINT, 0,
                       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class, PROP_USE_RAW,
-    g_param_spec_boolean ("use-raw", "UseRaw", "Use raw data type", FALSE,
+  g_object_class_install_property (object_class, PROP_RAW,
+    g_param_spec_boolean ("raw", "Raw", "Use raw data type", FALSE,
                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
@@ -133,8 +133,8 @@ hyscan_acoustic_data_set_property (GObject      *object,
       priv->source_type = g_value_get_int (value);
       break;
 
-    case PROP_USE_RAW:
-      priv->use_raw = g_value_get_boolean (value);
+    case PROP_RAW:
+      priv->raw = g_value_get_boolean (value);
       break;
 
     default:
@@ -162,7 +162,7 @@ hyscan_acoustic_data_object_constructed (GObject *object)
   priv->channel_id = -1;
 
   /* Использовать сырые данные. */
-  if (priv->use_raw)
+  if (priv->raw)
     {
       HyScanRawDataInfo raw_info;
 
@@ -406,17 +406,18 @@ hyscan_acoustic_data_update_cache_key (HyScanAcousticDataPrivate *priv,
 {
   if (priv->cache != NULL && priv->cache_key == NULL)
     {
-      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.COMPUTED.%d.0123456789",
+      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.ACOUSTIC.%d.%u",
                                          priv->cache_prefix,
                                          priv->db_uri,
                                          priv->project_name,
                                          priv->track_name,
-                                         priv->source_type);
+                                         priv->source_type,
+                                         G_MAXUINT32);
 
       priv->cache_key_length = strlen (priv->cache_key);
     }
 
-  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.COMPUTED.%d.%d",
+  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.ACOUSTIC.%d.%u",
               priv->cache_prefix,
               priv->db_uri,
               priv->project_name,
@@ -427,61 +428,24 @@ hyscan_acoustic_data_update_cache_key (HyScanAcousticDataPrivate *priv,
 
 /* Функция создаёт новый объект обработки акустических данных. */
 HyScanAcousticData *
-hyscan_acoustic_data_new (HyScanDB                *db,
-                          const gchar             *project_name,
-                          const gchar             *track_name,
-                          HyScanSourceType         source_type,
-                          HyScanPreferredDataType  preferred_type)
+hyscan_acoustic_data_new (HyScanDB         *db,
+                          const gchar      *project_name,
+                          const gchar      *track_name,
+                          HyScanSourceType  source_type,
+                          gboolean          raw)
 {
   HyScanAcousticData *data;
-  gboolean raw_first = FALSE;
-  guint i;
 
-  /* По умолчанию сначала пытаемся открыть обработанные данные. */
-  if (preferred_type == HYSCAN_PREFERRED_DATA_DEFAULT)
-    preferred_type = HYSCAN_PREFERRED_DATA_COMPUTED;
+  data = g_object_new (HYSCAN_TYPE_ACOUSTIC_DATA,
+                       "db", db,
+                       "project-name", project_name,
+                       "track-name", track_name,
+                       "source-type", source_type,
+                       "raw", raw,
+                       NULL);
 
-  /* Первая попытка открыть сырые данные. */
-  if ((preferred_type == HYSCAN_PREFERRED_DATA_RAW) ||
-      (preferred_type == HYSCAN_PREFERRED_DATA_RAW_ONLY))
-    {
-      raw_first = TRUE;
-    }
-
-  /* Две попытки открытия данных. */
-  for (i = 0; i < 2; i++)
-    {
-      gboolean use_raw;
-
-      use_raw = (i == 0) ? raw_first : !raw_first;
-
-      data = g_object_new (HYSCAN_TYPE_ACOUSTIC_DATA,
-                           "db", db,
-                           "project-name", project_name,
-                           "track-name", track_name,
-                           "source-type", source_type,
-                           "use-raw", use_raw,
-                           NULL);
-
-      if (use_raw)
-        {
-          if (data->priv->raw_data == NULL)
-            g_clear_object (&data);
-        }
-      else
-        {
-          if (data->priv->channel_id <= 0)
-            g_clear_object (&data);
-        }
-
-      /* Если жёстко заданы только сырые или только обработанные данные,
-       * выходим без второй попытки. */
-      if ((preferred_type == HYSCAN_PREFERRED_DATA_COMPUTED_ONLY) ||
-          (preferred_type == HYSCAN_PREFERRED_DATA_RAW_ONLY))
-        {
-          break;
-        }
-    }
+  if ((data->priv->raw_data == NULL) && (data->priv->channel_id <= 0))
+        g_clear_object (&data);
 
   return data;
 }
@@ -502,7 +466,7 @@ hyscan_acoustic_data_set_cache (HyScanAcousticData *data,
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return;
 
-  if (priv->use_raw)
+  if (priv->raw)
     {
       hyscan_raw_data_set_cache (priv->raw_data, cache, prefix);
       return;
@@ -583,7 +547,7 @@ hyscan_acoustic_data_is_writable (HyScanAcousticData *data)
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return FALSE;
 
-  if (priv->use_raw)
+  if (priv->raw)
     return hyscan_raw_data_is_writable (priv->raw_data);
 
   return hyscan_db_channel_is_writable (priv->db, priv->channel_id);
@@ -604,7 +568,7 @@ hyscan_acoustic_data_get_range (HyScanAcousticData *data,
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return FALSE;
 
-  if (priv->use_raw)
+  if (priv->raw)
     return hyscan_raw_data_get_range (priv->raw_data, first_index, last_index);
 
   return hyscan_db_channel_get_data_range (priv->db, priv->channel_id, first_index, last_index);
@@ -628,7 +592,7 @@ hyscan_acoustic_data_find_data (HyScanAcousticData *data,
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return FALSE;
 
-  if (priv->use_raw)
+  if (priv->raw)
     return hyscan_raw_data_find_data (priv->raw_data, time, lindex, rindex, ltime, rtime);
 
   return hyscan_db_channel_find_data (priv->db, priv->channel_id, time, lindex, rindex, ltime, rtime);
@@ -649,7 +613,7 @@ hyscan_acoustic_data_get_values_count (HyScanAcousticData *data,
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return FALSE;
 
-  if (priv->use_raw)
+  if (priv->raw)
     return hyscan_raw_data_get_values_count (priv->raw_data, index);
 
   if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, NULL, &dsize, NULL))
@@ -676,7 +640,7 @@ hyscan_acoustic_data_get_time (HyScanAcousticData *data,
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return FALSE;
 
-  if (priv->use_raw)
+  if (priv->raw)
     return hyscan_raw_data_get_time (priv->raw_data, index);
 
   if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, NULL, &dsize, &time))
@@ -707,7 +671,7 @@ hyscan_acoustic_data_get_values (HyScanAcousticData *data,
   if ((priv->channel_id <= 0) && (priv->raw_data == NULL))
     return FALSE;
 
-  if (priv->use_raw)
+  if (priv->raw)
     return hyscan_raw_data_get_amplitude_values (priv->raw_data, index, buffer, buffer_size, time);
 
   /* Ищем данные в кэше. */

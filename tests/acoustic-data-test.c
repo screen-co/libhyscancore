@@ -32,6 +32,7 @@ int main( int argc, char **argv )
 
   HyScanAntennaPosition position;
   HyScanRawDataInfo raw_info;
+  HyScanRawDataInfo raw_info2;
   HyScanAcousticDataInfo acoustic_info;
 
   HyScanComplexFloat *signal_image;
@@ -251,7 +252,7 @@ int main( int argc, char **argv )
 
   /* Объект чтения акустических данных. */
   acoustic_reader = hyscan_acoustic_data_new (db, PROJECT_NAME, TRACK_NAME,
-                                              HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, HYSCAN_PREFERRED_DATA_COMPUTED_ONLY);
+                                              HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, FALSE);
   if (acoustic_reader == NULL)
     g_error ("can't open acoustic channel");
   hyscan_acoustic_data_set_cache (acoustic_reader, cache, NULL);

@@ -85,17 +85,17 @@ GType                  hyscan_acoustic_data_get_type           (void);
  * \param project_name название проекта;
  * \param track_name название галса;
  * \param source_type тип источника данных;
- * \param preferred_type предпочитаемый вид данных.
+ * \param raw использовать - TRUE или нет - FALSE сырые данные.
  *
  * \return Указатель на объект \link HyScanAcousticData \endlink или NULL.
  *
  */
 HYSCAN_API
-HyScanAcousticData    *hyscan_acoustic_data_new                (HyScanDB                      *db,
-                                                                const gchar                   *project_name,
-                                                                const gchar                   *track_name,
-                                                                HyScanSourceType               source_type,
-                                                                HyScanPreferredDataType        preferred_type);
+HyScanAcousticData    *hyscan_acoustic_data_new                (HyScanDB         *db,
+                                                                const gchar      *project_name,
+                                                                const gchar      *track_name,
+                                                                HyScanSourceType  source_type,
+                                                                gboolean          raw);
 
 /**
  *
