@@ -49,8 +49,17 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-depth.c
              hyscan-depth-nmea.c
              hyscan-depthometer.c
-             ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
-             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
+             hyscan-tile-common.c
+             hyscan-tile-color.c
+             hyscan-waterfall-tile.c
+             hyscan-tile-queue.c
+             hyscan-track-rect.c
+             hyscan-projector.c
+             hyscan-waterfall-mark.c
+             hyscan-waterfall-mark-data.c
+             hyscan-mark-manager.c
+             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
+             ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c)
 
 target_link_libraries (${HYSCAN_CORE_LIBRARY} ${GLIB2_LIBRARIES} ${MATH_LIBRARIES} ${ZLIB_LIBRARIES} ${HYSCAN_LIBRARIES})
 
@@ -85,6 +94,12 @@ install (FILES hyscan-core-types.h
                hyscan-depth.c
                hyscan-depth-nmea.c
                hyscan-depthometer.c
+               hyscan-tile-common.c
+               hyscan-tile-color.c
+               hyscan-waterfall-tile.c
+               hyscan-tile-queue.c
+               hyscan-track-rect.c
+               hyscan-projector.c
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

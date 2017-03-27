@@ -15,5 +15,9 @@
  * - \link HyScanDepth \endlink - интерфейс определения глубины;
  * - \link HyScanDepthNMEA \endlink - класс извлечения глубины из NMEA-строк;
  * - \link HyScanDepthometer \endlink - класс работы с данными глубины.
+ * - \link HyScanTileQueue \endlink - класс асинхронного мониторинга базы данных.
+ * - \link HyScanWaterfallTile \endlink - класс асинхронного мониторинга базы данных.
+ * - \link HyScanTileColor \endlink - класс асинхронного мониторинга базы данных.
+ * - \link HyScanProjector \endlink - класс определения координат индексов и отсчётов.
  *
  */

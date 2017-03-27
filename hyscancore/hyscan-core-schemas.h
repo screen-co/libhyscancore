@@ -35,6 +35,9 @@
 #define ACOUSTIC_CHANNEL_SCHEMA_ID             1122285168293703474
 #define ACOUSTIC_CHANNEL_SCHEMA_VERSION        20170100
 
+#define WATERFALL_MARK_SCHEMA_ID               3822111782476410098
+#define WATERFALL_MARK_SCHEMA_VERSION          20170100
+
 #define PROJECT_SCHEMA                         "project"
 #define TRACK_SCHEMA                           "track"
 #define SENSOR_CHANNEL_SCHEMA                  "sensor"
@@ -42,6 +45,8 @@
 #define SIGNAL_CHANNEL_SCHEMA                  "signal"
 #define TVG_CHANNEL_SCHEMA                     "tvg"
 #define ACOUSTIC_CHANNEL_SCHEMA                "acoustic"
+
+#define WATERFALL_MARK_SCHEMA                  "waterfall-mark"
 
 #define PROJECT_INFO_GROUP                     "info"
 #define PROJECT_INFO_OBJECT                    "project"

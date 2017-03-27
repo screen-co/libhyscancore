@@ -23,4 +23,47 @@
     </node>
     <key id="description" name="Track description" type="string"/>
   </schema>
+
+  <schema id="waterfall-mark">
+    <node id="schema">
+      <key id="id"         name="Waterfall mark schema id"  type="integer" access="readonly">
+        <default>3822111782476410098</default>
+      </key>
+      <key id="version"    name="Waterfall mark schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
+    <key id="name"         name="Mark short name"           type="string"/>
+    <key id="description"  name="Detailed description"      type="string"/>
+    <key id="label"        name="Applied labes"             type="integer"/>
+    <key id="operator"     name="Operator name"             type="string"/>
+    <node id="time"        name="Mark timings">
+      <key id="creation"     name="Time of creation"          type="integer"/>
+      <key id="modification" name="Time of last modification" type="integer"/>
+    </node>
+    <node id="coordinates" name="Mark coordinates">
+      <key id="source0"      name="Source type (center)"      type="integer"/>
+      <key id="index0"       name="Index number (center)"     type="integer"/>
+      <key id="count0"       name="Count number (center)"     type="integer"/>
+
+      <key id="source1"      name="Source type (corner)"      type="integer"/>
+      <key id="index1"       name="Index number (corner)"     type="integer"/>
+      <key id="count1"       name="Count number (corner)"     type="integer"/>
+
+    </node>
+  </schema>
+
+  <schema id="waterfall-mark-label">
+    <node id="schema">
+      <key id="id"         name="Waterfall mark schema id"      type="integer" access="readonly">
+        <default>3822111782476410098</default>
+      </key>
+      <key id="version"    name="Waterfall mark schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
+    <key id="description"  name="Detailed description"      type="string"/>
+    <key id="color"        name="Associated color"          type="integer"/>
+
+  </schema>
 </schemalist>
