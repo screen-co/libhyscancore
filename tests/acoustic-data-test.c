@@ -240,6 +240,9 @@ int main( int argc, char **argv )
         g_error ("can't add acoustic data");
     }
 
+  /* Завершаем запись. */
+  g_clear_object (&writer);
+
   /* Объект чтения сырых данных. */
   if (noise)
     raw_reader = hyscan_raw_data_noise_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
@@ -364,7 +367,6 @@ int main( int argc, char **argv )
 
   g_message ("All done");
 
-  g_clear_object (&writer);
   g_clear_object (&raw_reader);
   g_clear_object (&acoustic_reader);
 

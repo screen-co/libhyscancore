@@ -1078,9 +1078,6 @@ hyscan_raw_data_get_signal_size (HyScanRawData *data,
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), 0);
 
-  if (data->priv->signal_id <= 0)
-    return 0;
-
   hyscan_raw_data_load_signals (data->priv);
 
   dtime = hyscan_raw_data_get_time (data, index);
@@ -1135,9 +1132,6 @@ hyscan_raw_data_get_signal_image (HyScanRawData      *data,
   HyScanRawDataSignal *signal;
 
   g_return_val_if_fail (HYSCAN_IS_RAW_DATA (data), FALSE);
-
-  if (data->priv->signal_id <= 0)
-    return FALSE;
 
   hyscan_raw_data_load_signals (data->priv);
   dtime = hyscan_raw_data_get_time (data, index);
