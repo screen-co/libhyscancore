@@ -560,7 +560,7 @@ hyscan_data_writer_create_track (HyScanDB        *db,
   /* Уникальный идентификатор галса. */
   for (i = 0; i < sizeof (id) - 1; i++)
     {
-      gint rnd = g_rand_int_range (rand, 0, 63);
+      gint rnd = g_rand_int_range (rand, 0, 62);
       if (rnd < 10)
         id[i] = '0' + rnd;
       else if (rnd < 36)
