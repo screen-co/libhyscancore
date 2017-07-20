@@ -286,6 +286,10 @@ hyscan_raw_data_object_constructed (GObject *object)
       goto exit;
     }
 
+  /* Проверяем, что в канале есть хотя бы одна запись. */
+  if (!hyscan_db_channel_get_data_range (priv->db, priv->channel_id, NULL, NULL))
+    goto exit;
+
   /* Параметры канала данных. */
   param_id = hyscan_db_channel_param_open (priv->db, priv->channel_id);
   if (param_id < 0)
