@@ -1256,7 +1256,10 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
                                                     priv->operator_name, priv->sonar_info,
                                                     priv->rand);
   if (priv->track_id <= 0)
-    goto exit;
+    {
+      priv->track_id = -1;
+      goto exit;
+    }
 
   priv->track_name = g_strdup (track_name);
 
