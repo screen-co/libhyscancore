@@ -127,7 +127,9 @@ db_info_test (gpointer data)
   /* Создаём галс и каналы данных в нём. */
   hyscan_data_writer_set_project (writer, project_name);
   hyscan_data_writer_set_operator_name (writer, project_name);
-  hyscan_data_writer_start (writer, track_name, HYSCAN_TRACK_CALIBRATION + (sub_step % 3));
+
+  if (!hyscan_data_writer_start (writer, track_name, HYSCAN_TRACK_CALIBRATION + (sub_step % 3)))
+    g_error ("can't create track %s.%s", project_name, track_name);
 
   for (i = 0; i < sub_step; i++)
     create_source (writer, sources[i]);

@@ -1,3 +1,12 @@
+/*
+ * \file hyscan-db-info.c
+ *
+ * \brief Исходный файл класса асинхронного мониторинга базы данных
+ * \author Andrei Fadeev (andrei@webcontrol.ru)
+ * \date 2017
+ * \license Проприетарная лицензия ООО "Экран"
+ */
+
 #include "hyscan-db-info.h"
 #include "hyscan-core-schemas.h"
 
@@ -218,7 +227,7 @@ hyscan_db_info_copy_track_info (HyScanTrackInfo *info)
 
   new_info->id = g_strdup (info->id);
   new_info->type = info->type;
-  new_info->operator = g_strdup (info->operator);
+  new_info->operator_name = g_strdup (info->operator_name);
   new_info->sonar_info = g_object_ref (info->sonar_info);
 
   sources = g_hash_table_new_full (NULL, NULL, NULL, g_free);
@@ -649,6 +658,7 @@ hyscan_db_info_get_track_info_int (HyScanDB    *db,
   gint32 channel_id;
   guint32 track_mod_counter;
   guint32 channel_mod_counter;
+  guint i;
 
   /* Открываем галс. */
   track_id = hyscan_db_track_open (db, project_id, track_name);
@@ -657,6 +667,14 @@ hyscan_db_info_get_track_info_int (HyScanDB    *db,
 
   /* Счётчик изменений в галсе. */
   track_mod_counter = hyscan_db_get_mod_count (db, track_id);
+
+  /* Не обрабатываем пустые галсы, а добавляем их в список проверяемых. */
+  channels = hyscan_db_channel_list (db, track_id);
+  if (channels == NULL)
+    {
+      hyscan_db_info_add_active_id (actives, db, track_id, track_mod_counter);
+      return NULL;
+    }
 
   track_info = g_new0 (HyScanTrackInfo, 1);
   track_info->name = g_strdup (track_name);
@@ -674,7 +692,7 @@ hyscan_db_info_get_track_info_int (HyScanDB    *db,
 
       track_info->id = hyscan_db_param_get_string (db, param_id, NULL, "/id");
       track_info->type = hyscan_track_get_type_by_name (track_type);
-      track_info->operator = hyscan_db_param_get_string (db, param_id, NULL, "/operator");
+      track_info->operator_name = hyscan_db_param_get_string (db, param_id, NULL, "/operator");
       track_info->sonar_info = hyscan_data_schema_new_from_string (sonar_info, "info");
 
       hyscan_db_close (db, param_id);
@@ -692,76 +710,66 @@ hyscan_db_info_get_track_info_int (HyScanDB    *db,
     }
 
   /* Список каналов данных. */
-  channels = hyscan_db_channel_list (db, track_id);
-  if (channels != NULL)
+  for (i = 0; channels[i] != NULL; i++)
     {
       HyScanSourceInfo *source_info;
       HyScanSourceType source;
       gboolean active;
       gboolean raw;
-      guint i;
 
-      for (i = 0; channels[i] != NULL; i++)
+      /* Проверяем типы данных. */
+      if (!hyscan_channel_get_types_by_name (channels[i], &source, &raw, NULL))
+        continue;
+
+      /* Пытаемся узнать есть ли в нём записанные данные. */
+      channel_id = hyscan_db_channel_open (db, track_id, channels[i]);
+      if (channel_id <= 0)
+        continue;
+
+      /* Счётчик изменений в канале данных и признак записи. */
+      channel_mod_counter = hyscan_db_get_mod_count (db, channel_id);
+      active = hyscan_db_channel_is_writable (db, channel_id);
+
+      /* В канале есть минимум одна запись. */
+      if (hyscan_db_channel_get_data_range (db, channel_id, NULL, NULL))
         {
-          /* Проверяем типы данных. */
-          if (!hyscan_channel_get_types_by_name (channels[i], &source, &raw, NULL))
-            continue;
-
-          /* Пытаемся узнать есть ли в нём записанные данные. */
-          channel_id = hyscan_db_channel_open (db, track_id, channels[i]);
-          if (channel_id <= 0)
-            continue;
-
-          /* Счётчик изменений в канале данных и признак записи. */
-          channel_mod_counter = hyscan_db_get_mod_count (db, channel_id);
-          active = hyscan_db_channel_is_writable (db, channel_id);
-
-          /* В канале есть минимум одна запись. */
-          if (hyscan_db_channel_get_data_range (db, channel_id, NULL, NULL))
+          source_info = g_hash_table_lookup (track_info->sources, GINT_TO_POINTER (source));
+          if (source_info == NULL)
             {
-              source_info = g_hash_table_lookup (track_info->sources, GINT_TO_POINTER (source));
-              if (source_info == NULL)
-                {
-                  source_info = g_new0 (HyScanSourceInfo, 1);
-                  source_info->type = source;
+              source_info = g_new0 (HyScanSourceInfo, 1);
+              source_info->type = source;
 
-                  g_hash_table_insert (track_info->sources, GINT_TO_POINTER (source), source_info);
-                }
-
-              /* Тип данных канала: сырые или обработанные. */
-              if (raw)
-                source_info->raw = TRUE;
-              else
-                source_info->computed = TRUE;
-
-              /* Признак записи в канал и галс. */
-              if (active)
-                source_info->active = track_info->active = TRUE;
+              g_hash_table_insert (track_info->sources, GINT_TO_POINTER (source), source_info);
             }
 
-          /* Ставим на карандаш, если канал открыт на запись. */
+          /* Тип данных канала: сырые или обработанные. */
+          if (raw)
+            source_info->raw = TRUE;
           else
-            {
-              if (active)
-                hyscan_db_info_add_active_id (actives, db, channel_id, channel_mod_counter);
-            }
+            source_info->computed = TRUE;
 
-          hyscan_db_close (db, channel_id);
+          /* Признак записи в канал и галс. */
+          if (active)
+            source_info->active = track_info->active = TRUE;
         }
 
-      g_strfreev (channels);
+      /* Ставим на карандаш, если канал открыт на запись. */
+      else
+        {
+          if (active)
+            hyscan_db_info_add_active_id (actives, db, channel_id, channel_mod_counter);
+        }
+
+      hyscan_db_close (db, channel_id);
     }
 
-  /* Дополнительно мониторим пустые галсы. */
-  else
-    {
-      track_info->active = TRUE;
-    }
-
+  /* Если в галсе есть открытый для записи канал, проверим этот галс позже. */
   if (track_info->active)
     hyscan_db_info_add_active_id (actives, db, track_id, track_mod_counter);
   else
     hyscan_db_close (db, track_id);
+
+  g_strfreev (channels);
 
   return track_info;
 }
@@ -795,7 +803,7 @@ hyscan_db_info_free_track_info (HyScanTrackInfo *info)
   g_date_time_unref (info->ctime);
 
   g_free (info->id);
-  g_free (info->operator);
+  g_free (info->operator_name);
   g_clear_object (&info->sonar_info);
 
   g_clear_pointer (&info->sources, g_hash_table_unref);

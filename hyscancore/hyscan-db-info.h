@@ -77,7 +77,7 @@ typedef struct
 
   gchar               *id;                     /**< Уникальный идентификатор галса. */
   HyScanTrackType      type;                   /**< Тип галса. */
-  gchar               *operator;               /**< Имя оператора локатора записавшего галс. */
+  gchar               *operator_name;          /**< Имя оператора локатора записавшего галс. */
   HyScanDataSchema    *sonar_info;             /**< Общая информация о гидролокаторе. */
 
   GHashTable          *sources;                /**< Список источников данных. Хэш таблица, в которой ключом
