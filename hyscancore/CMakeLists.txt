@@ -11,7 +11,6 @@ add_custom_command (OUTPUT ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
                             hyscan-core-resources.xml
                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
                     DEPENDS hyscan-core-resources.xml
-                    DEPENDS location-schema.xml
                     DEPENDS project-schema.xml
                     DEPENDS track-schema.xml
                     VERBATIM)
@@ -24,13 +23,6 @@ add_library (hyscancore SHARED
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
              hyscan-geo.c
-             hyscan-location-tools-nmea.c
-             hyscan-location-tools-sounder.c
-             hyscan-location-tools-filters.c
-             hyscan-location-tools-assemblers.c
-             hyscan-location-tools-overseer.c
-             hyscan-location-tools-getters.c
-             hyscan-location.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
 target_link_libraries (hyscancore ${ADDON_LIBRARIES} ${GLIB2_LIBRARIES} ${HYSCAN_LIBRARIES})
