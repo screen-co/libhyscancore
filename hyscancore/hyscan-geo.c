@@ -478,7 +478,7 @@ hyscan_geo_topoXY2geo (HyScanGeo           *geo,
   gdouble earth_radius = 6371000; /* Радиус Земли в метрах. */
   gdouble dH, Ht, x_orig, y_orig;
   HyScanGeoCartesian3D topoXYZ;
-  gint i;
+  guint i;
 
   /* Убеждаемся, что эллипсоид и начальная точка заданы. */
   if (g_atomic_int_get (&(priv->initialized)) == 0)

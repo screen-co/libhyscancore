@@ -55,7 +55,7 @@ struct _HyScanRawDataPrivate
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
   gchar               *cache_key;                              /* Ключ кэширования. */
-  gint                 cache_key_length;                       /* Максимальная длина ключа. */
+  gsize                cache_key_length;                       /* Максимальная длина ключа. */
 
   HyScanAntennaPosition position;                              /* Местоположение приёмной антенны. */
   HyScanRawDataInfo     info;                                  /* Параметры сырых данных. */
@@ -65,7 +65,7 @@ struct _HyScanRawDataPrivate
   gint32               tvg_id;                                 /* Идентификатор открытого канала с коэффициентами усиления. */
 
   gpointer             raw_buffer;                             /* Буфер для чтения сырых данных канала. */
-  gint32               raw_buffer_size;                        /* Размер буфера в байтах. */
+  guint32              raw_buffer_size;                        /* Размер буфера в байтах. */
 
   HyScanComplexFloat  *data_buffer;                            /* Буфер для обработки данных. */
   gint64               data_time;                              /* Метка времени обрабатываемых данных. */
@@ -99,7 +99,7 @@ static void            hyscan_raw_data_update_cache_key        (HyScanRawDataPri
                                                                 gint                           data_type,
                                                                 guint32                        index);
 static void            hyscan_raw_data_buffer_realloc          (HyScanRawDataPrivate          *priv,
-                                                                gint32                         size);
+                                                                guint32                        size);
 static guint32         hyscan_raw_data_read_raw_data           (HyScanRawDataPrivate          *priv,
                                                                 gint32                         channel_id,
                                                                 guint32                        index,
@@ -638,7 +638,7 @@ hyscan_raw_data_update_cache_key (HyScanRawDataPrivate *priv,
 /* Функция проверяет размер буферов и увеличивает его при необходимости. */
 static void
 hyscan_raw_data_buffer_realloc (HyScanRawDataPrivate *priv,
-                                gint32                size)
+                                guint32               size)
 {
   gsize data_buffer_size;
 
@@ -730,7 +730,7 @@ hyscan_raw_data_load_signals (HyScanRawDataPrivate *priv)
 
   for (; i <= last_signal_index; i++)
     {
-      gint32 io_size;
+      guint32 io_size;
       HyScanRawDataSignal signal_info = {0};
 
       /* Считываем образ сигнала и проверяем его размер. */

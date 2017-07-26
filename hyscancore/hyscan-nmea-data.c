@@ -36,7 +36,7 @@ struct _HyScanNMEADataPrivate
   gchar                *path;                      /* Путь к БД, проекту, галсу и каналу. */
 
   gchar                *key;                       /* Ключ кэширования. */
-  guint                 key_length;                /* Максимальная длина ключа. */
+  gsize                 key_length;                /* Максимальная длина ключа. */
 
   HyScanAntennaPosition position;                  /* Местоположение приёмной антенны. */
   gint32                channel_id;                /* Идентификатор открытого канала данных. */

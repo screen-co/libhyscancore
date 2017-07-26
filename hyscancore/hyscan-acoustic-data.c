@@ -39,7 +39,7 @@ struct _HyScanAcousticDataPrivate
   HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
   gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
   gchar               *cache_key;                              /* Ключ кэширования. */
-  guint                cache_key_length;                       /* Максимальная длина ключа. */
+  gsize                cache_key_length;                       /* Максимальная длина ключа. */
 
   HyScanAntennaPosition  position;                             /* Местоположение приёмной антенны. */
   HyScanAcousticDataInfo info;                                 /* Параметры сырых данных. */

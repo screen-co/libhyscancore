@@ -47,6 +47,6 @@ add_library (hyscancore SHARED
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
-target_link_libraries (hyscancore ${ADDON_LIBRARIES} ${GLIB2_LIBRARIES} ${HYSCAN_LIBRARIES})
+target_link_libraries (hyscancore ${GLIB2_LIBRARIES} ${MATH_LIBRARIES} ${HYSCAN_LIBRARIES})
 
 set_target_properties (hyscancore PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")

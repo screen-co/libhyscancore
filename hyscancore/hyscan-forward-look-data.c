@@ -38,9 +38,9 @@ struct _HyScanForwardLookDataPrivate
   HyScanCache                 *cache;                          /* Интерфейс системы кэширования. */
   gchar                       *cache_prefix;                   /* Префикс ключа кэширования. */
   gchar                       *cache_key;                      /* Ключ кэширования. */
-  gint                         cache_key_length;               /* Максимальная длина ключа кэширования. */
+  gsize                        cache_key_length;               /* Максимальная длина ключа кэширования. */
   gchar                       *detail_key;                     /* Ключ детализации. */
-  gint                         detail_key_length;              /* Максимальная длина ключа детализации. */
+  gsize                        detail_key_length;              /* Максимальная длина ключа детализации. */
 
   gdouble                      data_rate;                      /* Частота дискретизации. */
   gdouble                      sound_velocity;                 /* Скорость звука, м/с. */
