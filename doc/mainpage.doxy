@@ -11,6 +11,5 @@
  * - \link HyScanForwardLookData \endlink - класс обработки данных вперёдсмотрящего локатора;
  * - \link HyScanNMEAData \endlink - класс обработки данных NMEA;
  * - \link HyScanGeo \endlink - класс для работы с системами координат;
- * - \link HyScanDBInfo \endlink - класс асинхронного мониторинга базы данных.
  *
  */
