@@ -167,7 +167,11 @@ hyscan_forward_look_data_object_constructed (GObject *object)
   priv->channel2 = hyscan_raw_data_new (priv->db, priv->project_name, priv->track_name, HYSCAN_SOURCE_FORWARD_LOOK, 2);
 
   if ((priv->channel1 == NULL) || (priv->channel2 == NULL))
-    return;
+    {
+      g_clear_object (&priv->channel1);
+      g_clear_object (&priv->channel2);
+      return;
+    }
 
   /* Параметры каналов данных. */
   channel_info1 = hyscan_raw_data_get_info (priv->channel1);
@@ -228,25 +232,19 @@ hyscan_forward_look_data_update_cache_key (HyScanForwardLookDataPrivate *priv,
 {
   guint32 sound_velocity = 1000 * priv->sound_velocity;
 
-  if (priv->cache != NULL)
+  if (priv->cache == NULL)
+    return;
+
+  if (priv->cache_key == NULL)
     {
-      if (priv->cache_key == NULL)
-        {
-          priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.FL.%ux",
-                                             priv->cache_prefix,
-                                             priv->db_uri,
-                                             priv->project_name,
-                                             priv->track_name,
-                                             G_MAXUINT32);
+      priv->cache_key = g_strdup_printf ("%s.%s.%s.%s.FL.%ux",
+                                         priv->cache_prefix,
+                                         priv->db_uri,
+                                         priv->project_name,
+                                         priv->track_name,
+                                         G_MAXUINT32);
 
-          priv->cache_key_length = strlen (priv->cache_key);
-        }
-      if (priv->detail_key == NULL)
-        {
-          priv->detail_key = g_strdup_printf ("%ux", G_MAXUINT32);
-
-          priv->detail_key_length = strlen (priv->detail_key);
-        }
+      priv->cache_key_length = strlen (priv->cache_key);
     }
 
   g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%s.FL.%u",
@@ -255,6 +253,13 @@ hyscan_forward_look_data_update_cache_key (HyScanForwardLookDataPrivate *priv,
               priv->project_name,
               priv->track_name,
               index);
+
+  if (priv->detail_key == NULL)
+    {
+      priv->detail_key = g_strdup_printf ("%ux", G_MAXUINT32);
+
+      priv->detail_key_length = strlen (priv->detail_key);
+    }
 
   g_snprintf (priv->detail_key, priv->detail_key_length, "%u", sound_velocity);
 }
@@ -500,9 +505,9 @@ hyscan_forward_look_data_get_doa_values (HyScanForwardLookData *data,
   n_points1 = n_points2 = MIN (n_points1, n_points2);
 
   /* Корректируем размер буферов данных. */
-  g_array_set_size (priv->raw_data1, n_points1 * sizeof (HyScanComplexFloat));
-  g_array_set_size (priv->raw_data2, n_points1 * sizeof (HyScanComplexFloat));
-  g_array_set_size (priv->doa, n_points1 * sizeof (HyScanForwardLookDOA));
+  g_array_set_size (priv->raw_data1, n_points1);
+  g_array_set_size (priv->raw_data2, n_points1);
+  g_array_set_size (priv->doa, n_points1);
 
   /* Считываем сырые данные. */
   raw1 = (gpointer)priv->raw_data1->data;

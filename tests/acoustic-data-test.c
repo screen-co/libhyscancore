@@ -32,7 +32,6 @@ int main( int argc, char **argv )
 
   HyScanAntennaPosition position;
   HyScanRawDataInfo raw_info;
-  HyScanRawDataInfo raw_info2;
   HyScanAcousticDataInfo acoustic_info;
 
   HyScanComplexFloat *signal_image;
