@@ -8,7 +8,7 @@ set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
 add_executable (data-writer-test data-writer-test.c)
 add_executable (acoustic-data-test acoustic-data-test.c)
 add_executable (nmea-data-test nmea-data-test.c)
-add_executable (forward-look-data-test forward-look-data-test.c)
+add_executable (forward-look-data-test forward-look-data-test.c hyscan-fl-gen.c)
 add_executable (forward-look-player-test forward-look-player-test.c hyscan-fl-gen.c)
 add_executable (geo-test geo-test.c)
 

@@ -29,13 +29,12 @@
  * могут появляться новые данные или исчезать уже записанные. Определить возможность изменения данных
  * можно с помощью функции #hyscan_raw_data_is_writable.
  *
+ * Номер изменения в данных можно получить с помоью функции #hyscan_raw_data_get_mod_count.
+ *
  * Функции #hyscan_raw_data_get_range и #hyscan_raw_data_find_data используются для определения
  * границ записанных данных и их поиска по метке времени. Эти функции аналогичны функциям
  * \link hyscan_db_channel_get_data_range \endlink и \link hyscan_db_channel_find_data \endlink интерфейса
  * \link HyScanDB \endlink.
- *
- * Число точек данных, размер образа сигнала и время приёма данных можно получить с помощью функций
- * #hyscan_raw_data_get_values_count, #hyscan_raw_data_get_signal_size, #hyscan_raw_data_get_time.
  *
  * Для чтения данных используются следующие функции:
  *
@@ -43,9 +42,6 @@
  * - #hyscan_raw_data_get_tvg_values - функция возвращает значения коэффициентов усиления;
  * - #hyscan_raw_data_get_amplitude_values - функция возвращает амплитуду сигнала;
  * - #hyscan_raw_data_get_quadrature_values - функция возвращает квадратурные отсчёты сигнала.
- *
- * Функции чтения данных, используют в работе параметр buffer_size, определяющий размер буфера для
- * данных. Этот размер определяет число точек данных, способных поместиться в буфере.
  *
  * Функции  #hyscan_raw_data_get_amplitude_values и #hyscan_raw_data_get_quadrature_values могут
  * проводить обработку как с выполненим свёртки данных с образцом сигнала, так и без неё. Образцы сигналов для
@@ -94,7 +90,7 @@ struct _HyScanRawDataClass
 };
 
 HYSCAN_API
-GType                  hyscan_raw_data_get_type                (void);
+GType                          hyscan_raw_data_get_type                (void);
 
 /**
  *
@@ -111,11 +107,11 @@ GType                  hyscan_raw_data_get_type                (void);
  *
  */
 HYSCAN_API
-HyScanRawData         *hyscan_raw_data_new                     (HyScanDB              *db,
-                                                                const gchar           *project_name,
-                                                                const gchar           *track_name,
-                                                                HyScanSourceType       source_type,
-                                                                guint                  source_channel);
+HyScanRawData                 *hyscan_raw_data_new                     (HyScanDB              *db,
+                                                                        const gchar           *project_name,
+                                                                        const gchar           *track_name,
+                                                                        HyScanSourceType       source_type,
+                                                                        guint                  source_channel);
 
 /**
  *
@@ -132,11 +128,11 @@ HyScanRawData         *hyscan_raw_data_new                     (HyScanDB        
  *
  */
 HYSCAN_API
-HyScanRawData         *hyscan_raw_data_noise_new               (HyScanDB              *db,
-                                                                const gchar           *project_name,
-                                                                const gchar           *track_name,
-                                                                HyScanSourceType       source_type,
-                                                                guint                  source_channel);
+HyScanRawData                 *hyscan_raw_data_noise_new               (HyScanDB              *db,
+                                                                        const gchar           *project_name,
+                                                                        const gchar           *track_name,
+                                                                        HyScanSourceType       source_type,
+                                                                        guint                  source_channel);
 
 /**
  *
@@ -151,9 +147,9 @@ HyScanRawData         *hyscan_raw_data_noise_new               (HyScanDB        
  *
  */
 HYSCAN_API
-void                   hyscan_raw_data_set_cache               (HyScanRawData         *data,
-                                                                HyScanCache           *cache,
-                                                                const gchar           *prefix);
+void                           hyscan_raw_data_set_cache               (HyScanRawData         *data,
+                                                                        HyScanCache           *cache,
+                                                                        const gchar           *prefix);
 
 /**
  *
@@ -166,7 +162,7 @@ void                   hyscan_raw_data_set_cache               (HyScanRawData   
  *
  */
 HYSCAN_API
-HyScanAntennaPosition  hyscan_raw_data_get_position            (HyScanRawData         *data);
+HyScanAntennaPosition          hyscan_raw_data_get_position            (HyScanRawData         *data);
 
 /**
  *
@@ -179,7 +175,7 @@ HyScanAntennaPosition  hyscan_raw_data_get_position            (HyScanRawData   
  *
  */
 HYSCAN_API
-HyScanRawDataInfo      hyscan_raw_data_get_info                (HyScanRawData         *data);
+HyScanRawDataInfo              hyscan_raw_data_get_info                (HyScanRawData         *data);
 
 /**
  *
@@ -191,7 +187,7 @@ HyScanRawDataInfo      hyscan_raw_data_get_info                (HyScanRawData   
  *
  */
 HYSCAN_API
-HyScanSourceType       hyscan_raw_data_get_source              (HyScanRawData         *data);
+HyScanSourceType               hyscan_raw_data_get_source              (HyScanRawData         *data);
 
 /**
  *
@@ -203,7 +199,7 @@ HyScanSourceType       hyscan_raw_data_get_source              (HyScanRawData   
  *
  */
 HYSCAN_API
-guint                  hyscan_raw_data_get_channel             (HyScanRawData         *data);
+guint                          hyscan_raw_data_get_channel             (HyScanRawData         *data);
 
 /**
  *
@@ -216,7 +212,7 @@ guint                  hyscan_raw_data_get_channel             (HyScanRawData   
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_is_writable             (HyScanRawData         *data);
+gboolean                       hyscan_raw_data_is_writable             (HyScanRawData         *data);
 
 /**
  *
@@ -224,16 +220,29 @@ gboolean               hyscan_raw_data_is_writable             (HyScanRawData   
  * начального и конечного индекса записей.
  *
  * \param data указатель на объект \link HyScanRawData \endlink;
- * \param first_index указатель на переменную для начального индекса или NULL;
- * \param last_index указатель на переменную для конечного индекса или NULL.
+ * \param first_index начальный индекс данных или NULL;
+ * \param last_index конечный индекс данных или NULL.
  *
  * \return TRUE - если границы записей определены, FALSE - в случае ошибки.
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_get_range               (HyScanRawData         *data,
-                                                                guint32               *first_index,
-                                                                guint32               *last_index);
+gboolean                       hyscan_raw_data_get_range               (HyScanRawData         *data,
+                                                                        guint32               *first_index,
+                                                                        guint32               *last_index);
+
+/**
+ *
+ * Функция возвращает номер изменения в данных. Программа не должна полагаться на значение
+ * номера изменения, важен только факт смены номера по сравнению с предыдущим запросом.
+ *
+ * \param data указатель на объект \link HyScanRawData \endlink.
+ *
+ * \return Номер изменения.
+ *
+ */
+HYSCAN_API
+guint32                        hyscan_raw_data_get_mod_count           (HyScanRawData         *data);
 
 /**
  *
@@ -241,63 +250,21 @@ gboolean               hyscan_raw_data_get_range               (HyScanRawData   
  *
  * \param data указатель на объект \link HyScanRawData \endlink;
  * \param time искомый момент времени;
- * \param lindex указатель на переменную для сохранения "левого" индекса данных или NULL;
- * \param rindex указатель на переменную для сохранения "правого" индекса данных или NULL;
- * \param ltime указатель на переменную для сохранения "левой" метки времени данных или NULL;
- * \param rtime указатель на переменную для сохранения "правой" метки времени данных или NULL.
+ * \param lindex "левый" индекс данных или NULL;
+ * \param rindex "правый" индекс данных или NULL;
+ * \param ltime "левая" метка времени данных или NULL;
+ * \param rtime "правая" метка времени данных или NULL.
  *
  * \return TRUE - если данные найдены, FALSE - в случае ошибки.
  *
  */
 HYSCAN_API
-HyScanDBFindStatus     hyscan_raw_data_find_data               (HyScanRawData         *data,
-                                                                gint64                 time,
-                                                                guint32               *lindex,
-                                                                guint32               *rindex,
-                                                                gint64                *ltime,
-                                                                gint64                *rtime);
-
-/**
- *
- * Функция возвращает число точек данных для указанного индекса.
- *
- * \param data указатель на объект \link HyScanRawData \endlink;
- * \param index индекс данных.
- *
- * \return Число точек для указанного индекса или ноль в случае ошибки.
- *
- */
-HYSCAN_API
-guint32                hyscan_raw_data_get_values_count        (HyScanRawData         *data,
-                                                                guint32                index);
-
-/**
- *
- * Функция возвращает размер образа сигнала для указанного индекса.
- *
- * \param data указатель на объект \link HyScanRawData \endlink;
- * \param index индекс данных.
- *
- * \return Число точек для указанного индекса или ноль если свёртка не нужна.
- *
- */
-HYSCAN_API
-guint32                hyscan_raw_data_get_signal_size         (HyScanRawData         *data,
-                                                                guint32                index);
-
-/**
- *
- * Функция возвращает время приёма данных для указанного индекса.
- *
- * \param data указатель на объект \link HyScanRawData \endlink;
- * \param index индекс данных.
- *
- * \return Время приёма данных для указанного индекса или отрицательное число в случае ошибки.
- *
- */
-HYSCAN_API
-gint64                 hyscan_raw_data_get_time                (HyScanRawData         *data,
-                                                                guint32                index);
+HyScanDBFindStatus             hyscan_raw_data_find_data               (HyScanRawData         *data,
+                                                                        gint64                 time,
+                                                                        guint32               *lindex,
+                                                                        guint32               *rindex,
+                                                                        gint64                *ltime,
+                                                                        gint64                *rtime);
 
 /**
  *
@@ -310,38 +277,36 @@ gint64                 hyscan_raw_data_get_time                (HyScanRawData   
  *
  */
 HYSCAN_API
-void                   hyscan_raw_data_set_convolve            (HyScanRawData         *data,
-                                                                gboolean               convolve);
+void                           hyscan_raw_data_set_convolve            (HyScanRawData         *data,
+                                                                        gboolean               convolve);
 
 /**
  *
  * Функция возвращает образ сигнала.
  *
- * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера в точках.
- * После успешного чтения в переменную buffer_size будет записан действительный размер
- * образа в точках. Размер считанных данных может быть ограничен размером буфера.
- *
- * Размер одной точки равен HyScanComplexFloat.
+ * Функция возвращает указатель на внутренний буфер, данные в котором действительны до
+ * следующего вызова этой функции. Пользователь не должен модифицировать эти данные.
  *
  * \param data указатель на объект \link HyScanRawData \endlink;
  * \param index индекс считываемых данных;
- * \param buffer указатель на область памяти в которую считываются данные;
- * \param buffer_size указатель на переменную с размером области памяти для данных в точках;
- * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
+ * \param n_points число точек в образе сигнала;
+ * \param time метка времени считанных данных или NULL.
  *
- * \return TRUE - если образ успешно считан, FALSE - в случае ошибки.
+ * \return Образ сигнала или NULL.
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_get_signal_image        (HyScanRawData         *data,
-                                                                guint32                index,
-                                                                HyScanComplexFloat    *buffer,
-                                                                guint32               *buffer_size,
-                                                                gint64                *time);
+const HyScanComplexFloat      *hyscan_raw_data_get_signal_image        (HyScanRawData         *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
 
 /**
  *
  * Функция возвращает значения коэффициентов усиления.
+ *
+ * Функция возвращает указатель на внутренний буфер, данные в котором действительны до
+ * следующего вызова этой функции. Пользователь не должен модифицировать эти данные.
  *
  * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера в точках.
  * После успешного чтения в переменную buffer_size будет записано действительное число
@@ -351,71 +316,59 @@ gboolean               hyscan_raw_data_get_signal_image        (HyScanRawData   
  *
  * \param data указатель на объект \link HyScanRawData \endlink;
  * \param index индекс считываемых данных;
- * \param buffer указатель на область памяти в которую считываются данные;
- * \param buffer_size указатель на переменную с размером области памяти для данных в точках;
- * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
+ * \param n_points число коэффициентов усиления;
+ * \param time метка времени считанных данных или NULL.
  *
- * \return TRUE - если коэффициенты успешно считаны, FALSE - в случае ошибки.
+ * \return Коэффициенты усиления или NULL.
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_get_tvg_values          (HyScanRawData         *data,
-                                                                guint32                index,
-                                                                gfloat                *buffer,
-                                                                guint32               *buffer_size,
-                                                                gint64                *time);
+const gfloat                  *hyscan_raw_data_get_tvg_values          (HyScanRawData         *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
 
 /**
  *
  * Функция возвращает значения амплитуды сигнала.
  *
- * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера в точках.
- * После успешного чтения данных в переменную buffer_size будет записан действительный размер
- * считанных данных в точках. Размер считанных данных может быть ограничен размером буфера.
- *
- * Размер одной точки равен gfloat.
+ * Функция возвращает указатель на внутренний буфер, данные в котором действительны до
+ * следующего вызова этой функции. Пользователь не должен модифицировать эти данные.
  *
  * \param data указатель на объект \link HyScanRawData \endlink;
  * \param index индекс считываемых данных;
- * \param buffer указатель на область памяти в которую считываются данные;
- * \param buffer_size указатель на переменную с размером области памяти для данных в точках;
- * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
+ * \param n_points число точек данных;
+ * \param time метка времени считанных данных или NULL.
  *
- * \return TRUE - если данные успешно считаны и обработаны, FALSE - в случае ошибки.
+ * \return Значения амплитуд сигнала или NULL.
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_get_amplitude_values    (HyScanRawData         *data,
-                                                                guint32                index,
-                                                                gfloat                *buffer,
-                                                                guint32               *buffer_size,
-                                                                gint64                *time);
+const gfloat                  *hyscan_raw_data_get_amplitude_values    (HyScanRawData         *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
 
 /**
  *
  * Функция возвращает квадратурные отсчёты сигнала.
  *
- * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера в точках.
- * После успешного чтения данных в переменную buffer_size будет записан действительный размер
- * считанных данных в точках. Размер считанных данных может быть ограничен размером буфера.
- *
- * Размер одной точки равен HyScanComplexFloat.
+ * Функция возвращает указатель на внутренний буфер, данные в котором действительны до
+ * следующего вызова этой функции. Пользователь не должен модифицировать эти данные.
  *
  * \param data указатель на объект \link HyScanRawData \endlink;
  * \param index индекс считываемых данных;
- * \param buffer указатель на область памяти в которую считываются данные;
- * \param buffer_size указатель на переменную с размером области памяти для данных в точках;
- * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
+ * \param n_points число точек данных;
+ * \param time метка времени считанных данных или NULL.
  *
- * \return TRUE - если данные успешно считаны и обработаны, FALSE - в случае ошибки.
+ * \return Квадратурные отсчёты сигнала или NULL.
  *
  */
 HYSCAN_API
-gboolean               hyscan_raw_data_get_quadrature_values   (HyScanRawData         *data,
-                                                                guint32                index,
-                                                                HyScanComplexFloat    *buffer,
-                                                                guint32               *buffer_size,
-                                                                gint64                *time);
+const HyScanComplexFloat      *hyscan_raw_data_get_quadrature_values   (HyScanRawData         *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
 
 
 G_END_DECLS

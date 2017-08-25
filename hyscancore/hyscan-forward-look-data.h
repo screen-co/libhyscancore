@@ -25,6 +25,8 @@
  * могут появляться новые данные или исчезать уже записанные. Определить возможность изменения данных
  * можно с помощью функции #hyscan_forward_look_data_is_writable.
  *
+ * Номер изменения в данных можно получить с помоью функции #hyscan_forward_look_data_get_mod_count.
+ *
  * Для точной обработки данных необходимо установить скорость звука в воде, для этих целей используется
  * функция #hyscan_forward_look_data_set_sound_velocity. По умолчанию используется значение 1500 м/с.
  *
@@ -36,9 +38,7 @@
  * \link hyscan_db_channel_get_data_range \endlink и \link hyscan_db_channel_find_data \endlink интерфейса
  * \link HyScanDB \endlink.
  *
- * Число точек и время приёма данных можно получить с помощью функций #hyscan_forward_look_data_get_values_count и
- * #hyscan_forward_look_data_get_time. Для получения данных используется функция
- * #hyscan_forward_look_data_get_doa_values.
+ * Для получения данных используется функция #hyscan_forward_look_data_get_doa_values.
  *
  * HyScanForwardLookData не поддерживает работу в многопоточном режиме. Рекомендуется создавать свой
  * экземпляр объекта обработки данных в каждом потоке и использовать единый кэш данных.
@@ -65,7 +65,7 @@ typedef struct _HyScanForwardLookData HyScanForwardLookData;
 typedef struct _HyScanForwardLookDataPrivate HyScanForwardLookDataPrivate;
 typedef struct _HyScanForwardLookDataClass HyScanForwardLookDataClass;
 
-/** \brief Точка цели вперёдсмотрящего локатора */
+/** \brief Точка цели вперёдсмотрящего локатора (Direction Of Arrival) */
 typedef struct
 {
   gfloat angle;                                /**< Азимут цели относительно перпендикуляра к антенне, рад. */
@@ -86,7 +86,7 @@ struct _HyScanForwardLookDataClass
 };
 
 HYSCAN_API
-GType                  hyscan_forward_look_data_get_type               (void);
+GType                          hyscan_forward_look_data_get_type               (void);
 
 /**
  *
@@ -102,10 +102,10 @@ GType                  hyscan_forward_look_data_get_type               (void);
  *
  */
 HYSCAN_API
-HyScanForwardLookData *hyscan_forward_look_data_new                    (HyScanDB              *db,
-                                                                        const gchar           *project_name,
-                                                                        const gchar           *track_name,
-                                                                        gboolean               raw);
+HyScanForwardLookData         *hyscan_forward_look_data_new                    (HyScanDB              *db,
+                                                                                const gchar           *project_name,
+                                                                                const gchar           *track_name,
+                                                                                gboolean               raw);
 
 /**
  *
@@ -120,9 +120,9 @@ HyScanForwardLookData *hyscan_forward_look_data_new                    (HyScanDB
  *
  */
 HYSCAN_API
-void                   hyscan_forward_look_data_set_cache              (HyScanForwardLookData *data,
-                                                                        HyScanCache           *cache,
-                                                                        const gchar           *prefix);
+void                           hyscan_forward_look_data_set_cache              (HyScanForwardLookData *data,
+                                                                                HyScanCache           *cache,
+                                                                                const gchar           *prefix);
 
 /**
  *
@@ -135,7 +135,7 @@ void                   hyscan_forward_look_data_set_cache              (HyScanFo
  *
  */
 HYSCAN_API
-HyScanAntennaPosition  hyscan_forward_look_data_get_position           (HyScanForwardLookData *data);
+HyScanAntennaPosition          hyscan_forward_look_data_get_position           (HyScanForwardLookData *data);
 
 /**
  *
@@ -148,7 +148,7 @@ HyScanAntennaPosition  hyscan_forward_look_data_get_position           (HyScanFo
  *
  */
 HYSCAN_API
-gboolean               hyscan_forward_look_data_is_writable            (HyScanForwardLookData *data);
+gboolean                       hyscan_forward_look_data_is_writable            (HyScanForwardLookData *data);
 
 /**
  *
@@ -161,8 +161,8 @@ gboolean               hyscan_forward_look_data_is_writable            (HyScanFo
  *
  */
 HYSCAN_API
-void                   hyscan_forward_look_data_set_sound_velocity     (HyScanForwardLookData *data,
-                                                                        gdouble                sound_velocity);
+void                           hyscan_forward_look_data_set_sound_velocity     (HyScanForwardLookData *data,
+                                                                                gdouble                sound_velocity);
 
 /**
  *
@@ -176,7 +176,7 @@ void                   hyscan_forward_look_data_set_sound_velocity     (HyScanFo
  *
  */
 HYSCAN_API
-gdouble                hyscan_forward_look_data_get_alpha              (HyScanForwardLookData *data);
+gdouble                        hyscan_forward_look_data_get_alpha              (HyScanForwardLookData *data);
 
 /**
  *
@@ -191,9 +191,22 @@ gdouble                hyscan_forward_look_data_get_alpha              (HyScanFo
  *
  */
 HYSCAN_API
-gboolean               hyscan_forward_look_data_get_range              (HyScanForwardLookData *data,
-                                                                        guint32               *first_index,
-                                                                        guint32               *last_index);
+gboolean                       hyscan_forward_look_data_get_range              (HyScanForwardLookData *data,
+                                                                                guint32               *first_index,
+                                                                                guint32               *last_index);
+
+/**
+ *
+ * Функция возвращает номер изменения в данных. Программа не должна полагаться на значение
+ * номера изменения, важен только факт смены номера по сравнению с предыдущим запросом.
+ *
+ * \param data указатель на объект \link HyScanAcousticData \endlink.
+ *
+ * \return Номер изменения.
+ *
+ */
+HYSCAN_API
+guint32                        hyscan_forward_look_data_get_mod_count          (HyScanForwardLookData *data);
 
 /**
  *
@@ -210,60 +223,33 @@ gboolean               hyscan_forward_look_data_get_range              (HyScanFo
  *
  */
 HYSCAN_API
-HyScanDBFindStatus     hyscan_forward_look_data_find_data              (HyScanForwardLookData *data,
-                                                                        gint64                 time,
-                                                                        guint32               *lindex,
-                                                                        guint32               *rindex,
-                                                                        gint64                *ltime,
-                                                                        gint64                *rtime);
-
-/**
- *
- * Функция возвращает число точек данных для указанного индекса.
- *
- * \param data указатель на объект \link HyScanForwardLookData \endlink;
- * \param index индекс данных.
- *
- * \return Число точек для указанного индекса или ноль в случае ошибки.
- *
- */
-HYSCAN_API
-guint32                hyscan_forward_look_data_get_values_count       (HyScanForwardLookData *data,
-                                                                        guint32                index);
-
-/**
- *
- * Функция возвращает время приёма данных для указанного индекса.
- *
- * \param data указатель на объект \link HyScanForwardLookData \endlink;
- * \param index индекс данных.
- *
- * \return Время приёма данных для указанного индекса или отрицательное число в случае ошибки.
- *
- */
-HYSCAN_API
-gint64                 hyscan_forward_look_data_get_time               (HyScanForwardLookData *data,
-                                                                        guint32                index);
+HyScanDBFindStatus             hyscan_forward_look_data_find_data              (HyScanForwardLookData *data,
+                                                                                gint64                 time,
+                                                                                guint32               *lindex,
+                                                                                guint32               *rindex,
+                                                                                gint64                *ltime,
+                                                                                gint64                *rtime);
 
 /**
  *
  * Функция возвращает данные вперёдсмотрящего локатора.
  *
- * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера в точках.
- * После успешного чтения данных в переменную buffer_size будет записан действительный размер
- * считанных данных в точках. Размер считанных данных может быть ограничен размером буфера.
+ * Функция возвращает указатель на внутренний буфер, данные в котором действительны до
+ * следующего вызова этой функции. Пользователь не должен модифицировать эти данные.
  *
- * Размер одной точки равен размеру стуктуры \link HyScanForwardLookDOA \endlink.
+ * \param data указатель на объект \link HyScanForwardLookData \endlink;
+ * \param index индекс считываемых данных;
+ * \param n_points число точек данных;
+ * \param time метка времени считанных данных или NULL.
  *
- * \return TRUE - если данные успешно считаны и обработаны, FALSE - в случае ошибки.
+ * \return Данные вперёдсмотрящего локатора или NULL.
  *
  */
 HYSCAN_API
-gboolean               hyscan_forward_look_data_get_doa_values         (HyScanForwardLookData *data,
-                                                                        guint32                index,
-                                                                        HyScanForwardLookDOA  *buffer,
-                                                                        guint32               *buffer_size,
-                                                                        gint64                *time);
+const HyScanForwardLookDOA    *hyscan_forward_look_data_get_doa_values         (HyScanForwardLookData *data,
+                                                                                guint32                index,
+                                                                                guint32               *n_points,
+                                                                                gint64                *time);
 
 G_END_DECLS
 

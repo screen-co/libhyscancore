@@ -87,7 +87,8 @@ hyscan_fl_gen_set_info (HyScanFLGen       *fl_gen,
   fl_gen->priv->info1.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
   fl_gen->priv->info2.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
 
-  fl_gen->priv->info1.antenna.offset.horizontal = 0;
+  fl_gen->priv->info1.antenna.offset.horizontal = 0.0;
+  fl_gen->priv->info2.antenna.offset.horizontal = 0.01;
 }
 
 gboolean
@@ -119,8 +120,8 @@ hyscan_fl_gen_set_track (HyScanFLGen *fl_gen,
 
 gboolean
 hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
-                        gint64       time,
-                        guint        n_points)
+                        guint32      n_points,
+                        gint64       time)
 {
   HyScanFLGenPrivate *priv;
 
@@ -146,11 +147,17 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
   raw_values2 = (guint16*)priv->values2->data;
 
   /* Тестовые данные для проверки работы вперёдсмотрящего локатора. В каждой строке
-   * разность фаз между двумя каналами изменяется от 0 до 2 Pi по дальности. */
+   * разность фаз между двумя каналами изменяется в пределах Pi по дальности, с начальным
+   * отклонением зависящим от текущего времени. */
   for (i = 0; i < n_points; i++)
     {
-      gdouble mini_pi = 0.999 * G_PI;
-      gdouble phase = mini_pi - 2.0 * mini_pi * ((gdouble)i / (gdouble)(n_points - 1));
+      gdouble mini_pi;
+      gdouble phase;
+
+      mini_pi = 0.999 * G_PI;
+      phase  = mini_pi;
+      phase -= mini_pi * ((gdouble)i / (gdouble)(n_points - 1));
+      phase -= mini_pi * ((gdouble)(time % 1000000) / 999999.0);
 
       raw_values1[2 * i] = 65535;
       raw_values1[2 * i + 1] = 32767;
@@ -168,6 +175,36 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
   data.data = raw_values2;
   if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2, &priv->info2, &data))
     return FALSE;
+
+  return TRUE;
+}
+
+gboolean
+hyscan_fl_gen_check (const HyScanForwardLookDOA *doa,
+                     guint32                     n_points,
+                     gint64                      time,
+                     gdouble                     alpha)
+{
+  gdouble max_distance = doa[n_points - 1].distance;
+  guint i;
+
+  for (i = 0; i < n_points; i++)
+    {
+      gdouble angle;
+      gdouble distance;
+
+      angle = -alpha;
+      angle += alpha * ((gdouble)i / (gdouble)(n_points - 1));
+      angle += alpha * ((gdouble)(time % 1000000) / 999999.0);
+      distance = max_distance * ((gdouble)i / (gdouble)(n_points - 1));
+
+      if ((fabs (doa[i].distance - distance) > 0.01) ||
+          (fabs (doa[i].angle - angle) > 0.01) ||
+          (fabs (doa[i].amplitude - 1.0) > 0.01))
+        {
+          return FALSE;
+        }
+    }
 
   return TRUE;
 }

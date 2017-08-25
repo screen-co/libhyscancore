@@ -57,7 +57,8 @@ typedef struct
   guint32                      last_index;             /* Последний индекс данных. */
   gboolean                     range_changed;          /* Признак изменения диапазона индексов данных. */
 
-  GArray                      *doa;                    /* Текущий массив целей. */
+  const HyScanForwardLookDOA  *doa;                    /* Текущий массив целей. */
+  guint32                      n_points;               /* Число точек данных. */
   gint64                       doa_time;               /* Метка времени текущих данных. */
   guint32                      doa_index;              /* Индекс текущих данных. */
   gboolean                     doa_changed;            /* Признак изменения данных. */
@@ -147,8 +148,6 @@ hyscan_forward_look_player_object_constructed (GObject *object)
   priv->speed = 1.0;
   priv->delay = G_USEC_PER_SEC / DEFAULT_FPS;
 
-  priv->data.doa = g_array_sized_new (FALSE, FALSE, sizeof (HyScanForwardLookDOA), 0);
-
   priv->processor = g_thread_new ("fl-processor", hyscan_forward_look_player_processor, priv);
 
   g_timeout_add_full (G_PRIORITY_DEFAULT_IDLE, priv->delay / 1000,
@@ -165,8 +164,6 @@ hyscan_forward_look_player_object_finalize (GObject *object)
 
   g_atomic_int_set (&priv->shutdown, 1);
   g_clear_pointer (&priv->processor, g_thread_join);
-
-  g_array_unref (priv->data.doa);
 
   g_mutex_clear (&priv->data.lock);
   g_mutex_clear (&priv->ctl_lock);
@@ -276,7 +273,8 @@ hyscan_forward_look_player_open_data (HyScanForwardLookPlayerState *state,
           data->alpha = hyscan_forward_look_data_get_alpha (data->data);
         }
 
-      g_array_set_size (data->doa, 0);
+      data->doa = NULL;
+      data->n_points = 0;
       data->doa_time = 0;
       data->doa_index = 0;
       data->doa_changed = TRUE;
@@ -350,8 +348,6 @@ hyscan_forward_look_player_processor (gpointer user_data)
 
   GTimer *delay_timer = g_timer_new ();
   GTimer *play_timer = g_timer_new ();
-
-  GArray *doa = g_array_sized_new (FALSE, FALSE, sizeof (HyScanForwardLookDOA), 1024);
 
   while (!g_atomic_int_get (&priv->shutdown))
     {
@@ -444,40 +440,26 @@ hyscan_forward_look_player_processor (gpointer user_data)
       /* Запрашиваем данные для текущего индекса. */
       if ((priv->cur_state.index_changed) && (!priv->data.doa_changed))
         {
-          guint32 cur_index;
+          const HyScanForwardLookDOA *doa;
+          guint32 n_points;
           gint64 doa_time;
-          gboolean status;
-          guint32 n_doa;
 
-          cur_index = priv->cur_state.index;
-          n_doa = hyscan_forward_look_data_get_values_count (priv->data.data, cur_index);
-          g_array_set_size (doa, n_doa);
+          doa = hyscan_forward_look_data_get_doa_values (priv->data.data, priv->cur_state.index,
+                                                         &n_points, &doa_time);
 
-          status = hyscan_forward_look_data_get_doa_values (priv->data.data, cur_index,
-                                                            (HyScanForwardLookDOA*)doa->data,
-                                                            &n_doa, &doa_time);
+          g_mutex_lock (&priv->data.lock);
 
-          /* Если получили новый массив данных - устанавливаем его как текущий. */
-          if (status)
-            {
-              GArray *tmp;
+          priv->data.doa = doa;
+          priv->data.n_points = n_points;
+          priv->data.doa_index = priv->cur_state.index;
+          priv->data.doa_time = doa_time;
+          priv->data.doa_changed = TRUE;
+          priv->cur_state.index_changed = FALSE;
 
-              g_mutex_lock (&priv->data.lock);
+          if (mode == HYSCAN_FORWARD_LOOK_PLAYER_START)
+            start_time = doa_time;
 
-              tmp = priv->data.doa;
-              priv->data.doa = doa;
-              doa = tmp;
-
-              priv->data.doa_index = cur_index;
-              priv->data.doa_time = doa_time;
-              priv->data.doa_changed = TRUE;
-              priv->cur_state.index_changed = FALSE;
-
-              if (mode == HYSCAN_FORWARD_LOOK_PLAYER_START)
-                start_time = doa_time;
-
-              g_mutex_unlock (&priv->data.lock);
-            }
+          g_mutex_unlock (&priv->data.lock);
         }
 
       /* Ожидание новых команд или данных. */
@@ -497,8 +479,6 @@ hyscan_forward_look_player_processor (gpointer user_data)
 
   g_timer_destroy (delay_timer);
   g_timer_destroy (play_timer);
-
-  g_array_unref (doa);
 
   return NULL;
 }
@@ -524,19 +504,17 @@ hyscan_forward_look_player_signaller (gpointer user_data)
   /* Сигнал об изменении данных. */
   if (priv->data.doa_changed)
     {
-      if (priv->data.doa->len != 0)
+      if (priv->data.n_points != 0)
         {
           HyScanForwardLookPlayerInfo info;
-          HyScanForwardLookDOA *doa = (HyScanForwardLookDOA *)priv->data.doa->data;
-          guint n_doa = priv->data.doa->len;
 
           info.index = priv->data.doa_index;
           info.time = priv->data.doa_time;
           info.alpha = priv->data.alpha;
-          info.distance = doa[n_doa - 1].distance;
+          info.distance = priv->data.doa[priv->data.n_points - 1].distance;
 
           g_signal_emit (player, hyscan_forward_look_player_signals[SIGNAL_DATA], 0,
-                         &info, &priv->data.position, doa, n_doa);
+                         &info, &priv->data.position, priv->data.doa, priv->data.n_points);
         }
       else
         {

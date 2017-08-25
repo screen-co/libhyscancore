@@ -27,14 +27,15 @@
  * могут появляться новые данные или исчезать уже записанные. Определить возможность изменения данных
  * можно с помощью функции #hyscan_acoustic_data_is_writable.
  *
+ * Номер изменения в данных можно получить с помощью функции #hyscan_acoustic_data_get_mod_count.
+ *
  * Функции #hyscan_acoustic_data_get_range и #hyscan_acoustic_data_find_data используются для определения
  * границ записанных данных и их поиска по метке времени. Эти функции аналогичны функциям
  * \link hyscan_db_channel_get_data_range \endlink и \link hyscan_db_channel_find_data \endlink интерфейса
  * \link HyScanDB \endlink.
  *
- * Число точек и время приёма данных можно получить с помощью функций #hyscan_acoustic_data_get_values_count и
- * #hyscan_acoustic_data_get_time. Для получения значений маплитуды сигнала используется функция
- * #hyscan_acoustic_data_get_values. Амплитудные значения находятся в пределах от нуля до единицы.
+ * Для получения значений амплитуды сигнала используется функция #hyscan_acoustic_data_get_values.
+ * Амплитудные значения находятся в пределах от нуля до единицы.
  *
  * HyScanAcousticData не поддерживает работу в многопоточном режиме. Рекомендуется создавать свой экземпляр
  * объекта обработки данных в каждом потоке и использовать единый кэш данных.
@@ -171,8 +172,8 @@ gboolean               hyscan_acoustic_data_is_writable        (HyScanAcousticDa
  * начального и конечного индекса записей.
  *
  * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param first_index указатель на переменную для начального индекса или NULL;
- * \param last_index указатель на переменную для конечного индекса или NULL.
+ * \param first_index начальный индекс данных или NULL;
+ * \param last_index конечный индекс данных или NULL.
  *
  * \return TRUE - если границы записей определены, FALSE - в случае ошибки.
  *
@@ -184,14 +185,27 @@ gboolean               hyscan_acoustic_data_get_range          (HyScanAcousticDa
 
 /**
  *
+ * Функция возвращает номер изменения в данных. Программа не должна полагаться на значение
+ * номера изменения, важен только факт смены номера по сравнению с предыдущим запросом.
+ *
+ * \param data указатель на объект \link HyScanAcousticData \endlink.
+ *
+ * \return Номер изменения.
+ *
+ */
+HYSCAN_API
+guint32                hyscan_acoustic_data_get_mod_count      (HyScanAcousticData            *data);
+
+/**
+ *
  * Функция ищет индекс данных для указанного момента времени.
  *
  * \param data указатель на объект \link HyScanAcousticData \endlink;
  * \param time искомый момент времени;
- * \param lindex указатель на переменную для сохранения "левого" индекса данных или NULL;
- * \param rindex указатель на переменную для сохранения "правого" индекса данных или NULL;
- * \param ltime указатель на переменную для сохранения "левой" метки времени данных или NULL;
- * \param rtime указатель на переменную для сохранения "правой" метки времени данных или NULL.
+ * \param lindex "левый" индекс данных или NULL;
+ * \param rindex "правый" индекс данных или NULL;
+ * \param ltime "левая" метка времени данных или NULL;
+ * \param rtime "правая" метка времени данных или NULL.
  *
  * \return TRUE - если данные найдены, FALSE - в случае ошибки.
  *
@@ -206,56 +220,21 @@ HyScanDBFindStatus     hyscan_acoustic_data_find_data          (HyScanAcousticDa
 
 /**
  *
- * Функция возвращает число точек данных для указанного индекса.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param index индекс данных.
- *
- * \return Число точек для указанного индекса или ноль в случае ошибки.
- *
- */
-HYSCAN_API
-guint32                hyscan_acoustic_data_get_values_count   (HyScanAcousticData            *data,
-                                                                guint32                        index);
-
-/**
- *
- * Функция возвращает время приёма данных для указанного индекса.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param index индекс данных.
- *
- * \return Время приёма данных для указанного индекса или отрицательное число в случае ошибки.
- *
- */
-HYSCAN_API
-gint64                 hyscan_acoustic_data_get_time           (HyScanAcousticData            *data,
-                                                                guint32                        index);
-
-/**
- *
  * Функция возвращает значения амплитуды сигнала.
  *
- * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера в точках.
- * После успешного чтения данных в переменную buffer_size будет записан действительный размер
- * считанных данных в точках. Размер считанных данных может быть ограничен размером буфера.
- *
- * Размер одной точки равен gfloat.
  *
  * \param data указатель на объект \link HyScanAcousticData \endlink;
  * \param index индекс считываемых данных;
- * \param buffer указатель на область памяти в которую считываются данные;
- * \param buffer_size указатель на переменную с размером области памяти для данных в точках;
- * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
+ * \param n_points число точек данных;
+ * \param time метка времени считанных данных или NULL.
  *
- * \return TRUE - если данные успешно считаны и обработаны, FALSE - в случае ошибки.
+ * \return Значения амплитуд сигнала или NULL.
  *
  */
 HYSCAN_API
-gboolean               hyscan_acoustic_data_get_values         (HyScanAcousticData            *data,
+const gfloat          *hyscan_acoustic_data_get_values         (HyScanAcousticData            *data,
                                                                 guint32                        index,
-                                                                gfloat                        *buffer,
-                                                                guint32                       *buffer_size,
+                                                                guint32                       *n_points,
                                                                 gint64                        *time);
 
 G_END_DECLS

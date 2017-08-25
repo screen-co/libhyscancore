@@ -34,10 +34,7 @@ int main( int argc, char **argv )
   HyScanRawDataInfo raw_info;
   HyScanAcousticDataInfo acoustic_info;
 
-  HyScanComplexFloat *signal_image;
   guint16 *data_values;
-  gfloat *tvg_values;
-  gfloat *amplitude;
 
   guint32 signal_size;
   guint32 data_size;
@@ -103,6 +100,8 @@ int main( int argc, char **argv )
   raw_info.antenna.offset.horizontal = 0.0;
   raw_info.antenna.pattern.vertical = 40.0;
   raw_info.antenna.pattern.horizontal = 2.0;
+  raw_info.antenna.frequency = frequency;
+  raw_info.antenna.bandwidth = 0.1 * frequency;
   raw_info.adc.vref = 1.0;
   raw_info.adc.offset = 0;
 
@@ -114,10 +113,7 @@ int main( int argc, char **argv )
   signal_size = discretization * duration;
   data_size = 100 * signal_size;
 
-  signal_image = g_new0 (HyScanComplexFloat, signal_size + 1);
   data_values = g_new0 (guint16, 2 * data_size + 1);
-  tvg_values = g_new0 (gfloat, data_size + 1);
-  amplitude = g_new0 (gfloat, data_size + 1);
 
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
@@ -163,6 +159,9 @@ int main( int argc, char **argv )
       if ((i % n_lines) == 0)
         {
           HyScanDataWriterSignal signal;
+          HyScanComplexFloat *signal_image;
+
+          signal_image = g_new0 (HyScanComplexFloat, signal_size);
           for (j = 0; j < signal_size; j++)
             {
               gdouble time = (1.0 / discretization) * j;
@@ -179,12 +178,17 @@ int main( int argc, char **argv )
 
           if (!hyscan_data_writer_raw_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &signal))
             g_error ("can't add signal image");
+
+          g_free (signal_image);
         }
 
       /* Записываем "кривую" ВАРУ каждые n_tvgs строк. */
       if ((i % n_tvgs) == 0)
         {
           HyScanDataWriterTVG tvg;
+          gfloat *tvg_values;
+
+          tvg_values = g_new0 (gfloat, data_size + 1);
           for (j = 0; j < data_size; j++)
             tvg_values[j] = tvg_index + (((gdouble)tvg_index / (gdouble)data_size) * j);
 
@@ -192,8 +196,11 @@ int main( int argc, char **argv )
           tvg.rate = discretization;
           tvg.n_gains = data_size;
           tvg.gains = tvg_values;
+
           if (!hyscan_data_writer_raw_add_tvg (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &tvg))
             g_error ("can't add tvg");
+
+          g_free (tvg_values);
         }
 
       /* Записываем сырые данные. */
@@ -204,6 +211,7 @@ int main( int argc, char **argv )
         {
           gdouble time = (1.0 / discretization) * j;
           gdouble phase = 2.0 * G_PI * work_frequency * time;
+
           data_values[2 * j] = 65535.0 * ((0.5 * cos (phase)) + 0.5);
           data_values[2 * j + 1] = 65535.0 * ((0.5 * sin (phase)) + 0.5);
         }
@@ -263,6 +271,9 @@ int main( int argc, char **argv )
    * начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
   for (k = 0; k < 2; k++)
     {
+      GTimer *timer = g_timer_new ();
+      gdouble elapsed = 0.0;
+
       if (k == 0)
         g_message ("Data check");
       else
@@ -270,6 +281,11 @@ int main( int argc, char **argv )
 
       for (i = 0; i < n_lines * n_signals; i++)
         {
+          const HyScanComplexFloat *signal_image;
+          const HyScanComplexFloat *quadratures;
+          const gfloat *tvg_values;
+          const gfloat *amplitudes;
+
           guint tvg_index;
           guint signal_index;
           gdouble work_frequency;
@@ -282,12 +298,11 @@ int main( int argc, char **argv )
           work_frequency = (frequency - ((signal_index * frequency) / (5.0 * n_signals)));
 
           /* Проверяем образ сигнала. */
-          io_size = signal_size + 1;
-          if (!hyscan_raw_data_get_signal_image (raw_reader, i, signal_image, &io_size, NULL))
+          g_timer_start (timer);
+          signal_image = hyscan_raw_data_get_signal_image (raw_reader, i, &io_size, NULL);
+          elapsed += g_timer_elapsed (timer, NULL);
+          if ((signal_image == NULL)|| (io_size != signal_size))
             g_error ("can't get signal image");
-
-          if ((hyscan_raw_data_get_signal_size (raw_reader, i) != signal_size) || (io_size != signal_size))
-            g_error ("signal size mismatch");
 
           for (j = 0; j < signal_size; j++)
             {
@@ -302,8 +317,10 @@ int main( int argc, char **argv )
             }
 
           /* Проверяем "кривую" ВАРУ. */
-          io_size = data_size + 1;
-          if (!hyscan_raw_data_get_tvg_values (raw_reader, i, tvg_values, &io_size, NULL))
+          g_timer_start (timer);
+          tvg_values = hyscan_raw_data_get_tvg_values (raw_reader, i, &io_size, NULL);
+          elapsed += g_timer_elapsed (timer, NULL);
+          if (tvg_values == NULL)
             g_error ("can't get tvg values");
 
           if (io_size != data_size)
@@ -313,32 +330,11 @@ int main( int argc, char **argv )
             if (fabs (tvg_values[j] - (tvg_index + (((gdouble)tvg_index / (gdouble)data_size)) * j)) > 1e-5)
               g_error ("tvg error");
 
-          /* Проверяем амплитуду сырых данных. */
-          io_size = data_size + 1;
-          if (!hyscan_raw_data_get_amplitude_values (raw_reader, i, amplitude, &io_size, NULL))
-            g_error ("can't get raw amplitude");
-
-          if (io_size != data_size)
-            g_error ("raw amplitude size mismatch");
-
-          square1 = 0.0;
-          square2 = 0.0;
-          for (j = 0; j < data_size; j++)
-            {
-              if ((j >= signal_size) && (j < 2 * signal_size))
-                square1 += ((gdouble) (j - signal_size) / signal_size);
-              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
-                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
-
-              square2 += amplitude[j];
-            }
-
-          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
-            g_error ("raw amplitude error");
-
           /* Проверяем амплитуду акустических данных. */
-          io_size = data_size + 1;
-          if (!hyscan_acoustic_data_get_values (acoustic_reader, i, amplitude, &io_size, NULL))
+          g_timer_start (timer);
+          amplitudes = hyscan_acoustic_data_get_values (acoustic_reader, i, &io_size, NULL);
+          elapsed += g_timer_elapsed (timer, NULL);
+          if (amplitudes == NULL)
             g_error ("can't get acoustic amplitude");
 
           if (io_size != data_size)
@@ -353,12 +349,69 @@ int main( int argc, char **argv )
               if ((j >= 2 * signal_size) && (j < 3 * signal_size))
                 square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
 
-              square2 += amplitude[j];
+              square2 += amplitudes[j];
             }
 
           if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
             g_error ("acoustic amplitude error");
+
+          /* Проверяем амплитуду сырых данных. */
+          g_timer_start (timer);
+          amplitudes = hyscan_raw_data_get_amplitude_values (raw_reader, i, &io_size, NULL);
+          elapsed += g_timer_elapsed (timer, NULL);
+          if (amplitudes == NULL)
+            g_error ("can't get raw amplitudes");
+
+          if (io_size != data_size)
+            g_error ("raw amplitudes size mismatch");
+
+          square1 = 0.0;
+          square2 = 0.0;
+          for (j = 0; j < data_size; j++)
+            {
+              if ((j >= signal_size) && (j < 2 * signal_size))
+                square1 += ((gdouble) (j - signal_size) / signal_size);
+              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
+                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+
+              square2 += amplitudes[j];
+            }
+
+          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
+            g_error ("raw amplitudes error");
+
+          /* Проверяем квадратурные значения. */
+          g_timer_start (timer);
+          quadratures = hyscan_raw_data_get_quadrature_values (raw_reader, i, &io_size, NULL);
+          elapsed += g_timer_elapsed (timer, NULL);
+
+          if (quadratures == NULL)
+            g_error ("can't get raw quadratures");
+
+          if (io_size != data_size)
+            g_error ("raw quadratures size mismatch");
+
+          square1 = 0.0;
+          square2 = 0.0;
+          for (j = 0; j < data_size; j++)
+            {
+              gfloat re = quadratures[j].re;
+              gfloat im = quadratures[j].im;
+
+              if ((j >= signal_size) && (j < 2 * signal_size))
+                square1 += ((gdouble) (j - signal_size) / signal_size);
+              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
+                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+
+              square2 += sqrtf (re * re + im * im);
+            }
+
+          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
+            g_error ("raw quadratures error");
         }
+
+      g_message ("Elapsed %.6fs", elapsed);
+      g_timer_destroy (timer);
 
       if (cache == NULL)
         break;
@@ -374,10 +427,7 @@ int main( int argc, char **argv )
   g_clear_object (&db);
   g_clear_object (&cache);
 
-  g_free (signal_image);
   g_free (data_values);
-  g_free (tvg_values);
-  g_free (amplitude);
   g_free (db_uri);
 
   xmlCleanupParser ();

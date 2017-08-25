@@ -9,7 +9,7 @@
  */
 
 #include "hyscan-data-writer.h"
-#include "hyscan-core-schemas.h"
+#include "hyscan-core-params.h"
 #include <gio/gio.h>
 #include <math.h>
 
@@ -82,26 +82,6 @@ static void      hyscan_data_writer_sonar_channel_free         (gpointer        
 
 static void      hyscan_data_writer_raw_signal_free            (gpointer                       data);
 static void      hyscan_data_writer_raw_gain_free              (gpointer                       data);
-
-static gboolean  hyscan_data_writer_channel_set_position       (HyScanDB                      *db,
-                                                                gint32                         channel_id,
-                                                                HyScanAntennaPosition         *position);
-
-static gboolean  hyscan_data_writer_channel_set_raw_info       (HyScanDB                      *db,
-                                                                gint32                         channel_id,
-                                                                HyScanRawDataInfo             *info);
-
-static gboolean  hyscan_data_writer_channel_set_acoustic_info  (HyScanDB                      *db,
-                                                                gint32                         channel_id,
-                                                                HyScanAcousticDataInfo        *info);
-
-static gboolean  hyscan_data_writer_channel_set_signal_info    (HyScanDB                      *db,
-                                                                gint32                         channel_id,
-                                                                gdouble                        rate);
-
-static gboolean  hyscan_data_writer_channel_set_tvg_info       (HyScanDB                      *db,
-                                                                gint32                         channel_id,
-                                                                gdouble                        rate);
 
 static gboolean  hyscan_data_writer_create_project             (HyScanDB                      *db,
                                                                 const gchar                   *project_name);
@@ -296,198 +276,6 @@ hyscan_data_writer_raw_gain_free (gpointer data)
   g_free (tvg);
 }
 
-/* Функция устанавливает параметры местоположения приёмной антенны. */
-static gboolean
-hyscan_data_writer_channel_set_position (HyScanDB              *db,
-                                         gint32                 channel_id,
-                                         HyScanAntennaPosition *position)
-{
-  const gchar *param_names[7];
-  GVariant *param_values[7];
-  gint32 param_id;
-  gboolean status;
-
-  param_id = hyscan_db_channel_param_open (db, channel_id);
-  if (param_id < 0)
-    return FALSE;
-
-  param_names[0] = "/position/x";
-  param_names[1] = "/position/y";
-  param_names[2] = "/position/z";
-  param_names[3] = "/position/psi";
-  param_names[4] = "/position/gamma";
-  param_names[5] = "/position/theta";
-  param_names[6] = NULL;
-
-  param_values[0] = g_variant_new_double (position->x);
-  param_values[1] = g_variant_new_double (position->y);
-  param_values[2] = g_variant_new_double (position->z);
-  param_values[3] = g_variant_new_double (position->psi);
-  param_values[4] = g_variant_new_double (position->gamma);
-  param_values[5] = g_variant_new_double (position->theta);
-
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
-  hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-      g_variant_unref (param_values[2]);
-      g_variant_unref (param_values[3]);
-      g_variant_unref (param_values[4]);
-      g_variant_unref (param_values[5]);
-    }
-
-  return status;
-}
-
-/* Функция устанавливает параметры канала с "сырыми" гидролокационными данными. */
-static gboolean
-hyscan_data_writer_channel_set_raw_info (HyScanDB          *db,
-                                         gint32             channel_id,
-                                         HyScanRawDataInfo *info)
-{
-  const gchar *param_names[11];
-  GVariant *param_values[11];
-  gint32 param_id;
-  gboolean status;
-
-  param_id = hyscan_db_channel_param_open (db, channel_id);
-  if (param_id < 0)
-    return FALSE;
-
-  param_names[0] = "/data/type";
-  param_names[1] = "/data/rate";
-  param_names[2] = "/antenna/offset/vertical";
-  param_names[3] = "/antenna/offset/horizontal";
-  param_names[4] = "/antenna/pattern/vertical";
-  param_names[5] = "/antenna/pattern/horizontal";
-  param_names[6] = "/antenna/frequency";
-  param_names[7] = "/antenna/bandwidth";
-  param_names[8] = "/adc/vref";
-  param_names[9] = "/adc/offset";
-  param_names[10] = NULL;
-
-  param_values[0] = g_variant_new_string (hyscan_data_get_type_name (info->data.type));
-  param_values[1] = g_variant_new_double (info->data.rate);
-  param_values[2] = g_variant_new_double (info->antenna.offset.vertical);
-  param_values[3] = g_variant_new_double (info->antenna.offset.horizontal);
-  param_values[4] = g_variant_new_double (info->antenna.pattern.vertical);
-  param_values[5] = g_variant_new_double (info->antenna.pattern.horizontal);
-  param_values[6] = g_variant_new_double (info->antenna.frequency);
-  param_values[7] = g_variant_new_double (info->antenna.bandwidth);
-  param_values[8] = g_variant_new_double (info->adc.vref);
-  param_values[9] = g_variant_new_int64 (info->adc.offset);
-
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
-  hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-      g_variant_unref (param_values[2]);
-      g_variant_unref (param_values[3]);
-      g_variant_unref (param_values[4]);
-      g_variant_unref (param_values[5]);
-      g_variant_unref (param_values[6]);
-      g_variant_unref (param_values[7]);
-      g_variant_unref (param_values[8]);
-      g_variant_unref (param_values[9]);
-    }
-
-  return status;
-}
-
-/* Функция устанавливает параметры канала с акустическими данными. */
-static gboolean
-hyscan_data_writer_channel_set_acoustic_info (HyScanDB               *db,
-                                              gint32                  channel_id,
-                                              HyScanAcousticDataInfo *info)
-{
-  const gchar *param_names[5];
-  GVariant *param_values[5];
-  gint32 param_id;
-  gboolean status;
-
-  param_id = hyscan_db_channel_param_open (db, channel_id);
-  if (param_id < 0)
-    return FALSE;
-
-  param_names[0] = "/data/type";
-  param_names[1] = "/data/rate";
-  param_names[2] = "/antenna/pattern/vertical";
-  param_names[3] = "/antenna/pattern/horizontal";
-  param_names[4] = NULL;
-
-  param_values[0] = g_variant_new_string (hyscan_data_get_type_name (info->data.type));
-  param_values[1] = g_variant_new_double (info->data.rate);
-  param_values[2] = g_variant_new_double (info->antenna.pattern.vertical);
-  param_values[3] = g_variant_new_double (info->antenna.pattern.horizontal);
-
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
-  hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-      g_variant_unref (param_values[2]);
-      g_variant_unref (param_values[3]);
-    }
-
-  return status;
-}
-
-/* Функция устанавливает параметры канала с образами сигналов. */
-static gboolean
-hyscan_data_writer_channel_set_signal_info (HyScanDB *db,
-                                            gint32    channel_id,
-                                            gdouble   rate)
-{
-  gint32 param_id;
-  const gchar *data_type = hyscan_data_get_type_name (HYSCAN_DATA_COMPLEX_FLOAT);
-  gboolean status = TRUE;
-
-  param_id = hyscan_db_channel_param_open (db, channel_id);
-  if (param_id < 0)
-    return FALSE;
-
-  if (!hyscan_db_param_set_string (db, param_id, NULL, "/data/type", data_type))
-    status = FALSE;
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/data/rate", rate))
-    status = FALSE;
-
-  hyscan_db_close (db, param_id);
-
-  return status;
-}
-
-/* Функция устанавливает параметры канала с параметрами ВАРУ. */
-static gboolean
-hyscan_data_writer_channel_set_tvg_info (HyScanDB *db,
-                                         gint32    channel_id,
-                                         gdouble   rate)
-{
-  gint32 param_id;
-  const gchar *data_type = hyscan_data_get_type_name (HYSCAN_DATA_FLOAT);
-  gboolean status = TRUE;
-
-  param_id = hyscan_db_channel_param_open (db, channel_id);
-  if (param_id < 0)
-    return FALSE;
-
-  if (!hyscan_db_param_set_string (db, param_id, NULL, "/data/type", data_type))
-    status = FALSE;
-  if (!hyscan_db_param_set_double (db, param_id, NULL, "/data/rate", rate))
-    status = FALSE;
-
-  hyscan_db_close (db, param_id);
-
-  return status;
-}
-
 /* Функция создаёт новый проект в системе хранения. */
 static gboolean
 hyscan_data_writer_create_project (HyScanDB    *db,
@@ -624,7 +412,7 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
   position = g_hash_table_lookup (priv->sensor_positions, sensor);
   if (position != NULL)
     {
-      if (!hyscan_data_writer_channel_set_position (priv->db, channel_id, position))
+      if (!hyscan_core_params_set_antenna_position (priv->db, channel_id, position))
         goto exit;
     }
   else
@@ -692,7 +480,7 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  if (!hyscan_data_writer_channel_set_signal_info (priv->db, signal_id, info->data.rate))
+  if (!hyscan_core_params_set_signal_info (priv->db, signal_id, info->data.rate))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set signal parameters",
                  priv->project_name, priv->track_name, channel_name);
@@ -711,7 +499,7 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  if (!hyscan_data_writer_channel_set_tvg_info (priv->db, tvg_id, info->data.rate))
+  if (!hyscan_core_params_set_tvg_info (priv->db, tvg_id, info->data.rate))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set tvg parameters",
                  priv->project_name, priv->track_name, channel_name);
@@ -730,7 +518,7 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  if (!hyscan_data_writer_channel_set_raw_info (priv->db, noise_id, info))
+  if (!hyscan_core_params_set_raw_data_info (priv->db, noise_id, info))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set data parameters",
                  priv->project_name, priv->track_name, channel_name);
@@ -746,7 +534,7 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  if (!hyscan_data_writer_channel_set_raw_info (priv->db, data_id, info))
+  if (!hyscan_core_params_set_raw_data_info (priv->db, data_id, info))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set data parameters",
                  priv->project_name, priv->track_name, channel_name);
@@ -757,8 +545,8 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
   position = g_hash_table_lookup (priv->sonar_positions, GINT_TO_POINTER (source));
   if (position != NULL)
     {
-      if (!hyscan_data_writer_channel_set_position (priv->db, data_id, position) ||
-          !hyscan_data_writer_channel_set_position (priv->db, noise_id, position))
+      if (!hyscan_core_params_set_antenna_position (priv->db, data_id, position) ||
+          !hyscan_core_params_set_antenna_position (priv->db, noise_id, position))
         {
           goto exit;
         }
@@ -865,7 +653,7 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
   position = g_hash_table_lookup (priv->sonar_positions, GINT_TO_POINTER (source));
   if (position != NULL)
     {
-      if (!hyscan_data_writer_channel_set_position (priv->db, channel_id, position))
+      if (!hyscan_core_params_set_antenna_position (priv->db, channel_id, position))
         goto exit;
     }
   else
@@ -875,7 +663,7 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
     }
 
   /* Параметры акустических данных */
-  if (!hyscan_data_writer_channel_set_acoustic_info (priv->db, channel_id, info))
+  if (!hyscan_core_params_set_acoustic_data_info (priv->db, channel_id, info))
     goto exit;
 
   channel_info = g_new0 (HyScanDataWriterSonarChannel, 1);

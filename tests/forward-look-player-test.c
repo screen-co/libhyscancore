@@ -73,7 +73,7 @@ control_test (gpointer user_data)
         }
 
       /* На каждом шаге записываем одну строку тестовых данных. */
-      if (!hyscan_fl_gen_generate (generator, (G_USEC_PER_SEC / n_rate) * step_cnt, n_points + step_cnt))
+      if (!hyscan_fl_gen_generate (generator, n_points + step_cnt, (G_USEC_PER_SEC / n_rate) * step_cnt))
         g_error ("can't add data");
 
       /* На каждом шаге проверяем диапазон индексов данных и текущий индекс данных. */
@@ -213,6 +213,7 @@ data_check (HyScanForwardLookPlayer     *player,
   if ((info != NULL) &&
       (info->index == check_index) &&
       (info->time == ((G_USEC_PER_SEC / n_rate) * check_index)) &&
+      (hyscan_fl_gen_check (doa, n_doa, info->time, info->alpha)) &&
       (n_doa == check_index + n_points))
     {
       data_checked = TRUE;
@@ -303,7 +304,7 @@ int main( int argc, char **argv )
 
   for (i = 0; i < n_lines; i++)
     {
-      if (!hyscan_fl_gen_generate (generator, (G_USEC_PER_SEC / n_rate) * i, n_points + i))
+      if (!hyscan_fl_gen_generate (generator, n_points + i, (G_USEC_PER_SEC / n_rate) * i))
         g_error ("can't add data");
     }
 

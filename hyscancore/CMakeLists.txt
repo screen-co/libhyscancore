@@ -37,6 +37,7 @@ add_custom_command (OUTPUT ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshalle
 
 add_library (hyscancore SHARED
              hyscan-core-types.c
+             hyscan-core-params.c
              hyscan-data-writer.c
              hyscan-raw-data.c
              hyscan-acoustic-data.c

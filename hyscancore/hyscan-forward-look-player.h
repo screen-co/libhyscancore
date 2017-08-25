@@ -68,7 +68,7 @@
  *                    HyScanForwardLookPlayerInfo *info,
  *                    HyScanAntennaPosition       *position,
  *                    HyScanForwardLookDOA        *doa,
- *                    guint32                      n_doa,
+ *                    guint32                      n_points,
  *                    gpointer                     user_data);
  *
  * \endcode
@@ -77,7 +77,7 @@
  * - info - информация о текущем зондировании \link HyScanForwardLookPlayerInfo \endlink;
  * - position - местоположение антенны локатора \link HyScanAntennaPosition \endlink;
  * - doa - массив точек целей \link HyScanForwardLookDOA \endlink;
- * - n_doa - число точек целей.
+ * - n_points - число точек целей.
  *
  */
 

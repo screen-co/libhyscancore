@@ -16,8 +16,7 @@
 #ifndef __HYSCAN_FL_GEN_H__
 #define __HYSCAN_FL_GEN_H__
 
-#include <hyscan-db.h>
-#include <hyscan-core-types.h>
+#include <hyscan-forward-look-data.h>
 
 G_BEGIN_DECLS
 
@@ -50,23 +49,30 @@ GType                  hyscan_fl_gen_get_type          (void);
 HyScanFLGen           *hyscan_fl_gen_new               (void);
 
 /* Функция задаёт местоположение приёмной антенны локатора. */
-void                   hyscan_fl_gen_set_position      (HyScanFLGen           *fl_gen,
-                                                        HyScanAntennaPosition *position);
+void                   hyscan_fl_gen_set_position      (HyScanFLGen                   *fl_gen,
+                                                        HyScanAntennaPosition         *position);
 
 /* Функция задаёт параметры локатора. */
-void                   hyscan_fl_gen_set_info          (HyScanFLGen           *fl_gen,
-                                                        HyScanRawDataInfo     *info);
+void                   hyscan_fl_gen_set_info          (HyScanFLGen                   *fl_gen,
+                                                        HyScanRawDataInfo             *info);
 
 /* Функция задаёт проект и галс в который ведётся запись. */
-gboolean               hyscan_fl_gen_set_track         (HyScanFLGen           *fl_gen,
-                                                        HyScanDB              *db,
-                                                        const gchar           *project_name,
-                                                        const gchar           *track_name);
+gboolean               hyscan_fl_gen_set_track         (HyScanFLGen                   *fl_gen,
+                                                        HyScanDB                      *db,
+                                                        const gchar                   *project_name,
+                                                        const gchar                   *track_name);
 
 /* Функция генерирует и записывает в галс одну строку данных. */
-gboolean               hyscan_fl_gen_generate          (HyScanFLGen           *fl_gen,
-                                                        gint64                 time,
-                                                        guint                  n_points);
+gboolean               hyscan_fl_gen_generate          (HyScanFLGen                   *fl_gen,
+                                                        guint32                        n_points,
+                                                        gint64                         time);
+
+/* Функция проверяет валидность данных. */
+gboolean               hyscan_fl_gen_check             (const HyScanForwardLookDOA    *doa,
+                                                        guint32                        n_points,
+                                                        gint64                         time,
+                                                        gdouble                        alpha);
+
 
 G_END_DECLS
 

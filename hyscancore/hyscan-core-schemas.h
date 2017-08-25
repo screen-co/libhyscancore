@@ -46,4 +46,4 @@
 #define PROJECT_INFO_GROUP                     "info"
 #define PROJECT_INFO_OBJECT                    "project"
 
-#endif /* __HYSCAN_SCHEMAS_H__ */
+#endif /* __HYSCAN_CORE_SCHEMAS_H__ */

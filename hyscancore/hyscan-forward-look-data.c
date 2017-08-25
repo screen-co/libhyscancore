@@ -52,8 +52,6 @@ struct _HyScanForwardLookDataPrivate
   HyScanRawData               *channel1;                       /* Сырые данные канала 1. */
   HyScanRawData               *channel2;                       /* Сырые данные канала 2. */
 
-  GArray                      *raw_data1;                      /* Буфер сырых данных канала 1. */
-  GArray                      *raw_data2;                      /* Буфер сырых данных канала 2. */
   GArray                      *doa;                            /* Буфер обработанных данных. */
 };
 
@@ -188,8 +186,6 @@ hyscan_forward_look_data_object_constructed (GObject *object)
     }
 
   /* Буферы для обработки. */
-  priv->raw_data1 = g_array_new (TRUE, TRUE, sizeof (HyScanComplexFloat));
-  priv->raw_data2 = g_array_new (TRUE, TRUE, sizeof (HyScanComplexFloat));
   priv->doa = g_array_new (TRUE, TRUE, sizeof (HyScanForwardLookDOA));
 
   /* Параметры обработки. */
@@ -210,8 +206,6 @@ hyscan_forward_look_data_object_finalize (GObject *object)
   g_clear_object (&priv->channel2);
   g_clear_object (&priv->db);
 
-  g_clear_pointer (&priv->raw_data1, g_array_unref);
-  g_clear_pointer (&priv->raw_data2, g_array_unref);
   g_clear_pointer (&priv->doa, g_array_unref);
 
   g_free (priv->project_name);
@@ -231,9 +225,6 @@ hyscan_forward_look_data_update_cache_key (HyScanForwardLookDataPrivate *priv,
                                            guint32                       index)
 {
   guint32 sound_velocity = 1000 * priv->sound_velocity;
-
-  if (priv->cache == NULL)
-    return;
 
   if (priv->cache_key == NULL)
     {
@@ -384,6 +375,18 @@ hyscan_forward_look_data_get_range (HyScanForwardLookData *data,
   return hyscan_raw_data_get_range (data->priv->channel1, first_index, last_index);
 }
 
+/* Функция возвращает номер изменения в данных. */
+guint32
+hyscan_forward_look_data_get_mod_count (HyScanForwardLookData *data)
+{
+  g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), 0);
+
+  if (data->priv->channel1 == NULL)
+    return 0;
+
+  return hyscan_raw_data_get_mod_count (data->priv->channel1);
+}
+
 /* Функция ищет индекс данных для указанного момента времени. */
 HyScanDBFindStatus
 hyscan_forward_look_data_find_data (HyScanForwardLookData *data,
@@ -401,123 +404,89 @@ hyscan_forward_look_data_find_data (HyScanForwardLookData *data,
   return hyscan_raw_data_find_data (data->priv->channel1, time, lindex, rindex, ltime, rtime);
 }
 
-/* Функция возвращает число точек данных для указанного индекса. */
-guint32
-hyscan_forward_look_data_get_values_count (HyScanForwardLookData *data,
-                                           guint32                index)
-{
-  HyScanForwardLookDataPrivate *priv;
-  HyScanDBFindStatus find_status;
-  guint32 count1, count2;
-  guint32 index1, index2;
-  gint64 time1, time2;
-
-  g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), 0);
-
-  priv = data->priv;
-
-  if (priv->channel1 == NULL)
-    return 0;
-
-  /* Ищем парную строку для указанного индекса. */
-  index1 = index;
-  time1 = hyscan_raw_data_get_time (priv->channel1, index1);
-  find_status = hyscan_raw_data_find_data (priv->channel2, time1, &index2, NULL, &time2, NULL);
-  if ((find_status != HYSCAN_DB_FIND_OK) || (time1 != time2))
-    return 0;
-
-  /* Число точек в каждом из каналов. */
-  count1 = hyscan_raw_data_get_values_count (priv->channel1, index1);
-  count2 = hyscan_raw_data_get_values_count (priv->channel2, index2);
-
-  return MIN (count1, count2);
-}
-
-/* Функция возвращает время приёма данных для указанного индекса. */
-gint64
-hyscan_forward_look_data_get_time (HyScanForwardLookData *data,
-                                   guint32                index)
-{
-  g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), 0);
-
-  if (data->priv->channel1 == NULL)
-    return 0;
-
-  return hyscan_raw_data_get_time (data->priv->channel1, index);
-}
-
 /* Функция возвращает данные вперёдсмотрящего локатора. */
-gboolean
+const HyScanForwardLookDOA *
 hyscan_forward_look_data_get_doa_values (HyScanForwardLookData *data,
                                          guint32                index,
-                                         HyScanForwardLookDOA  *buffer,
-                                         guint32               *buffer_size,
+                                         guint32               *n_points,
                                          gint64                *time)
 
 {
   HyScanForwardLookDataPrivate *priv;
   HyScanDBFindStatus find_status;
-  HyScanComplexFloat *raw1, *raw2;
+  const HyScanComplexFloat *raw1, *raw2;
   HyScanForwardLookDOA *doa;
 
   guint32 n_points1, n_points2;
   guint32 index1, index2;
-  guint32 dsize1, dsize2;
-  guint32 time_size;
   gint64 time1, time2;
 
-  gboolean status1, status2;
   guint32 i;
 
-  g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), NULL);
 
   priv = data->priv;
 
   if (priv->channel1 == NULL)
-    return FALSE;
+    return NULL;
 
   /* Ищем данные в кэше. */
   if (priv->cache != NULL)
     {
-      time_size = sizeof (time1);
-      dsize1 = *buffer_size * sizeof (HyScanForwardLookDOA);
+      guint32 io_size;
+
+      /* Ключ кэширования. */
       hyscan_forward_look_data_update_cache_key (priv, index);
-      status1 = hyscan_cache_get2 (priv->cache, priv->cache_key, priv->detail_key,
-                                   &time1, &time_size, buffer, &dsize1);
-      if (status1 && (time_size == sizeof (time1)) && ((dsize1 % sizeof (HyScanForwardLookDOA)) == 0))
+
+      /* Определяем размер данных в кэше, если они есть. */
+      if (hyscan_cache_get (priv->cache, priv->cache_key, NULL, NULL, &io_size))
         {
-          (time != NULL) ? *time = time1 : 0;
-          *buffer_size = dsize1 / sizeof (HyScanForwardLookDOA);
-          return TRUE;
+          guint32 time_size = sizeof (time1);
+          gboolean status;
+
+          /* При необходимости корректируем размер буферов. */
+          io_size -= time_size;
+          g_array_set_size (priv->doa, io_size / sizeof (HyScanForwardLookDOA));
+
+          /* Считываем данные из кэша. */
+          status = hyscan_cache_get2 (priv->cache, priv->cache_key, priv->detail_key,
+                                      &time1, &time_size, priv->doa->data, &io_size);
+          if ((status) &&
+              (time_size == sizeof (time1)) &&
+              ((io_size % sizeof (HyScanForwardLookDOA)) == 0))
+            {
+              (time != NULL) ? *time = time1 : 0;
+              *n_points = io_size / sizeof (HyScanForwardLookDOA);
+              return (HyScanForwardLookDOA*)priv->doa->data;
+            }
         }
     }
 
-  /* Ищем парную строку для указанного индекса. */
+  /* Считываем данные первого канала. */
   index1 = index;
-  time1 = hyscan_raw_data_get_time (priv->channel1, index1);
+  raw1 = hyscan_raw_data_get_quadrature_values (priv->channel1, index1, &n_points1, &time1);
+  if (raw1 == NULL)
+    return NULL;
+
+  /* Ищем парную строку для указанного индекса. */
   find_status = hyscan_raw_data_find_data (priv->channel2, time1, &index2, NULL, &time2, NULL);
   if ((find_status != HYSCAN_DB_FIND_OK) || (time1 != time2))
-    return FALSE;
+    return NULL;
 
-  /* Число точек в каждом из каналов. */
-  n_points1 = hyscan_raw_data_get_values_count (priv->channel1, index1);
-  n_points2 = hyscan_raw_data_get_values_count (priv->channel2, index2);
-  n_points1 = n_points2 = MIN (n_points1, n_points2);
+  /* Считываем данные второго канала. */
+  raw2 = hyscan_raw_data_get_quadrature_values (priv->channel2, index2, &n_points2, NULL);
+  if (raw2 == NULL)
+    return NULL;
 
-  /* Корректируем размер буферов данных. */
-  g_array_set_size (priv->raw_data1, n_points1);
-  g_array_set_size (priv->raw_data2, n_points1);
+  if (n_points1 != n_points2)
+    {
+      g_warning ("HyScanForwardLookData: data size mismatch in '%s.%s' for index %d",
+                 priv->project_name, priv->track_name, index);
+    }
+
+  /* Корректируем размер буфера данных. */
+  *n_points = n_points1 = n_points2 = MIN (n_points1, n_points2);
   g_array_set_size (priv->doa, n_points1);
-
-  /* Считываем сырые данные. */
-  raw1 = (gpointer)priv->raw_data1->data;
-  raw2 = (gpointer)priv->raw_data2->data;
-  dsize1 = n_points1 * sizeof (HyScanComplexFloat);
-  dsize2 = n_points1 * sizeof (HyScanComplexFloat);
-  status1 = hyscan_raw_data_get_quadrature_values (priv->channel1, index1, raw1, &dsize1, NULL);
-  status2 = hyscan_raw_data_get_quadrature_values (priv->channel2, index2, raw2, &dsize2, NULL);
-  if (!status1 || !status2)
-    return FALSE;
 
   /* Расчитываем углы прихода и интенсивности. */
   doa = (gpointer)priv->doa->data;
@@ -537,19 +506,15 @@ hyscan_forward_look_data_get_doa_values (HyScanForwardLookData *data,
       doa[i].amplitude = sqrtf (re1 * re1 + im1 * im1) * sqrtf (re2 * re2 + im2 * im2);
     }
 
-  /* Возвращаем данные. */
-  *buffer_size = MIN (*buffer_size, n_points1);
-  memcpy (buffer, doa, *buffer_size * sizeof (HyScanForwardLookDOA));
-
   /* Сохраняем данные в кэше. */
   if (priv->cache != NULL)
     {
       hyscan_cache_set2 (priv->cache, priv->cache_key, priv->detail_key,
                          &time1, sizeof (time1),
-                         buffer, *buffer_size * sizeof (HyScanForwardLookDOA));
+                         doa, n_points1 * sizeof (HyScanForwardLookDOA));
     }
 
   (time != NULL) ? *time = time1 : 0;
 
-  return TRUE;
+  return doa;
 }
