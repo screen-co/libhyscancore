@@ -10,6 +10,7 @@
 
 #include "hyscan-nmea-data.h"
 #include "hyscan-core-schemas.h"
+#include "hyscan-core-params.h"
 #include <string.h>
 
 enum
@@ -63,9 +64,6 @@ static gboolean  hyscan_nmea_data_read_data             (HyScanNMEADataPrivate *
                                                          guint32                index,
                                                          guint32               *size,
                                                          gint64                *time);
-static gboolean  hyscan_nmea_data_load_position         (HyScanDB              *db,
-                                                         gint32                 param_id,
-                                                         HyScanAntennaPosition *position);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanNMEAData, hyscan_nmea_data, G_TYPE_OBJECT);
 
@@ -213,7 +211,7 @@ hyscan_nmea_data_object_constructed (GObject *object)
   /* Проверяем, что в канале есть хотя бы одна запись. */
   if (!hyscan_db_channel_get_data_range (priv->db, priv->channel_id, NULL, NULL))
     goto exit;
-    
+
   /* Параметры канала данных. */
   param_id = hyscan_db_channel_param_open (priv->db, priv->channel_id);
   if (param_id < 0)
@@ -223,7 +221,11 @@ hyscan_nmea_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  if (!hyscan_nmea_data_load_position (priv->db, param_id, &priv->position))
+  status = hyscan_core_params_load_antenna_position (priv->db, param_id,
+                                                     SENSOR_CHANNEL_SCHEMA_ID,
+                                                     SENSOR_CHANNEL_SCHEMA_VERSION,
+                                                     &priv->position);
+  if (!status)
     {
       g_warning ("HyScanNMEAData: '%s.%s.%s': can't read antenna position",
                  priv->project, priv->track, channel);
@@ -382,57 +384,6 @@ hyscan_nmea_data_read_data (HyScanNMEADataPrivate *priv,
   return TRUE;
 }
 
-/* Функция загружает местоположение приёмной антенны. */
-static gboolean
-hyscan_nmea_data_load_position (HyScanDB              *db,
-                                gint32                 param_id,
-                                HyScanAntennaPosition *position)
-{
-  const gchar *param_names[9];
-  GVariant *param_values[9];
-  gboolean status = FALSE;
-
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/position/x";
-  param_names[3] = "/position/y";
-  param_names[4] = "/position/z";
-  param_names[5] = "/position/psi";
-  param_names[6] = "/position/gamma";
-  param_names[7] = "/position/theta";
-  param_names[8] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    return FALSE;
-
-  if ((g_variant_get_int64 (param_values[0]) != SENSOR_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != SENSOR_CHANNEL_SCHEMA_VERSION) )
-    {
-      goto exit;
-    }
-
-  position->x = g_variant_get_double (param_values[2]);
-  position->y = g_variant_get_double (param_values[3]);
-  position->z = g_variant_get_double (param_values[4]);
-  position->psi = g_variant_get_double (param_values[5]);
-  position->gamma = g_variant_get_double (param_values[6]);
-  position->theta = g_variant_get_double (param_values[7]);
-
-  status = TRUE;
-
-exit:
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
-  g_variant_unref (param_values[6]);
-  g_variant_unref (param_values[7]);
-
-  return status;
-}
-
 /* Функция создаёт новый объект обработки NMEA строк. */
 HyScanNMEAData*
 hyscan_nmea_data_new (HyScanDB         *db,
@@ -565,20 +516,6 @@ hyscan_nmea_data_find_data (HyScanNMEAData *data,
                                       time, lindex, rindex, ltime, rtime);
 }
 
-gint64
-hyscan_nmea_data_get_time (HyScanNMEAData *data,
-                           guint32         index)
-{
-  gint64 time;
-  gconstpointer sentence;
-
-  g_return_val_if_fail (HYSCAN_IS_NMEA_DATA (data), -1);
-
-  sentence = hyscan_nmea_data_get_sentence (data, index, NULL, &time);
-
-  return (sentence != NULL) ? time : -1;
-}
-
 /* Функция возвращает строку для указанного индекса. */
 const gchar*
 hyscan_nmea_data_get_sentence (HyScanNMEAData *data,
@@ -616,6 +553,18 @@ hyscan_nmea_data_get_sentence (HyScanNMEAData *data,
     *size = dsize;
 
   return priv->string;
+}
+
+/* Функция возвращает номер изменения в данных. */
+guint32
+hyscan_nmea_data_get_mod_count (HyScanNMEAData *data)
+{
+  g_return_val_if_fail (HYSCAN_IS_NMEA_DATA (data), 0);
+
+  if (data->priv->channel_id <= 0)
+    return 0;
+
+  return hyscan_db_get_mod_count (data->priv->db, data->priv->channel_id);
 }
 
 /* Функция верифицирует nmea-сообщение. */

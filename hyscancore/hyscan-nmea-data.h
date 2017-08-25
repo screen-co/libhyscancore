@@ -196,22 +196,6 @@ HyScanDBFindStatus      hyscan_nmea_data_find_data              (HyScanNMEAData 
 
 /**
  *
- * Функция возвращает время приема данных.
- *
- * Данная функция всего лишь обертка над функцией #hyscan_nmea_data_get_sentence, но она
- * может быть полезна.
- *
- * \param data указатель на объект \link HyScanNMEAData \endlink;
- * \param index индекс данных.
- *
- * \return время приема данных или -1 в случае ошибки.
- *
- */
-HYSCAN_API
-gint64                  hyscan_nmea_data_get_time               (HyScanNMEAData        *data,
-                                                                 guint32                index);
-/**
- *
  * Функция возвращает указатель на NMEA-строку.
  *
  * Строка будет гарантированно нуль-терминирована.
@@ -230,6 +214,20 @@ const gchar            *hyscan_nmea_data_get_sentence           (HyScanNMEAData 
                                                                  guint32                index,
                                                                  guint32               *size,
                                                                  gint64                *time);
+
+/**
+ *
+ * Функция возвращает номер изменения в данных. Программа не должна полагаться на значение
+ * номера изменения, важен только факт смены номера по сравнению с предыдущим запросом.
+ *
+ * \param data указатель на объект \link HyScanNMEAData \endlink.
+ *
+ * \return Номер изменения.
+ *
+ */
+HYSCAN_API
+guint32                 hyscan_nmea_data_get_mod_count          (HyScanNMEAData        *data);
+
 /**
  *
  * Функция верифицирует NMEA-строку.

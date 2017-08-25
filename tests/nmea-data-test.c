@@ -132,9 +132,6 @@ main (int argc, char **argv)
   if (DPT_CHANNEL != hyscan_nmea_data_get_channel (nmea))
     g_error ("Source channel mismatch");
 
-  if (START_TIME != hyscan_nmea_data_get_time (nmea, 0))
-    g_error ("Channel time mismatch");
-
   /* Анализируем данные без кэша. */
   g_timer_start (timer);
 
