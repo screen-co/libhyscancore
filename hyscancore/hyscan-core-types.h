@@ -67,7 +67,6 @@
 #ifndef __HYSCAN_CORE_TYPES_H__
 #define __HYSCAN_CORE_TYPES_H__
 
-#include <hyscan-db.h>
 #include <hyscan-data.h>
 
 G_BEGIN_DECLS

@@ -55,6 +55,7 @@
 #ifndef __HYSCAN_DATA_WRITER_H__
 #define __HYSCAN_DATA_WRITER_H__
 
+#include <hyscan-db.h>
 #include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
