@@ -319,6 +319,7 @@ hyscan_data_writer_create_track (HyScanDB        *db,
   gint32 track_id = -1;
   gint32 param_id = -1;
 
+  HyScanParamList *param_list = NULL;
   const gchar *track_type_name;
   GBytes *track_schema;
 
@@ -357,26 +358,27 @@ hyscan_data_writer_create_track (HyScanDB        *db,
         id[i] = 'A' + rnd - 36;
     }
 
-  if (!hyscan_db_param_set_string (db, param_id, NULL, "/id", id))
-    goto exit;
-
+  /* Тип галса. */
   track_type_name = hyscan_track_get_name_by_type (track_type);
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_set_string (param_list, "/id", id);
+
   if (track_type_name != NULL)
-    if (!hyscan_db_param_set_string (db, param_id, NULL, "/type", track_type_name))
-      goto exit;
+    hyscan_param_list_set_string (param_list, "/type", track_type_name);
 
   if (operator != NULL)
-    if (!hyscan_db_param_set_string (db, param_id, NULL, "/operator", operator))
-      goto exit;
+    hyscan_param_list_set_string (param_list, "/operator", operator);
 
   if (sonar != NULL)
-    if (!hyscan_db_param_set_string (db, param_id, NULL, "/sonar", sonar))
-      goto exit;
+    hyscan_param_list_set_string (param_list, "/sonar", sonar);
 
-  status = TRUE;
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
 
 exit:
   g_clear_pointer (&track_schema, g_bytes_unref);
+  g_clear_object (&param_list);
 
   if (param_id > 0)
     hyscan_db_close (db, param_id);

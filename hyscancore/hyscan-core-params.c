@@ -19,8 +19,7 @@ hyscan_core_params_set_antenna_position (HyScanDB              *db,
                                          gint32                 channel_id,
                                          HyScanAntennaPosition *position)
 {
-  const gchar *param_names[7] = {NULL};
-  GVariant *param_values[7] = {NULL};
+  HyScanParamList *param_list;
   gint32 param_id;
   gboolean status;
 
@@ -28,32 +27,19 @@ hyscan_core_params_set_antenna_position (HyScanDB              *db,
   if (param_id < 0)
     return FALSE;
 
-  param_names[0] = "/position/x";
-  param_names[1] = "/position/y";
-  param_names[2] = "/position/z";
-  param_names[3] = "/position/psi";
-  param_names[4] = "/position/gamma";
-  param_names[5] = "/position/theta";
+  param_list = hyscan_param_list_new ();
 
-  param_values[0] = g_variant_new_double (position->x);
-  param_values[1] = g_variant_new_double (position->y);
-  param_values[2] = g_variant_new_double (position->z);
-  param_values[3] = g_variant_new_double (position->psi);
-  param_values[4] = g_variant_new_double (position->gamma);
-  param_values[5] = g_variant_new_double (position->theta);
+  hyscan_param_list_set_double (param_list, "/position/x", position->x);
+  hyscan_param_list_set_double (param_list, "/position/y", position->y);
+  hyscan_param_list_set_double (param_list, "/position/z", position->z);
+  hyscan_param_list_set_double (param_list, "/position/psi", position->psi);
+  hyscan_param_list_set_double (param_list, "/position/gamma", position->gamma);
+  hyscan_param_list_set_double (param_list, "/position/theta", position->theta);
 
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
   hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-      g_variant_unref (param_values[2]);
-      g_variant_unref (param_values[3]);
-      g_variant_unref (param_values[4]);
-      g_variant_unref (param_values[5]);
-    }
+  g_object_unref (param_list);
 
   return status;
 }
@@ -64,8 +50,7 @@ hyscan_core_params_set_raw_data_info (HyScanDB          *db,
                                       gint32             channel_id,
                                       HyScanRawDataInfo *info)
 {
-  const gchar *param_names[11] = {NULL};
-  GVariant *param_values[11] = {NULL};
+  HyScanParamList *param_list;
   gint32 param_id;
   gboolean status;
 
@@ -73,44 +58,23 @@ hyscan_core_params_set_raw_data_info (HyScanDB          *db,
   if (param_id < 0)
     return FALSE;
 
-  param_names[0] = "/data/type";
-  param_names[1] = "/data/rate";
-  param_names[2] = "/antenna/offset/vertical";
-  param_names[3] = "/antenna/offset/horizontal";
-  param_names[4] = "/antenna/pattern/vertical";
-  param_names[5] = "/antenna/pattern/horizontal";
-  param_names[6] = "/antenna/frequency";
-  param_names[7] = "/antenna/bandwidth";
-  param_names[8] = "/adc/vref";
-  param_names[9] = "/adc/offset";
+  param_list = hyscan_param_list_new ();
 
-  param_values[0] = g_variant_new_string (hyscan_data_get_type_name (info->data.type));
-  param_values[1] = g_variant_new_double (info->data.rate);
-  param_values[2] = g_variant_new_double (info->antenna.offset.vertical);
-  param_values[3] = g_variant_new_double (info->antenna.offset.horizontal);
-  param_values[4] = g_variant_new_double (info->antenna.pattern.vertical);
-  param_values[5] = g_variant_new_double (info->antenna.pattern.horizontal);
-  param_values[6] = g_variant_new_double (info->antenna.frequency);
-  param_values[7] = g_variant_new_double (info->antenna.bandwidth);
-  param_values[8] = g_variant_new_double (info->adc.vref);
-  param_values[9] = g_variant_new_int64 (info->adc.offset);
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data.type));
+  hyscan_param_list_set_double (param_list, "/data/rate", info->data.rate);
+  hyscan_param_list_set_double (param_list, "/antenna/offset/vertical", info->antenna.offset.vertical);
+  hyscan_param_list_set_double (param_list, "/antenna/offset/horizontal", info->antenna.offset.horizontal);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna.pattern.vertical);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna.pattern.horizontal);
+  hyscan_param_list_set_double (param_list, "/antenna/frequency", info->antenna.frequency);
+  hyscan_param_list_set_double (param_list, "/antenna/bandwidth", info->antenna.bandwidth);
+  hyscan_param_list_set_double (param_list, "/adc/vref", info->adc.vref);
+  hyscan_param_list_set_integer (param_list, "/adc/offset", info->adc.offset);
 
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
   hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-      g_variant_unref (param_values[2]);
-      g_variant_unref (param_values[3]);
-      g_variant_unref (param_values[4]);
-      g_variant_unref (param_values[5]);
-      g_variant_unref (param_values[6]);
-      g_variant_unref (param_values[7]);
-      g_variant_unref (param_values[8]);
-      g_variant_unref (param_values[9]);
-    }
+  g_object_unref (param_list);
 
   return status;
 }
@@ -121,8 +85,7 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
                                            gint32                  channel_id,
                                            HyScanAcousticDataInfo *info)
 {
-  const gchar *param_names[5] = {NULL};
-  GVariant *param_values[5] = {NULL};
+  HyScanParamList *param_list;
   gint32 param_id;
   gboolean status;
 
@@ -130,26 +93,17 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
   if (param_id < 0)
     return FALSE;
 
-  param_names[0] = "/data/type";
-  param_names[1] = "/data/rate";
-  param_names[2] = "/antenna/pattern/vertical";
-  param_names[3] = "/antenna/pattern/horizontal";
+  param_list = hyscan_param_list_new ();
 
-  param_values[0] = g_variant_new_string (hyscan_data_get_type_name (info->data.type));
-  param_values[1] = g_variant_new_double (info->data.rate);
-  param_values[2] = g_variant_new_double (info->antenna.pattern.vertical);
-  param_values[3] = g_variant_new_double (info->antenna.pattern.horizontal);
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data.type));
+  hyscan_param_list_set_double (param_list, "/data/rate", info->data.rate);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna.pattern.vertical);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna.pattern.horizontal);
 
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
   hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-      g_variant_unref (param_values[2]);
-      g_variant_unref (param_values[3]);
-    }
+  g_object_unref (param_list);
 
   return status;
 }
@@ -160,8 +114,7 @@ hyscan_core_params_set_signal_info (HyScanDB *db,
                                     gint32    channel_id,
                                     gdouble   data_rate)
 {
-  const gchar *param_names[3] = {NULL};
-  GVariant *param_values[3] = {NULL};
+  HyScanParamList *param_list;
   gint32 param_id;
   gboolean status;
 
@@ -169,20 +122,15 @@ hyscan_core_params_set_signal_info (HyScanDB *db,
   if (param_id < 0)
     return FALSE;
 
-  param_names[0] = "/data/type";
-  param_names[1] = "/data/rate";
+  param_list = hyscan_param_list_new ();
 
-  param_values[0] = g_variant_new_string (hyscan_data_get_type_name (HYSCAN_DATA_COMPLEX_FLOAT));
-  param_values[1] = g_variant_new_double (data_rate);
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (HYSCAN_DATA_COMPLEX_FLOAT));
+  hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
   hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-    }
+  g_object_unref (param_list);
 
   return status;
 }
@@ -193,8 +141,7 @@ hyscan_core_params_set_tvg_info (HyScanDB *db,
                                  gint32    channel_id,
                                  gdouble   data_rate)
 {
-  const gchar *param_names[3] = {NULL};
-  GVariant *param_values[3] = {NULL};
+  HyScanParamList *param_list;
   gint32 param_id;
   gboolean status;
 
@@ -202,20 +149,15 @@ hyscan_core_params_set_tvg_info (HyScanDB *db,
   if (param_id < 0)
     return FALSE;
 
-  param_names[0] = "/data/type";
-  param_names[1] = "/data/rate";
+  param_list = hyscan_param_list_new ();
 
-  param_values[0] = g_variant_new_string (hyscan_data_get_type_name (HYSCAN_DATA_FLOAT));
-  param_values[1] = g_variant_new_double (data_rate);
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (HYSCAN_DATA_FLOAT));
+  hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
-  status = hyscan_db_param_set (db, param_id, NULL, param_names, param_values);
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
   hyscan_db_close (db, param_id);
-
-  if (!status)
-    {
-      g_variant_unref (param_values[0]);
-      g_variant_unref (param_values[1]);
-    }
+  g_object_unref (param_list);
 
   return status;
 }
@@ -228,46 +170,40 @@ hyscan_core_params_load_antenna_position (HyScanDB              *db,
                                           gint64                 schema_version,
                                           HyScanAntennaPosition *position)
 {
-  const gchar *param_names[9] = {NULL};
-  GVariant *param_values[9] = {NULL};
+  HyScanParamList *param_list;
   gboolean status = FALSE;
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/position/x";
-  param_names[3] = "/position/y";
-  param_names[4] = "/position/z";
-  param_names[5] = "/position/psi";
-  param_names[6] = "/position/gamma";
-  param_names[7] = "/position/theta";
+  param_list = hyscan_param_list_new ();
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    return FALSE;
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/position/x");
+  hyscan_param_list_add (param_list, "/position/y");
+  hyscan_param_list_add (param_list, "/position/z");
+  hyscan_param_list_add (param_list, "/position/psi");
+  hyscan_param_list_add (param_list, "/position/gamma");
+  hyscan_param_list_add (param_list, "/position/theta");
 
-  if ((g_variant_get_int64 (param_values[0]) != schema_id) ||
-      (g_variant_get_int64 (param_values[1]) != schema_version) )
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != schema_id) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != schema_version))
     {
       goto exit;
     }
 
-  position->x = g_variant_get_double (param_values[2]);
-  position->y = g_variant_get_double (param_values[3]);
-  position->z = g_variant_get_double (param_values[4]);
-  position->psi = g_variant_get_double (param_values[5]);
-  position->gamma = g_variant_get_double (param_values[6]);
-  position->theta = g_variant_get_double (param_values[7]);
+  position->x = hyscan_param_list_get_double (param_list, "/position/x");
+  position->y = hyscan_param_list_get_double (param_list, "/position/y");
+  position->z = hyscan_param_list_get_double (param_list, "/position/z");
+  position->psi = hyscan_param_list_get_double (param_list, "/position/psi");
+  position->gamma = hyscan_param_list_get_double (param_list, "/position/gamma");
+  position->theta = hyscan_param_list_get_double (param_list, "/position/theta");
 
   status = TRUE;
 
 exit:
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
-  g_variant_unref (param_values[6]);
-  g_variant_unref (param_values[7]);
+  g_object_unref (param_list);
 
   return status;
 }
@@ -278,58 +214,48 @@ hyscan_core_params_load_raw_data_info (HyScanDB          *db,
                                        gint32             param_id,
                                        HyScanRawDataInfo *info)
 {
-  const gchar *param_names[13] = {NULL};
-  GVariant *param_values[13] = {NULL};
+  HyScanParamList *param_list;
   gboolean status = FALSE;
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
-  param_names[4] = "/antenna/offset/vertical";
-  param_names[5] = "/antenna/offset/horizontal";
-  param_names[6] = "/antenna/pattern/vertical";
-  param_names[7] = "/antenna/pattern/horizontal";
-  param_names[8] = "/antenna/frequency";
-  param_names[9] = "/antenna/bandwidth";
-  param_names[10] = "/adc/vref";
-  param_names[11] = "/adc/offset";
+  param_list = hyscan_param_list_new ();
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    return FALSE;
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/data/type");
+  hyscan_param_list_add (param_list, "/data/rate");
+  hyscan_param_list_add (param_list, "/antenna/offset/vertical");
+  hyscan_param_list_add (param_list, "/antenna/offset/horizontal");
+  hyscan_param_list_add (param_list, "/antenna/pattern/vertical");
+  hyscan_param_list_add (param_list, "/antenna/pattern/horizontal");
+  hyscan_param_list_add (param_list, "/antenna/frequency");
+  hyscan_param_list_add (param_list, "/antenna/bandwidth");
+  hyscan_param_list_add (param_list, "/adc/vref");
+  hyscan_param_list_add (param_list, "/adc/offset");
 
-  if ((g_variant_get_int64 (param_values[0]) != RAW_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != RAW_CHANNEL_SCHEMA_VERSION) )
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != RAW_CHANNEL_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != RAW_CHANNEL_SCHEMA_VERSION))
     {
       goto exit;
     }
 
-  info->data.type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
-  info->data.rate = g_variant_get_double (param_values[3]);
-  info->antenna.offset.vertical = g_variant_get_double (param_values[4]);
-  info->antenna.offset.horizontal = g_variant_get_double (param_values[5]);
-  info->antenna.pattern.vertical = g_variant_get_double (param_values[6]);
-  info->antenna.pattern.horizontal = g_variant_get_double (param_values[7]);
-  info->antenna.frequency = g_variant_get_double (param_values[8]);
-  info->antenna.bandwidth = g_variant_get_double (param_values[9]);
-  info->adc.vref = g_variant_get_double (param_values[10]);
-  info->adc.offset = g_variant_get_int64 (param_values[11]);
+  info->data.type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  info->data.rate = hyscan_param_list_get_double (param_list, "/data/rate");
+  info->antenna.offset.vertical = hyscan_param_list_get_double (param_list, "/antenna/offset/vertical");
+  info->antenna.offset.horizontal = hyscan_param_list_get_double (param_list, "/antenna/offset/horizontal");
+  info->antenna.pattern.vertical = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
+  info->antenna.pattern.horizontal = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
+  info->antenna.frequency = hyscan_param_list_get_double (param_list, "/antenna/frequency");
+  info->antenna.bandwidth = hyscan_param_list_get_double (param_list, "/antenna/bandwidth");
+  info->adc.vref = hyscan_param_list_get_double (param_list, "/adc/vref");
+  info->adc.offset = hyscan_param_list_get_integer (param_list, "/adc/offset");
 
   status = TRUE;
 
 exit:
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
-  g_variant_unref (param_values[6]);
-  g_variant_unref (param_values[7]);
-  g_variant_unref (param_values[8]);
-  g_variant_unref (param_values[9]);
-  g_variant_unref (param_values[10]);
-  g_variant_unref (param_values[11]);
+  g_object_unref (param_list);
 
   return status;
 }
@@ -340,40 +266,36 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
                                             gint32                  param_id,
                                             HyScanAcousticDataInfo *info)
 {
-  const gchar *param_names[7] = {NULL};
-  GVariant *param_values[7] = {NULL};
+  HyScanParamList *param_list;
   gboolean status = FALSE;
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
-  param_names[4] = "/antenna/pattern/vertical";
-  param_names[5] = "/antenna/pattern/horizontal";
+  param_list = hyscan_param_list_new ();
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    return FALSE;
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/data/type");
+  hyscan_param_list_add (param_list, "/data/rate");
+  hyscan_param_list_add (param_list, "/antenna/pattern/vertical");
+  hyscan_param_list_add (param_list, "/antenna/pattern/horizontal");
 
-  if ((g_variant_get_int64 (param_values[0]) != ACOUSTIC_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != ACOUSTIC_CHANNEL_SCHEMA_VERSION) )
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != ACOUSTIC_CHANNEL_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != ACOUSTIC_CHANNEL_SCHEMA_VERSION))
     {
       goto exit;
     }
 
-  info->data.type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
-  info->data.rate = g_variant_get_double (param_values[3]);
-  info->antenna.pattern.vertical = g_variant_get_double (param_values[4]);
-  info->antenna.pattern.horizontal = g_variant_get_double (param_values[5]);
+  info->data.type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  info->data.rate = hyscan_param_list_get_double (param_list, "/data/rate");
+  info->antenna.pattern.vertical = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
+  info->antenna.pattern.horizontal = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
 
   status = TRUE;
 
 exit:
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
+  g_object_unref (param_list);
 
   return status;
 }
@@ -384,33 +306,31 @@ hyscan_core_params_check_signal_info (HyScanDB *db,
                                       gint32    param_id,
                                       gdouble   data_rate)
 {
-  const gchar *param_names[5] = {NULL};
-  GVariant *param_values[5] = {NULL};
-  HyScanDataType data_type;
+  HyScanParamList *param_list;
   gboolean status = FALSE;
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
+  param_list = hyscan_param_list_new ();
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    return FALSE;
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/data/type");
+  hyscan_param_list_add (param_list, "/data/rate");
 
-  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
 
-  if ((g_variant_get_int64 (param_values[0]) == SIGNAL_CHANNEL_SCHEMA_ID) &&
-      (g_variant_get_int64 (param_values[1]) == SIGNAL_CHANNEL_SCHEMA_VERSION) &&
-      (fabs (g_variant_get_double (param_values[3]) - data_rate) < 1.0) &&
-      (data_type == HYSCAN_DATA_COMPLEX_FLOAT))
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != SIGNAL_CHANNEL_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != SIGNAL_CHANNEL_SCHEMA_VERSION) ||
+      (fabs (hyscan_param_list_get_double (param_list, "/data/rate") - data_rate) > 1.0) ||
+      (hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type")) != HYSCAN_DATA_COMPLEX_FLOAT))
     {
-      status = TRUE;
+      goto exit;
     }
 
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
+  status = TRUE;
+
+exit:
+  g_object_unref (param_list);
 
   return status;
 }
@@ -421,33 +341,31 @@ hyscan_core_params_check_tvg_info (HyScanDB *db,
                                    gint32    param_id,
                                    gdouble   data_rate)
 {
-  const gchar *param_names[5] = {NULL};
-  GVariant *param_values[5] = {NULL};
-  HyScanDataType data_type;
+  HyScanParamList *param_list;
   gboolean status = FALSE;
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
+  param_list = hyscan_param_list_new ();
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    return FALSE;
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/data/type");
+  hyscan_param_list_add (param_list, "/data/rate");
 
-  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
 
-  if ((g_variant_get_int64 (param_values[0]) == TVG_CHANNEL_SCHEMA_ID) &&
-      (g_variant_get_int64 (param_values[1]) == TVG_CHANNEL_SCHEMA_VERSION) &&
-      (fabs (g_variant_get_double (param_values[3]) - data_rate) < 1.0) &&
-      (data_type == HYSCAN_DATA_FLOAT))
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != TVG_CHANNEL_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != TVG_CHANNEL_SCHEMA_VERSION) ||
+      (fabs (hyscan_param_list_get_double (param_list, "/data/rate") - data_rate) > 1.0) ||
+      (hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type")) != HYSCAN_DATA_FLOAT))
     {
-      status = TRUE;
+      goto exit;
     }
 
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
+  status = TRUE;
+
+exit:
+  g_object_unref (param_list);
 
   return status;
 }

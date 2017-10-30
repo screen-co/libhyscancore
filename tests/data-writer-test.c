@@ -1,9 +1,11 @@
 
 #include <hyscan-data-writer.h>
+#include <hyscan-core-params.h>
 #include <hyscan-core-schemas.h>
 
 #include <libxml/parser.h>
 #include <string.h>
+#include <math.h>
 
 #define OPERATOR_NAME          "tester"
 #define SONAR_INFO             "This is sonar info"
@@ -132,30 +134,29 @@ acoustic_get_info (guint n_channel)
 void track_check_info (HyScanDB *db,
                        gint32    track_id)
 {
+  HyScanParamList *param_list = NULL;
   gint32 param_id;
-
-  const gchar *param_names[4];
-  GVariant *param_values[4];
 
   const gchar *track_type;
   const gchar *operator_name;
   const gchar *sonar_info;
 
+  param_list = hyscan_param_list_new ();
+
   param_id = hyscan_db_track_param_open (db, track_id);
   if (param_id < 0)
     g_error ("can't open track parameters");
 
-  param_names[0] = "/type";
-  param_names[1] = "/operator";
-  param_names[2] = "/sonar";
-  param_names[3] = NULL;
+  hyscan_param_list_add (param_list, "/type");
+  hyscan_param_list_add (param_list, "/operator");
+  hyscan_param_list_add (param_list, "/sonar");
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     g_error ("can't read parameters");
 
-  track_type = g_variant_get_string (param_values[0], NULL);
-  operator_name = g_variant_get_string (param_values[1], NULL);
-  sonar_info = g_variant_get_string (param_values[2], NULL);
+  track_type = hyscan_param_list_get_string (param_list, "/type");
+  operator_name = hyscan_param_list_get_string (param_list, "/operator");
+  sonar_info = hyscan_param_list_get_string (param_list, "/sonar");
 
   if (g_strcmp0 (track_type, hyscan_track_get_name_by_type (HYSCAN_TRACK_SURVEY)) != 0)
     g_error ("track type error");
@@ -166,11 +167,8 @@ void track_check_info (HyScanDB *db,
   if (g_strcmp0 (sonar_info, SONAR_INFO) != 0)
     g_error ("sonar info error");
 
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-
   hyscan_db_close (db, param_id);
+  g_object_unref (param_list);
 }
 
 /* Функция проверяет параметры местоположения приёмной антенны. */
@@ -182,53 +180,27 @@ antenna_check_position (HyScanDB *db,
 {
   gint32 param_id;
 
-  HyScanAntennaPosition position;
-  const gchar *param_names[9];
-  GVariant *param_values[9];
+  HyScanAntennaPosition position1;
+  HyScanAntennaPosition position2;
 
   param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id < 0)
     g_error ("can't open parameters");
 
-  position = antenna_get_position (n_channel);
+  position1 = antenna_get_position (n_channel);
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/position/x";
-  param_names[3] = "/position/y";
-  param_names[4] = "/position/z";
-  param_names[5] = "/position/psi";
-  param_names[6] = "/position/gamma";
-  param_names[7] = "/position/theta";
-  param_names[8] = NULL;
+  if (!hyscan_core_params_load_antenna_position (db, param_id, schema_id, TRACK_SCHEMA_VERSION, &position2))
+    g_error ("error in schema");
 
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    g_error ("can't read parameters");
-
-  if ((g_variant_get_int64 (param_values[0]) != schema_id) ||
-      (g_variant_get_int64 (param_values[1]) != TRACK_SCHEMA_VERSION))
+  if ((fabs (position1.x - position2.x) > 1e-6) ||
+      (fabs (position1.y - position2.y) > 1e-6) ||
+      (fabs (position1.z - position2.z) > 1e-6) ||
+      (fabs (position1.psi - position2.psi) > 1e-6) ||
+      (fabs (position1.gamma - position2.gamma) > 1e-6) ||
+      (fabs (position1.theta - position2.theta) > 1e-6))
     {
-      g_error ("error in schema");
+      g_error ("error in parameters");
     }
-
-  if ((position.x != g_variant_get_double (param_values[2])) ||
-      (position.y != g_variant_get_double (param_values[3])) ||
-      (position.z != g_variant_get_double (param_values[4])) ||
-      (position.psi != g_variant_get_double (param_values[5])) ||
-      (position.gamma != g_variant_get_double (param_values[6])) ||
-      (position.theta != g_variant_get_double (param_values[7])))
-    {
-      g_error ("error in parameters 0");
-    }
-
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
-  g_variant_unref (param_values[6]);
-  g_variant_unref (param_values[7]);
 
   hyscan_db_close (db, param_id);
 }
@@ -241,67 +213,32 @@ raw_check_info (HyScanDB *db,
 {
   gint32 param_id;
 
-  HyScanRawDataInfo info;
-  const gchar *param_names[13];
-  GVariant *param_values[13];
-
-  HyScanDataType data_type;
+  HyScanRawDataInfo info1;
+  HyScanRawDataInfo info2;
 
   param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id < 0)
     g_error ("can't open parameters");
 
-  info = raw_get_info (n_channel);
+  info1 = raw_get_info (n_channel);
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
-  param_names[4] = "/antenna/offset/vertical";
-  param_names[5] = "/antenna/offset/horizontal";
-  param_names[6] = "/antenna/pattern/vertical";
-  param_names[7] = "/antenna/pattern/horizontal";
-  param_names[8] = "/antenna/frequency";
-  param_names[9] = "/antenna/bandwidth";
-  param_names[10] = "/adc/vref";
-  param_names[11] = "/adc/offset";
-  param_names[12] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
+  if (!hyscan_core_params_load_raw_data_info (db, param_id, &info2))
     g_error ("can't read parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != RAW_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != RAW_CHANNEL_SCHEMA_VERSION))
-    {
-      g_error ("error in schema");
-    }
 
-  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
-
-  if ((info.data.type != data_type) ||
-      (info.data.rate != g_variant_get_double (param_values[3])) ||
-      (info.antenna.offset.vertical != g_variant_get_double (param_values[4])) ||
-      (info.antenna.offset.horizontal != g_variant_get_double (param_values[5])) ||
-      (info.antenna.pattern.vertical != g_variant_get_double (param_values[6])) ||
-      (info.antenna.pattern.horizontal != g_variant_get_double (param_values[7])) ||
-      (info.antenna.frequency != g_variant_get_double (param_values[8])) ||
-      (info.antenna.bandwidth != g_variant_get_double (param_values[9])) ||
-      (info.adc.vref != g_variant_get_double (param_values[10])) ||
-      (info.adc.offset != g_variant_get_int64 (param_values[11])))
+  if ((info1.data.type != info2.data.type) ||
+      (fabs (info1.data.rate - info2.data.rate) > 1e-6) ||
+      (fabs (info1.antenna.offset.vertical - info2.antenna.offset.vertical) > 1e-6) ||
+      (fabs (info1.antenna.offset.horizontal - info2.antenna.offset.horizontal) > 1e-6) ||
+      (fabs (info1.antenna.pattern.vertical - info2.antenna.pattern.vertical) > 1e-6) ||
+      (fabs (info1.antenna.pattern.horizontal - info2.antenna.pattern.horizontal) > 1e-6) ||
+      (fabs (info1.antenna.frequency - info2.antenna.frequency) > 1e-6) ||
+      (fabs (info1.antenna.bandwidth - info2.antenna.bandwidth) > 1e-6) ||
+      (fabs (info1.adc.vref - info2.adc.vref) > 1e-6) ||
+      (info1.adc.offset != info2.adc.offset))
     {
       g_error ("error in parameters");
     }
-
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
-  g_variant_unref (param_values[6]);
-  g_variant_unref (param_values[7]);
-  g_variant_unref (param_values[8]);
-  g_variant_unref (param_values[9]);
 
   hyscan_db_close (db, param_id);
 }
@@ -314,51 +251,25 @@ acoustic_check_info (HyScanDB *db,
 {
   gint32 param_id;
 
-  HyScanAcousticDataInfo info;
-  const gchar *param_names[7];
-  GVariant *param_values[7];
-
-  HyScanDataType data_type;
+  HyScanAcousticDataInfo info1;
+  HyScanAcousticDataInfo info2;
 
   param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id < 0)
     g_error ("can't open parameters");
 
-  info = acoustic_get_info (n_channel);
+  info1 = acoustic_get_info (n_channel);
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
-  param_names[4] = "/antenna/pattern/vertical";
-  param_names[5] = "/antenna/pattern/horizontal";
-  param_names[6] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
+  if (!hyscan_core_params_load_acoustic_data_info (db, param_id, &info2))
     g_error ("can't read parameters");
 
-  if ((g_variant_get_int64 (param_values[0]) != ACOUSTIC_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != ACOUSTIC_CHANNEL_SCHEMA_VERSION))
-    {
-      g_error ("error in schema");
-    }
-
-  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
-
-  if ((info.data.type != data_type) ||
-      (info.data.rate != g_variant_get_double (param_values[3])) ||
-      (info.antenna.pattern.vertical != g_variant_get_double (param_values[4])) ||
-      (info.antenna.pattern.horizontal != g_variant_get_double (param_values[5])))
+  if ((info1.data.type != info2.data.type) ||
+      (fabs (info1.data.rate - info2.data.rate) > 1e-6) ||
+      (fabs (info1.antenna.pattern.vertical - info2.antenna.pattern.vertical) > 1e-6) ||
+      (fabs (info1.antenna.pattern.horizontal - info2.antenna.pattern.horizontal) > 1e-6))
     {
       g_error ("error in parameters");
     }
-
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
-  g_variant_unref (param_values[4]);
-  g_variant_unref (param_values[5]);
 
   hyscan_db_close (db, param_id);
 }
@@ -371,42 +282,12 @@ signal_check_info (HyScanDB *db,
 {
   gint32 param_id;
 
-  const gchar *param_names[5];
-  GVariant *param_values[5];
-
-  HyScanDataType data_type;
-
   param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id < 0)
-    g_error ("can't open signal parameters");
+    g_error ("can't open parameters");
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
-  param_names[4] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    g_error ("can't read signal parameters");
-
-  if ((g_variant_get_int64 (param_values[0]) != SIGNAL_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != SIGNAL_CHANNEL_SCHEMA_VERSION) )
-    {
-      g_error ("error in schema");
-    }
-
-  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
-
-  if ((data_type != HYSCAN_DATA_COMPLEX_FLOAT) ||
-      (g_variant_get_double (param_values[3]) != (1000.0 * n_channel)))
-    {
-      g_error ("error in parameters 2");
-    }
-
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
+  if (!hyscan_core_params_check_signal_info (db, param_id, 1000.0 * n_channel))
+    g_error ("error in parameters");
 
   hyscan_db_close (db, param_id);
 }
@@ -420,42 +301,12 @@ tvg_check_info (HyScanDB *db,
 {
   gint32 param_id;
 
-  const gchar *param_names[5];
-  GVariant *param_values[5];
-
-  HyScanDataType data_type;
-
   param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id < 0)
-    g_error ("can't open tvg parameters");
+    g_error ("can't open parameters");
 
-  param_names[0] = "/schema/id";
-  param_names[1] = "/schema/version";
-  param_names[2] = "/data/type";
-  param_names[3] = "/data/rate";
-  param_names[4] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, NULL, param_names, param_values))
-    g_error ("can't read tvg parameters");
-
-  if ((g_variant_get_int64 (param_values[0]) != TVG_CHANNEL_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != TVG_CHANNEL_SCHEMA_VERSION))
-    {
-      g_error ("error in schema");
-    }
-
-  data_type = hyscan_data_get_type_by_name (g_variant_get_string (param_values[2], NULL));
-
-  if ((data_type != HYSCAN_DATA_FLOAT) ||
-      (g_variant_get_double (param_values[3]) != (1000.0 * n_channel)))
-    {
-      g_error ("error in parameters 3");
-    }
-
-  g_variant_unref (param_values[0]);
-  g_variant_unref (param_values[1]);
-  g_variant_unref (param_values[2]);
-  g_variant_unref (param_values[3]);
+  if (!hyscan_core_params_check_tvg_info (db, param_id, 1000.0 * n_channel))
+    g_error ("error in parameters");
 
   hyscan_db_close (db, param_id);
 }
