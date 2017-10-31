@@ -38,7 +38,6 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshall
                     VERBATIM)
 
 add_library (${HYSCAN_CORE_LIBRARY} SHARED
-             hyscan-core-types.c
              hyscan-core-params.c
              hyscan-data-writer.c
              hyscan-raw-data.c
