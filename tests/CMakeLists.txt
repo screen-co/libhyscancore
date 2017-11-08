@@ -11,6 +11,7 @@ add_executable (nmea-data-test nmea-data-test.c)
 add_executable (forward-look-data-test forward-look-data-test.c hyscan-fl-gen.c)
 add_executable (forward-look-player-test forward-look-player-test.c hyscan-fl-gen.c)
 add_executable (geo-test geo-test.c)
+add_executable (depthometer-test depthometer-test.c)
 add_executable (depth-nmea-test depth-nmea-test.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
@@ -19,6 +20,7 @@ target_link_libraries (nmea-data-test ${TEST_LIBRARIES})
 target_link_libraries (forward-look-data-test ${TEST_LIBRARIES})
 target_link_libraries (forward-look-player-test ${TEST_LIBRARIES})
 target_link_libraries (geo-test ${TEST_LIBRARIES})
+target_link_libraries (depthometer-test ${TEST_LIBRARIES})
 target_link_libraries (depth-nmea-test ${TEST_LIBRARIES})
 
 install (TARGETS data-writer-test
@@ -27,6 +29,7 @@ install (TARGETS data-writer-test
                  forward-look-data-test
                  forward-look-player-test
                  geo-test
+                 depthometer-test
                  depth-nmea-test
          COMPONENT test
          RUNTIME DESTINATION bin

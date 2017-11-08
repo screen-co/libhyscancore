@@ -48,6 +48,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-geo.c
              hyscan-depth.c
              hyscan-depth-nmea.c
+             hyscan-depthometer.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -83,6 +84,7 @@ install (FILES hyscan-core-types.h
                hyscan-geo.h
                hyscan-depth.c
                hyscan-depth-nmea.c
+               hyscan-depthometer.c
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

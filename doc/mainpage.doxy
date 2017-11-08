@@ -14,5 +14,6 @@
  * - \link HyScanGeo \endlink - класс для работы с системами координат;
  * - \link HyScanDepth \endlink - интерфейс определения глубины;
  * - \link HyScanDepthNMEA \endlink - класс извлечения глубины из NMEA-строк;
+ * - \link HyScanDepthometer \endlink - класс работы с данными глубины.
  *
  */
