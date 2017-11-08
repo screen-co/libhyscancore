@@ -47,6 +47,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-forward-look-player.c
              hyscan-geo.c
              hyscan-depth.c
+             hyscan-depth-nmea.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -81,6 +82,7 @@ install (FILES hyscan-core-types.h
                hyscan-forward-look-player.h
                hyscan-geo.h
                hyscan-depth.c
+               hyscan-depth-nmea.c
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
