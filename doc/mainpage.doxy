@@ -11,6 +11,9 @@
  * - \link HyScanForwardLookData \endlink - класс обработки данных вперёдсмотрящего локатора;
  * - \link HyScanForwardLookPlayer \endlink - класс управления просмотром данных вперёдсмотрящего локатора;
  * - \link HyScanNMEAData \endlink - класс обработки данных NMEA;
- * - \link HyScanGeo \endlink - класс для работы с системами координат.
+ * - \link HyScanGeo \endlink - класс для работы с системами координат;
+ * - \link HyScanDepth \endlink - интерфейс определения глубины;
+ * - \link HyScanDepthNMEA \endlink - класс извлечения глубины из NMEA-строк;
+ * - \link HyScanDepthometer \endlink - класс работы с данными глубины.
  *
  */

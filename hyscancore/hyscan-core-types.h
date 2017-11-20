@@ -11,8 +11,9 @@
  * В HyScanCoreTypes вводятся определения следующих структур:
  *
  * - \link HyScanAntennaPosition \endlink - параметры местоположения приёмной антенны;
- * - \link HyScanRawDataInfo \endlink - параметры "сырых" гидролокационных данных.
- * - \link HyScanAcousticDataInfo \endlink - параметры акустических данных.
+ * - \link HyScanRawDataInfo \endlink - параметры "сырых" гидролокационных данных;
+ * - \link HyScanAcousticDataInfo \endlink - параметры акустических данных;
+ * - \link HyScanSoundVelocity \endlink - для табличного задания профиля скорости звука.
  *
  * В структуре \link HyScanAntennaPosition \endlink присутствует информация о местоположении
  * приёмных антенн. Смещения приёмной антенны указываются относительно центра масс судна.
@@ -98,6 +99,13 @@ typedef struct
     } pattern;
   } antenna;
 } HyScanAcousticDataInfo;
+
+/** \brief Таблица профиля скорости звука. */
+typedef struct
+{
+  gdouble                      depth;                          /**< Глубина. */
+  gdouble                      velocity;                       /**< Скорость звука. */
+} HyScanSoundVelocity;
 
 G_END_DECLS
 
