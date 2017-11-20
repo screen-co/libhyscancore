@@ -39,8 +39,8 @@
 #define __HYSCAN_NMEA_DATA_H__
 
 #include <hyscan-db.h>
+#include <hyscan-types.h>
 #include <hyscan-cache.h>
-#include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
 

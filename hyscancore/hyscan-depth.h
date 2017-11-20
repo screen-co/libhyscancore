@@ -38,7 +38,7 @@
 
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
-#include <hyscan-core-types.h>
+#include <hyscan-types.h>
 
 G_BEGIN_DECLS
 

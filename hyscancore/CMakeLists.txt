@@ -73,8 +73,7 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
          DESTINATION "lib/pkgconfig"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-install (FILES hyscan-core-types.h
-               hyscan-core-schemas.h
+install (FILES hyscan-core-schemas.h
                hyscan-data-writer.h
                hyscan-raw-data.h
                hyscan-acoustic-data.h

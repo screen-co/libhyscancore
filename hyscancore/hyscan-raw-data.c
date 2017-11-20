@@ -329,7 +329,7 @@ hyscan_raw_data_object_constructed (GObject *object)
           goto exit;
         }
 
-      status = hyscan_core_params_check_signal_info (priv->db, param_id, priv->info.data.rate);
+      status = hyscan_core_params_check_signal_info (priv->db, param_id, priv->info.data_rate);
       if (!status)
         {
           g_warning ("HyScanRawData: '%s.%s.%s-signal': error in parameters",
@@ -365,7 +365,7 @@ hyscan_raw_data_object_constructed (GObject *object)
           goto exit;
         }
 
-      status = hyscan_core_params_check_tvg_info (priv->db, param_id, priv->info.data.rate);
+      status = hyscan_core_params_check_tvg_info (priv->db, param_id, priv->info.data_rate);
       if (!status)
         {
           g_warning ("HyScanRawData: '%s.%s.%s-tvg': error in parameters",
@@ -662,7 +662,7 @@ hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
     return 0;
 
   /* Размер считанных данных должен быть кратен размеру точки. */
-  point_size = hyscan_data_get_point_size (priv->info.data.type);
+  point_size = hyscan_data_get_point_size (priv->info.data_type);
   if (io_size % point_size != 0)
     return 0;
   n_points = io_size / point_size;
@@ -671,7 +671,7 @@ hyscan_raw_data_read_data (HyScanRawDataPrivate *priv,
   hyscan_raw_data_buffer_realloc (priv, n_points);
 
   /* Импортируем данные в буфер обработки. */
-  status = hyscan_data_import_complex_float (priv->info.data.type,
+  status = hyscan_data_import_complex_float (priv->info.data_type,
                                              priv->raw_buffer->data, io_size,
                                              (HyScanComplexFloat*)priv->qdata_buffer->data, &n_points);
   if (!status)

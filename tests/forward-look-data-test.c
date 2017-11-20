@@ -77,16 +77,16 @@ int main( int argc, char **argv )
   position.gamma = 0.0;
   position.theta = 0.0;
 
-  raw_info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  raw_info.data.rate = 150000.0;
-  raw_info.antenna.offset.vertical = 0.0;
-  raw_info.antenna.offset.horizontal = 0.0;
-  raw_info.antenna.pattern.vertical = 10.0;
-  raw_info.antenna.pattern.horizontal = 50.0;
-  raw_info.antenna.frequency = 100000.0;
-  raw_info.antenna.bandwidth = 10000.0;
-  raw_info.adc.vref = 1.0;
-  raw_info.adc.offset = 0;
+  raw_info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  raw_info.data_rate = 150000.0;
+  raw_info.antenna_voffset = 0.0;
+  raw_info.antenna_hoffset = 0.0;
+  raw_info.antenna_vpattern = 10.0;
+  raw_info.antenna_hpattern = 50.0;
+  raw_info.antenna_frequency = 100000.0;
+  raw_info.antenna_bandwidth = 10000.0;
+  raw_info.adc_vref = 1.0;
+  raw_info.adc_offset = 0;
 
   /* Буферы для данных. */
   raw_values1 = g_new0 (guint16, 2 * n_points);

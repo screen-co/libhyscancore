@@ -49,8 +49,8 @@
 #define __HYSCAN_FORWARD_LOOK_DATA_H__
 
 #include <hyscan-db.h>
+#include <hyscan-types.h>
 #include <hyscan-cache.h>
-#include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
 

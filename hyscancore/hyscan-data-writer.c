@@ -482,7 +482,7 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  if (!hyscan_core_params_set_signal_info (priv->db, signal_id, info->data.rate))
+  if (!hyscan_core_params_set_signal_info (priv->db, signal_id, info->data_rate))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set signal parameters",
                  priv->project_name, priv->track_name, channel_name);
@@ -501,7 +501,7 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  if (!hyscan_core_params_set_tvg_info (priv->db, tvg_id, info->data.rate))
+  if (!hyscan_core_params_set_tvg_info (priv->db, tvg_id, info->data_rate))
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't set tvg parameters",
                  priv->project_name, priv->track_name, channel_name);
@@ -567,8 +567,8 @@ hyscan_data_writer_create_raw_channel (HyScanDataWriterPrivate *priv,
   channel_info->signal_id = signal_id;
   channel_info->tvg_id = tvg_id;
   channel_info->raw_source = source;
-  channel_info->data_type = info->data.type;
-  channel_info->data_rate = info->data.rate;
+  channel_info->data_type = info->data_type;
+  channel_info->data_rate = info->data_rate;
 
   g_hash_table_insert (priv->sonar_channels,
                        hyscan_data_writer_uniq_channel (source, TRUE, channel),
@@ -675,8 +675,8 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
   channel_info->signal_id = -1;
   channel_info->tvg_id = -1;
   channel_info->raw_source = 0;
-  channel_info->data_type = info->data.type;
-  channel_info->data_rate = info->data.rate;
+  channel_info->data_type = info->data_type;
+  channel_info->data_rate = info->data_rate;
 
   g_hash_table_insert (priv->sonar_channels,
                        hyscan_data_writer_uniq_channel (source, FALSE, 1),
@@ -1173,8 +1173,8 @@ hyscan_data_writer_raw_add_data (HyScanDataWriter     *writer,
     }
 
   /* Проверяем тип данных и частоту дисретизации. */
-  if ((channel_info->data_type == info->data.type) &&
-      (fabs (channel_info->data_rate - info->data.rate) < 1.0))
+  if ((channel_info->data_type == info->data_type) &&
+      (fabs (channel_info->data_rate - info->data_rate) < 1.0))
     {
       status = hyscan_db_channel_add_data (priv->db, channel_info->data_id, data->time, data->data, data->size, NULL);
     }
@@ -1239,8 +1239,8 @@ hyscan_data_writer_raw_add_noise (HyScanDataWriter     *writer,
     }
 
   /* Проверяем тип данных и частоту дискретизации. */
-  if ((channel_info->data_type == info->data.type) &&
-      (fabs (channel_info->data_rate - info->data.rate) < 1.0))
+  if ((channel_info->data_type == info->data_type) &&
+      (fabs (channel_info->data_rate - info->data_rate) < 1.0))
     {
       status = hyscan_db_channel_add_data (priv->db, channel_info->noise_id, data->time, data->data, data->size, NULL);
     }
@@ -1497,8 +1497,8 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
     }
 
   /* Проверяем тип данных и частоту дисретизации. */
-  if ((channel_info->data_type == info->data.type) &&
-      (fabs (channel_info->data_rate - info->data.rate) < 1.0))
+  if ((channel_info->data_type == info->data_type) &&
+      (fabs (channel_info->data_rate - info->data_rate) < 1.0))
     {
       status = hyscan_db_channel_add_data (priv->db, channel_info->data_id, data->time, data->data, data->size, NULL);
     }

@@ -99,18 +99,18 @@ raw_get_info (guint n_channel)
 {
   HyScanRawDataInfo info;
 
-  info.data.type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
-  info.data.rate = 1000.0 * n_channel;
+  info.data_type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
+  info.data_rate = 1000.0 * n_channel;
 
-  info.antenna.offset.vertical = 0.1 * n_channel;
-  info.antenna.offset.horizontal = 0.2 * n_channel;
-  info.antenna.pattern.vertical = 0.3 * n_channel;
-  info.antenna.pattern.horizontal = 0.4 * n_channel;
-  info.antenna.frequency = 0.5 * n_channel;
-  info.antenna.bandwidth = 0.6 * n_channel;
+  info.antenna_voffset = 0.1 * n_channel;
+  info.antenna_hoffset = 0.2 * n_channel;
+  info.antenna_vpattern = 0.3 * n_channel;
+  info.antenna_hpattern = 0.4 * n_channel;
+  info.antenna_frequency = 0.5 * n_channel;
+  info.antenna_bandwidth = 0.6 * n_channel;
 
-  info.adc.vref = 1.0 * n_channel;
-  info.adc.offset = 10 * n_channel;
+  info.adc_vref = 1.0 * n_channel;
+  info.adc_offset = 10 * n_channel;
 
   return info;
 }
@@ -121,11 +121,11 @@ acoustic_get_info (guint n_channel)
 {
   HyScanAcousticDataInfo info;
 
-  info.data.type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
-  info.data.rate = 1000.0 * n_channel;
+  info.data_type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
+  info.data_rate = 1000.0 * n_channel;
 
-  info.antenna.pattern.vertical = 0.1 * n_channel;
-  info.antenna.pattern.horizontal = 0.2 * n_channel;
+  info.antenna_vpattern = 0.1 * n_channel;
+  info.antenna_hpattern = 0.2 * n_channel;
 
   return info;
 }
@@ -226,16 +226,16 @@ raw_check_info (HyScanDB *db,
     g_error ("can't read parameters");
 
 
-  if ((info1.data.type != info2.data.type) ||
-      (fabs (info1.data.rate - info2.data.rate) > 1e-6) ||
-      (fabs (info1.antenna.offset.vertical - info2.antenna.offset.vertical) > 1e-6) ||
-      (fabs (info1.antenna.offset.horizontal - info2.antenna.offset.horizontal) > 1e-6) ||
-      (fabs (info1.antenna.pattern.vertical - info2.antenna.pattern.vertical) > 1e-6) ||
-      (fabs (info1.antenna.pattern.horizontal - info2.antenna.pattern.horizontal) > 1e-6) ||
-      (fabs (info1.antenna.frequency - info2.antenna.frequency) > 1e-6) ||
-      (fabs (info1.antenna.bandwidth - info2.antenna.bandwidth) > 1e-6) ||
-      (fabs (info1.adc.vref - info2.adc.vref) > 1e-6) ||
-      (info1.adc.offset != info2.adc.offset))
+  if ((info1.data_type != info2.data_type) ||
+      (fabs (info1.data_rate - info2.data_rate) > 1e-6) ||
+      (fabs (info1.antenna_voffset - info2.antenna_voffset) > 1e-6) ||
+      (fabs (info1.antenna_hoffset - info2.antenna_hoffset) > 1e-6) ||
+      (fabs (info1.antenna_vpattern - info2.antenna_vpattern) > 1e-6) ||
+      (fabs (info1.antenna_hpattern - info2.antenna_hpattern) > 1e-6) ||
+      (fabs (info1.antenna_frequency - info2.antenna_frequency) > 1e-6) ||
+      (fabs (info1.antenna_bandwidth - info2.antenna_bandwidth) > 1e-6) ||
+      (fabs (info1.adc_vref - info2.adc_vref) > 1e-6) ||
+      (info1.adc_offset != info2.adc_offset))
     {
       g_error ("error in parameters");
     }
@@ -263,10 +263,10 @@ acoustic_check_info (HyScanDB *db,
   if (!hyscan_core_params_load_acoustic_data_info (db, param_id, &info2))
     g_error ("can't read parameters");
 
-  if ((info1.data.type != info2.data.type) ||
-      (fabs (info1.data.rate - info2.data.rate) > 1e-6) ||
-      (fabs (info1.antenna.pattern.vertical - info2.antenna.pattern.vertical) > 1e-6) ||
-      (fabs (info1.antenna.pattern.horizontal - info2.antenna.pattern.horizontal) > 1e-6))
+  if ((info1.data_type != info2.data_type) ||
+      (fabs (info1.data_rate - info2.data_rate) > 1e-6) ||
+      (fabs (info1.antenna_vpattern - info2.antenna_vpattern) > 1e-6) ||
+      (fabs (info1.antenna_hpattern - info2.antenna_hpattern) > 1e-6))
     {
       g_error ("error in parameters");
     }
@@ -366,12 +366,12 @@ sonar_add_data (HyScanDataWriter *writer,
   signal.n_points = SIGNAL_SIZE;
   signal_points = g_new (HyScanComplexFloat, SIGNAL_SIZE);
   signal.points = signal_points;
-  signal.rate = raw_info.data.rate;
+  signal.rate = raw_info.data_rate;
 
   tvg.n_gains = TVG_SIZE;
   tvg_gains = g_new (gfloat, TVG_SIZE);
   tvg.gains = tvg_gains;
-  tvg.rate = raw_info.data.rate;
+  tvg.rate = raw_info.data_rate;
 
   source = sonar_get_type (n_channel);
 

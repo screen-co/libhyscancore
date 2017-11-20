@@ -12,7 +12,7 @@
 #define __HYSCAN_CORE_PARAMS_H__
 
 #include <hyscan-db.h>
-#include <hyscan-core-types.h>
+#include <hyscan-types.h>
 #include "hyscan-core-schemas.h"
 
 /* Функция устанавливает местоположение приёмной антенны. */

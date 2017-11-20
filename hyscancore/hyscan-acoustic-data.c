@@ -173,10 +173,10 @@ hyscan_acoustic_data_object_constructed (GObject *object)
       priv->position = hyscan_raw_data_get_position (priv->raw_data);
 
       raw_info = hyscan_raw_data_get_info (priv->raw_data);
-      priv->info.data.type = raw_info.data.type;
-      priv->info.data.rate = raw_info.data.rate;
-      priv->info.antenna.pattern.vertical = raw_info.antenna.pattern.vertical;
-      priv->info.antenna.pattern.horizontal = raw_info.antenna.pattern.horizontal;
+      priv->info.data_type = raw_info.data_type;
+      priv->info.data_rate = raw_info.data_rate;
+      priv->info.antenna_vpattern = raw_info.antenna_vpattern;
+      priv->info.antenna_hpattern = raw_info.antenna_hpattern;
 
       return;
     }
@@ -320,7 +320,7 @@ static void hyscan_acoustic_data_buffer_realloc (HyScanAcousticDataPrivate *priv
   if (max_size + 16 <= priv->raw_buffer->len)
     return;
 
-  point_size = hyscan_data_get_point_size (priv->info.data.type);
+  point_size = hyscan_data_get_point_size (priv->info.data_type);
 
   g_array_set_size (priv->raw_buffer, max_size + 16);
   g_array_set_size (priv->amp_buffer, max_size / point_size);
@@ -624,7 +624,7 @@ hyscan_acoustic_data_get_values (HyScanAcousticData *data,
     }
 
   /* Если данные уже типа FLOAT, возвращаем их как есть. */
-  if (priv->info.data.type == HYSCAN_DATA_FLOAT)
+  if (priv->info.data_type == HYSCAN_DATA_FLOAT)
     {
       *n_points = io_size / sizeof (gfloat);
 
@@ -634,7 +634,7 @@ hyscan_acoustic_data_get_values (HyScanAcousticData *data,
     {
       *n_points = priv->amp_buffer->len;
 
-      status = hyscan_data_import_float (priv->info.data.type,
+      status = hyscan_data_import_float (priv->info.data_type,
                                          priv->raw_buffer->data, io_size,
                                          (gfloat*)priv->amp_buffer->data, n_points);
 

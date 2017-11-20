@@ -11,7 +11,6 @@
 #include "hyscan-fl-gen.h"
 
 #include <hyscan-data-writer.h>
-#include <hyscan-core-types.h>
 
 #include <math.h>
 
@@ -84,11 +83,11 @@ hyscan_fl_gen_set_info (HyScanFLGen       *fl_gen,
   fl_gen->priv->info1 = *info;
   fl_gen->priv->info2 = *info;
 
-  fl_gen->priv->info1.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  fl_gen->priv->info2.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  fl_gen->priv->info1.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  fl_gen->priv->info2.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
 
-  fl_gen->priv->info1.antenna.offset.horizontal = 0.0;
-  fl_gen->priv->info2.antenna.offset.horizontal = 0.01;
+  fl_gen->priv->info1.antenna_hoffset = 0.0;
+  fl_gen->priv->info2.antenna_hoffset = 0.01;
 }
 
 gboolean

@@ -60,16 +60,16 @@ hyscan_core_params_set_raw_data_info (HyScanDB          *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data.type));
-  hyscan_param_list_set_double (param_list, "/data/rate", info->data.rate);
-  hyscan_param_list_set_double (param_list, "/antenna/offset/vertical", info->antenna.offset.vertical);
-  hyscan_param_list_set_double (param_list, "/antenna/offset/horizontal", info->antenna.offset.horizontal);
-  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna.pattern.vertical);
-  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna.pattern.horizontal);
-  hyscan_param_list_set_double (param_list, "/antenna/frequency", info->antenna.frequency);
-  hyscan_param_list_set_double (param_list, "/antenna/bandwidth", info->antenna.bandwidth);
-  hyscan_param_list_set_double (param_list, "/adc/vref", info->adc.vref);
-  hyscan_param_list_set_integer (param_list, "/adc/offset", info->adc.offset);
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data_type));
+  hyscan_param_list_set_double (param_list, "/data/rate", info->data_rate);
+  hyscan_param_list_set_double (param_list, "/antenna/offset/vertical", info->antenna_voffset);
+  hyscan_param_list_set_double (param_list, "/antenna/offset/horizontal", info->antenna_hoffset);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna_vpattern);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna_hpattern);
+  hyscan_param_list_set_double (param_list, "/antenna/frequency", info->antenna_frequency);
+  hyscan_param_list_set_double (param_list, "/antenna/bandwidth", info->antenna_bandwidth);
+  hyscan_param_list_set_double (param_list, "/adc/vref", info->adc_vref);
+  hyscan_param_list_set_integer (param_list, "/adc/offset", info->adc_offset);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
 
@@ -95,10 +95,10 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data.type));
-  hyscan_param_list_set_double (param_list, "/data/rate", info->data.rate);
-  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna.pattern.vertical);
-  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna.pattern.horizontal);
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data_type));
+  hyscan_param_list_set_double (param_list, "/data/rate", info->data_rate);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna_vpattern);
+  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna_hpattern);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
 
@@ -241,16 +241,16 @@ hyscan_core_params_load_raw_data_info (HyScanDB          *db,
       goto exit;
     }
 
-  info->data.type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
-  info->data.rate = hyscan_param_list_get_double (param_list, "/data/rate");
-  info->antenna.offset.vertical = hyscan_param_list_get_double (param_list, "/antenna/offset/vertical");
-  info->antenna.offset.horizontal = hyscan_param_list_get_double (param_list, "/antenna/offset/horizontal");
-  info->antenna.pattern.vertical = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
-  info->antenna.pattern.horizontal = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
-  info->antenna.frequency = hyscan_param_list_get_double (param_list, "/antenna/frequency");
-  info->antenna.bandwidth = hyscan_param_list_get_double (param_list, "/antenna/bandwidth");
-  info->adc.vref = hyscan_param_list_get_double (param_list, "/adc/vref");
-  info->adc.offset = hyscan_param_list_get_integer (param_list, "/adc/offset");
+  info->data_type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  info->data_rate = hyscan_param_list_get_double (param_list, "/data/rate");
+  info->antenna_voffset = hyscan_param_list_get_double (param_list, "/antenna/offset/vertical");
+  info->antenna_hoffset = hyscan_param_list_get_double (param_list, "/antenna/offset/horizontal");
+  info->antenna_vpattern = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
+  info->antenna_hpattern = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
+  info->antenna_frequency = hyscan_param_list_get_double (param_list, "/antenna/frequency");
+  info->antenna_bandwidth = hyscan_param_list_get_double (param_list, "/antenna/bandwidth");
+  info->adc_vref = hyscan_param_list_get_double (param_list, "/adc/vref");
+  info->adc_offset = hyscan_param_list_get_integer (param_list, "/adc/offset");
 
   status = TRUE;
 
@@ -287,10 +287,10 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
       goto exit;
     }
 
-  info->data.type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
-  info->data.rate = hyscan_param_list_get_double (param_list, "/data/rate");
-  info->antenna.pattern.vertical = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
-  info->antenna.pattern.horizontal = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
+  info->data_type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  info->data_rate = hyscan_param_list_get_double (param_list, "/data/rate");
+  info->antenna_vpattern = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
+  info->antenna_hpattern = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
 
   status = TRUE;
 

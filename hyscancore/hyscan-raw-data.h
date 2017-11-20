@@ -61,8 +61,8 @@
 #define __HYSCAN_RAW_DATA_H__
 
 #include <hyscan-db.h>
+#include <hyscan-types.h>
 #include <hyscan-cache.h>
-#include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
 

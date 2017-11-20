@@ -178,10 +178,10 @@ hyscan_forward_look_data_object_constructed (GObject *object)
   /* Проверяем параметры каналов данных.
    * Должны быть указаны рабочая частота и база антенны, а также должны
    * совпадать рабочие частоты каналов и частоты оцифровки данных.*/
-  if ((channel_info1.antenna.frequency < 1.0) ||
-      (fabs (channel_info1.antenna.offset.horizontal - channel_info2.antenna.offset.horizontal) < 1e-4) ||
-      (fabs (channel_info1.data.rate - channel_info2.data.rate) > 0.1) ||
-      (fabs (channel_info1.antenna.frequency - channel_info2.antenna.frequency) > 0.1))
+  if ((channel_info1.antenna_frequency < 1.0) ||
+      (fabs (channel_info1.antenna_hoffset - channel_info2.antenna_hoffset) < 1e-4) ||
+      (fabs (channel_info1.data_rate - channel_info2.data_rate) > 0.1) ||
+      (fabs (channel_info1.antenna_frequency - channel_info2.antenna_frequency) > 0.1))
     {
       g_warning ("HyScanForwardLookData: error in channels parameters");
       g_clear_object (&priv->channel1);
@@ -194,9 +194,9 @@ hyscan_forward_look_data_object_constructed (GObject *object)
   priv->doa = g_array_new (TRUE, TRUE, sizeof (HyScanForwardLookDOA));
 
   /* Параметры обработки. */
-  priv->data_rate = channel_info1.data.rate;
-  priv->antenna_base = channel_info2.antenna.offset.horizontal - channel_info1.antenna.offset.horizontal;
-  priv->frequency = channel_info1.antenna.frequency;
+  priv->data_rate = channel_info1.data_rate;
+  priv->antenna_base = channel_info2.antenna_hoffset - channel_info1.antenna_hoffset;
+  priv->frequency = channel_info1.antenna_frequency;
   hyscan_forward_look_data_set_sound_velocity (data, 1500.0);
 }
 

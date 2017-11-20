@@ -2,7 +2,6 @@
 #include <hyscan-raw-data.h>
 #include <hyscan-acoustic-data.h>
 #include <hyscan-data-writer.h>
-#include <hyscan-core-types.h>
 #include <hyscan-cached.h>
 
 #include <libxml/parser.h>
@@ -94,21 +93,21 @@ int main( int argc, char **argv )
   position.gamma = 0.0;
   position.theta = 0.0;
 
-  raw_info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  raw_info.data.rate = discretization;
-  raw_info.antenna.offset.vertical = 0.0;
-  raw_info.antenna.offset.horizontal = 0.0;
-  raw_info.antenna.pattern.vertical = 40.0;
-  raw_info.antenna.pattern.horizontal = 2.0;
-  raw_info.antenna.frequency = frequency;
-  raw_info.antenna.bandwidth = 0.1 * frequency;
-  raw_info.adc.vref = 1.0;
-  raw_info.adc.offset = 0;
+  raw_info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  raw_info.data_rate = discretization;
+  raw_info.antenna_voffset = 0.0;
+  raw_info.antenna_hoffset = 0.0;
+  raw_info.antenna_vpattern = 40.0;
+  raw_info.antenna_hpattern = 2.0;
+  raw_info.antenna_frequency = frequency;
+  raw_info.antenna_bandwidth = 0.1 * frequency;
+  raw_info.adc_vref = 1.0;
+  raw_info.adc_offset = 0;
 
-  acoustic_info.data.type = HYSCAN_DATA_AMPLITUDE_INT_16LE;
-  acoustic_info.data.rate = discretization;
-  acoustic_info.antenna.pattern.vertical = 40.0;
-  acoustic_info.antenna.pattern.horizontal = 2.0;
+  acoustic_info.data_type = HYSCAN_DATA_AMPLITUDE_INT_16LE;
+  acoustic_info.data_rate = discretization;
+  acoustic_info.antenna_vpattern = 40.0;
+  acoustic_info.antenna_hpattern = 2.0;
 
   signal_size = discretization * duration;
   data_size = 100 * signal_size;
