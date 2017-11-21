@@ -49,9 +49,7 @@
 #ifndef __HYSCAN_PROJECTOR_H__
 #define __HYSCAN_PROJECTOR_H__
 
-#include <hyscan-cache.h>
-#include <hyscan-db.h>
-#include <hyscan-core-types.h>
+#include <hyscan-acoustic-data.h>
 
 G_BEGIN_DECLS
 
@@ -86,10 +84,10 @@ GType                   hyscan_projector_get_type               (void);
  * Функция создает новый объект.
  *
  * \param db указатель на объект \link HyScanDB \endlink;
- * \param project_name название проекта;
- * \param track_name название галса;
- * \param source_type тип источника данных;
- * \param raw использовать - TRUE или нет - FALSE сырые данные.
+ * \param project название проекта;
+ * \param track название галса;
+ * \param source тип источника данных;
+ * \param raw использовать (TRUE) или нет (FALSE) сырые данные.
  *
  * \return указатель на объект HyScanProjector.
  */
@@ -155,6 +153,18 @@ void                    hyscan_projector_set_precalc_points     (HyScanProjector
 
 /**
  *
+ * Функция возвращает объект работы с акустическими данными.
+ * // TODO: унаследоваться от HyScanAcousticData?
+ *
+ * \param projector указатель на объект \link HyScanAcousticData \endlink;
+ *
+ * \return указатель на HyScanAcousticData.
+ *
+ */
+HYSCAN_API
+const HyScanAcousticData *hyscan_projector_get_acoustic_data    (HyScanProjector   *projector);
+/**
+ *
  * Функция ищет индекс по координате.
  *
  * \param projector указатель на объект \link HyScanProjector \endlink;
@@ -186,10 +196,11 @@ gboolean                hyscan_projector_index_to_coord         (HyScanProjector
 
 /**
  *
- * Функция
+ * Функция определяет индекс строки по координате.
  *
  * \param projector указатель на объект \link HyScanProjector \endlink;
- * \param
+ * \param along координата;
+ * \param index индекс.
  *
  * \return
  */

@@ -15,14 +15,7 @@
  *
  * Класс решает задачи добавления, удаления, модификации и получения меток.
  *
- * Метка однозначно определяется её идентификатором. Все операции (кроме добавления меток)
- * требуют специально указанного параметра id. Здесь нужно сделать важное замечание:
- *
- * \warning Относительно методов #hyscan_waterfall_mark_data_add и #hyscan_waterfall_mark_data_modify:
- * id, указанный внутри переданной структуры, будет полностью проигнорирован! Значение имеет только
- * идентификатор, переданный как параметр!
- *
- *
+ * Класс не потокобезопасен.
  */
 
 #ifndef __HYSCAN_WATERFALL_MARK_DATA_H__
@@ -60,68 +53,93 @@ struct _HyScanWaterfallMarkDataClass
 HYSCAN_API
 GType                           hyscan_waterfall_mark_data_get_type          (void);
 
+/**
+ *
+ * Функция создает новый объект работы с метками.
+ *
+ * \param db указатель на объект \link HyScanDB \endlink;
+ * \param project имя проекта;
+ *
+ * \return Указатель на объект \link HyScanWaterfallMarkData \endlink или NULL.
+ *
+ */
 HYSCAN_API
 HyScanWaterfallMarkData        *hyscan_waterfall_mark_data_new               (HyScanDB                   *db,
-                                                                              const gchar                *project,
-                                                                              const gchar                *track,
-                                                                              const gchar                *profile);
+                                                                              const gchar                *project);
 
+/**
+ *
+ * Функция добавляет метку в базу данных.
+ *
+ * \param data указатель на объект \link HyScanWaterfallMarkData \endlink;
+ * \param mark указатель на структуру \link HyScanWaterfallMark \endlink.
+ *
+ * \return TRUE, если удалось добавить метку, иначе FALSE.
+ */
 HYSCAN_API
 gboolean                        hyscan_waterfall_mark_data_add               (HyScanWaterfallMarkData    *data,
                                                                               HyScanWaterfallMark        *mark);
 
-HYSCAN_API
-gboolean                        hyscan_waterfall_mark_data_add_full          (HyScanWaterfallMarkData    *data,
-                                                                              gchar                      *name,
-                                                                              gchar                      *description,
-                                                                              gchar                      *operator_name,
-                                                                              guint64                     labels,
-                                                                              gint64                      creation_time,
-                                                                              gint64                      modification_time,
-                                                                              HyScanSourceType            source0,
-                                                                              guint32                     index0,
-                                                                              guint32                     count0,
-                                                                              HyScanSourceType            source1,
-                                                                              guint32                     index1,
-                                                                              guint32                     count1);
-
+/**
+ *
+ * Функция удаляет метку из базы данных.
+ *
+ * \param data указатель на объект \link HyScanWaterfallMarkData \endlink;
+ * \param id идентификатор метки.
+ *
+ * \return TRUE, если удалось удалить метку, иначе FALSE.
+ */
 HYSCAN_API
 gboolean                        hyscan_waterfall_mark_data_remove            (HyScanWaterfallMarkData    *data,
                                                                               const gchar                *id);
 
+/**
+ *
+ * Функция изменяет метку.
+ *
+ * \param data указатель на объект \link HyScanWaterfallMarkData \endlink;
+ * \param id идентификатор метки;
+ * \param mark указатель на структуру \link HyScanWaterfallMark \endlink.
+ *
+ * \return TRUE, если удалось изменить метку, иначе FALSE.
+ */
 HYSCAN_API
 gboolean                        hyscan_waterfall_mark_data_modify            (HyScanWaterfallMarkData    *data,
                                                                               const gchar                *id,
                                                                               HyScanWaterfallMark        *mark);
 
-HYSCAN_API
-gboolean                        hyscan_waterfall_mark_data_modify_full       (HyScanWaterfallMarkData    *data,
-                                                                              const gchar                *id,
-                                                                              gchar                      *name,
-                                                                              gchar                      *description,
-                                                                              gchar                      *operator_name,
-                                                                              guint64                     labels,
-                                                                              gint64                      creation_time,
-                                                                              gint64                      modification_time,
-                                                                              HyScanSourceType            source0,
-                                                                              guint32                     index0,
-                                                                              guint32                     count0,
-                                                                              HyScanSourceType            source1,
-                                                                              guint32                     index1,
-                                                                              guint32                     count1);
-
-
+/**
+ *
+ * Функция возвращает список идентификаторов всех меток.
+ *
+ * \param data указатель на объект \link HyScanWaterfallMarkData \endlink;
+ * \param len количество элементов или NULL.
+ *
+ * \return NULL-терминированный список идентификаторов, NULL если меток нет.
+ */
 HYSCAN_API
 gchar                         **hyscan_waterfall_mark_data_get_ids           (HyScanWaterfallMarkData    *data,
                                                                               guint                      *len);
+/**
+ *
+ * Функция возвращает метку по идентификатору.
+ *
+ * \param data указатель на объект \link HyScanWaterfallMarkData \endlink;
+ * \param id идентификатор метки.
+ *
+ * \return указатель на структуру \link HyScanWaterfallMark \endlink, NULL в случае ошибки.
+ */
 HYSCAN_API
 HyScanWaterfallMark            *hyscan_waterfall_mark_data_get               (HyScanWaterfallMarkData    *data,
                                                                               const gchar                *id);
-HYSCAN_API
-gboolean                        hyscan_waterfall_mark_data_get_full          (HyScanWaterfallMarkData    *data,
-                                                                              const gchar                *id,
-                                                                              HyScanWaterfallMark        *mark);
-
+/**
+ *
+ * Функция возвращает счётчик изменений.
+ *
+ * \param data указатель на объект \link HyScanWaterfallMarkData \endlink;
+ *
+ * \return номер изменения.
+ */
 HYSCAN_API
 guint32                         hyscan_waterfall_mark_data_get_mod_count     (HyScanWaterfallMarkData    *data);
 

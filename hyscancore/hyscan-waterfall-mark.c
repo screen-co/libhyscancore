@@ -1,7 +1,7 @@
 /*
- * \file hyscan-tile-common.c
+ * \file hyscan-waterfall-mark.c
  *
- * \brief Исходный код вспомогательных функций для тайлов.
+ * \brief Исходный код вспомогательных функций для меток.
  * \author Dmitriev Alexander (m1n7@yandex.ru)
  * \date 2017
  * \license Проприетарная лицензия ООО "Экран"
@@ -9,18 +9,20 @@
  */
 #include <hyscan-waterfall-mark.h>
 
+/* Функция освобождает внутренние поля структуры. */
 void
 hyscan_waterfall_mark_free (HyScanWaterfallMark *mark)
 {
   if (mark == NULL)
     return;
 
-  /* Освобождаем внутренние поля. */
+  g_free (mark->track);
   g_free (mark->name);
   g_free (mark->description);
   g_free (mark->operator_name);
 }
 
+/* Функция полностью освобождает память, занятую меткой. */
 void
 hyscan_waterfall_mark_deep_free (HyScanWaterfallMark *mark)
 {
@@ -31,28 +33,28 @@ hyscan_waterfall_mark_deep_free (HyScanWaterfallMark *mark)
   g_free (mark);
 }
 
+/* Функция возвращает полную копию метки. */
 HyScanWaterfallMark*
-hyscan_waterfall_mark_copy (const HyScanWaterfallMark *mark)
+hyscan_waterfall_mark_copy (const HyScanWaterfallMark *_mark)
 {
-  HyScanWaterfallMark *new;
+  HyScanWaterfallMark *mark;
 
-  if (mark == NULL)
-    return NULL;
+  g_return_val_if_fail (_mark != NULL, NULL);
 
-  new = g_new (HyScanWaterfallMark, 1);
+  mark = g_new (HyScanWaterfallMark, 1);
 
-  new->name              = g_strdup (mark->name);
-  new->description       = g_strdup (mark->description);
-  new->operator_name     = g_strdup (mark->operator_name);
-  new->labels            = mark->labels;
-  new->creation_time     = mark->creation_time;
-  new->modification_time = mark->modification_time;
-  new->source0           = mark->source0;
-  new->index0            = mark->index0;
-  new->count0            = mark->count0;
-  new->source1           = mark->source1;
-  new->index1            = mark->index1;
-  new->count1            = mark->count1;
-  
-  return new;
+  mark->track             = g_strdup (_mark->track);
+  mark->name              = g_strdup (_mark->name);
+  mark->description       = g_strdup (_mark->description);
+  mark->operator_name     = g_strdup (_mark->operator_name);
+  mark->labels            = _mark->labels;
+  mark->creation_time     = _mark->creation_time;
+  mark->modification_time = _mark->modification_time;
+  mark->source0           = _mark->source0;
+  mark->index0            = _mark->index0;
+  mark->count0            = _mark->count0;
+  mark->width             = _mark->width;
+  mark->height            = _mark->height;
+
+  return mark;
 }

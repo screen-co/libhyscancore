@@ -58,7 +58,6 @@
 #include <hyscan-core-marshallers.h>
 #include <hyscan-waterfall-tile.h>
 #include <hyscan-depth-nmea.h>
-#include <hyscan-depth-acoustic.h>
 #include <string.h>
 #include <zlib.h>
 
@@ -371,17 +370,7 @@ hyscan_tile_queue_open_depth (HyScanTileQueueState *state)
   HyScanSourceType source = state->depth_source;
   HyScanDepth *depth = NULL;
 
-  if (hyscan_source_is_acoustic (source))
-    {
-      HyScanDepthAcoustic *dacoustic;
-      dacoustic = hyscan_depth_acoustic_new (state->db, state->project, state->track, source, state->raw);
-
-      if (dacoustic != NULL)
-        hyscan_depth_acoustic_set_sound_velocity (dacoustic, state->sound_velocity);
-
-      depth = HYSCAN_DEPTH (dacoustic);
-    }
-  else if (HYSCAN_SOURCE_NMEA_DPT == source)
+  if (HYSCAN_SOURCE_NMEA_DPT == source)
     {
       HyScanDepthNMEA *dnmea;
       dnmea = hyscan_depth_nmea_new (state->db, state->project, state->track, state->depth_channel);
@@ -410,7 +399,7 @@ hyscan_tile_queue_open_depthometer (HyScanTileQueueState *state,
 
   hyscan_depthometer_set_cache (meter, state->cache, state->prefix);
   hyscan_depthometer_set_filter_size (meter, state->depth_size);
-  hyscan_depthometer_set_time_precision (meter, state->depth_time);
+  hyscan_depthometer_set_validity_time (meter, state->depth_time);
 
   return meter;
 }
@@ -535,88 +524,88 @@ static void
 hyscan_tile_queue_sync_states (HyScanTileQueue *self)
 {
   HyScanTileQueuePrivate *priv = self->priv;
-  HyScanTileQueueState *new = &priv->des_state;
-  HyScanTileQueueState *cur = &priv->cur_state;
+  HyScanTileQueueState *new_st = &priv->des_state;
+  HyScanTileQueueState *cur_st = &priv->cur_state;
 
-  if (new->track_changed)
+  if (new_st->track_changed)
     {
       /* Очищаем текущее. */
-      g_clear_object (&cur->db);
-      g_clear_pointer (&cur->project, g_free);
-      g_clear_pointer (&cur->track, g_free);
+      g_clear_object (&cur_st->db);
+      g_clear_pointer (&cur_st->project, g_free);
+      g_clear_pointer (&cur_st->track, g_free);
 
       /* Копируем из нового. */
-      cur->db = g_object_ref (new->db);
-      cur->project = g_strdup (new->project);
-      cur->track = g_strdup (new->track);
-      cur->raw = new->raw;
+      cur_st->db = g_object_ref (new_st->db);
+      cur_st->project = g_strdup (new_st->project);
+      cur_st->track = g_strdup (new_st->track);
+      cur_st->raw = new_st->raw;
 
       /* Выставляем флаги. */
-      new->track_changed = FALSE;
-      cur->track_changed = TRUE;
+      new_st->track_changed = FALSE;
+      cur_st->track_changed = TRUE;
     }
 
-  if (new->cache_changed)
+  if (new_st->cache_changed)
     {
-      g_clear_object (&cur->cache);
-      g_clear_pointer (&cur->prefix, g_free);
+      g_clear_object (&cur_st->cache);
+      g_clear_pointer (&cur_st->prefix, g_free);
 
-      cur->cache = g_object_ref (new->cache);
-      cur->prefix = g_strdup (new->prefix);
+      cur_st->cache = g_object_ref (new_st->cache);
+      cur_st->prefix = g_strdup (new_st->prefix);
 
-      new->cache_changed = FALSE;
-      cur->cache_changed = TRUE;
+      new_st->cache_changed = FALSE;
+      cur_st->cache_changed = TRUE;
     }
 
-  if (new->depth_source_changed)
+  if (new_st->depth_source_changed)
     {
-      cur->depth_source = new->depth_source;
-      cur->depth_channel = new->depth_channel;
-      cur->depth_time = new->depth_time;
-      cur->depth_size = new->depth_size;
+      cur_st->depth_source = new_st->depth_source;
+      cur_st->depth_channel = new_st->depth_channel;
+      cur_st->depth_time = new_st->depth_time;
+      cur_st->depth_size = new_st->depth_size;
 
-      new->depth_source_changed = FALSE;
-      new->depth_time_changed = FALSE;
-      new->depth_size_changed = FALSE;
-      cur->depth_source_changed = TRUE;
-      cur->depth_time_changed = TRUE;
-      cur->depth_size_changed = TRUE;
+      new_st->depth_source_changed = FALSE;
+      new_st->depth_time_changed = FALSE;
+      new_st->depth_size_changed = FALSE;
+      cur_st->depth_source_changed = TRUE;
+      cur_st->depth_time_changed = TRUE;
+      cur_st->depth_size_changed = TRUE;
     }
 
-  if (new->depth_time_changed)
+  if (new_st->depth_time_changed)
     {
-      cur->depth_time = new->depth_time;
-      cur->depth_size = new->depth_size;
+      cur_st->depth_time = new_st->depth_time;
+      cur_st->depth_size = new_st->depth_size;
 
-      new->depth_time_changed = FALSE;
-      cur->depth_time_changed = TRUE;
+      new_st->depth_time_changed = FALSE;
+      cur_st->depth_time_changed = TRUE;
     }
-  if (new->depth_size_changed)
+  if (new_st->depth_size_changed)
     {
-      cur->depth_time = new->depth_time;
-      cur->depth_size = new->depth_size;
+      cur_st->depth_time = new_st->depth_time;
+      cur_st->depth_size = new_st->depth_size;
 
-      new->depth_size_changed = FALSE;
-      cur->depth_size_changed = TRUE;
+      new_st->depth_size_changed = FALSE;
+      cur_st->depth_size_changed = TRUE;
     }
 
-  if (new->speed_changed)
+  if (new_st->speed_changed)
     {
-      cur->ship_speed = new->ship_speed;
+      cur_st->ship_speed = new_st->ship_speed;
 
-      cur->speed_changed = TRUE;
-      new->speed_changed = FALSE;
+      cur_st->speed_changed = TRUE;
+      new_st->speed_changed = FALSE;
     }
-  if (new->velocity_changed)
+  if (new_st->velocity_changed)
     {
-      if (cur->sound_velocity != NULL)
-        g_clear_pointer (&cur->sound_velocity, g_array_unref);
+      if (cur_st->sound_velocity != NULL)
+        g_clear_pointer (&cur_st->sound_velocity, g_array_unref);
 
-      cur->sound_velocity = g_array_ref (new->sound_velocity);
-      cur->sound_velocity1 = new->sound_velocity1;
+      cur_st->sound_velocity = g_array_ref (new_st->sound_velocity);
+      cur_st->sound_velocity1 = new_st->sound_velocity1;
 
-      cur->velocity_changed = TRUE;
-      new->velocity_changed = FALSE;
+      cur_st->velocity_changed = TRUE;
+      new_st->velocity_changed = FALSE;
     }
 }
 
@@ -662,7 +651,7 @@ hyscan_tile_queue_apply_updates (HyScanTileQueue *self)
           if (HYSCAN_IS_DEPTHOMETER (value))
             {
               hyscan_depthometer_set_filter_size (HYSCAN_DEPTHOMETER (value), state->depth_size);
-              hyscan_depthometer_set_time_precision (HYSCAN_DEPTHOMETER (value), state->depth_time);
+              hyscan_depthometer_set_validity_time (HYSCAN_DEPTHOMETER (value), state->depth_time);
             }
         }
       goto cache_setup;

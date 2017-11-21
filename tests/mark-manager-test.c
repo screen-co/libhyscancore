@@ -14,23 +14,23 @@ typedef enum
   LAST
 } Actions;
 
-void                 changed_cb      (HyScanMarkManager *model,
-                                      gpointer         data);
+void                 changed_cb        (HyScanMarkManager   *model,
+                                        gpointer             data);
 
-gboolean             make_track      (HyScanDB        *db,
-                                      gchar           *name);
+gboolean             make_track        (HyScanDB            *db,
+                                        gchar               *name);
 
-guint                hash_table_len  (GHashTable      *ht);
-HyScanWaterfallMark *make_mark       (gint             seed,
-                                      gint             seed2);
-gboolean             mark_manager_test (gpointer         data);
+guint                hash_table_len    (GHashTable          *ht);
+HyScanWaterfallMark *make_mark         (gint                 seed,
+                                        gint                 seed2);
+gboolean             mark_manager_test (gpointer             data);
 
-gboolean             final_check     (GSList          *expect,
-                                      GHashTable      *real);
+gboolean             final_check       (GSList              *expect,
+                                        GHashTable          *real);
 
-void                 update_list     (HyScanWaterfallMark *new,
-                                      HyScanWaterfallMark *old,
-                                      Actions              action);
+void                 update_list       (HyScanWaterfallMark *cur,
+                                        HyScanWaterfallMark *prev,
+                                        Actions              action);
 
 static gint        count = 10;
 static gboolean    verbose = FALSE;
@@ -109,9 +109,8 @@ main (int argc, char **argv)
   loop = g_main_loop_new (NULL, TRUE);
   g_timeout_add (interval, mark_manager_test, loop);
 
-  model = hyscan_mark_manager_new (db);
-  hyscan_mark_manager_set_profile (model, "profile");
-  hyscan_mark_manager_set_track (model, name, name);
+  model = hyscan_mark_manager_new ();
+  hyscan_mark_manager_set_project (model, db, name);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
 
   g_main_loop_run (loop);
@@ -151,11 +150,9 @@ changed_cb (HyScanMarkManager *model,
   GHashTableIter iter;
   gpointer key, value;
 
-  count--;
-
   if (count)
     {
-      g_print ("%i iterations left...\n", count + 1);
+      g_print ("%i iterations left...\n", count);
       ht = hyscan_mark_manager_get (model);
     }
   else
@@ -182,6 +179,7 @@ changed_cb (HyScanMarkManager *model,
   if_verbose ("+-----------------------------------+\n");
 
   g_hash_table_unref (ht);
+  count--;
 }
 
 gboolean
@@ -241,6 +239,7 @@ make_mark (gint   seed,
            gint   seed2)
 {
   HyScanWaterfallMark *mark = g_new0 (HyScanWaterfallMark, 1);
+  mark->track = g_strdup_printf ("TrackID%05i%05i", seed, seed2);
   mark->name = g_strdup_printf ("Mark %05i%05i", seed, seed2);
   mark->description = g_strdup_printf ("description %i", seed);
   mark->operator_name = g_strdup_printf ("Operator %i", seed2);
@@ -250,9 +249,8 @@ make_mark (gint   seed,
   mark->source0 = seed;
   mark->index0 = seed;
   mark->count0 = seed;
-  mark->source1 = seed * 10;
-  mark->index1 = seed * 10;
-  mark->count1 = seed * 10;
+  mark->width = seed * 2;
+  mark->height = seed * 5;
 
   return mark;
 }
@@ -260,7 +258,6 @@ make_mark (gint   seed,
 gboolean
 mark_manager_test (gpointer data)
 {
-  GMainLoop *loop = data;
   GRand *grand = g_rand_new ();
   gint action;
   GHashTable *ht;
@@ -285,7 +282,7 @@ mark_manager_test (gpointer data)
   if (action == ADD)
     {
       if_verbose ("Add <%s>\n", mark->name);
-      hyscan_mark_manager_add (model, mark);
+      hyscan_mark_manager_add_mark (model, mark);
     }
   else
     {
@@ -301,12 +298,12 @@ mark_manager_test (gpointer data)
           if (action == REMOVE)
             {
               if_verbose ("Remove <%s>\n", ((HyScanWaterfallMark*)value)->name);
-              hyscan_mark_manager_remove (model, key);
+              hyscan_mark_manager_remove_mark (model, key);
             }
           else if (action == MODIFY)
             {
               if_verbose ("Modify <%s> to <%s>\n", ((HyScanWaterfallMark*)value)->name, mark->name);
-              hyscan_mark_manager_modify (model, key, mark);
+              hyscan_mark_manager_modify_mark (model, key, mark);
             }
           break;
         }
@@ -364,8 +361,7 @@ final_check (GSList     *expect,
 
   for (link = expect; link != NULL; link = link->next)
     {
-      mark = link->data;
-      if_verbose ("%s: in expected list only\n", mark->name);
+      if_verbose ("%s: in expected list only\n", (gchar*)link->data);
     }
 
   if (res)
@@ -378,19 +374,19 @@ final_check (GSList     *expect,
 }
 
 void
-update_list (HyScanWaterfallMark *new,
-             HyScanWaterfallMark *old,
+update_list (HyScanWaterfallMark *cur,
+             HyScanWaterfallMark *prev,
              Actions              action)
 {
   GSList *link;
 
   if (action == ADD)
     {
-      performed = g_slist_append (performed, g_strdup (new->name));
+      performed = g_slist_append (performed, g_strdup (cur->name));
       return;
     }
 
-  link = g_slist_find_custom (performed, old->name, (compfunc)g_strcmp0);
+  link = g_slist_find_custom (performed, prev->name, (compfunc)g_strcmp0);
   if (link == NULL)
     return;
 
@@ -399,5 +395,5 @@ update_list (HyScanWaterfallMark *new,
   if (action == REMOVE)
     performed = g_slist_delete_link (performed, link);
   else if (action == MODIFY)
-    link->data = g_strdup (new->name);
+    link->data = g_strdup (cur->name);
 }

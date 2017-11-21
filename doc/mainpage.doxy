@@ -11,13 +11,17 @@
  * - \link HyScanForwardLookData \endlink - класс обработки данных вперёдсмотрящего локатора;
  * - \link HyScanForwardLookPlayer \endlink - класс управления просмотром данных вперёдсмотрящего локатора;
  * - \link HyScanNMEAData \endlink - класс обработки данных NMEA;
+ *
  * - \link HyScanGeo \endlink - класс для работы с системами координат;
+ *
  * - \link HyScanDepth \endlink - интерфейс определения глубины;
  * - \link HyScanDepthNMEA \endlink - класс извлечения глубины из NMEA-строк;
- * - \link HyScanDepthometer \endlink - класс работы с данными глубины.
- * - \link HyScanTileQueue \endlink - класс асинхронного мониторинга базы данных.
- * - \link HyScanWaterfallTile \endlink - класс асинхронного мониторинга базы данных.
- * - \link HyScanTileColor \endlink - класс асинхронного мониторинга базы данных.
- * - \link HyScanProjector \endlink - класс определения координат индексов и отсчётов.
+ * - \link HyScanDepthometer \endlink - класс работы с данными глубины;
+ *
+ * - \link HyScanWaterfallTile \endlink - класс генератор тайлов;
+ * - \link HyScanTileQueue \endlink - класс асинхронной генерации тайлов;
+ * - \link HyScanTileColor \endlink - класс разукрашивания тайлов;
+ * - \link HyScanProjector \endlink - класс определения координат индексов и отсчётов;
+ * - \link HyScanTrackRect \endlink - класс определения геометрических параметров галса.
  *
  */

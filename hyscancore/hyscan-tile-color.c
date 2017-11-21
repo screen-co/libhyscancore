@@ -196,8 +196,13 @@ hyscan_tile_color_set_levels_internal (HyScanTileColor *color,
   HyScanTileColorPrivate *priv = color->priv;
   HyScanTileColorInfo *link;
 
-  if (black >= white || black < 0.0 || white > 1.0 || gamma < 0.0)
-    return FALSE;
+  if (black >= white ||
+      black < 0.0 || black > 1.0 ||
+      white < 0.0 || white > 1.0 ||
+      gamma <= 0.0)
+    {
+      return FALSE;
+    }
 
   g_mutex_lock (&priv->cmap_lock);
 
@@ -354,6 +359,9 @@ hyscan_tile_color_set_cache (HyScanTileColor    *color,
   if (priv->open)
     return;
 
+  if (cache_prefix == NULL)
+    cache_prefix = "none";
+
   g_clear_object (&priv->cache);
   g_free (priv->prefix);
 
@@ -364,9 +372,9 @@ hyscan_tile_color_set_cache (HyScanTileColor    *color,
 /* Функция открывает галс. */
 void
 hyscan_tile_color_open (HyScanTileColor *color,
-                             const gchar     *db_uri,
-                             const gchar     *project,
-                             const gchar     *track)
+                        const gchar     *db_uri,
+                        const gchar     *project,
+                        const gchar     *track)
 {
   HyScanTileColorPrivate *priv;
 
@@ -534,7 +542,7 @@ hyscan_tile_color_add (HyScanTileColor   *color,
           if (point < 0)
             *((guint32*)(data + i * stride + j * sizeof (guint32))) = background;
           else
-            *((guint32*)(data + i * stride + j * sizeof (guint32))) = colormap_data[(gint)(point * (levels-1))];
+            *((guint32*)(data + i * stride + j * sizeof (guint32))) = colormap_data[(gint)(point * (levels - 1))];
         }
    }
 

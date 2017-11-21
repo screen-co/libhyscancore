@@ -23,15 +23,15 @@
  * - #hyscan_track_rect_set_depth_time - настраивает параметры определения глубины;
  * - #hyscan_track_rect_set_type - задает тип отображения галса;
  * - #hyscan_track_rect_open - открывает галс;
- * - #hyscan_track_rect_close - закрывает галс;
  * - #hyscan_track_rect_get - получает параметры галса.
  */
 
 #ifndef __HYSCAN_TRACK_RECT_H__
 #define __HYSCAN_TRACK_RECT_H__
 
-#include <hyscan-depth-acoustic.h>
 #include <hyscan-tile-common.h>
+#include <hyscan-db.h>
+#include <hyscan-cache.h>
 
 G_BEGIN_DECLS
 

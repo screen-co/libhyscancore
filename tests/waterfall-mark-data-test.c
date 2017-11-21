@@ -13,13 +13,13 @@ gboolean  make_track  (HyScanDB *db,
 
 HyScanWaterfallMark test_marks[N_MARKS] =
 {
-  {"test-mark", "this mark is for testing purposes", "tester", 12345678,
+  {"gals", "test-mark", "this mark is for testing purposes", "tester", 12345678,
     100, 10, HYSCAN_SOURCE_SIDE_SCAN_PORT, 0, 1, 10},
-  {"ac dc", "i've got some rock'n'roll thunder", "rocker", 87654321,
+  {"gals", "ac dc", "i've got some rock'n'roll thunder", "rocker", 87654321,
     200, 20, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 2, 3, 32},
-  {"rolling stones", "all i hear is doom and gloom", "rocker", 2468,
+  {"gals", "rolling stones", "all i hear is doom and gloom", "rocker", 2468,
     300, 30, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 4, 5, 54},
-  {"modified mark", "this mark was modified", "modder", 1357,
+  {"gals", "modified mark", "this mark was modified", "modder", 1357,
     400, 40, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 6, 7, 76}
 };
 
@@ -54,16 +54,12 @@ main (int argc, char **argv)
   /* Откроем БД, создадим проект и галс. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
-    {
-      g_warning ("Can't open db at %s", db_uri);
-      goto exit;
-    }
+    g_error ("Can't open db at %s", db_uri);
 
-  if (!make_track (db, name))
-    goto exit;
+  make_track (db, name);
 
   /* Начинаем тестирование объекта. */
-  data = hyscan_waterfall_mark_data_new (db, name, name, "profile-name");
+  data = hyscan_waterfall_mark_data_new (db, name);
 
   /* Отправим несколько меток. */
   g_message ("Adding marks...");
@@ -112,9 +108,7 @@ main (int argc, char **argv)
         hyscan_waterfall_mark_free (mark);
     }
 
-exit:
-  if (db != NULL)
-    hyscan_db_project_remove (db, name);
+  hyscan_db_project_remove (db, name);
 
   g_clear_object (&data);
   g_clear_object (&db);
@@ -139,9 +133,8 @@ mark_lookup (HyScanWaterfallMark *mark)
           mark->source0                        == test_marks[i].source0 &&
           mark->index0                         == test_marks[i].index0 &&
           mark->count0                         == test_marks[i].count0 &&
-          mark->source1                        == test_marks[i].source1 &&
-          mark->index1                         == test_marks[i].index1 &&
-          mark->count1                         == test_marks[i].count1)
+          mark->width                          == test_marks[i].width &&
+          mark->height                         == test_marks[i].height)
         {
           return TRUE;
         }
@@ -155,16 +148,12 @@ make_track (HyScanDB *db,
             gchar    *name)
 {
   HyScanDataWriter *writer = hyscan_data_writer_new (db);
-  gboolean st;
   gint i;
 
-  if (!hyscan_data_writer_set_project (writer, name) ||
-      !hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
-    {
-      g_warning ("Couldn't set data writer project or start data writer.");
-      st = FALSE;
-      goto exit;
-    }
+  if (!hyscan_data_writer_set_project (writer, name))
+    g_error ("Couldn't set data writer project.");
+  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
+    g_error ("Couldn't start data writer.");
 
   /* Запишем что-то в галс. */
   for (i = 0; i < 2; i++)
@@ -182,9 +171,6 @@ make_track (HyScanDB *db,
       g_free (vals);
     }
 
-  st = TRUE;
-
-exit:
   g_object_unref (writer);
-  return st;
+  return TRUE;
 }

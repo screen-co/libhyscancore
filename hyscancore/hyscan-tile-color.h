@@ -35,6 +35,13 @@
  * - #hyscan_tile_color_converter_d2i - упаковка четырех составляющих цвета в 32-битное значение;
  * - #hyscan_tile_color_converter_i2d - обратная операция.
  *
+ * Потокобезопасность.
+ *
+ * Функции #hyscan_tile_color_set_cache, #hyscan_tile_color_open, #hyscan_tile_color_close,
+ * #hyscan_tile_color_add - потокобезопасны. Их можно вызывать из любого потока, но ровно
+ * до тех пор, пока не вызывается любая другая функция. Все остальные функции
+ * можно вызывать только тогда, когда hyscan_tile_color_add не вызвана.
+ * Предполагается также, что все функции вызываются из основного потока.
  */
 
 #ifndef __HYSCAN_TILE_COLOR_H__
@@ -228,6 +235,7 @@ gboolean                hyscan_tile_color_set_levels_for_all   (HyScanTileColor 
  * \param color указатель на \link HyScanTileColor \endlink;
  * \param source тип источника, к которому будут применены параметры;
  * \param colormap значения цветов точек;
+ * \param length число элементов в цветовой схеме;
  * \param background цвет фона.
  *
  * \return TRUE, если цвета успешно установлены.
@@ -245,6 +253,7 @@ gboolean                hyscan_tile_color_set_colormap         (HyScanTileColor 
  *
  * \param color указатель на \link HyScanTileColor \endlink;
  * \param colormap значения цветов точек;
+ * \param length число элементов в цветовой схеме;
  * \param background цвет фона.
  *
  * \return TRUE, если цвета успешно установлены.

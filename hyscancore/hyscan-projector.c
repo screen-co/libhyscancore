@@ -478,6 +478,14 @@ hyscan_projector_set_precalc_points (HyScanProjector   *self,
   hyscan_projector_precalculate_points (self);
 }
 
+const HyScanAcousticData*
+hyscan_projector_get_acoustic_data (HyScanProjector *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROJECTOR (self), NULL);
+  return self->priv->dc;
+}
+
+
 HyScanDBFindStatus
 hyscan_projector_find_index_by_coord (HyScanProjector   *self,
                                       gdouble            coord,
@@ -488,9 +496,7 @@ hyscan_projector_find_index_by_coord (HyScanProjector   *self,
   gdouble time;
   gint64 _time;
 
-  g_message ("gay");
   g_return_val_if_fail (HYSCAN_IS_PROJECTOR (self), HYSCAN_DB_FIND_FAIL);
-  g_message ("gay2");
   priv = self->priv;
 
   /* В случае постоянной скорости надо просто учесть
@@ -582,6 +588,7 @@ hyscan_projector_count_to_coord (HyScanProjector   *self,
   g_return_val_if_fail (HYSCAN_IS_PROJECTOR (self), FALSE);
   priv = self->priv;
 
+  /* TODO: смещение по у. */
   /* Сначала проверяем, есть ли предрассчитанная точка. */
   if (count < priv->n_precalc)
     coord = priv->precalc_counts[count];

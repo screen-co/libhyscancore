@@ -9,11 +9,9 @@
  */
 
 #include "hyscan-track-rect.h"
-#include <hyscan-acoustic-data.h>
-#include <hyscan-depth-nmea.h>
 #include <hyscan-depthometer.h>
-#include <math.h>
-#include <string.h>
+#include <hyscan-depth-nmea.h>
+#include <hyscan-projector.h>
 
 typedef struct
 {
@@ -55,8 +53,6 @@ struct _HyScanTrackRectPrivate
   GThread                *watcher;       /* Поток слежения за КД. */
   gint                    stop;          /* Флаг остановки. */
   gint                    have_data;     /* Флаг наличия данных. */
-  gulong                  user_delay;    /* Интервал опроса БД. */
-  gulong                  real_delay;    /* Интервал опроса БД. */
   GMutex                  lock;          /* Блокировка множественного доступа. */
   GCond                   cond;          /* Кондишн для остановки потока. */
   gboolean                abort;         /* Прекратить обработку текущего галса. */
@@ -70,7 +66,7 @@ struct _HyScanTrackRectPrivate
   gboolean                state_changed;
   GMutex                  state_lock;
 
-  HyScanAcousticData     *dc;
+  HyScanProjector        *pj;
   HyScanDepthometer      *depth;
   HyScanDepth            *idepth;
 };
@@ -78,7 +74,7 @@ struct _HyScanTrackRectPrivate
 static void      hyscan_track_rect_object_constructed  (GObject    *object);
 static void      hyscan_track_rect_object_finalize     (GObject    *object);
 
-static HyScanAcousticData *hyscan_track_rect_open_dc          (HyScanTrackRect *self);
+static HyScanProjector    *hyscan_track_rect_open_projector   (HyScanTrackRect *self);
 static HyScanDepth        *hyscan_track_rect_open_depth       (HyScanTrackRect *self);
 static HyScanDepthometer  *hyscan_track_rect_open_depthometer (HyScanTrackRect *self);
 static gboolean  hyscan_track_rect_sync_states         (HyScanTrackRect *self);
@@ -118,7 +114,6 @@ hyscan_track_rect_object_constructed (GObject *object)
   //////// via setters priv->ship_speed = 1.0;
   //////// via setters priv->sound_velocity1 = 1500.0 / 2.0;
 
-  priv->user_delay = 250 * G_TIME_SPAN_MILLISECOND;
   priv->stop = 0;
   priv->watcher = g_thread_new ("trkrect-watcher", hyscan_track_rect_watcher, self);
 }
@@ -154,23 +149,26 @@ hyscan_track_rect_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_track_rect_parent_class)->finalize (object);
 }
 
-static HyScanAcousticData*
-hyscan_track_rect_open_dc (HyScanTrackRect *self)
+static HyScanProjector*
+hyscan_track_rect_open_projector (HyScanTrackRect *self)
 {
   HyScanTrackRectState *state = &self->priv->cur_state;
-  HyScanAcousticData *dc;
+  HyScanProjector *pj;
 
   if (state->db == NULL || state->project == NULL || state->track == NULL)
     return NULL;
 
-  dc = hyscan_acoustic_data_new (state->db, state->project, state->track, state->source, state->raw);
+  pj = hyscan_projector_new (state->db, state->project, state->track,
+                             state->source, state->raw);
 
-  if (dc == NULL)
+  if (pj == NULL)
     return NULL;
 
-  hyscan_acoustic_data_set_cache (dc, state->cache, state->prefix);
+  hyscan_projector_set_cache (pj, state->cache, state->prefix);
+  hyscan_projector_set_ship_speed (pj, state->ship_speed);
+  hyscan_projector_set_sound_velocity (pj, state->sound_velocity);
 
-  return dc;
+  return pj;
 }
 
 static HyScanDepth*
@@ -179,22 +177,7 @@ hyscan_track_rect_open_depth (HyScanTrackRect *self)
   HyScanTrackRectPrivate *priv = self->priv;
   HyScanDepth *idepth = NULL;
 
-  if (hyscan_source_is_acoustic (priv->cur_state.depth_source))
-    {
-      HyScanDepthAcoustic *dacoustic;
-      dacoustic = hyscan_depth_acoustic_new (priv->cur_state.db,
-                                             priv->cur_state.project,
-                                             priv->cur_state.track,
-                                             priv->cur_state.depth_source,
-                                             priv->cur_state.raw);
-
-      if (dacoustic != NULL)
-        hyscan_depth_acoustic_set_sound_velocity (dacoustic, priv->cur_state.sound_velocity);
-
-      idepth = HYSCAN_DEPTH (dacoustic);
-    }
-
-  else if (HYSCAN_SOURCE_NMEA_DPT == priv->cur_state.depth_source)
+  if (HYSCAN_SOURCE_NMEA_DPT == priv->cur_state.depth_source)
     {
       HyScanDepthNMEA *dnmea;
       dnmea = hyscan_depth_nmea_new (priv->cur_state.db,
@@ -220,7 +203,7 @@ hyscan_track_rect_open_depthometer (HyScanTrackRect *self)
 
   hyscan_depthometer_set_cache (depth, priv->cur_state.cache, priv->cur_state.prefix);
   hyscan_depthometer_set_filter_size (depth, priv->cur_state.depth_size);
-  hyscan_depthometer_set_time_precision (depth, priv->cur_state.depth_time);
+  hyscan_depthometer_set_validity_time (depth, priv->cur_state.depth_time);
 
   return depth;
 }
@@ -228,79 +211,79 @@ hyscan_track_rect_open_depthometer (HyScanTrackRect *self)
 static gboolean
 hyscan_track_rect_sync_states (HyScanTrackRect *self)
 {
-  HyScanTrackRectState *new = &self->priv->new_state;
-  HyScanTrackRectState *cur = &self->priv->cur_state;
+  HyScanTrackRectState *new_st = &self->priv->new_state;
+  HyScanTrackRectState *cur_st = &self->priv->cur_state;
 
-  if (new->track_changed)
+  if (new_st->track_changed)
     {
       /* Очищаем текущее. */
-      g_clear_object (&cur->db);
-      g_clear_pointer (&cur->project, g_free);
-      g_clear_pointer (&cur->track, g_free);
+      g_clear_object (&cur_st->db);
+      g_clear_pointer (&cur_st->project, g_free);
+      g_clear_pointer (&cur_st->track, g_free);
 
       /* Копируем из нового. */
-      cur->db = g_object_ref (new->db);
-      cur->project = g_strdup (new->project);
-      cur->track = g_strdup (new->track);
-      cur->source = new->source;
-      cur->raw = new->raw;
+      cur_st->db = g_object_ref (new_st->db);
+      cur_st->project = g_strdup (new_st->project);
+      cur_st->track = g_strdup (new_st->track);
+      cur_st->source = new_st->source;
+      cur_st->raw = new_st->raw;
 
       /* Выставляем флаги. */
-      new->track_changed = FALSE;
-      cur->track_changed = TRUE;
+      new_st->track_changed = FALSE;
+      cur_st->track_changed = TRUE;
     }
-  if (new->cache_changed)
+  if (new_st->cache_changed)
     {
-      g_clear_object (&cur->cache);
-      g_clear_pointer (&cur->prefix, g_free);
+      g_clear_object (&cur_st->cache);
+      g_clear_pointer (&cur_st->prefix, g_free);
 
-      cur->cache = g_object_ref (new->cache);
-      cur->prefix = g_strdup (new->prefix);
+      cur_st->cache = g_object_ref (new_st->cache);
+      cur_st->prefix = g_strdup (new_st->prefix);
 
-      new->cache_changed = FALSE;
-      cur->cache_changed = TRUE;
+      new_st->cache_changed = FALSE;
+      cur_st->cache_changed = TRUE;
     }
-  if (new->depth_source_changed)
+  if (new_st->depth_source_changed)
     {
-      cur->depth_source = new->depth_source;
-      cur->depth_channel = new->depth_channel;
+      cur_st->depth_source = new_st->depth_source;
+      cur_st->depth_channel = new_st->depth_channel;
 
-      new->depth_source_changed = FALSE;
-      cur->depth_source_changed = TRUE;
+      new_st->depth_source_changed = FALSE;
+      cur_st->depth_source_changed = TRUE;
     }
-  if (new->depth_time_changed)
+  if (new_st->depth_time_changed)
     {
-      cur->depth_time = new->depth_time;
-      cur->depth_size = new->depth_size;
+      cur_st->depth_time = new_st->depth_time;
+      cur_st->depth_size = new_st->depth_size;
 
-      new->depth_time_changed = FALSE;
-      cur->depth_time_changed = TRUE;
+      new_st->depth_time_changed = FALSE;
+      cur_st->depth_time_changed = TRUE;
     }
-  if (new->depth_size_changed)
+  if (new_st->depth_size_changed)
     {
-      cur->depth_time = new->depth_time;
-      cur->depth_size = new->depth_size;
+      cur_st->depth_time = new_st->depth_time;
+      cur_st->depth_size = new_st->depth_size;
 
-      new->depth_size_changed = FALSE;
-      cur->depth_size_changed = TRUE;
+      new_st->depth_size_changed = FALSE;
+      cur_st->depth_size_changed = TRUE;
     }
-  if (new->speed_changed)
+  if (new_st->speed_changed)
     {
-      cur->ship_speed = new->ship_speed;
+      cur_st->ship_speed = new_st->ship_speed;
 
-      cur->speed_changed = TRUE;
-      new->speed_changed = FALSE;
+      cur_st->speed_changed = TRUE;
+      new_st->speed_changed = FALSE;
     }
-  if (new->velocity_changed)
+  if (new_st->velocity_changed)
     {
-      if (cur->sound_velocity != NULL)
-        g_clear_pointer (&cur->sound_velocity, g_array_unref);
+      if (cur_st->sound_velocity != NULL)
+        g_clear_pointer (&cur_st->sound_velocity, g_array_unref);
 
-      cur->sound_velocity = g_array_ref (new->sound_velocity);
-      cur->sound_velocity1 = new->sound_velocity1;
+      cur_st->sound_velocity = g_array_ref (new_st->sound_velocity);
+      cur_st->sound_velocity1 = new_st->sound_velocity1;
 
-      cur->velocity_changed = TRUE;
-      new->velocity_changed = FALSE;
+      cur_st->velocity_changed = TRUE;
+      new_st->velocity_changed = FALSE;
     }
 
   return TRUE;
@@ -314,7 +297,7 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
 
   if (state->track_changed || state->type_changed)
     {
-      g_clear_object (&priv->dc);
+      g_clear_object (&priv->pj);
       g_clear_object (&priv->depth);
       g_clear_object (&priv->idepth);
       state->track_changed = FALSE;
@@ -329,7 +312,7 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
     {
       if (priv->depth != NULL)
         {
-          hyscan_depthometer_set_time_precision (priv->depth, state->depth_time);
+          hyscan_depthometer_set_validity_time (priv->depth, state->depth_time);
           hyscan_depthometer_set_filter_size (priv->depth, state->depth_size);
         }
       state->depth_time_changed = FALSE;
@@ -337,8 +320,8 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
     }
   else if (state->cache_changed)
     {
-      if (priv->dc != NULL)
-        hyscan_acoustic_data_set_cache (priv->dc, state->cache, state->prefix);
+      if (priv->pj != NULL)
+        hyscan_projector_set_cache (priv->pj, state->cache, state->prefix);
       if (priv->depth != NULL)
         hyscan_depthometer_set_cache (priv->depth, state->cache, state->prefix);
       if (priv->idepth != NULL)
@@ -351,17 +334,18 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
 
   if (state->velocity_changed)
     {
-      if (HYSCAN_IS_DEPTH_ACOUSTIC (priv->idepth))
-        {
-          HyScanDepthAcoustic *da = HYSCAN_DEPTH_ACOUSTIC (priv->idepth);
-          hyscan_depth_acoustic_set_sound_velocity (da, state->sound_velocity);
-        }
+      if (priv->pj != NULL)
+        hyscan_projector_set_sound_velocity (priv->pj, state->sound_velocity);
+
       state->velocity_changed = FALSE;
     }
+  if (state->speed_changed)
+    {
+      if (priv->pj != NULL)
+        hyscan_projector_set_ship_speed (priv->pj, state->ship_speed);
+      state->speed_changed = FALSE;
+    }
 
-  g_clear_object (&priv->dc);
-  g_clear_object (&priv->depth);
-  g_clear_object (&priv->idepth);
   return TRUE;
 }
 
@@ -372,25 +356,25 @@ hyscan_track_rect_watcher (gpointer data)
   HyScanTrackRect *self = data;
   HyScanTrackRectPrivate *priv = self->priv;
 
-  gdouble dpt;
-  HyScanAcousticDataInfo dc_info;
 
-  guint32  values_count = 0;
-  guint32  first_index  = 0;
-  guint32  last_index   = 0;
-  gint64   first_time   = 0;
-  gint64   last_time    = 0;
-  gint64   itime        = 0;
-  gdouble  length       = 0.0;
-  gdouble  width        = 0.0;
-  gdouble  width_max    = 0.0;
+  guint32  nvals     = 0;
+  guint32  index0    = 0;
+  guint32  index1    = 0;
+  gint64   time0     = 0;
+  gint64   time1     = 0;
+  gint64   itime     = 0;
+  gdouble  length    = 0.0;
+  gdouble  width_max = 0.0;
+  gboolean init      = FALSE;
+  gboolean writeable = TRUE;
+  gint64   end_time;
+  gdouble  dpt;
   guint32  i;
-  gboolean init         = FALSE;
-  gboolean writeable    = TRUE;
-  gint64 end_time;
 
-  gboolean restart = FALSE;
+  gdouble along0, along1;
+  gdouble across;
 
+  HyScanProjector *pj = NULL;
   HyScanAcousticData *dc = NULL;
   HyScanDepthometer *depth = NULL;
   GMutex cond_lock;
@@ -407,16 +391,24 @@ hyscan_track_rect_watcher (gpointer data)
           g_atomic_int_set (&priv->abort, FALSE);
           g_mutex_unlock (&priv->state_lock);
 
-          restart = hyscan_track_rect_apply_updates (self);
-          if (restart)
-            init = FALSE;
+          if (hyscan_track_rect_apply_updates (self))
+            {
+              init = FALSE;
+              width_max = across = along0 = along1 = 0.0;
+            }
         }
 
       /* Открываем КД. */
-      if (priv->dc == NULL)
+      if (priv->pj == NULL)
         {
-          priv->dc = dc = hyscan_track_rect_open_dc (self);
+          const HyScanAcousticData *cdc;
+          priv->pj = pj = hyscan_track_rect_open_projector (self);
+          if (pj == NULL)
+            continue;
+          cdc = hyscan_projector_get_acoustic_data (pj);
+          dc = (HyScanAcousticData*)cdc;
         }
+
       /* И ещё надо открыть глубину. */
       if (priv->cur_state.type == HYSCAN_TILE_GROUND && priv->depth == NULL)
         {
@@ -427,41 +419,45 @@ hyscan_track_rect_watcher (gpointer data)
         }
 
       /* После открытия КД нужно дождаться, пока в них хоть что-то появится. */
-      if (!init && dc != NULL)
-        {
-          dc_info = hyscan_acoustic_data_get_info (dc);
-          init = hyscan_acoustic_data_get_range (dc, &i, &last_index);
-        }
-
-      /* Нужно пройтись по всем строкам и найти максимальную ширину левого борта,
-       * правого борта и общую длину. */
       if (!init)
         {
-          goto next;
+          if (hyscan_acoustic_data_get_range (dc, &i, &index1))
+            init = TRUE;
+          else
+            goto next;
         }
-      else if (hyscan_acoustic_data_get_range (dc, &first_index, &last_index))
+
+      /* Проходим по всем строкам и найти максимальную ширину и общую длину. */
+      if (hyscan_acoustic_data_get_range (dc, &index0, &index1))
         {
           /* Ширина. */
-          for (; i <= last_index; i++)
+          for (; i <= index1; i++)
             {
               if (g_atomic_int_get (&priv->abort))
                 goto next;
 
-              hyscan_acoustic_data_get_values (dc, i, &values_count, &itime);
-              width = values_count * priv->cur_state.sound_velocity1 / dc_info.data.rate;
-              if (priv->cur_state.type == HYSCAN_TILE_GROUND && depth != NULL)
-                {
-                  dpt = hyscan_depthometer_get (depth, itime);
-                  width = sqrt (width * width - dpt * dpt);
-                }
+              /* Узнаем количество точек в строке. */
+              hyscan_acoustic_data_get_values (dc, i, &nvals, &itime);
 
-              if (width > width_max)
-                width_max = width;
+              /* Определяем глубину. */
+              if (priv->cur_state.type == HYSCAN_TILE_GROUND && depth != NULL)
+                dpt = hyscan_depthometer_get (depth, itime);
+              else
+                dpt = 0.0;
+
+              /* Переводим. */
+              hyscan_projector_count_to_coord (pj, nvals, &across, dpt);
+
+              width_max = MAX (across, width_max);
             }
+
           /* Длина. */
-          hyscan_acoustic_data_get_values (dc, first_index, &values_count, &first_time);
-          hyscan_acoustic_data_get_values (dc, last_index, &values_count, &last_time);
-          length = priv->cur_state.ship_speed * (last_time - first_time) / 1000000.0;
+          hyscan_acoustic_data_get_values (dc, index0, &nvals, &time0);
+          hyscan_acoustic_data_get_values (dc, index1, &nvals, &time1);
+
+          hyscan_projector_index_to_coord (pj, index0, &along0);
+          hyscan_projector_index_to_coord (pj, index1, &along1);
+          length = along1 - along0;
         }
 
       /* Проверяем режим доступа к КД. */
@@ -479,7 +475,6 @@ hyscan_track_rect_watcher (gpointer data)
 
       g_mutex_unlock (&priv->lock);
 
-
 next:
       end_time = g_get_monotonic_time () + 250 * G_TIME_SPAN_MILLISECOND;
 
@@ -490,7 +485,12 @@ next:
 
     }
 
+  g_clear_object (&priv->pj);
+  g_clear_object (&priv->depth);
+  g_clear_object (&priv->idepth);
+
   g_mutex_clear (&cond_lock);
+
   return NULL;
 }
 
@@ -553,7 +553,7 @@ hyscan_track_rect_set_sound_velocity (HyScanTrackRect *self,
   priv->new_state.velocity_changed = TRUE;
   priv->state_changed = TRUE;
 
-  g_atomic_int_set (&priv->abort, TRUE); 
+  g_atomic_int_set (&priv->abort, TRUE);
   g_cond_signal (&priv->cond);
 
   g_mutex_unlock (&priv->state_lock);
@@ -700,8 +700,7 @@ hyscan_track_rect_open (HyScanTrackRect *self,
 
   priv->have_data = FALSE;
 
-  priv->width = priv->length = 0.0;
-  priv->real_delay = priv->user_delay = 1000 * G_TIME_SPAN_MILLISECOND;
+  //  priv->width = priv->length = 0.0;
 
   priv->new_state.track_changed = TRUE;
   priv->state_changed = TRUE;
@@ -715,9 +714,9 @@ hyscan_track_rect_open (HyScanTrackRect *self,
 /* Функция отдает параметры галса. */
 gboolean
 hyscan_track_rect_get (HyScanTrackRect *self,
-                      gboolean        *writeable,
-                      gdouble         *width,
-                      gdouble         *length)
+                       gboolean        *writeable,
+                       gdouble         *width,
+                       gdouble         *length)
 {
   HyScanTrackRectPrivate *priv;
   g_return_val_if_fail (HYSCAN_IS_TRACK_RECT (self), TRUE);

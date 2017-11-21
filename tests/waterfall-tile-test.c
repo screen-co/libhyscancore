@@ -4,15 +4,18 @@
 #include <hyscan-waterfall-tile.h>
 
 #define SSS HYSCAN_SOURCE_SIDE_SCAN_STARBOARD
-#define SSP HYSCAN_SOURCE_SIDE_SCAN_PORT
-#define SRC_RAW TRUE
-#define SIZE 20
+#define SIZE 40
+#define START 10
+#define END 30
 #define DB_TIME_INC 1000000
+
+#define EPS 0.00001
+#define NEQ(x,y) ((ABS(x)-ABS(y))>EPS)
 
 #define FAIL(msg) do {g_print ("%s\n", msg); goto finish;} while (0)
 
-HyScanComplexFloat *make_acoustic_string (gint     size,
-                                          guint32 *bytes);
+gfloat * make_acoustic_string (gint     size,
+                               guint32 *bytes);
 
 int
 main (int argc, char **argv)
@@ -29,6 +32,7 @@ main (int argc, char **argv)
   gfloat *image;
   guint32 image_size;
 
+  gfloat *vals;
   gint64 time = 0;                    /* Время записи строки. */
   gint i;                                /* Простой маленький счетчик.*/
 
@@ -82,16 +86,14 @@ main (int argc, char **argv)
 
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)
     {
-      HyScanAcousticDataInfo info = {.data.type = HYSCAN_DATA_COMPLEX_FLOAT, .data.rate = 1.0}; /* Информация о датчике. */
+      HyScanAcousticDataInfo info = {.data.type = HYSCAN_DATA_FLOAT, .data.rate = 1.0}; /* Информация о датчике. */
       HyScanDataWriterData data; /* Записываемые данные. */
-      HyScanComplexFloat *vals;  /* Акустическая строка. */
 
       vals = make_acoustic_string (SIZE, &data.size);
       data.time = time;
       data.data = vals;
 
       hyscan_data_writer_acoustic_add_data (writer, SSS, &info, &data);
-      hyscan_data_writer_acoustic_add_data (writer, SSP, &info, &data);
 
       g_free (vals);
     }
@@ -100,10 +102,10 @@ main (int argc, char **argv)
   dc = hyscan_acoustic_data_new (db, name, name, SSS, FALSE);
   wf = hyscan_waterfall_tile_new ();
 
-  tile.across_start = 0;
-  tile.along_start  = 0;
-  tile.across_end   = SIZE * 1000;
-  tile.along_end    = SIZE * 1000;
+  tile.across_start = START * 1000;
+  tile.along_start  = START * 1000;
+  tile.across_end   = END * 1000;
+  tile.along_end    = END * 1000;
   tile.scale        = 1000;
   tile.ppi          = 25.4;
   tile.upsample     = 1;
@@ -115,9 +117,17 @@ main (int argc, char **argv)
 
   image = hyscan_waterfall_tile_generate (wf, &tile, &image_size);
 
-  if (tile.w != SIZE || tile.h != SIZE)
+  gint k,j;
+  vals = make_acoustic_string (SIZE, NULL);
+  for (k = 0; k < tile.w; k++)
+      for (j = 0; j < tile.h; j++)
+          if (NEQ (image[k * tile.w + j], vals[START + j]))
+            g_printf ("%i %i %f %f\n", k, j, image[k * tile.w + j] , vals[START + j]);
+
+  if (tile.w != END - START || tile.h != END - START)
     FAIL ("Tile size mismatch");
 
+  g_free (vals);
   g_free (image);
 
   status = TRUE;
@@ -134,19 +144,16 @@ finish:
   return status ? 0 : 1;
 }
 
-HyScanComplexFloat*
-make_acoustic_string (gint    size,
+gfloat *
+make_acoustic_string (gint     size,
                       guint32 *bytes)
 {
   gint i;
-  guint32 malloc_size = size * sizeof (HyScanComplexFloat);
-  HyScanComplexFloat *str = g_malloc0 (malloc_size);
+  guint32 malloc_size = size * sizeof (gfloat);
+  gfloat *str = g_malloc0 (malloc_size);
 
   for (i = 0; i < size; i++)
-    {
-      str[i].re = 1.0;
-      str[i].im = 0.0;
-    }
+    str[i] = (float)i / SIZE;
 
   if (bytes != NULL)
     *bytes = malloc_size;

@@ -1,67 +1,51 @@
+/*
+ * \file hyscan-waterfall-mark-data.c
+ *
+ * \brief Исходный файл класса работы с метками водопада
+ * \author Dmitriev Alexander (m1n7@yandex.ru)
+ * \date 2017
+ * \license Проприетарная лицензия ООО "Экран"
+ *
+ */
+
 #include "hyscan-waterfall-mark-data.h"
 #include "hyscan-core-schemas.h"
 #include <string.h>
 
 #define MARK_ID_LEN 20
+#define GROUP_NAME "waterfall-marks"
 
 enum
 {
   PROP_0,
   PROP_DB,
   PROP_PROJECT,
-  PROP_TRACK,
-  PROP_PROFILE
 };
 
 struct _HyScanWaterfallMarkDataPrivate
 {
   HyScanDB          *db;       /* Интерфейс БД. */
   gchar             *project;  /* Проект. */
-  gchar             *track;    /* Галс. */
-  gchar             *profile;  /* Профиль обработки данных. */
-
   gint32             param_id; /* Идентификатор группы параметров. */
 
   GRand             *rand;     /* Генератор случайных чисел. */
 };
 
-static void    hyscan_waterfall_mark_data_set_property            (GObject               *object,
-                                                                   guint                  prop_id,
-                                                                   const GValue          *value,
-                                                                   GParamSpec            *pspec);
-static void    hyscan_waterfall_mark_data_object_constructed      (GObject               *object);
-static void    hyscan_waterfall_mark_data_object_finalize         (GObject               *object);
+static void    hyscan_waterfall_mark_data_set_property            (GObject                         *object,
+                                                                   guint                            prop_id,
+                                                                   const GValue                    *value,
+                                                                   GParamSpec                      *pspec);
+static void    hyscan_waterfall_mark_data_object_constructed      (GObject                         *object);
+static void    hyscan_waterfall_mark_data_object_finalize         (GObject                         *object);
 
-static gchar  *hyscan_waterfall_mark_data_generate_id             (GRand                 *rand);
+static gchar  *hyscan_waterfall_mark_data_generate_id             (GRand                           *rand);
 
-static gboolean hyscan_waterfall_mark_data_get_internal           (HyScanWaterfallMarkDataPrivate *priv,
-                                                                   const gchar           *id,
-                                                                   gchar                **name,
-                                                                   gchar                **description,
-                                                                   gchar                **operator_name,
-                                                                   guint64               *labels,
-                                                                   gint64                *creation_time,
-                                                                   gint64                *modification_time,
-                                                                   HyScanSourceType      *source0,
-                                                                   guint32               *index0,
-                                                                   guint32               *count0,
-                                                                   HyScanSourceType      *source1,
-                                                                   guint32               *index1,
-                                                                   guint32               *count1);
-static gboolean hyscan_waterfall_mark_data_set_internal           (HyScanWaterfallMarkDataPrivate *priv,
-                                                                   const gchar           *id,
-                                                                   const gchar           *name,
-                                                                   const gchar           *description,
-                                                                   const gchar           *operator_name,
-                                                                   guint64                labels,
-                                                                   gint64                 creation_time,
-                                                                   gint64                 modification_time,
-                                                                   HyScanSourceType       source0,
-                                                                   guint32                index0,
-                                                                   guint32                count0,
-                                                                   HyScanSourceType       source1,
-                                                                   guint32                index1,
-                                                                   guint32                count1);
+static gboolean hyscan_waterfall_mark_data_get_internal           (HyScanWaterfallMarkDataPrivate  *priv,
+                                                                   const gchar                     *id,
+                                                                   HyScanWaterfallMark             *mark);
+static gboolean hyscan_waterfall_mark_data_set_internal           (HyScanWaterfallMarkDataPrivate  *priv,
+                                                                   const gchar                     *id,
+                                                                   const HyScanWaterfallMark       *mark);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanWaterfallMarkData, hyscan_waterfall_mark_data, G_TYPE_OBJECT);
 
@@ -83,19 +67,12 @@ hyscan_waterfall_mark_data_class_init (HyScanWaterfallMarkDataClass *klass)
       g_param_spec_string ("project", "ProjectName", "Project name", NULL,
                            G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class, PROP_TRACK,
-      g_param_spec_string ("track", "TrackName", "Track name", NULL,
-                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-  g_object_class_install_property (object_class, PROP_PROFILE,
-      g_param_spec_string ("profile", "ProfileName", "Profile name", NULL,
-                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
-hyscan_waterfall_mark_data_init (HyScanWaterfallMarkData *self)
+hyscan_waterfall_mark_data_init (HyScanWaterfallMarkData *data)
 {
-  self->priv = hyscan_waterfall_mark_data_get_instance_private (self);
+  data->priv = hyscan_waterfall_mark_data_get_instance_private (data);
 }
 
 static void
@@ -104,8 +81,8 @@ hyscan_waterfall_mark_data_set_property (GObject      *object,
                                          const GValue *value,
                                          GParamSpec   *pspec)
 {
-  HyScanWaterfallMarkData *self = HYSCAN_WATERFALL_MARK_DATA (object);
-  HyScanWaterfallMarkDataPrivate *priv = self->priv;
+  HyScanWaterfallMarkData *data = HYSCAN_WATERFALL_MARK_DATA (object);
+  HyScanWaterfallMarkDataPrivate *priv = data->priv;
 
   switch (prop_id)
     {
@@ -115,14 +92,6 @@ hyscan_waterfall_mark_data_set_property (GObject      *object,
 
     case PROP_PROJECT:
       priv->project = g_value_dup_string (value);
-      break;
-
-    case PROP_TRACK:
-      priv->track = g_value_dup_string (value);
-      break;
-
-    case PROP_PROFILE:
-      priv->profile = g_value_dup_string (value);
       break;
 
     default:
@@ -135,13 +104,9 @@ static void
 hyscan_waterfall_mark_data_object_constructed (GObject *object)
 {
   gint32 project_id = 0;      /* Идентификатор проекта. */
-  gint32 track_id = 0;        /* Идентификатор галса. */
-  gint32 track_param_id = 0;  /* Группа параметров галса. */
-  gchar *track_id_str = NULL; /* Идентификатор трека. */
-  gchar *group_name = NULL;   /* Имя создаваемой/открываемой группы параметров. */
 
-  HyScanWaterfallMarkData *self = HYSCAN_WATERFALL_MARK_DATA (object);
-  HyScanWaterfallMarkDataPrivate *priv = self->priv;
+  HyScanWaterfallMarkData *data = HYSCAN_WATERFALL_MARK_DATA (object);
+  HyScanWaterfallMarkDataPrivate *priv = data->priv;
 
   if (priv->db == NULL)
     {
@@ -157,37 +122,12 @@ hyscan_waterfall_mark_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  /* Также необходимо знать идентификатор трека. */
-  track_id = hyscan_db_track_open (priv->db, project_id, priv->track);
-  if (track_id <= 0)
-    {
-      g_warning ("HyScanWaterfallMarkData: can't open track %s (project '%s')",
-                 priv->track, priv->project);
-      goto exit;
-    }
-
-  track_param_id = hyscan_db_track_param_open (priv->db, track_id);
-  if (track_param_id <= 0)
-    {
-      g_warning ("HyScanWaterfallMarkData: can't open track %s parameters (project '%s')",
-                 priv->track, priv->project);
-      goto exit;
-    }
-
-  track_id_str = hyscan_db_param_get_string (priv->db, track_param_id, NULL, "/id");
-
-  /* Составляем название группы параметров и заодно имя оператора.*/
-  if (priv->profile == NULL)
-    group_name = g_strdup_printf ("waterfall-marks-%s-default", track_id_str);
-  else
-    group_name = g_strdup_printf ("waterfall-marks-%s-%s", track_id_str, priv->profile);
-
   /* Открываем (или создаем) группу параметров. */
-  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, group_name);
+  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, GROUP_NAME);
   if (priv->param_id <= 0)
     {
       g_warning ("HyScanWaterfallMarkData: can't open group %s (project '%s')",
-                 group_name, priv->project);
+                 GROUP_NAME, priv->project);
       goto exit;
     }
 
@@ -196,27 +136,18 @@ hyscan_waterfall_mark_data_object_constructed (GObject *object)
 exit:
   if (project_id > 0)
     hyscan_db_close (priv->db, project_id);
-  if (track_id > 0)
-    hyscan_db_close (priv->db, track_id);
-  if (track_param_id > 0)
-    hyscan_db_close (priv->db, track_param_id);
-
-  g_free (group_name);
-  g_free (track_id_str);
 }
 
 static void
 hyscan_waterfall_mark_data_object_finalize (GObject *object)
 {
-  HyScanWaterfallMarkData *self = HYSCAN_WATERFALL_MARK_DATA (object);
-  HyScanWaterfallMarkDataPrivate *priv = self->priv;
+  HyScanWaterfallMarkData *data = HYSCAN_WATERFALL_MARK_DATA (object);
+  HyScanWaterfallMarkDataPrivate *priv = data->priv;
 
   if (priv->rand != NULL)
     g_rand_free (priv->rand);
 
   g_free (priv->project);
-  g_free (priv->track);
-  g_free (priv->profile);
 
   if (priv->param_id > 0)
     hyscan_db_close (priv->db, priv->param_id);
@@ -226,6 +157,7 @@ hyscan_waterfall_mark_data_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_waterfall_mark_data_parent_class)->finalize (object);
 }
 
+/* Функция генерирует идентификатор. */
 static gchar*
 hyscan_waterfall_mark_data_generate_id (GRand *rand)
 {
@@ -251,19 +183,8 @@ hyscan_waterfall_mark_data_generate_id (GRand *rand)
 /* Функция считывает содержимое объекта. */
 static gboolean
 hyscan_waterfall_mark_data_get_internal (HyScanWaterfallMarkDataPrivate *priv,
-                                         const gchar           *id,
-                                         gchar                **name,
-                                         gchar                **description,
-                                         gchar                **operator_name,
-                                         guint64               *labels,
-                                         gint64                *creation_time,
-                                         gint64                *modification_time,
-                                         HyScanSourceType      *source0,
-                                         guint32               *index0,
-                                         guint32               *count0,
-                                         HyScanSourceType      *source1,
-                                         guint32               *index1,
-                                         guint32               *count1)
+                                         const gchar                    *id,
+                                         HyScanWaterfallMark            *mark)
 {
   const gchar *param_names[15];
   GVariant *param_values[15];
@@ -272,18 +193,18 @@ hyscan_waterfall_mark_data_get_internal (HyScanWaterfallMarkDataPrivate *priv,
 
   param_names[ 0] = "/schema/id";
   param_names[ 1] = "/schema/version";
-  param_names[ 2] = "/name";
-  param_names[ 3] = "/description";
-  param_names[ 4] = "/label";
-  param_names[ 5] = "/operator";
-  param_names[ 6] = "/time/creation";
-  param_names[ 7] = "/time/modification";
-  param_names[ 8] = "/coordinates/source0";
-  param_names[ 9] = "/coordinates/index0";
-  param_names[10] = "/coordinates/count0";
-  param_names[11] = "/coordinates/source1";
-  param_names[12] = "/coordinates/index1";
-  param_names[13] = "/coordinates/count1";
+  param_names[ 2] = "/track";
+  param_names[ 3] = "/name";
+  param_names[ 4] = "/description";
+  param_names[ 5] = "/label";
+  param_names[ 6] = "/operator";
+  param_names[ 7] = "/time/creation";
+  param_names[ 8] = "/time/modification";
+  param_names[ 9] = "/coordinates/source0";
+  param_names[10] = "/coordinates/index0";
+  param_names[11] = "/coordinates/count0";
+  param_names[12] = "/coordinates/width";
+  param_names[13] = "/coordinates/height";
   param_names[14] = NULL;
 
   if (!hyscan_db_param_get (priv->db, priv->param_id, id, param_names, param_values))
@@ -298,19 +219,21 @@ hyscan_waterfall_mark_data_get_internal (HyScanWaterfallMarkDataPrivate *priv,
   /* Метки считаны успешно. */
   status = TRUE;
 
-  name              != NULL ? *name              = g_strdup (g_variant_get_string (param_values[2], NULL)) : 0;
-  description       != NULL ? *description       = g_strdup (g_variant_get_string (param_values[3], NULL)) : 0;
-  labels            != NULL ? *labels            = g_variant_get_int64  (param_values[4]) : 0;
-  operator_name     != NULL ? *operator_name     = g_strdup (g_variant_get_string (param_values[5], NULL)) : 0;
-  creation_time     != NULL ? *creation_time     = g_variant_get_int64  (param_values[6]) : 0;
-  modification_time != NULL ? *modification_time = g_variant_get_int64  (param_values[7]) : 0;
-  source0           != NULL ? *source0           = g_variant_get_int64  (param_values[8]) : 0;
-  index0            != NULL ? *index0            = g_variant_get_int64  (param_values[9]) : 0;
-  count0            != NULL ? *count0            = g_variant_get_int64  (param_values[10]) : 0;
-  source1           != NULL ? *source1           = g_variant_get_int64  (param_values[11]) : 0;
-  index1            != NULL ? *index1            = g_variant_get_int64  (param_values[12]) : 0;
-  count1            != NULL ? *count1            = g_variant_get_int64  (param_values[13]) : 0;
+  if (mark == NULL)
+    goto exit;
 
+  mark->track             = g_strdup (g_variant_get_string (param_values[2], NULL));
+  mark->name              = g_strdup (g_variant_get_string (param_values[3], NULL));
+  mark->description       = g_strdup (g_variant_get_string (param_values[4], NULL));
+  mark->labels            = g_variant_get_int64 (param_values[5]);
+  mark->operator_name     = g_strdup (g_variant_get_string (param_values[6], NULL));
+  mark->creation_time     = g_variant_get_int64 (param_values[7]);
+  mark->modification_time = g_variant_get_int64 (param_values[8]);
+  mark->source0           = g_variant_get_int64 (param_values[9]);
+  mark->index0            = g_variant_get_int64 (param_values[10]);
+  mark->count0            = g_variant_get_int64 (param_values[11]);
+  mark->width             = g_variant_get_int64 (param_values[12]);
+  mark->height            = g_variant_get_int64 (param_values[13]);
 
 exit:
   for (i = 0; i < 14; i++)
@@ -322,50 +245,39 @@ exit:
 /* Функция записывает значения в существующий объект. */
 static gboolean
 hyscan_waterfall_mark_data_set_internal (HyScanWaterfallMarkDataPrivate *priv,
-                                         const gchar         *id,
-                                         const gchar         *name,
-                                         const gchar         *description,
-                                         const gchar         *operator_name,
-                                         guint64              labels,
-                                         gint64               creation_time,
-                                         gint64               modification_time,
-                                         HyScanSourceType     source0,
-                                         guint32              index0,
-                                         guint32              count0,
-                                         HyScanSourceType     source1,
-                                         guint32              index1,
-                                         guint32              count1)
+                                         const gchar                    *id,
+                                         const HyScanWaterfallMark      *mark)
 {
   const gchar *param_names[13];
   GVariant *param_values[13];
   gint i;
 
-  param_names[0] = "/name";
-  param_names[1] = "/description";
-  param_names[2] = "/label";
-  param_names[3] = "/operator";
-  param_names[4] = "/time/creation";
-  param_names[5] = "/time/modification";
-  param_names[6] = "/coordinates/source0";
-  param_names[7] = "/coordinates/index0";
-  param_names[8] = "/coordinates/count0";
-  param_names[9] = "/coordinates/source1";
-  param_names[10] = "/coordinates/index1";
-  param_names[11] = "/coordinates/count1";
+  param_names[ 0] = "/track";
+  param_names[ 1] = "/name";
+  param_names[ 2] = "/description";
+  param_names[ 3] = "/label";
+  param_names[ 4] = "/operator";
+  param_names[ 5] = "/time/creation";
+  param_names[ 6] = "/time/modification";
+  param_names[ 7] = "/coordinates/source0";
+  param_names[ 8] = "/coordinates/index0";
+  param_names[ 9] = "/coordinates/count0";
+  param_names[10] = "/coordinates/width";
+  param_names[11] = "/coordinates/height";
   param_names[12] = NULL;
 
-  param_values[0] = g_variant_new_string (name);
-  param_values[1] = g_variant_new_string (description);
-  param_values[2] = g_variant_new_int64  (labels);
-  param_values[3] = g_variant_new_string (operator_name);
-  param_values[4] = g_variant_new_int64  (creation_time);
-  param_values[5] = g_variant_new_int64  (modification_time);
-  param_values[6] = g_variant_new_int64  (source0);
-  param_values[7] = g_variant_new_int64  (index0);
-  param_values[8] = g_variant_new_int64  (count0);
-  param_values[9] = g_variant_new_int64  (source1);
-  param_values[10] = g_variant_new_int64  (index1);
-  param_values[11] = g_variant_new_int64  (count1);
+  param_values[ 0] = g_variant_new_string (mark->track);
+  param_values[ 1] = g_variant_new_string (mark->name);
+  param_values[ 2] = g_variant_new_string (mark->description);
+  param_values[ 3] = g_variant_new_int64  (mark->labels);
+  param_values[ 4] = g_variant_new_string (mark->operator_name);
+  param_values[ 5] = g_variant_new_int64  (mark->creation_time);
+  param_values[ 6] = g_variant_new_int64  (mark->modification_time);
+  param_values[ 7] = g_variant_new_int64  (mark->source0);
+  param_values[ 8] = g_variant_new_int64  (mark->index0);
+  param_values[ 9] = g_variant_new_int64  (mark->count0);
+  param_values[10] = g_variant_new_int64  (mark->width);
+  param_values[11] = g_variant_new_int64  (mark->height);
 
   if (hyscan_db_param_set (priv->db, priv->param_id, id, param_names, param_values))
     return TRUE;
@@ -376,67 +288,34 @@ hyscan_waterfall_mark_data_set_internal (HyScanWaterfallMarkDataPrivate *priv,
   return FALSE;
 }
 
+/* Функция создает новый объект работы с метками. */
 HyScanWaterfallMarkData*
 hyscan_waterfall_mark_data_new (HyScanDB    *db,
-                                const gchar *project,
-                                const gchar *track,
-                                const gchar *profile)
+                                const gchar *project)
 {
-  HyScanWaterfallMarkData* new;
-  new = g_object_new (HYSCAN_TYPE_WATERFALL_MARK_DATA,
-                      "db",      db,
-                      "project", project,
-                      "track",   track,
-                      "profile", profile,
-                      NULL);
+  HyScanWaterfallMarkData* mdata;
+  mdata = g_object_new (HYSCAN_TYPE_WATERFALL_MARK_DATA,
+                        "db", db,
+                        "project", project,
+                        NULL);
 
-  if (new->priv->param_id <= 0)
-    g_clear_object (&new);
+  if (mdata->priv->param_id <= 0)
+    g_clear_object (&mdata);
 
-  return new;
+  return mdata;
 }
 
+/* Функция добавляет метку в базу данных. */
 gboolean
-hyscan_waterfall_mark_data_add (HyScanWaterfallMarkData *self,
+hyscan_waterfall_mark_data_add (HyScanWaterfallMarkData *data,
                                 HyScanWaterfallMark     *mark)
-{
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), FALSE);
-  return hyscan_waterfall_mark_data_add_full (self,
-                                              mark->name,
-                                              mark->description,
-                                              mark->operator_name,
-                                              mark->labels,
-                                              mark->creation_time,
-                                              mark->modification_time,
-                                              mark->source0,
-                                              mark->index0,
-                                              mark->count0,
-                                              mark->source1,
-                                              mark->index1,
-                                              mark->count1);
-}
-
-gboolean
-hyscan_waterfall_mark_data_add_full (HyScanWaterfallMarkData *self,
-                                     gchar                   *name,
-                                     gchar                   *description,
-                                     gchar                   *operator_name,
-                                     guint64                  labels,
-                                     gint64                   creation_time,
-                                     gint64                   modification_time,
-                                     HyScanSourceType         source0,
-                                     guint32                  index0,
-                                     guint32                  count0,
-                                     HyScanSourceType         source1,
-                                     guint32                  index1,
-                                     guint32                  count1)
 {
   gchar *id;
   gboolean status;
   HyScanWaterfallMarkDataPrivate *priv;
 
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), FALSE);
-  priv = self->priv;
+  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), FALSE);
+  priv = data->priv;
 
   id = hyscan_waterfall_mark_data_generate_id (priv->rand);
 
@@ -448,152 +327,82 @@ hyscan_waterfall_mark_data_add_full (HyScanWaterfallMarkData *self,
       goto exit;
     }
 
-  status = hyscan_waterfall_mark_data_set_internal (priv, id, name, description,
-                                                    operator_name, labels,
-                                                    creation_time,
-                                                    modification_time,
-                                                    source0, index0, count0,
-                                                    source1, index1, count1);
+  status = hyscan_waterfall_mark_data_set_internal (priv, id, mark);
 
 exit:
   g_free (id);
   return status;
 }
 
+/* Функция удаляет метку из базы данных. */
 gboolean
-hyscan_waterfall_mark_data_remove (HyScanWaterfallMarkData *self,
+hyscan_waterfall_mark_data_remove (HyScanWaterfallMarkData *data,
                                    const gchar             *id)
 {
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), FALSE);
 
-  return hyscan_db_param_object_remove (self->priv->db,
-                                        self->priv->param_id,
+  return hyscan_db_param_object_remove (data->priv->db,
+                                        data->priv->param_id,
                                         id);
 }
 
+/* Функция изменяет метку. */
 gboolean
-hyscan_waterfall_mark_data_modify (HyScanWaterfallMarkData *self,
+hyscan_waterfall_mark_data_modify (HyScanWaterfallMarkData *data,
                                    const gchar             *id,
                                    HyScanWaterfallMark     *mark)
 {
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), FALSE);
 
-  return hyscan_waterfall_mark_data_modify_full (self, id, mark->name,
-                                                 mark->description, mark->operator_name,
-                                                 mark->labels, mark->creation_time,
-                                                 mark->modification_time,
-                                                 mark->source0, mark->index0, mark->count0,
-                                                 mark->source1, mark->index1, mark->count1);
-}
-
-gboolean
-hyscan_waterfall_mark_data_modify_full (HyScanWaterfallMarkData    *self,
-                                        const gchar                *id,
-                                        gchar                      *name,
-                                        gchar                      *description,
-                                        gchar                      *operator_name,
-                                        guint64                     labels,
-                                        gint64                      creation_time,
-                                        gint64                      modification_time,
-                                        HyScanSourceType            source0,
-                                        guint32                     index0,
-                                        guint32                     count0,
-                                        HyScanSourceType            source1,
-                                        guint32                     index1,
-                                        guint32                     count1)
-{
   /* Проверяем, что метка существует. */
-  if (!hyscan_waterfall_mark_data_get_internal (self->priv, id, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL))
+  if (!hyscan_waterfall_mark_data_get_internal (data->priv, id, NULL))
     return FALSE;
 
-  return hyscan_waterfall_mark_data_set_internal (self->priv, id, name, description, operator_name, labels,
-                                                  creation_time, modification_time,
-                                                  source0, index0, count0,
-                                                  source1, index1, count1);
+  return hyscan_waterfall_mark_data_set_internal (data->priv, id, mark);
 }
 
+/* Функция возвращает список идентификаторов всех меток. */
 gchar**
-hyscan_waterfall_mark_data_get_ids (HyScanWaterfallMarkData *self,
+hyscan_waterfall_mark_data_get_ids (HyScanWaterfallMarkData *data,
                                     guint                   *len)
 {
   gchar** objects;
 
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), NULL);
+  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), NULL);
 
-  objects = hyscan_db_param_object_list (self->priv->db, self->priv->param_id);
+  objects = hyscan_db_param_object_list (data->priv->db, data->priv->param_id);
 
-  if (len == NULL)
-    return objects;
-
-  /* if (len != NULL) */
-  *len = (objects != NULL) ? g_strv_length (objects) : 0;
+  if (len != NULL)
+    *len = (objects != NULL) ? g_strv_length (objects) : 0;
 
   return objects;
 }
 
+/* Функция возвращает метку по идентификатору. */
 HyScanWaterfallMark*
-hyscan_waterfall_mark_data_get (HyScanWaterfallMarkData *self,
+hyscan_waterfall_mark_data_get (HyScanWaterfallMarkData *data,
                                 const gchar             *id)
 {
   gboolean status;
   HyScanWaterfallMark *mark;
 
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), FALSE);
 
   mark = g_new0 (HyScanWaterfallMark, 1);
 
-  status = hyscan_waterfall_mark_data_get_internal (self->priv, id,
-                                                    &mark->name,
-                                                    &mark->description,
-                                                    &mark->operator_name,
-                                                    &mark->labels,
-                                                    &mark->creation_time,
-                                                    &mark->modification_time,
-                                                    &mark->source0,
-                                                    &mark->index0,
-                                                    &mark->count0,
-                                                    &mark->source1,
-                                                    &mark->index1,
-                                                    &mark->count1);
-  if (status)
-    return mark;
+  status = hyscan_waterfall_mark_data_get_internal (data->priv, id, mark);
 
-  g_free (mark);
-  return NULL;
+  if (!status)
+    g_clear_pointer (&mark, g_free);
+
+  return mark;
 }
 
-gboolean
-hyscan_waterfall_mark_data_get_full (HyScanWaterfallMarkData *self,
-                                     const gchar             *id,
-                                     HyScanWaterfallMark     *mark)
-{
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), FALSE);
-
-  /* Вдруг пользователю просто интересно, есть ли такая метка. */
-  if (mark == NULL)
-    return hyscan_waterfall_mark_data_get_internal (self->priv, id, NULL, NULL, NULL,
-                                                    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-
-  /* Иначе возвращаем всю метку целиком. */
-  return hyscan_waterfall_mark_data_get_internal (self->priv, id,
-                                                  &mark->name,
-                                                  &mark->description,
-                                                  &mark->operator_name,
-                                                  &mark->labels,
-                                                  &mark->creation_time,
-                                                  &mark->modification_time,
-                                                  &mark->source0,
-                                                  &mark->index0,
-                                                  &mark->count0,
-                                                  &mark->source1,
-                                                  &mark->index1,
-                                                  &mark->count1);
-}
-
+/* Функция возвращает счётчик изменений. */
 guint32
-hyscan_waterfall_mark_data_get_mod_count (HyScanWaterfallMarkData *self)
+hyscan_waterfall_mark_data_get_mod_count (HyScanWaterfallMarkData *data)
 {
-  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (self), 0);
+  g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), 0);
 
-  return hyscan_db_get_mod_count (self->priv->db, self->priv->param_id);
+  return hyscan_db_get_mod_count (data->priv->db, data->priv->param_id);
 }

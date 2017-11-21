@@ -20,7 +20,8 @@ HyScanComplexFloat *make_acoustic_string (gint             size,
 void                tile_queue_image_cb  (HyScanTileQueue *queue,
                                           HyScanTile      *tile,
                                           gfloat          *image,
-                                          gint             image_size,
+                                          gint             size,
+                                          guint32          hash,
                                           gpointer         user_data);
 
 void                tile_ready_callback  (HyScanTileQueue *queue,
@@ -216,11 +217,11 @@ tile_queue_image_cb (HyScanTileQueue *queue,
                      HyScanTile      *tile,
                      gfloat          *image,
                      gint             image_size,
+                     guint            hash,
                      gpointer         user_data)
 {
   gint *counter = (gint*) user_data;
   g_atomic_int_dec_and_test (counter);
-  g_message ("tile_queue_image_cb");
 }
 
 void
@@ -229,7 +230,6 @@ tile_ready_callback (HyScanTileQueue *queue,
 {
   gint *counter = (gint*) user_data;
   g_atomic_int_dec_and_test (counter);
-  g_message ("tile_ready_callback");
 }
 
 void
