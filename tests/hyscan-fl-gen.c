@@ -109,10 +109,7 @@ hyscan_fl_gen_set_track (HyScanFLGen *fl_gen,
 
   hyscan_data_writer_sonar_set_position (priv->writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &priv->position);
 
-  if (!hyscan_data_writer_set_project (priv->writer, project_name))
-    return FALSE;
-
-  if (!hyscan_data_writer_start (priv->writer, track_name, HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (priv->writer, project_name, track_name, HYSCAN_TRACK_SURVEY))
     return FALSE;
 
   return TRUE;

@@ -12,7 +12,6 @@
  *
  * Для установки параметров записи предназначены функции:
  *
- * - #hyscan_data_writer_set_project - устанавливает название проекта, в который будет вестись запись;
  * - #hyscan_data_writer_set_operator_name - устанавливает имя оператора гидролокатора.
  * - #hyscan_data_writer_set_sonar_info - для задания информации о гидролокаторе;
  * - #hyscan_data_writer_set_mode - устанавливает режим записи данных \link HyScanDataWriterModeType \endlink;
@@ -134,21 +133,6 @@ GType                  hyscan_data_writer_get_type                     (void);
  */
 HYSCAN_API
 HyScanDataWriter      *hyscan_data_writer_new                          (HyScanDB                      *db);
-
-/**
- *
- * Функция устанавливает название проекта, в который будет вестись запись галсов.
- * Функция автоматически создаёт проект, если он еще не был создан.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param project_name название проекта, в который записывать данные;
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_data_writer_set_project                  (HyScanDataWriter              *writer,
-                                                                        const gchar                   *project_name);
 
 /**
  *
@@ -285,6 +269,7 @@ void                   hyscan_data_writer_sonar_set_position           (HyScanDa
  * Функция включает запись данных.
  *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param project_name название проекта, в который записывать данные;
  * \param track_name название галса, в который записывать данные;
  * \param track_type тип галса.
  *
@@ -293,6 +278,7 @@ void                   hyscan_data_writer_sonar_set_position           (HyScanDa
  */
 HYSCAN_API
 gboolean               hyscan_data_writer_start                        (HyScanDataWriter              *writer,
+                                                                        const gchar                   *project_name,
                                                                         const gchar                   *track_name,
                                                                         HyScanTrackType                track_type);
 

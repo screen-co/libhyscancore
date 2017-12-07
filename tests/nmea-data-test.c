@@ -88,9 +88,7 @@ main (int argc, char **argv)
 
   /* Создаем объект записи данных. */
   writer = hyscan_data_writer_new (db);
-  if (!hyscan_data_writer_set_project (writer, name))
-    g_error ("can't set project");
-  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
     g_error ("can't start write");
 
   /* Местоположение приёмных антенн. */

@@ -703,51 +703,6 @@ hyscan_data_writer_new (HyScanDB *db)
                        NULL);
 }
 
-/* Функция устанавливает название проекта, в который будет вестись запись галсов. */
-gboolean
-hyscan_data_writer_set_project (HyScanDataWriter *writer,
-                                const gchar      *project_name)
-{
-  HyScanDataWriterPrivate *priv;
-
-  gboolean status = FALSE;
-
-  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
-
-  priv = writer->priv;
-
-  if (priv->db == NULL)
-    return TRUE;
-
-  g_mutex_lock (&priv->lock);
-
-  /* Закрываем текущий проект. */
-  if (priv->project_id > 0)
-    {
-      g_clear_pointer (&priv->project_name, g_free);
-      hyscan_db_close (priv->db, priv->project_id);
-      priv->project_id = -1;
-    }
-
-  /* Создаём проект, если он еще не создан. */
-  if (!hyscan_data_writer_create_project (priv->db, project_name))
-    goto exit;
-
-  /* Открываем проект. */
-  priv->project_id = hyscan_db_project_open (priv->db, project_name);
-  if (priv->project_id < 0)
-    goto exit;
-
-  priv->project_name = g_strdup (project_name);
-
-  status = TRUE;
-
-exit:
-  g_mutex_unlock (&priv->lock);
-
-  return status;
-}
-
 /* Функция устанавливает имя оператора. */
 void
 hyscan_data_writer_set_operator_name (HyScanDataWriter *writer,
@@ -1006,6 +961,7 @@ hyscan_data_writer_sonar_set_position (HyScanDataWriter      *writer,
 /* Функция включает запись данных. */
 gboolean
 hyscan_data_writer_start (HyScanDataWriter *writer,
+                          const gchar      *project_name,
                           const gchar      *track_name,
                           HyScanTrackType   track_type)
 {
@@ -1034,9 +990,25 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
       priv->track_id = -1;
     }
 
-  /* Проект должен быть открыт. */
-  if (priv->project_id < 0)
-    goto exit;
+  /* Если текущий открытый проект не совпадает с указанным, открываем его. */
+  if (g_strcmp0 (priv->project_name, project_name) != 0)
+    {
+      /* Закрываем текущий проект. */
+      g_clear_pointer (&priv->project_name, g_free);
+      hyscan_db_close (priv->db, priv->project_id);
+      priv->project_id = -1;
+
+      /* Создаём проект, если он еще не создан. */
+      if (!hyscan_data_writer_create_project (priv->db, project_name))
+        goto exit;
+
+      /* Открываем проект. */
+      priv->project_id = hyscan_db_project_open (priv->db, project_name);
+      if (priv->project_id < 0)
+        goto exit;
+
+      priv->project_name = g_strdup (project_name);
+    }
 
   /* Создаём новый галс. */
   priv->track_id = hyscan_data_writer_create_track (priv->db, priv->project_id,
