@@ -60,7 +60,7 @@ hyscan_core_params_set_raw_data_info (HyScanDB          *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data_type));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (info->data_type));
   hyscan_param_list_set_double (param_list, "/data/rate", info->data_rate);
   hyscan_param_list_set_double (param_list, "/antenna/offset/vertical", info->antenna_voffset);
   hyscan_param_list_set_double (param_list, "/antenna/offset/horizontal", info->antenna_hoffset);
@@ -95,7 +95,7 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (info->data_type));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (info->data_type));
   hyscan_param_list_set_double (param_list, "/data/rate", info->data_rate);
   hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna_vpattern);
   hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna_hpattern);
@@ -124,7 +124,7 @@ hyscan_core_params_set_signal_info (HyScanDB *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (HYSCAN_DATA_COMPLEX_FLOAT));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_COMPLEX_FLOAT));
   hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
@@ -151,7 +151,7 @@ hyscan_core_params_set_tvg_info (HyScanDB *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_type_name (HYSCAN_DATA_FLOAT));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_FLOAT));
   hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
