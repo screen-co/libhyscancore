@@ -203,7 +203,6 @@ HyScanDBFindStatus      hyscan_nmea_data_find_data              (HyScanNMEAData 
  *
  * \param data указатель на объект \link HyScanNMEAData \endlink;
  * \param index индекс считываемых данных;
- * \param size указатель на переменную для сохранения размера считанных данных или NULL;
  * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
  *
  * \return указатель на константную нуль-терминированную строку.
@@ -212,7 +211,6 @@ HyScanDBFindStatus      hyscan_nmea_data_find_data              (HyScanNMEAData 
 HYSCAN_API
 const gchar            *hyscan_nmea_data_get_sentence           (HyScanNMEAData        *data,
                                                                  guint32                index,
-                                                                 guint32               *size,
                                                                  gint64                *time);
 
 /**

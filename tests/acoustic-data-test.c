@@ -2,6 +2,7 @@
 #include <hyscan-raw-data.h>
 #include <hyscan-acoustic-data.h>
 #include <hyscan-data-writer.h>
+#include <hyscan-buffer.h>
 #include <hyscan-cached.h>
 
 #include <libxml/parser.h>
@@ -11,17 +12,45 @@
 #define PROJECT_NAME           "test"
 #define TRACK_NAME             "track"
 
+typedef struct _test_info test_info;
+struct _test_info
+{
+  const gchar         *name;
+  HyScanDataType       type;
+  gdouble              error;
+};
+
+test_info raw_test_types [] =
+{
+  { "adc-14le", HYSCAN_DATA_COMPLEX_ADC_14LE, 1e-6 },
+  { "adc-16le", HYSCAN_DATA_COMPLEX_ADC_16LE, 1e-6 },
+  { "adc-24le", HYSCAN_DATA_COMPLEX_ADC_24LE, 1e-8 },
+  { "float",    HYSCAN_DATA_COMPLEX_FLOAT,    1e-8 },
+};
+
+test_info amp_test_types [] =
+{
+  { "uint8",    HYSCAN_DATA_UINT8,    1e-4 },
+  { "uint16",   HYSCAN_DATA_UINT16,   1e-6 },
+  { "uint32",   HYSCAN_DATA_UINT32,   1e-9 },
+  { "float",    HYSCAN_DATA_FLOAT,    1e-9 },
+  { "normal8",  HYSCAN_DATA_NORMAL8,  1e-4 },
+  { "normal16", HYSCAN_DATA_NORMAL16, 1e-6 }
+};
+
 int main( int argc, char **argv )
 {
-  gchar *db_uri = NULL;           /* Путь к каталогу с базой данных. */
-  gdouble frequency = 0.0;        /* Частота сигнала. */
-  gdouble duration = 0.0;         /* Длительность сигнала. */
-  gdouble discretization = 0.0;   /* Частота дискретизации. */
-  guint n_signals = 10;           /* Число сигналов. */
-  guint n_lines = 10;             /* Число строк для каждого сигнала. */
-  guint n_tvgs = 5;               /* Число "кривых" ВАРУ. */
-  guint cache_size = 0;           /* Размер кэша, Мб. */
-  gboolean noise = FALSE;         /* Использовать канал шумов для теста. */
+  gchar *db_uri = NULL;
+  gchar *raw_type_name = g_strdup ("adc-16le");
+  gchar *amp_type_name = g_strdup ("uint16");
+  gdouble frequency = 0.0;
+  gdouble duration = 0.0;
+  gdouble discretization = 0.0;
+  guint n_signals = 10;
+  guint n_lines = 10;
+  guint n_tvgs = 5;
+  guint cache_size = 0;
+  gboolean noise = FALSE;
 
   HyScanDB *db;
   HyScanCache *cache = NULL;
@@ -33,10 +62,20 @@ int main( int argc, char **argv )
   HyScanRawDataInfo raw_info;
   HyScanAcousticDataInfo acoustic_info;
 
-  guint16 *data_values;
+  HyScanBuffer *signal_buffer;
+  HyScanBuffer *tvg_buffer;
+  HyScanBuffer *cplx_buffer;
+  HyScanBuffer *amp_buffer;
+  HyScanBuffer *channel_buffer;
 
-  guint32 signal_size;
-  guint32 data_size;
+  HyScanDataType raw_type;
+  HyScanDataType amp_type;
+
+  guint32 n_signal_points;
+  guint32 n_data_points;
+  gdouble raw_error = 0.0;
+  gdouble amp_error = 0.0;
+
   guint i, j, k;
 
   {
@@ -45,6 +84,8 @@ int main( int argc, char **argv )
     GOptionContext *context;
     GOptionEntry entries[] =
       {
+        { "raw-type", 'r', 0, G_OPTION_ARG_STRING, &raw_type_name, "Raw data type (adc-14le, adc-16le, adc-24le, float)", NULL },
+        { "amp-type", 'a', 0, G_OPTION_ARG_STRING, &amp_type_name, "amplitude data type (uint8, uint16, uint32, float, normal8, normal16)", NULL },
         { "discretization", 'd', 0, G_OPTION_ARG_DOUBLE, &discretization, "Signal discretization, Hz", NULL },
         { "frequency", 'f', 0, G_OPTION_ARG_DOUBLE, &frequency, "Signal frequency, Hz", NULL },
         { "duration", 't', 0, G_OPTION_ARG_DOUBLE, &duration, "Signal duration, s", NULL },
@@ -72,8 +113,7 @@ int main( int argc, char **argv )
         return -1;
       }
 
-    if ((g_strv_length (args) != 2) || (discretization < 1.0) || (frequency < 1.0) ||
-        (duration < 1e-7) || (n_signals < 1) || (n_signals > 100) || (n_lines < 1) || (n_lines > 100))
+    if ((g_strv_length (args) != 2))
       {
         g_print ("%s", g_option_context_get_help (context, FALSE, NULL));
         return 0;
@@ -85,6 +125,46 @@ int main( int argc, char **argv )
     g_strfreev (args);
   }
 
+  /* Входные параметры. */
+  if ((discretization < 10.0) || (discretization > 10000000.0))
+    g_error ("the discretization must be within 10Hz to 10Mhz");
+
+  if ((frequency < 1.0) || (frequency > 1000000.0))
+    g_error ("the signal frequency must be within 1Hz to 1Mhz");
+
+  if ((duration < 1e-4) || (duration > 0.1))
+    g_error ("the signal duration must be within 100us to 1ms");
+
+  if ((n_signals < 1) || (n_signals > 100))
+    g_error ("the number of signals must be within 1 to 100");
+
+  if ((n_lines < 1) || (n_lines > 100))
+    g_error ("the number of lines must be within 1 to 100");
+
+  if ((n_tvgs < 1) || (n_tvgs > 100))
+    g_error ("the number of tvgs must be within 1 to 100");
+
+  /* Формат записи данных. */
+  raw_type = HYSCAN_DATA_INVALID;
+  amp_type = HYSCAN_DATA_INVALID;
+  for (i = 0; i < sizeof (raw_test_types) / sizeof (test_info); i++)
+    if (g_strcmp0 (raw_type_name, raw_test_types[i].name) == 0)
+      {
+        raw_type = raw_test_types[i].type;
+        raw_error = raw_test_types[i].error;
+      }
+  for (i = 0; i < sizeof (amp_test_types) / sizeof (test_info); i++)
+    if (g_strcmp0 (amp_type_name, amp_test_types[i].name) == 0)
+      {
+        amp_type = amp_test_types[i].type;
+        amp_error = amp_test_types[i].error;
+      }
+
+  if (raw_type == HYSCAN_DATA_INVALID)
+    g_error ("unsupported raw type %s", raw_type_name);
+  if (amp_type == HYSCAN_DATA_INVALID)
+    g_error ("unsupported amplitude type %s", amp_type_name);
+
   /* Параметры данных. */
   position.x = 0.0;
   position.y = 0.0;
@@ -93,7 +173,7 @@ int main( int argc, char **argv )
   position.gamma = 0.0;
   position.theta = 0.0;
 
-  raw_info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  raw_info.data_type = raw_type;
   raw_info.data_rate = discretization;
   raw_info.antenna_voffset = 0.0;
   raw_info.antenna_hoffset = 0.0;
@@ -104,15 +184,26 @@ int main( int argc, char **argv )
   raw_info.adc_vref = 1.0;
   raw_info.adc_offset = 0;
 
-  acoustic_info.data_type = HYSCAN_DATA_AMPLITUDE_INT_16LE;
+  acoustic_info.data_type = amp_type;
   acoustic_info.data_rate = discretization;
   acoustic_info.antenna_vpattern = 40.0;
   acoustic_info.antenna_hpattern = 2.0;
 
-  signal_size = discretization * duration;
-  data_size = 100 * signal_size;
+  /* Буферы данных. */
+  signal_buffer = hyscan_buffer_new ();
+  tvg_buffer = hyscan_buffer_new ();
+  cplx_buffer = hyscan_buffer_new ();
+  amp_buffer = hyscan_buffer_new ();
+  channel_buffer = hyscan_buffer_new ();
 
-  data_values = g_new0 (guint16, 2 * data_size + 1);
+  hyscan_buffer_set_data_type (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
+  hyscan_buffer_set_data_type (tvg_buffer, HYSCAN_DATA_FLOAT);
+  hyscan_buffer_set_data_type (cplx_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
+  hyscan_buffer_set_data_type (amp_buffer, HYSCAN_DATA_FLOAT);
+
+  /* Допустимые ошибки. */
+  amp_error *= n_data_points;
+  raw_error *= n_data_points;
 
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
@@ -137,13 +228,17 @@ int main( int argc, char **argv )
    * Сигнал располагается со смещением в две длительности. Все остальные индексы
    * массива заполнены нулями. Используется тональный сигнал. */
   g_message ("Data generation");
+  n_signal_points = discretization * duration;
+  n_data_points = 100 * n_signal_points;
   for (i = 0; i < n_lines * n_signals; i++)
     {
       gint64 index_time;
       guint tvg_index;
       guint signal_index;
       gdouble work_frequency;
-      HyScanDataWriterData data;
+
+      HyScanComplexFloat *raw_values;
+      gfloat *amp_values;
 
       index_time = 1000 * (i + 1);
       tvg_index = (i / n_tvgs);
@@ -153,11 +248,11 @@ int main( int argc, char **argv )
       /* Записываем образ сигнала каждые n_lines строк. */
       if ((i % n_lines) == 0)
         {
-          HyScanDataWriterSignal signal;
           HyScanComplexFloat *signal_image;
 
-          signal_image = g_new0 (HyScanComplexFloat, signal_size);
-          for (j = 0; j < signal_size; j++)
+          hyscan_buffer_set_size (signal_buffer, n_signal_points * sizeof (HyScanComplexFloat));
+          signal_image = hyscan_buffer_get_complex_float (signal_buffer, &n_signal_points);
+          for (j = 0; j < n_signal_points; j++)
             {
               gdouble time = (1.0 / discretization) * j;
               gdouble phase = 2.0 * G_PI * work_frequency * time;
@@ -166,79 +261,65 @@ int main( int argc, char **argv )
               signal_image[j].im = sin (phase);
             }
 
-          signal.time = index_time;
-          signal.rate = discretization;
-          signal.n_points = signal_size;
-          signal.points = signal_image;
-
-          if (!hyscan_data_writer_raw_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &signal))
+          if (!hyscan_data_writer_raw_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, index_time, signal_buffer))
             g_error ("can't add signal image");
-
-          g_free (signal_image);
         }
 
       /* Записываем "кривую" ВАРУ каждые n_tvgs строк. */
       if ((i % n_tvgs) == 0)
         {
-          HyScanDataWriterTVG tvg;
           gfloat *tvg_values;
 
-          tvg_values = g_new0 (gfloat, data_size + 1);
-          for (j = 0; j < data_size; j++)
-            tvg_values[j] = tvg_index + (((gdouble)tvg_index / (gdouble)data_size) * j);
+          hyscan_buffer_set_size (tvg_buffer, n_data_points * sizeof (gfloat));
+          tvg_values = hyscan_buffer_get_float (tvg_buffer, &n_data_points);
+          for (j = 0; j < n_data_points; j++)
+            tvg_values[j] = tvg_index + (((gdouble)tvg_index / (gdouble)n_data_points) * j);
 
-          tvg.time = index_time;
-          tvg.rate = discretization;
-          tvg.n_gains = data_size;
-          tvg.gains = tvg_values;
-
-          if (!hyscan_data_writer_raw_add_tvg (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &tvg))
+          if (!hyscan_data_writer_raw_add_tvg (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, index_time, tvg_buffer))
             g_error ("can't add tvg");
-
-          g_free (tvg_values);
         }
 
       /* Записываем сырые данные. */
-      for (j = 0; j < 2 * data_size; j++)
-        data_values[j] = 32767;
-
-      for (j = 2 * signal_size; j < 3 * signal_size; j++)
+      hyscan_buffer_set_size (cplx_buffer, n_data_points * sizeof (HyScanComplexFloat));
+      raw_values = hyscan_buffer_get_complex_float (cplx_buffer, &n_data_points);
+      for (j = 2 * n_signal_points; j < 3 * n_signal_points; j++)
         {
-          gdouble time = (1.0 / discretization) * j;
+          gdouble time = (1.0 / discretization) * (j - 2 * n_signal_points);
           gdouble phase = 2.0 * G_PI * work_frequency * time;
 
-          data_values[2 * j] = 65535.0 * ((0.5 * cos (phase)) + 0.5);
-          data_values[2 * j + 1] = 65535.0 * ((0.5 * sin (phase)) + 0.5);
+          raw_values[j].re = cos (phase);
+          raw_values[j].im = sin (phase);
         }
 
-      data.time = index_time;
-      data.size = 2 * data_size * sizeof(gint16);
-      data.data = data_values;
+      if (!hyscan_buffer_export_data (cplx_buffer, channel_buffer, raw_type))
+        g_error ("can't export complex data");
+
       if (noise)
         {
-          if (!hyscan_data_writer_raw_add_noise (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &raw_info, &data))
+          if (!hyscan_data_writer_raw_add_noise (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, index_time, &raw_info, channel_buffer))
             g_error ("can't add noise data");
         }
       else
         {
-          if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, &raw_info, &data))
+          if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, index_time, &raw_info, channel_buffer))
             g_error ("can't add raw data");
         }
 
       /* Записываем амплитуду. */
-      memset (data_values, 0, 2 * data_size);
-      for (j = signal_size; j < 3 * signal_size; j++)
+      hyscan_buffer_set_size (amp_buffer, n_data_points * sizeof (gfloat));
+      amp_values = hyscan_buffer_get_float (amp_buffer, &n_data_points);
+      for (j = n_signal_points; j < 3 * n_signal_points; j++)
         {
-          if ((j >= signal_size) && (j < 2 * signal_size))
-            data_values[j] = 65535.0 * ((gdouble) (j - signal_size) / signal_size);
-          if ((j >= 2 * signal_size) && (j < 3 * signal_size))
-            data_values[j] = 65535.0 * (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+          if ((j >= n_signal_points) && (j < 2 * n_signal_points))
+            amp_values[j] = ((gdouble) (j - n_signal_points) / n_signal_points);
+          if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+            amp_values[j] = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
         }
 
-      data.time = index_time;
-      data.size = data_size * sizeof(guint16);
-      data.data = data_values;
-      if (!hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &acoustic_info, &data))
+      if (!hyscan_buffer_export_data (amp_buffer, channel_buffer, amp_type))
+        g_error ("can't export amplitude data");
+
+      if (!hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, index_time, &acoustic_info, channel_buffer))
         g_error ("can't add acoustic data");
     }
 
@@ -264,6 +345,8 @@ int main( int argc, char **argv )
 
   /* Для тонального сигнала проверяем, что его свёртка совпадает с треугольником,
    * начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
+  n_signal_points = discretization * duration;
+  n_data_points = 100 * n_signal_points;
   for (k = 0; k < 2; k++)
     {
       GTimer *timer = g_timer_new ();
@@ -284,8 +367,7 @@ int main( int argc, char **argv )
           guint tvg_index;
           guint signal_index;
           gdouble work_frequency;
-          gdouble square1;
-          gdouble square2;
+          gdouble amp_diff;
           guint32 io_size;
 
           tvg_index = (i / n_tvgs);
@@ -296,10 +378,10 @@ int main( int argc, char **argv )
           g_timer_start (timer);
           signal_image = hyscan_raw_data_get_signal_image (raw_reader, i, &io_size, NULL);
           elapsed += g_timer_elapsed (timer, NULL);
-          if ((signal_image == NULL)|| (io_size != signal_size))
+          if ((signal_image == NULL)|| (io_size != n_signal_points))
             g_error ("can't get signal image");
 
-          for (j = 0; j < signal_size; j++)
+          for (j = 0; j < n_signal_points; j++)
             {
               gdouble time = (1.0 / discretization) * j;
               gdouble phase = 2.0 * G_PI * work_frequency * time;
@@ -318,11 +400,11 @@ int main( int argc, char **argv )
           if (tvg_values == NULL)
             g_error ("can't get tvg values");
 
-          if (io_size != data_size)
+          if (io_size != n_data_points)
             g_error ("tvg size mismatch");
 
-          for (j = 0; j < data_size; j++)
-            if (fabs (tvg_values[j] - (tvg_index + (((gdouble)tvg_index / (gdouble)data_size)) * j)) > 1e-5)
+          for (j = 0; j < n_data_points; j++)
+            if (fabs (tvg_values[j] - (tvg_index + (((gdouble)tvg_index / (gdouble)n_data_points)) * j)) > 1e-5)
               g_error ("tvg error");
 
           /* Проверяем амплитуду акустических данных. */
@@ -332,23 +414,24 @@ int main( int argc, char **argv )
           if (amplitudes == NULL)
             g_error ("can't get acoustic amplitude");
 
-          if (io_size != data_size)
+          if (io_size != n_data_points)
             g_error ("acoustic amplitude size mismatch");
 
-          square1 = 0.0;
-          square2 = 0.0;
-          for (j = 0; j < data_size; j++)
+          amp_diff = 0.0;
+          for (j = 0; j < n_data_points; j++)
             {
-              if ((j >= signal_size) && (j < 2 * signal_size))
-                square1 += ((gdouble) (j - signal_size) / signal_size);
-              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
-                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+              gdouble amplitude = 0.0;
 
-              square2 += amplitudes[j];
+              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
+                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
+              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
+
+              amp_diff += fabs (amplitudes[j] - amplitude);
             }
 
-          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
-            g_error ("acoustic amplitude error");
+          if (amp_diff > amp_error)
+            g_error ("acoustic amplitudes error");
 
           /* Проверяем амплитуду сырых данных. */
           g_timer_start (timer);
@@ -357,22 +440,23 @@ int main( int argc, char **argv )
           if (amplitudes == NULL)
             g_error ("can't get raw amplitudes");
 
-          if (io_size != data_size)
+          if (io_size != n_data_points)
             g_error ("raw amplitudes size mismatch");
 
-          square1 = 0.0;
-          square2 = 0.0;
-          for (j = 0; j < data_size; j++)
+          amp_diff = 0.0;
+          for (j = 0; j < n_data_points; j++)
             {
-              if ((j >= signal_size) && (j < 2 * signal_size))
-                square1 += ((gdouble) (j - signal_size) / signal_size);
-              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
-                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+              gdouble amplitude = 0.0;
 
-              square2 += amplitudes[j];
+              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
+                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
+              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
+
+              amp_diff += fabs (amplitudes[j] - amplitude);
             }
 
-          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
+          if (amp_diff > raw_error)
             g_error ("raw amplitudes error");
 
           /* Проверяем квадратурные значения. */
@@ -383,25 +467,25 @@ int main( int argc, char **argv )
           if (quadratures == NULL)
             g_error ("can't get raw quadratures");
 
-          if (io_size != data_size)
+          if (io_size != n_data_points)
             g_error ("raw quadratures size mismatch");
 
-          square1 = 0.0;
-          square2 = 0.0;
-          for (j = 0; j < data_size; j++)
+          amp_diff = 0.0;
+          for (j = 0; j < n_data_points; j++)
             {
+              gdouble amplitude = 0.0;
               gfloat re = quadratures[j].re;
               gfloat im = quadratures[j].im;
 
-              if ((j >= signal_size) && (j < 2 * signal_size))
-                square1 += ((gdouble) (j - signal_size) / signal_size);
-              if ((j >= 2 * signal_size) && (j < 3 * signal_size))
-                square1 += (1.0 - (gdouble) (j - 2 * signal_size) / signal_size);
+              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
+                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
+              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
 
-              square2 += sqrtf (re * re + im * im);
+              amp_diff += fabs (sqrtf (re * re + im * im) - amplitude);
             }
 
-          if ((100.0 * (fabs (square1 - square2) / MAX (square1, square2))) > 0.1)
+          if (amp_diff > raw_error)
             g_error ("raw quadratures error");
         }
 
@@ -422,7 +506,14 @@ int main( int argc, char **argv )
   g_clear_object (&db);
   g_clear_object (&cache);
 
-  g_free (data_values);
+  g_object_unref (signal_buffer);
+  g_object_unref (tvg_buffer);
+  g_object_unref (cplx_buffer);
+  g_object_unref (amp_buffer);
+  g_object_unref (channel_buffer);
+
+  g_free (raw_type_name);
+  g_free (amp_type_name);
   g_free (db_uri);
 
   xmlCleanupParser ();

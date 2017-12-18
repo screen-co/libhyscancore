@@ -318,7 +318,7 @@ sensor_add_data (HyScanDataWriter *writer,
                  guint             n_channel,
                  gboolean          fail)
 {
-  HyScanDataWriterData data;
+  HyScanBuffer *buffer = hyscan_buffer_new ();
 
   const gchar *sensor;
   guint i;
@@ -327,14 +327,17 @@ sensor_add_data (HyScanDataWriter *writer,
 
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
     {
-      data.data = g_strdup_printf ("sensor-%d data %d", n_channel, i);
-      data.size = strlen (data.data);
-      data.time = timestamp + i;
-      if (!hyscan_data_writer_sensor_add_data (writer, sensor, HYSCAN_SOURCE_NMEA_ANY, n_channel, &data) && !fail)
+      gchar *data = g_strdup_printf ("sensor-%d data %d", n_channel, i);
+      gint64 time = timestamp + i;
+
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
+      if (!hyscan_data_writer_sensor_add_data (writer, sensor, HYSCAN_SOURCE_NMEA_ANY, n_channel, time, buffer) && !fail)
         g_error ("can't add data to '%s'", sensor);
 
-      g_free ((gpointer)data.data);
+      g_free (data);
     }
+
+  g_object_unref (buffer);
 }
 
 /* Функция записывает гидролокационные данные. */
@@ -344,11 +347,12 @@ sonar_add_data (HyScanDataWriter *writer,
                 guint             n_channel,
                 gboolean          raw)
 {
-  HyScanDataWriterData data;
+  HyScanBuffer *data_buffer;
+  HyScanBuffer *signal_buffer;
+  HyScanBuffer *tvg_buffer;
+
   HyScanRawDataInfo raw_info;
   HyScanAcousticDataInfo acoustic_info;
-  HyScanDataWriterSignal signal;
-  HyScanDataWriterTVG tvg;
 
   HyScanSourceType source;
   guint16 *data_values;
@@ -356,22 +360,24 @@ sonar_add_data (HyScanDataWriter *writer,
   gfloat *tvg_gains;
   guint i, j;
 
+  data_buffer = hyscan_buffer_new ();
+  signal_buffer = hyscan_buffer_new ();
+  tvg_buffer = hyscan_buffer_new ();
+
   raw_info = raw_get_info (n_channel);
   acoustic_info = acoustic_get_info (n_channel);
 
-  data.size = DATA_SIZE * sizeof (guint16);
-  data_values = g_malloc (data.size);
-  data.data = data_values;
+  data_values = g_new (guint16, DATA_SIZE);
+  hyscan_buffer_wrap_data (data_buffer, HYSCAN_DATA_BLOB,
+                           data_values, DATA_SIZE * sizeof (guint16));
 
-  signal.n_points = SIGNAL_SIZE;
   signal_points = g_new (HyScanComplexFloat, SIGNAL_SIZE);
-  signal.points = signal_points;
-  signal.rate = raw_info.data_rate;
+  hyscan_buffer_wrap_data (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT,
+                           signal_points, SIGNAL_SIZE * sizeof (HyScanComplexFloat));
 
-  tvg.n_gains = TVG_SIZE;
   tvg_gains = g_new (gfloat, TVG_SIZE);
-  tvg.gains = tvg_gains;
-  tvg.rate = raw_info.data_rate;
+  hyscan_buffer_wrap_data (tvg_buffer, HYSCAN_DATA_FLOAT,
+                           tvg_gains, TVG_SIZE * sizeof (gfloat));
 
   source = sonar_get_type (n_channel);
 
@@ -388,9 +394,7 @@ sonar_add_data (HyScanDataWriter *writer,
                   signal_points[j].im = -signal_points[j].re;
                 }
 
-              signal.time = timestamp + i;
-
-              hyscan_data_writer_raw_add_signal (writer, source, &signal);
+              hyscan_data_writer_raw_add_signal (writer, source, timestamp + i, signal_buffer);
             }
 
           /* Параметры ВАРУ. */
@@ -399,9 +403,7 @@ sonar_add_data (HyScanDataWriter *writer,
               for (j = 0; j < TVG_SIZE; j++)
                 tvg_gains[j] = (n_channel + i + j);
 
-              tvg.time = timestamp + i;
-
-              hyscan_data_writer_raw_add_tvg (writer, source, 1, &tvg);
+              hyscan_data_writer_raw_add_tvg (writer, source, 1, timestamp + i, tvg_buffer);
             }
         }
 
@@ -409,21 +411,23 @@ sonar_add_data (HyScanDataWriter *writer,
       for (j = 0; j < DATA_SIZE; j++)
         data_values[j] = n_channel + i + j;
 
-      data.time = timestamp + i;
-
       if (raw)
         {
-          if (!hyscan_data_writer_raw_add_data (writer, source, 1, &raw_info, &data))
+          if (!hyscan_data_writer_raw_add_data (writer, source, 1, timestamp + i, &raw_info, data_buffer))
             g_error ("can't add data to '%s'", sonar_get_name (n_channel));
-          if (!hyscan_data_writer_raw_add_noise (writer, source, 1, &raw_info, &data))
+          if (!hyscan_data_writer_raw_add_noise (writer, source, 1, timestamp + i, &raw_info, data_buffer))
             g_error ("can't add noise to '%s'", sonar_get_name (n_channel));
         }
       else
         {
-          if (!hyscan_data_writer_acoustic_add_data (writer, source, &acoustic_info, &data))
+          if (!hyscan_data_writer_acoustic_add_data (writer, source, timestamp + i, &acoustic_info, data_buffer))
             g_error ("can't add data to '%s'", sonar_get_name (n_channel));
         }
     }
+
+  g_object_unref (data_buffer);
+  g_object_unref (tvg_buffer);
+  g_object_unref (signal_buffer);
 
   g_free (data_values);
   g_free (signal_points);
@@ -442,11 +446,12 @@ sensor_check_data (HyScanDB    *db,
   gint32 channel_id;
   const gchar *channel_name;
 
+  HyScanBuffer *buffer;
   gint64 time;
-  gchar buffer[1024];
-  guint32 data_size;
 
   guint i;
+
+  buffer = hyscan_buffer_new ();
 
   channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_ANY, TRUE, n_channel);
 
@@ -470,28 +475,31 @@ sensor_check_data (HyScanDB    *db,
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
     {
-      gchar *data = g_strdup_printf ("sensor-%d data %d", n_channel, i);
+      gchar *data_orig = g_strdup_printf ("sensor-%d data %d", n_channel, i);
+      const  gchar *data;
+      guint32 data_size;
 
-      data_size = sizeof (buffer);
-      if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &data_size, &time))
+      if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &time))
         g_error ("can't read data from channel");
 
       if (time != timestamp + i)
         g_error ("time stamp mismatch");
 
-      if (data_size == sizeof (buffer))
+      data = hyscan_buffer_get_data (buffer, &data_size);
+      if (data_size != strlen (data_orig))
         g_error ("data size mismatch");
 
-      buffer[data_size] = 0;
-      if (g_strcmp0 (data, buffer) != 0)
-        g_error ("data content mismatch");
+      if (strncmp (data_orig, data, strlen (data_orig)) != 0)
+        g_error ("data content mismatch ('%s', '%s')", data_orig, data);
 
-      g_free (data);
+      g_free (data_orig);
     }
 
   hyscan_db_close (db, channel_id);
   hyscan_db_close (db, track_id);
   hyscan_db_close (db, project_id);
+
+  g_object_unref (buffer);
 }
 
 /* Функция проверяет гидролокационные данные. */
@@ -509,13 +517,16 @@ sonar_check_data (HyScanDB    *db,
   const gchar *channel_name;
   HyScanSourceType source;
 
-  gpointer buffer;
-  guint32 buffer_size;
+  HyScanBuffer *data_buffer;
+  HyScanBuffer *signal_buffer;
+  HyScanBuffer *tvg_buffer;
 
   guint i, j;
 
-  buffer_size = DATA_SIZE * sizeof (guint16);
-  buffer = g_malloc (buffer_size);
+  data_buffer = hyscan_buffer_new ();
+  tvg_buffer = hyscan_buffer_new ();
+  signal_buffer = hyscan_buffer_new ();
+
   source = sonar_get_type (n_channel);
   channel_name = hyscan_channel_get_name_by_types (source, raw, 1);
 
@@ -552,12 +563,14 @@ sonar_check_data (HyScanDB    *db,
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
     {
-      guint32 data_size = buffer_size;
-      guint16 *data_values = buffer;
+      const guint16 *data_values;
+      guint32 data_size;
       gint64 time;
 
-      if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &data_size, &time))
+      if (!hyscan_db_channel_get_data (db, channel_id, i, data_buffer, &time))
         g_error ("can't read data from channel");
+
+      data_values = hyscan_buffer_get_data (data_buffer, &data_size);
 
       if (time != timestamp + i)
         g_error ("time stamp mismatch");
@@ -584,12 +597,14 @@ sonar_check_data (HyScanDB    *db,
 
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
         {
-          guint32 data_size = buffer_size;
-          guint16 *data_values = buffer;
+          const guint16 *data_values;
+          guint32 data_size;
           gint64 time;
 
-          if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &data_size, &time))
+          if (!hyscan_db_channel_get_data (db, channel_id, i, data_buffer, &time))
             g_error ("can't read noise from channel");
+
+          data_values = hyscan_buffer_get_data (data_buffer, &data_size);
 
           if (time != timestamp + i)
             g_error ("time stamp mismatch");
@@ -621,15 +636,17 @@ sonar_check_data (HyScanDB    *db,
       /* Проверка образов сигналов. */
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
         {
-          guint32 signal_size = buffer_size;
-          HyScanComplexFloat *signal_points = buffer;
+          const HyScanComplexFloat *signal_points;
+          guint32 signal_size;
           gint64 time;
 
           if ((i % N_LINES_PER_SIGNAL) != 0)
             continue;
 
-          if (!hyscan_db_channel_get_data (db, channel_id, i / N_LINES_PER_SIGNAL, buffer, &signal_size, &time))
+          if (!hyscan_db_channel_get_data (db, channel_id, i / N_LINES_PER_SIGNAL, signal_buffer, &time))
             g_error ("can't read data from signal channel");
+
+          signal_points = hyscan_buffer_get_data (signal_buffer, &signal_size);
 
           if (time != timestamp + i)
             g_error ("signal time stamp mismatch");
@@ -663,15 +680,17 @@ sonar_check_data (HyScanDB    *db,
       /* Проверка данных ВАРУ. */
       for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
         {
-          guint32 tvg_size = buffer_size;
-          float *tvg_gains = buffer;
+          const float *tvg_gains;
+          guint32 tvg_size;
           gint64 time;
 
           if ((i % N_LINES_PER_TVG) != 0)
             continue;
 
-          if (!hyscan_db_channel_get_data (db, channel_id, i / N_LINES_PER_TVG, buffer, &tvg_size, &time))
+          if (!hyscan_db_channel_get_data (db, channel_id, i / N_LINES_PER_TVG, tvg_buffer, &time))
             g_error ("can't read data from tvg channel");
+
+          tvg_gains = hyscan_buffer_get_data (tvg_buffer, &tvg_size);
 
           if (time != timestamp + i)
             g_error ("tvg time stamp mismatch");
@@ -690,7 +709,9 @@ sonar_check_data (HyScanDB    *db,
   hyscan_db_close (db, track_id);
   hyscan_db_close (db, project_id);
 
-  g_free (buffer);
+  g_object_unref (data_buffer);
+  g_object_unref (signal_buffer);
+  g_object_unref (tvg_buffer);
 }
 
 /* Функция проверяет отсутствие гидролокационных данных. */

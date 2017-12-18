@@ -26,6 +26,7 @@ struct _HyScanDepthometerPrivate
   gchar        *prefix;           /* Префикс системы кэширования. */
   gchar        *key;              /* Ключ кэширования. */
   gint          key_length;       /* Длина ключа. */
+  HyScanBuffer *cache_buffer;     /* Буфер данных кэша. */
 
   guint32      *indexes;          /* Массив индексов. */
   gint          real_size;        /* Размер массива. */
@@ -106,6 +107,8 @@ hyscan_depthometer_object_constructed (GObject *object)
   priv->size = 2;
   priv->real_size = 2;
   priv->indexes = g_malloc0 (2 * priv->size * sizeof (guint32));
+
+  priv->cache_buffer = hyscan_buffer_new ();
 }
 
 static void
@@ -114,6 +117,7 @@ hyscan_depthometer_object_finalize (GObject *object)
   HyScanDepthometer *meter = HYSCAN_DEPTHOMETER (object);
   HyScanDepthometerPrivate *priv = meter->priv;
 
+  g_clear_object (&priv->cache_buffer);
   g_clear_object (&priv->source);
   g_clear_object (&priv->cache);
   g_free (priv->prefix);
@@ -258,7 +262,8 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
   if (priv->cache != NULL)
     {
       hyscan_depthometer_update_cache_key (meter, time);
-      if (hyscan_cache_get (priv->cache, priv->key, NULL, &retval, &retval_size))
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
+      if (hyscan_cache_get (priv->cache, priv->key, NULL, priv->cache_buffer))
         if (retval_size == sizeof (retval))
           return retval;
     }
@@ -299,7 +304,10 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
 
   /* Кладем получившееся значение в кэш. */
   if (priv->cache != NULL)
-    hyscan_cache_set (priv->cache, priv->key, NULL, &retval, retval_size);
+    {
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
+      hyscan_cache_set (priv->cache, priv->key, NULL, priv->cache_buffer);
+    }
 
   return retval;
 }
@@ -325,7 +333,8 @@ hyscan_depthometer_check (HyScanDepthometer *meter,
 
   hyscan_depthometer_update_cache_key (meter, time);
 
-  if (hyscan_cache_get (priv->cache, priv->key, NULL, &retval, &retval_size))
+  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
+  if (hyscan_cache_get (priv->cache, priv->key, NULL, priv->cache_buffer))
     if (retval_size == sizeof (retval))
       return retval;
 

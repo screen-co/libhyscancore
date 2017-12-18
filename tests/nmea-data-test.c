@@ -23,8 +23,8 @@ main (int argc, char **argv)
   HyScanCache            *cache;
 
   /* Запись данных. */
+  HyScanBuffer           *buffer;
   HyScanDataWriter       *writer;
-  HyScanDataWriterData    dwdata;
   HyScanAntennaPosition   position = {0};
 
   /* Тестируемые объекты.*/
@@ -95,15 +95,15 @@ main (int argc, char **argv)
   hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
 
   /* Наполняем данными. */
+  buffer = hyscan_buffer_new ();
+
   for (i = 0, time = START_TIME; i < samples; i++, time += TIME_INCREMENT)
     {
       gchar *data = nmea_generator ("DPT", i);
 
-      dwdata.data = data;
-      dwdata.size = strlen (data);
-      dwdata.time = time;
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
+      hyscan_data_writer_sensor_add_data (writer, "sensor", DPT, DPT_CHANNEL, time, buffer);
 
-      hyscan_data_writer_sensor_add_data (writer, "sensor", DPT, DPT_CHANNEL, &dwdata);
       g_free (data);
     }
 
@@ -140,7 +140,7 @@ main (int argc, char **argv)
           const gchar *acquired;
           gchar *expected;
 
-          acquired = hyscan_nmea_data_get_sentence (nmea, i, NULL, NULL);
+          acquired = hyscan_nmea_data_get_sentence (nmea, i, NULL);
           expected = nmea_generator ("DPT", i);
 
           if (0 != g_strcmp0 (acquired, expected))
@@ -166,7 +166,7 @@ main (int argc, char **argv)
           const gchar *acquired;
           gchar *expected;
 
-          acquired = hyscan_nmea_data_get_sentence (nmea, i, NULL, NULL);
+          acquired = hyscan_nmea_data_get_sentence (nmea, i, NULL);
           expected = nmea_generator ("DPT", i);
 
           if (0 != g_strcmp0 (acquired, expected))
@@ -247,6 +247,7 @@ main (int argc, char **argv)
   g_clear_object (&db);
   g_clear_object (&cache);
   g_clear_object (&writer);
+  g_clear_object (&buffer);
   g_clear_object (&nmea);
   g_timer_destroy (timer);
 

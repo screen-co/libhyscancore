@@ -16,6 +16,7 @@
 #include <math.h>
 
 #define DETAIL_PRECISION       1000.0                          /* Точность округления параметров. */
+#define CACHE_HEADER_MAGIC     0x8a09be31                      /* Идентификатор заголовка кэша. */
 
 enum
 {
@@ -25,6 +26,14 @@ enum
   PROP_TRACK_NAME,
   PROP_RAW
 };
+
+/* Структруа заголовка кэша. */
+typedef struct
+{
+  guint32                      magic;                          /* Идентификатор заголовка. */
+  guint32                      n_points;                       /* Число точек данных. */
+  gint64                       time;                           /* Метка времени. */
+} HyScanForwardLookDataCacheHeader;
 
 struct _HyScanForwardLookDataPrivate
 {
@@ -41,6 +50,7 @@ struct _HyScanForwardLookDataPrivate
   gsize                        cache_key_length;               /* Максимальная длина ключа кэширования. */
   gchar                       *detail_key;                     /* Ключ детализации. */
   gsize                        detail_key_length;              /* Максимальная длина ключа детализации. */
+  HyScanBuffer                *cache_buffer;                   /* Буфер заголовка кэша данных. */
 
   gdouble                      data_rate;                      /* Частота дискретизации. */
   gdouble                      sound_velocity;                 /* Скорость звука, м/с. */
@@ -52,7 +62,7 @@ struct _HyScanForwardLookDataPrivate
   HyScanRawData               *channel1;                       /* Сырые данные канала 1. */
   HyScanRawData               *channel2;                       /* Сырые данные канала 2. */
 
-  GArray                      *doa;                            /* Буфер обработанных данных. */
+  HyScanBuffer                *doa;                            /* Буфер обработанных данных. */
 };
 
 static void    hyscan_forward_look_data_set_property           (GObject                       *object,
@@ -191,7 +201,8 @@ hyscan_forward_look_data_object_constructed (GObject *object)
     }
 
   /* Буферы для обработки. */
-  priv->doa = g_array_new (TRUE, TRUE, sizeof (HyScanForwardLookDOA));
+  priv->cache_buffer = hyscan_buffer_new ();
+  priv->doa = hyscan_buffer_new ();
 
   /* Параметры обработки. */
   priv->data_rate = channel_info1.data_rate;
@@ -206,12 +217,13 @@ hyscan_forward_look_data_object_finalize (GObject *object)
   HyScanForwardLookData *data = HYSCAN_FORWARD_LOOK_DATA (object);
   HyScanForwardLookDataPrivate *priv = data->priv;
 
+  g_clear_object (&priv->cache_buffer);
+  g_clear_object (&priv->doa);
+
   g_clear_object (&priv->cache);
   g_clear_object (&priv->channel1);
   g_clear_object (&priv->channel2);
   g_clear_object (&priv->db);
-
-  g_clear_pointer (&priv->doa, g_array_unref);
 
   g_free (priv->project_name);
   g_free (priv->track_name);
@@ -438,31 +450,29 @@ hyscan_forward_look_data_get_doa_values (HyScanForwardLookData *data,
   /* Ищем данные в кэше. */
   if (priv->cache != NULL)
     {
-      guint32 io_size;
+      HyScanForwardLookDataCacheHeader header;
 
       /* Ключ кэширования. */
       hyscan_forward_look_data_update_cache_key (priv, index);
 
-      /* Определяем размер данных в кэше, если они есть. */
-      if (hyscan_cache_get (priv->cache, priv->cache_key, NULL, NULL, &io_size))
+      /* Ищем данные в кэше. */
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      if (hyscan_cache_get2 (priv->cache, priv->cache_key, priv->detail_key,
+                             sizeof (header), priv->cache_buffer, priv->doa))
         {
-          guint32 time_size = sizeof (time1);
-          gboolean status;
+          guint32 cached_n_points;
 
-          /* При необходимости корректируем размер буферов. */
-          io_size -= time_size;
-          g_array_set_size (priv->doa, io_size / sizeof (HyScanForwardLookDOA));
+          cached_n_points  = hyscan_buffer_get_size (priv->doa);
+          cached_n_points /= sizeof (HyScanForwardLookDOA);
 
-          /* Считываем данные из кэша. */
-          status = hyscan_cache_get2 (priv->cache, priv->cache_key, priv->detail_key,
-                                      &time1, &time_size, priv->doa->data, &io_size);
-          if ((status) &&
-              (time_size == sizeof (time1)) &&
-              ((io_size % sizeof (HyScanForwardLookDOA)) == 0))
+          /* Верификация данных. */
+          if ((header.magic == CACHE_HEADER_MAGIC) &&
+              (header.n_points == cached_n_points))
             {
-              (time != NULL) ? *time = time1 : 0;
-              *n_points = io_size / sizeof (HyScanForwardLookDOA);
-              return (HyScanForwardLookDOA*)priv->doa->data;
+              (time != NULL) ? *time = header.time : 0;
+              *n_points = cached_n_points;
+
+              return hyscan_buffer_get_data (priv->doa, &cached_n_points);
             }
         }
     }
@@ -491,10 +501,11 @@ hyscan_forward_look_data_get_doa_values (HyScanForwardLookData *data,
 
   /* Корректируем размер буфера данных. */
   *n_points = n_points1 = n_points2 = MIN (n_points1, n_points2);
-  g_array_set_size (priv->doa, n_points1);
+  hyscan_buffer_set_size (priv->doa, n_points1 * sizeof (HyScanForwardLookDOA));
 
   /* Расчитываем углы прихода и интенсивности. */
-  doa = (gpointer)priv->doa->data;
+  doa = hyscan_buffer_get_data (priv->doa, &n_points1);
+  n_points1 /= sizeof (HyScanForwardLookDOA);
   for (i = 0; i < n_points1; i++)
     {
       gfloat re1 = raw1[i].re;
@@ -514,9 +525,14 @@ hyscan_forward_look_data_get_doa_values (HyScanForwardLookData *data,
   /* Сохраняем данные в кэше. */
   if (priv->cache != NULL)
     {
-      hyscan_cache_set2 (priv->cache, priv->cache_key, priv->detail_key,
-                         &time1, sizeof (time1),
-                         doa, n_points1 * sizeof (HyScanForwardLookDOA));
+      HyScanForwardLookDataCacheHeader header;
+
+      header.magic = CACHE_HEADER_MAGIC;
+      header.n_points = n_points1;
+      header.time = time1;
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+
+      hyscan_cache_set2 (priv->cache, priv->cache_key, priv->detail_key, priv->cache_buffer, priv->doa);
     }
 
   (time != NULL) ? *time = time1 : 0;

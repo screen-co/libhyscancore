@@ -23,8 +23,8 @@ struct _HyScanFLGenPrivate
   HyScanRawDataInfo            info1;
   HyScanRawDataInfo            info2;
 
-  GArray                      *values1;
-  GArray                      *values2;
+  HyScanBuffer                *values1;
+  HyScanBuffer                *values2;
 };
 
 static void    hyscan_fl_gen_object_finalize           (GObject               *object);
@@ -43,6 +43,12 @@ static void
 hyscan_fl_gen_init (HyScanFLGen *fl_gen)
 {
   fl_gen->priv = hyscan_fl_gen_get_instance_private (fl_gen);
+
+  fl_gen->priv->values1 = hyscan_buffer_new ();
+  fl_gen->priv->values2 = hyscan_buffer_new ();
+
+  hyscan_buffer_set_data_type (fl_gen->priv->values1, HYSCAN_DATA_COMPLEX_FLOAT);
+  hyscan_buffer_set_data_type (fl_gen->priv->values2, HYSCAN_DATA_COMPLEX_FLOAT);
 }
 
 static void
@@ -53,8 +59,8 @@ hyscan_fl_gen_object_finalize (GObject *object)
 
   g_clear_object (&priv->writer);
 
-  g_array_unref (priv->values1);
-  g_array_unref (priv->values2);
+  g_clear_object (&priv->values1);
+  g_clear_object (&priv->values2);
 
   G_OBJECT_CLASS (hyscan_fl_gen_parent_class)->finalize (object);
 }
@@ -83,8 +89,8 @@ hyscan_fl_gen_set_info (HyScanFLGen       *fl_gen,
   fl_gen->priv->info1 = *info;
   fl_gen->priv->info2 = *info;
 
-  fl_gen->priv->info1.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  fl_gen->priv->info2.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  fl_gen->priv->info1.data_type = HYSCAN_DATA_COMPLEX_FLOAT;
+  fl_gen->priv->info2.data_type = HYSCAN_DATA_COMPLEX_FLOAT;
 
   fl_gen->priv->info1.antenna_hoffset = 0.0;
   fl_gen->priv->info2.antenna_hoffset = 0.01;
@@ -121,26 +127,22 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
 {
   HyScanFLGenPrivate *priv;
 
-  HyScanDataWriterData data;
-  guint16 *raw_values1;
-  guint16 *raw_values2;
+  HyScanComplexFloat *raw_values1;
+  HyScanComplexFloat *raw_values2;
   guint i;
 
   g_return_val_if_fail (HYSCAN_IS_FL_GEN (fl_gen), FALSE);
 
   priv = fl_gen->priv;
 
-  if (priv->values1 == NULL)
-    {
-      priv->values1 = g_array_sized_new (FALSE, FALSE, 2 * sizeof (guint16), 1024);
-      priv->values2 = g_array_sized_new (FALSE, FALSE, 2 * sizeof (guint16), 1024);
-    }
+  if (priv->writer == NULL)
+    return FALSE;
 
-  g_array_set_size (priv->values1, n_points);
-  g_array_set_size (priv->values2, n_points);
+  hyscan_buffer_set_size (priv->values1, n_points * sizeof (HyScanComplexFloat));
+  hyscan_buffer_set_size (priv->values2, n_points * sizeof (HyScanComplexFloat));
 
-  raw_values1 = (guint16*)priv->values1->data;
-  raw_values2 = (guint16*)priv->values2->data;
+  raw_values1 = hyscan_buffer_get_complex_float (priv->values1, &n_points);
+  raw_values2 = hyscan_buffer_get_complex_float (priv->values2, &n_points);
 
   /* Тестовые данные для проверки работы вперёдсмотрящего локатора. В каждой строке
    * разность фаз между двумя каналами изменяется в пределах Pi по дальности, с начальным
@@ -155,21 +157,16 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
       phase -= mini_pi * ((gdouble)i / (gdouble)(n_points - 1));
       phase -= mini_pi * ((gdouble)(time % 1000000) / 999999.0);
 
-      raw_values1[2 * i] = 65535;
-      raw_values1[2 * i + 1] = 32767;
-      raw_values2[2 * i] = 65535.0 * ((0.5 * cos (phase)) + 0.5);
-      raw_values2[2 * i + 1] = 65535.0 * ((0.5 * sin (phase)) + 0.5);
+      raw_values1[i].re = 1.0;
+      raw_values1[i].im = 0.0;
+      raw_values2[i].re = cos (phase);
+      raw_values2[i].im = sin (phase);
     }
 
-  data.time = time;
-  data.size = 2 * n_points * sizeof(gint16);
-
-  data.data = raw_values1;
-  if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 1, &priv->info1, &data))
+  if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 1, time, &priv->info1, priv->values1))
     return FALSE;
 
-  data.data = raw_values2;
-  if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2, &priv->info2, &data))
+  if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2, time, &priv->info2, priv->values2))
     return FALSE;
 
   return TRUE;

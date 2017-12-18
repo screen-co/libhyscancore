@@ -11,8 +11,11 @@
 #include "hyscan-acoustic-data.h"
 #include "hyscan-core-params.h"
 #include "hyscan-raw-data.h"
+#include <hyscan-buffer.h>
 
 #include <string.h>
+
+#define CACHE_HEADER_MAGIC     0xe6da3411                      /* Идентификатор заголовка кэша. */
 
 enum
 {
@@ -24,44 +27,54 @@ enum
   PROP_RAW
 };
 
+/* Структруа заголовка кэша. */
+typedef struct
+{
+  guint32                      magic;                          /* Идентификатор заголовка. */
+  guint32                      n_points;                       /* Число точек данных. */
+  gint64                       time;                           /* Метка времени. */
+} HyScanAcousticDataCacheHeader;
+
 struct _HyScanAcousticDataPrivate
 {
-  HyScanDB            *db;                                     /* Интерфейс базы данных. */
-  gchar               *db_uri;                                 /* URI базы данных. */
+  HyScanDB                    *db;                             /* Интерфейс базы данных. */
+  gchar                       *db_uri;                         /* URI базы данных. */
 
-  gchar               *project_name;                           /* Название проекта. */
-  gchar               *track_name;                             /* Название галса. */
-  HyScanSourceType     source_type;                            /* Тип источника данных. */
-  gboolean             raw;                                    /* Использовать сырые данные. */
+  gchar                       *project_name;                   /* Название проекта. */
+  gchar                       *track_name;                     /* Название галса. */
+  HyScanSourceType             source_type;                    /* Тип источника данных. */
+  gboolean                     raw;                            /* Использовать сырые данные. */
 
-  HyScanRawData       *raw_data;                               /* Обработчик сырых данных. */
+  HyScanRawData               *raw_data;                       /* Обработчик сырых данных. */
 
-  HyScanCache         *cache;                                  /* Интерфейс системы кэширования. */
-  gchar               *cache_prefix;                           /* Префикс ключа кэширования. */
-  gchar               *cache_key;                              /* Ключ кэширования. */
-  gsize                cache_key_length;                       /* Максимальная длина ключа. */
+  HyScanCache                 *cache;                          /* Интерфейс системы кэширования. */
+  gchar                       *cache_prefix;                   /* Префикс ключа кэширования. */
+  gchar                       *cache_key;                      /* Ключ кэширования. */
+  gsize                        cache_key_length;               /* Максимальная длина ключа. */
+  HyScanBuffer                *cache_buffer;                   /* Буфер заголовка кэша данных. */
 
-  HyScanAntennaPosition  position;                             /* Местоположение приёмной антенны. */
-  HyScanAcousticDataInfo info;                                 /* Параметры сырых данных. */
+  HyScanAntennaPosition        position;                       /* Местоположение приёмной антенны. */
+  HyScanAcousticDataInfo       info;                           /* Параметры акустических данных. */
 
-  gint32               channel_id;                             /* Идентификатор открытого канала данных. */
+  gint32                       channel_id;                     /* Идентификатор открытого канала данных. */
 
-  GArray              *raw_buffer;                             /* Буфер для чтения данных канала. */
-  GArray              *amp_buffer;                             /* Буфер для амплитуд данных канала. */
+  HyScanBuffer                *channel_buffer;                 /* Буфер канальных данных. */
+  HyScanBuffer                *amp_buffer;                     /* Буфер амплитудных данных. */
 };
 
-static void    hyscan_acoustic_data_set_property       (GObject                       *object,
-                                                        guint                          prop_id,
-                                                        const GValue                  *value,
-                                                        GParamSpec                    *pspec);
-static void    hyscan_acoustic_data_object_constructed (GObject                       *object);
-static void    hyscan_acoustic_data_object_finalize    (GObject                       *object);
+static void        hyscan_acoustic_data_set_property           (GObject                       *object,
+                                                                guint                          prop_id,
+                                                                const GValue                  *value,
+                                                                GParamSpec                    *pspec);
+static void        hyscan_acoustic_data_object_constructed     (GObject                       *object);
+static void        hyscan_acoustic_data_object_finalize        (GObject                       *object);
 
-static void    hyscan_acoustic_data_buffer_realloc     (HyScanAcousticDataPrivate     *priv,
-                                                        guint32                        max_size);
+static void        hyscan_acoustic_data_update_cache_key       (HyScanAcousticDataPrivate     *priv,
+                                                                guint32                        index);
 
-static void    hyscan_acoustic_data_update_cache_key   (HyScanAcousticDataPrivate     *priv,
-                                                        guint32                        index);
+static gboolean    hyscan_acoustic_data_check_cache            (HyScanAcousticDataPrivate     *priv,
+                                                                guint32                        index,
+                                                                gint64                        *time);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanAcousticData, hyscan_acoustic_data, G_TYPE_OBJECT)
 
@@ -157,8 +170,9 @@ hyscan_acoustic_data_object_constructed (GObject *object)
 
   priv->channel_id = -1;
 
-  priv->raw_buffer = g_array_new (FALSE, FALSE, sizeof (guint8));
-  priv->amp_buffer = g_array_new (FALSE, FALSE, sizeof (gfloat));
+  priv->cache_buffer = hyscan_buffer_new ();
+  priv->channel_buffer = hyscan_buffer_new ();
+  priv->amp_buffer = hyscan_buffer_new ();
 
   /* Использовать сырые данные. */
   if (priv->raw)
@@ -267,6 +281,9 @@ hyscan_acoustic_data_object_constructed (GObject *object)
   hyscan_db_close (priv->db, param_id);
   param_id = -1;
 
+  /* Тип данных в буфере. */
+  hyscan_buffer_set_data_type (priv->channel_buffer, priv->info.data_type);
+
   status = TRUE;
 
 exit:
@@ -301,29 +318,15 @@ hyscan_acoustic_data_object_finalize (GObject *object)
   g_free (priv->cache_key);
   g_free (priv->cache_prefix);
 
-  g_array_unref (priv->raw_buffer);
-  g_array_unref (priv->amp_buffer);
+  g_object_unref (priv->cache_buffer);
+  g_object_unref (priv->channel_buffer);
+  g_object_unref (priv->amp_buffer);
 
   g_clear_object (&priv->db);
   g_clear_object (&priv->cache);
   g_clear_object (&priv->raw_data);
 
   G_OBJECT_CLASS (hyscan_acoustic_data_parent_class)->finalize (object);
-}
-
-/* Функция проверяет размер буферов и увеличивает его при необходимости. */
-static void hyscan_acoustic_data_buffer_realloc (HyScanAcousticDataPrivate *priv,
-                                                 guint32                    max_size)
-{
-  guint32 point_size;
-
-  if (max_size + 16 <= priv->raw_buffer->len)
-    return;
-
-  point_size = hyscan_data_get_point_size (priv->info.data_type);
-
-  g_array_set_size (priv->raw_buffer, max_size + 16);
-  g_array_set_size (priv->amp_buffer, max_size / point_size);
 }
 
 /* Функция создаёт ключ кэширования данных. */
@@ -351,6 +354,41 @@ hyscan_acoustic_data_update_cache_key (HyScanAcousticDataPrivate *priv,
               priv->track_name,
               priv->source_type,
               index);
+}
+
+/* Функция проверяет кэш на наличие акустических данных и
+ * если такие есть, считывает их. */
+static gboolean
+hyscan_acoustic_data_check_cache (HyScanAcousticDataPrivate *priv,
+                                  guint32                    index,
+                                  gint64                    *time)
+{
+  HyScanAcousticDataCacheHeader header;
+  guint32 cached_n_points;
+
+  if (priv->cache == NULL)
+    return FALSE;
+
+  /* Ключ кэширования. */
+  hyscan_acoustic_data_update_cache_key (priv, index);
+
+  /* Ищем данные в кэше. */
+  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  if (!hyscan_cache_get2 (priv->cache, priv->cache_key, NULL, sizeof (header), priv->cache_buffer, priv->amp_buffer))
+    return FALSE;
+
+  /* Верификация данных. */
+  cached_n_points  = hyscan_buffer_get_size (priv->amp_buffer);
+  cached_n_points /= sizeof (gfloat);
+  if ((header.magic != CACHE_HEADER_MAGIC) ||
+      (header.n_points != cached_n_points))
+    {
+      return FALSE;
+    }
+
+  (time != NULL) ? *time = header.time : 0;
+
+  return TRUE;
 }
 
 /* Функция создаёт новый объект обработки акустических данных. */
@@ -552,11 +590,8 @@ hyscan_acoustic_data_get_values (HyScanAcousticData *data,
                                  gint64             *time)
 {
   HyScanAcousticDataPrivate *priv;
-  gint64 cached_time;
-  guint32 io_size;
-  gfloat *amp;
 
-  gboolean status;
+  gint64 data_time;
 
   g_return_val_if_fail (HYSCAN_IS_ACOUSTIC_DATA (data), NULL);
 
@@ -568,91 +603,33 @@ hyscan_acoustic_data_get_values (HyScanAcousticData *data,
   if (priv->raw_data != NULL)
     return hyscan_raw_data_get_amplitude_values (priv->raw_data, index, n_points, time);
 
-  /* Ищем данные в кэше. */
-  if (priv->cache != NULL)
-    {
-      /* Ключ кэширования. */
-      hyscan_acoustic_data_update_cache_key (priv, index);
-
-      /* Определяем размер данных в кэше, если они есть. */
-      if (hyscan_cache_get (priv->cache, priv->cache_key, NULL, NULL, &io_size))
-        {
-          guint32 time_size = sizeof (cached_time);
-
-          /* При необходимости корректируем размер буферов. */
-          io_size -= time_size;
-          hyscan_acoustic_data_buffer_realloc (priv, io_size);
-
-          /* Считываем данные из кэша. */
-          status = hyscan_cache_get2 (priv->cache, priv->cache_key, NULL,
-                                      &cached_time, &time_size,
-                                      priv->amp_buffer->data, &io_size);
-          if ((status) &&
-              (time_size == sizeof (cached_time)) &&
-              ((io_size % sizeof (gfloat)) == 0))
-            {
-              (time != NULL) ? *time = cached_time : 0;
-              *n_points = io_size / sizeof (gfloat);
-              return (gfloat*)priv->amp_buffer->data;
-            }
-        }
-    }
+  /* Проверяем наличие данных в кэше. */
+  if (hyscan_acoustic_data_check_cache (priv, index, time))
+    return hyscan_buffer_get_float (priv->amp_buffer, n_points);
 
   /* Считываем данные канала. */
-  io_size = priv->raw_buffer->len;
-  status = hyscan_db_channel_get_data (priv->db, priv->channel_id, index,
-                                       priv->raw_buffer->data, &io_size, &cached_time);
-  if (!status)
+  if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, priv->channel_buffer, &data_time))
     return NULL;
 
-  /* Если размер считанных данных равен размеру буфера, запрашиваем реальный размер,
-     увеличиваем размер буфера и считываем данные еще раз. */
-  if ((priv->raw_buffer->len == 0) || (priv->raw_buffer->len == io_size))
-    {
-      status = hyscan_db_channel_get_data (priv->db, priv->channel_id, index,
-                                           NULL, &io_size, NULL);
-      if (!status)
-        return NULL;
-
-      hyscan_acoustic_data_buffer_realloc (priv, io_size);
-
-      io_size = priv->raw_buffer->len;
-      status = hyscan_db_channel_get_data (priv->db, priv->channel_id, index,
-                                           priv->raw_buffer->data, &io_size, &cached_time);
-      if (!status)
-        return NULL;
-    }
-
-  /* Если данные уже типа FLOAT, возвращаем их как есть. */
-  if (priv->info.data_type == HYSCAN_DATA_FLOAT)
-    {
-      *n_points = io_size / sizeof (gfloat);
-
-      amp = (gfloat*)priv->raw_buffer->data;
-    }
-  else
-    {
-      *n_points = priv->amp_buffer->len;
-
-      status = hyscan_data_import_float (priv->info.data_type,
-                                         priv->raw_buffer->data, io_size,
-                                         (gfloat*)priv->amp_buffer->data, n_points);
-
-      if (!status)
-        return NULL;
-
-      amp = (gfloat*)priv->amp_buffer->data;
-    }
+  /* Импортируем данные в буфер обработки. */
+  if (!hyscan_buffer_import_data (priv->amp_buffer, priv->channel_buffer))
+    return FALSE;
 
   /* Сохраняем данные в кэше. */
   if (priv->cache != NULL)
     {
-      hyscan_cache_set2 (priv->cache, priv->cache_key, NULL,
-                         &cached_time, sizeof (cached_time),
-                         amp, *n_points * sizeof (gfloat));
+      HyScanAcousticDataCacheHeader header;
+
+      header.magic = CACHE_HEADER_MAGIC;
+      header.n_points = hyscan_buffer_get_size (priv->amp_buffer);
+      header.n_points /= sizeof (gfloat);
+      header.time = data_time;
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+
+      hyscan_cache_set2 (priv->cache, priv->cache_key, NULL, priv->cache_buffer, priv->amp_buffer);
     }
 
-  (time != NULL) ? *time = cached_time : 0;
+  (time != NULL) ? *time = data_time : 0;
 
-  return amp;
+  return hyscan_buffer_get_float (priv->amp_buffer, n_points);
 }

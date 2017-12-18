@@ -13,11 +13,7 @@
 #include "hyscan-core-schemas.h"
 #include <string.h>
 
-typedef struct
-{
-  gdouble depth;
-  gint64  time;
-} HyScanDepthTime;
+#define CACHE_HEADER_MAGIC 0x05de127a   /* Идентификатор заголовка кэша. */
 
 enum
 {
@@ -27,6 +23,13 @@ enum
   PROP_TRACK,
   PROP_SOURCE_CHANNEL
 };
+
+typedef struct
+{
+  guint32                magic;         /* Идентификатор заголовка. */
+  gdouble                depth;         /* Глубина/ */
+  gint64                 time;          /* Метка времени. */
+} HyScanDepthTime;
 
 struct _HyScanDepthNMEAPrivate
 {
@@ -46,6 +49,7 @@ struct _HyScanDepthNMEAPrivate
   gchar                 *prefix;        /* Префикс системы кэширования. */
   gchar                 *key;           /* Ключ кэша. */
   gint                   key_length;    /* Длина ключа. */
+  HyScanBuffer          *cache_buffer;  /* Буфер данных кеша. */
 
   HyScanAntennaPosition  position;      /* Местоположение приемника. */
 };
@@ -153,6 +157,8 @@ hyscan_depth_nmea_object_constructed (GObject *object)
 
   priv->position = hyscan_nmea_data_get_position (priv->dc);
 
+  priv->cache_buffer = hyscan_buffer_new ();
+
   g_free (db_uri);
 }
 
@@ -170,6 +176,7 @@ hyscan_depth_nmea_object_finalize (GObject *object)
   g_clear_object (&priv->db);
   g_free (priv->token);
 
+  g_clear_object (&priv->cache_buffer);
   g_clear_object (&priv->cache);
   g_free (priv->prefix);
   g_free (priv->key);
@@ -252,44 +259,41 @@ hyscan_depth_nmea_get (HyScanDepth *depth,
   /* Ищем уже посчитанное значение в кэше. */
   if (priv->cache != NULL)
     {
-      HyScanDepthTime dt[2];
-      guint32 dt_size;
-      gboolean found;
+      HyScanDepthTime dt;
 
-      dt_size = sizeof (dt);
+      /* Обновляем ключ кэширования. */
       hyscan_depth_nmea_update_cache_key (priv, index);
 
-      /* Проверяем наличие и совпадение размера. */
-      found = hyscan_cache_get (priv->cache, priv->key, NULL, &dt, &dt_size);
-      if (found && dt_size == sizeof (HyScanDepthTime))
-        {
-          nmea_depth = dt[0].depth;
-          nmea_time = dt[0].time;
-          goto exit;
-        }
+      /* Проверяем наличие и верифицируем данные. */
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &dt, sizeof (dt));
+      if (hyscan_cache_get (priv->cache, priv->key, NULL, priv->cache_buffer) &&
+          (hyscan_buffer_get_size (priv->cache_buffer) == sizeof (dt)) &&
+          (dt.magic == CACHE_HEADER_MAGIC))
+          {
+            (time != NULL) ? *time = dt.time : 0;
+            return dt.depth;
+          }
     }
 
   /* Если в кэше значения нет, то придется считать.
    * Забираем строку из БД и парсим её. */
-  nmea_sentence = hyscan_nmea_data_get_sentence (priv->dc, index, NULL, &nmea_time);
+  nmea_sentence = hyscan_nmea_data_get_sentence (priv->dc, index, &nmea_time);
   nmea_depth = hyscan_depth_nmea_parse_sentence (nmea_sentence);
 
   /* Кэшируем. */
   if (priv->cache != NULL)
     {
       HyScanDepthTime dt;
-      guint32 dt_size;
 
+      dt.magic = CACHE_HEADER_MAGIC;
       dt.time = nmea_time;
       dt.depth = nmea_depth;
-      dt_size = sizeof (HyScanDepthTime);
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &dt, sizeof (dt));
 
-      hyscan_cache_set (priv->cache, priv->key, NULL, &dt, dt_size);
+      hyscan_cache_set (priv->cache, priv->key, NULL, priv->cache_buffer);
     }
 
-exit:
-  if (time != NULL)
-    *time = nmea_time;
+  (time != NULL) ? *time = nmea_time : 0;
 
   return nmea_depth;
 }

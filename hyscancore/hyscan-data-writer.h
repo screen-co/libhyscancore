@@ -70,32 +70,6 @@ typedef enum
   HYSCAN_DATA_WRITER_MODE_BOTH                         = 104   /**< Записывать оба типа данных. */
 } HyScanDataWriterModeType;
 
-/** \brief Данные от гидролокатора и датчиков */
-typedef struct
-{
-  gint64                       time;                           /**< Время приёма данных. */
-  guint32                      size;                           /**< Размер данных. */
-  gconstpointer                data;                           /**< Данные. */
-} HyScanDataWriterData;
-
-/** \brief Образ излучаемого сигнала для свёртки */
-typedef struct
-{
-  gint64                       time;                           /**< Время начала действия сигнала. */
-  gfloat                       rate;                           /**< Частота дискретизации, Гц. */
-  guint32                      n_points;                       /**< Число точек образа. */
-  const HyScanComplexFloat    *points;                         /**< Образ сигнала для свёртки. */
-} HyScanDataWriterSignal;
-
-/** \brief Значения параметров усиления системы ВАРУ */
-typedef struct
-{
-  gint64                       time;                           /**< Время начала действия параметров системы ВАРУ. */
-  gfloat                       rate;                           /**< Частота дискретизации, Гц. */
-  guint32                      n_gains;                        /**< Число коэффициентов передачи. */
-  const gfloat                *gains;                          /**< Коэффициенты передачи приёмного тракта, дБ. */
-} HyScanDataWriterTVG;
-
 #define HYSCAN_TYPE_DATA_WRITER             (hyscan_data_writer_get_type ())
 #define HYSCAN_DATA_WRITER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DATA_WRITER, HyScanDataWriter))
 #define HYSCAN_IS_DATA_WRITER(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DATA_WRITER))
@@ -302,6 +276,7 @@ void                   hyscan_data_writer_stop                         (HyScanDa
  * \param sensor название порта датчика;
  * \param source тип источника данных;
  * \param channel индекс канала данных, начиная с 1;
+ * \param time метка времени, мкс;
  * \param data данные датчика.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
@@ -312,7 +287,8 @@ gboolean               hyscan_data_writer_sensor_add_data              (HyScanDa
                                                                         const gchar                   *sensor,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
-                                                                        HyScanDataWriterData          *data);
+                                                                        gint64                         time,
+                                                                        HyScanBuffer                  *data);
 
 /**
  *
@@ -321,8 +297,9 @@ gboolean               hyscan_data_writer_sensor_add_data              (HyScanDa
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
  * \param channel индекс канала данных, начиная с 1;
+ * \param time метка времени, мкс;
  * \param info параметры гидролокационных данных - \link HyScanRawDataInfo \endlink;
- * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
+ * \param data гидролокационные данные.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
@@ -331,8 +308,9 @@ HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_data                 (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
+                                                                        gint64                         time,
                                                                         HyScanRawDataInfo             *info,
-                                                                        HyScanDataWriterData          *data);
+                                                                        HyScanBuffer                  *data);
 
 /**
  *
@@ -341,8 +319,9 @@ gboolean               hyscan_data_writer_raw_add_data                 (HyScanDa
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
  * \param channel индекс канала данных, начиная с 1;
+ * \param time метка времени, мкс;
  * \param info параметры гидролокационных данных - \link HyScanRawDataInfo \endlink;
- * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
+ * \param data гидролокационные данные.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
@@ -351,8 +330,9 @@ HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_noise                (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
+                                                                        gint64                         time,
                                                                         HyScanRawDataInfo             *info,
-                                                                        HyScanDataWriterData          *data);
+                                                                        HyScanBuffer                  *data);
 
 /**
  *
@@ -360,9 +340,12 @@ gboolean               hyscan_data_writer_raw_add_noise                (HyScanDa
  * Эта информация записывает в базу данных для "сырых" гидролокационных данных с указанным
  * типом источника данных
  *
+ * Если образ сигнала = NULL, свёртка с данного момента времени отменяется.
+ *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
- * \param signal образ сигнала.
+ * \param time время начала действия сигнала, мкс;
+ * \param signal образ сигнала или NULL.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
@@ -370,18 +353,20 @@ gboolean               hyscan_data_writer_raw_add_noise                (HyScanDa
 HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_signal               (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
-                                                                        HyScanDataWriterSignal        *signal);
+                                                                        gint64                         time,
+                                                                        HyScanBuffer                  *signal);
 
 /**
  *
- * Функция устанавливает значения параметров усиления ВАРУ для указанного канала данных.
+ * Функция устанавливает значения коэффициенты передачи ВАРУ для указанного канала данных.
  * Эта информация записывает в базу данных для "сырых" гидролокационных данных с указанным
  * типом источника данных и индексом канала.
  *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
  * \param channel индекс канала данных, начиная с 1;
- * \param tvg параметры усиления ВАРУ.
+ * \param time время начала действия коэффициентов передачи ВАРУ, мкс;
+ * \param gains коэффициенты передачи ВАРУ.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
@@ -390,7 +375,8 @@ HYSCAN_API
 gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
                                                                         guint                          channel,
-                                                                        HyScanDataWriterTVG           *tvg);
+                                                                        gint64                         time,
+                                                                        HyScanBuffer                  *gains);
 
 /**
  *
@@ -398,8 +384,9 @@ gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDa
  *
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param source тип источника данных;
+ * \param time метка времени, мкс;
  * \param info параметры акустических данных - \link HyScanAcousticDataInfo \endlink;
- * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
+ * \param data гидролокационные данные.
  *
  * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
@@ -407,8 +394,9 @@ gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDa
 HYSCAN_API
 gboolean               hyscan_data_writer_acoustic_add_data            (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
+                                                                        gint64                         time,
                                                                         HyScanAcousticDataInfo        *info,
-                                                                        HyScanDataWriterData          *data);
+                                                                        HyScanBuffer                  *data);
 
 G_END_DECLS
 

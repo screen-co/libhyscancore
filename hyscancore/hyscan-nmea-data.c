@@ -13,6 +13,8 @@
 #include "hyscan-core-params.h"
 #include <string.h>
 
+#define CACHE_HEADER_MAGIC     0x3f0a4b87          /* Идентификатор заголовка кэша. */
+
 enum
 {
   PROP_O,
@@ -22,6 +24,14 @@ enum
   PROP_SOURCE_TYPE,
   PROP_SOURCE_CHANNEL,
 };
+
+/* Структруа заголовка кэша. */
+typedef struct
+{
+  guint32               magic;                     /* Идентификатор заголовка. */
+  guint32               length;                    /* Длина NMEA строки. */
+  gint64                time;                      /* Метка времени. */
+} HyScanNMEADataCacheHeader;
 
 struct _HyScanNMEADataPrivate
 {
@@ -35,6 +45,7 @@ struct _HyScanNMEADataPrivate
   HyScanCache          *cache;                     /* Интерфейс системы кэширования. */
   gchar                *prefix;                    /* Префикс ключа кэширования. */
   gchar                *path;                      /* Путь к БД, проекту, галсу и каналу. */
+  HyScanBuffer         *cache_buffer;              /* Буфер заголовка кэша данных. */
 
   gchar                *key;                       /* Ключ кэширования. */
   gsize                 key_length;                /* Максимальная длина ключа. */
@@ -42,8 +53,7 @@ struct _HyScanNMEADataPrivate
   HyScanAntennaPosition position;                  /* Местоположение приёмной антенны. */
   gint32                channel_id;                /* Идентификатор открытого канала данных. */
 
-  gchar                *string;                    /* NMEA-строка. */
-  guint                 string_length;             /* Длина строки. */
+  HyScanBuffer         *nmea_buffer;               /* Буфер данных. */
 
 };
 
@@ -58,11 +68,6 @@ static void      hyscan_nmea_data_update_cache_key      (HyScanNMEADataPrivate *
                                                          guint32                index);
 static gboolean  hyscan_nmea_data_check_cache           (HyScanNMEADataPrivate *priv,
                                                          guint32                index,
-                                                         guint32               *size,
-                                                         gint64                *time);
-static gboolean  hyscan_nmea_data_read_data             (HyScanNMEADataPrivate *priv,
-                                                         guint32                index,
-                                                         guint32               *size,
                                                          gint64                *time);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanNMEAData, hyscan_nmea_data, G_TYPE_OBJECT);
@@ -158,6 +163,9 @@ hyscan_nmea_data_object_constructed (GObject *object)
   priv->prefix = g_strdup ("none");
 
   priv->channel_id = -1;
+
+  priv->cache_buffer = hyscan_buffer_new ();
+  priv->nmea_buffer = hyscan_buffer_new ();
 
   channel = hyscan_channel_get_name_by_types (priv->source_type, TRUE, priv->source_channel);
 
@@ -268,7 +276,8 @@ hyscan_nmea_data_object_finalize (GObject *object)
   g_free (priv->key);
   g_free (priv->prefix);
 
-  g_free (priv->string);
+  g_object_unref (priv->cache_buffer);
+  g_object_unref (priv->nmea_buffer);
 
   g_clear_object (&priv->db);
   g_clear_object (&priv->cache);
@@ -302,12 +311,9 @@ hyscan_nmea_data_update_cache_key (HyScanNMEADataPrivate *priv,
 static gboolean
 hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
                               guint32                index,
-                              guint32               *size,
                               gint64                *time)
 {
-  gint64 dtime;
-  gboolean status;
-  guint32 size1, size2;
+  HyScanNMEADataCacheHeader header;
 
   if (priv->cache == NULL)
     return FALSE;
@@ -315,71 +321,19 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
   /* Обновляем ключ кэширования. */
   hyscan_nmea_data_update_cache_key (priv, index);
 
-  /* Определяем размер данных. */
-  status = hyscan_cache_get (priv->cache, priv->key, NULL, NULL, &size1);
-
-  /* Если данные не найдены или в кэше лежит только время приема данных. */
-  if (!status || size1 <= sizeof (gint64))
+  /* Ищем данные в кэше. */
+  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  if (!hyscan_cache_get2 (priv->cache, priv->key, NULL, sizeof (header), priv->cache_buffer, priv->nmea_buffer))
     return FALSE;
 
-  size2 = size1 - sizeof (gint64);
-  size1 = sizeof (gint64);
-
-  /* Эта ситуация видится маловероятной, но на всякий случай... */
-  if (G_UNLIKELY (priv->string_length < size2))
+  /* Верификация данных. */
+  if ((header.magic != CACHE_HEADER_MAGIC) ||
+      (header.length != hyscan_buffer_get_size (priv->nmea_buffer)))
     {
-      priv->string_length = size2;
-      priv->string = g_realloc (priv->string, priv->string_length);
+      return FALSE;
     }
 
-  /* Считываем данные. */
-  if (!hyscan_cache_get2 (priv->cache, priv->key, NULL, &dtime, &size1, priv->string, &size2))
-    return FALSE;
-
-  if (time != NULL)
-    *time = dtime;
-
-  if (size != NULL)
-    *size = size2;
-
-  return TRUE;
-}
-
-/* Функция считывает всю строку из БД во внутренний буфер. */
-static gboolean
-hyscan_nmea_data_read_data (HyScanNMEADataPrivate *priv,
-                            guint32                index,
-                            guint32               *size,
-                            gint64                *time)
-{
-  guint32 dsize;
-  gint64 dtime;
-
-  /* Узнаем размер данных в базе данных. */
-  if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, NULL, &dsize, NULL))
-    return FALSE;
-
-  /* В базе данных может НЕ оказаться терминирующего нуля.
-   * Я исхожу из предположения, что его там никогда нет.
-   * В худшем случае я потрачу на 1 байт больше. Во всех остальных
-   * избегу неопределенного поведения или даже сегфолта.
-   */
-
-  /* Если надо, перевыделяем память, чтобы уместить всю строку во внутренний буфер. */
-  if (dsize + 1 > priv->string_length)
-    {
-      priv->string_length = dsize + 1;
-      priv->string = g_realloc (priv->string, priv->string_length);
-    }
-
-  if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, priv->string, &dsize, &dtime))
-    return FALSE;
-
-  /* Принудительно пишем '\0' в конец строки.*/
-  priv->string[dsize] = '\0';
-
-  *time = dtime;
-  *size = dsize + 1;
+  (time != NULL) ? *time = header.time : 0;
 
   return TRUE;
 }
@@ -520,12 +474,13 @@ hyscan_nmea_data_find_data (HyScanNMEAData *data,
 const gchar*
 hyscan_nmea_data_get_sentence (HyScanNMEAData *data,
                                guint32         index,
-                               guint32        *size,
                                gint64         *time)
 {
   HyScanNMEADataPrivate *priv;
-  gint64 dtime = 0;
-  guint32 dsize = 0;
+
+  gint64 nmea_time;
+  guint32 size;
+  gchar *nmea;
 
   g_return_val_if_fail (HYSCAN_IS_NMEA_DATA (data), FALSE);
   priv = data->priv;
@@ -533,26 +488,35 @@ hyscan_nmea_data_get_sentence (HyScanNMEAData *data,
   if (priv->channel_id <= 0)
     return NULL;
 
-  if (hyscan_nmea_data_check_cache (priv, index, size, time))
-    return priv->string;
+  if (hyscan_nmea_data_check_cache (priv, index, time))
+    return hyscan_buffer_get_data (priv->nmea_buffer, &size);
 
   /* Считываем всю строку во внутренний буфер. */
-  hyscan_nmea_data_read_data (priv, index, &dsize, &dtime);
+  if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, priv->nmea_buffer, &nmea_time))
+    return NULL;
+
+  /* Принудительно пишем '\0' в конец строки.*/
+  size = hyscan_buffer_get_size (priv->nmea_buffer);
+  hyscan_buffer_set_size (priv->nmea_buffer, size + 1);
+  nmea = hyscan_buffer_get_data (priv->nmea_buffer, &size);
+  nmea[size - 1] = '\0';
 
   /* Сохраняем данные в кэше. Сначала время, потом строка. */
   if (priv->cache != NULL)
     {
-      hyscan_cache_set2 (priv->cache, priv->key, NULL,
-                         &dtime, sizeof (dtime), priv->string, dsize);
+      HyScanNMEADataCacheHeader header;
+
+      header.magic = CACHE_HEADER_MAGIC;
+      header.length = size;
+      header.time = nmea_time;
+      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+
+      hyscan_cache_set2 (priv->cache, priv->key, NULL, priv->cache_buffer, priv->nmea_buffer);
     }
 
-  if (time != NULL)
-    *time = dtime;
+  (time != NULL) ? *time = nmea_time : 0;
 
-  if (size != NULL)
-    *size = dsize;
-
-  return priv->string;
+  return nmea;
 }
 
 /* Функция возвращает номер изменения в данных. */

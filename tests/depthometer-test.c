@@ -35,8 +35,8 @@ main (int argc, char **argv)
 
   /* Запись данных. */
   gchar                  *nmea_data = NULL;
+  HyScanBuffer           *buffer;
   HyScanDataWriter       *writer;
-  HyScanDataWriterData    data;
   HyScanAntennaPosition   position = {0};
 
   /* Тестируемые объекты.*/
@@ -91,16 +91,13 @@ main (int argc, char **argv)
   hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
 
   /* Наполняем данными. */
+  buffer = hyscan_buffer_new ();
+
   for (i = 0, time = DB_TIME_START; i < SAMPLES; i++, time += DB_TIME_INC)
     {
       update_nmea_data (&nmea_data, i);
-
-      data.time = time;
-
-      data.size = strlen(nmea_data);
-      data.data = nmea_data;
-      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_DPT, NMEA_DPT_CHANNEL, &data);
-
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, nmea_data, strlen (nmea_data));
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_DPT, NMEA_DPT_CHANNEL, time, buffer);
     }
 
   /* Тестируем определение глубины по NMEA. */
@@ -115,6 +112,7 @@ main (int argc, char **argv)
   g_clear_object (&db);
   g_clear_object (&cache);
   g_clear_object (&writer);
+  g_clear_object (&buffer);
 
   g_free (nmea_data);
 
