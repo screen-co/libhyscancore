@@ -16,31 +16,37 @@
 #include "hyscan-core-schemas.h"
 
 /* Функция устанавливает местоположение приёмной антенны. */
+HYSCAN_API
 gboolean       hyscan_core_params_set_antenna_position         (HyScanDB                  *db,
                                                                 gint32                     channel_id,
                                                                 HyScanAntennaPosition     *position);
 
 /* Функция устанавливает параметры сырых данных. */
+HYSCAN_API
 gboolean       hyscan_core_params_set_raw_data_info            (HyScanDB                  *db,
                                                                 gint32                     channel_id,
                                                                 HyScanRawDataInfo         *info);
 
 /* Функция устанавливает параметры акустических данных. */
+HYSCAN_API
 gboolean       hyscan_core_params_set_acoustic_data_info       (HyScanDB                  *db,
                                                                 gint32                     channel_id,
                                                                 HyScanAcousticDataInfo    *info);
 
 /* Функция устанавливает параметры образов сигнала. */
+HYSCAN_API
 gboolean       hyscan_core_params_set_signal_info              (HyScanDB                  *db,
                                                                 gint32                     channel_id,
                                                                 gdouble                    data_rate);
 
 /* Функция устанавливает параметры данных ВАРУ. */
+HYSCAN_API
 gboolean       hyscan_core_params_set_tvg_info                 (HyScanDB                  *db,
                                                                 gint32                     channel_id,
                                                                 gdouble                    data_rate);
 
 /* Функция загружает местоположение приёмной антенны. */
+HYSCAN_API
 gboolean       hyscan_core_params_load_antenna_position        (HyScanDB                  *db,
                                                                 gint32                     param_id,
                                                                 gint64                     schema_id,
@@ -48,21 +54,25 @@ gboolean       hyscan_core_params_load_antenna_position        (HyScanDB        
                                                                 HyScanAntennaPosition     *position);
 
 /* Функция загружает параметры сырых данных. */
+HYSCAN_API
 gboolean       hyscan_core_params_load_raw_data_info           (HyScanDB                  *db,
                                                                 gint32                     param_id,
                                                                 HyScanRawDataInfo         *info);
 
 /* Функция загружает параметры акустических данных. */
+HYSCAN_API
 gboolean       hyscan_core_params_load_acoustic_data_info      (HyScanDB                  *db,
                                                                 gint32                     param_id,
                                                                 HyScanAcousticDataInfo    *info);
 
 /* Функция проверяет параметры образов сигнала. */
+HYSCAN_API
 gboolean       hyscan_core_params_check_signal_info            (HyScanDB                  *db,
                                                                 gint32                     param_id,
                                                                 gdouble                    data_rate);
 
 /* Функция проверяет параметры данных ВАРУ. */
+HYSCAN_API
 gboolean       hyscan_core_params_check_tvg_info               (HyScanDB                  *db,
                                                                 gint32                     param_id,
                                                                 gdouble                    data_rate);
