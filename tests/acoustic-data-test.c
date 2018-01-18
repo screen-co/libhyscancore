@@ -201,10 +201,6 @@ int main( int argc, char **argv )
   hyscan_buffer_set_data_type (cplx_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
   hyscan_buffer_set_data_type (amp_buffer, HYSCAN_DATA_FLOAT);
 
-  /* Допустимые ошибки. */
-  amp_error *= n_data_points;
-  raw_error *= n_data_points;
-
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
@@ -325,6 +321,10 @@ int main( int argc, char **argv )
 
   /* Завершаем запись. */
   g_clear_object (&writer);
+
+  /* Допустимые ошибки. */
+  amp_error *= n_data_points;
+  raw_error *= n_data_points;
 
   /* Объект чтения сырых данных. */
   if (noise)
