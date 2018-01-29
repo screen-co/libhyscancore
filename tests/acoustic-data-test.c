@@ -22,27 +22,27 @@ struct _test_info
 
 test_info raw_test_types [] =
 {
-  { "adc-14le", HYSCAN_DATA_COMPLEX_ADC_14LE, 1e-6 },
-  { "adc-16le", HYSCAN_DATA_COMPLEX_ADC_16LE, 1e-6 },
-  { "adc-24le", HYSCAN_DATA_COMPLEX_ADC_24LE, 1e-8 },
-  { "float",    HYSCAN_DATA_COMPLEX_FLOAT,    1e-8 },
+  { "adc-14le", HYSCAN_DATA_COMPLEX_ADC_14LE,  1e-6 },
+  { "adc-16le", HYSCAN_DATA_COMPLEX_ADC_16LE,  1e-6 },
+  { "adc-24le", HYSCAN_DATA_COMPLEX_ADC_24LE,  1e-8 },
+  { "float",    HYSCAN_DATA_COMPLEX_FLOAT,     1e-8 },
 };
 
 test_info amp_test_types [] =
 {
-  { "uint8",    HYSCAN_DATA_UINT8,    1e-4 },
-  { "uint16",   HYSCAN_DATA_UINT16,   1e-6 },
-  { "uint32",   HYSCAN_DATA_UINT32,   1e-9 },
-  { "float",    HYSCAN_DATA_FLOAT,    1e-9 },
-  { "normal8",  HYSCAN_DATA_NORMAL8,  1e-4 },
-  { "normal16", HYSCAN_DATA_NORMAL16, 1e-6 }
+  { "float",    HYSCAN_DATA_FLOAT,             1e-9 },
+  { "amp-i8",   HYSCAN_DATA_AMPLITUDE_INT8,    1e-4 },
+  { "amp-i16",  HYSCAN_DATA_AMPLITUDE_INT16,   1e-6 },
+  { "amp-i32",  HYSCAN_DATA_AMPLITUDE_INT32,   1e-9 },
+  { "amp-f8",   HYSCAN_DATA_AMPLITUDE_FLOAT8,  1e-4 },
+  { "amp-f16",  HYSCAN_DATA_AMPLITUDE_FLOAT16, 1e-6 }
 };
 
 int main( int argc, char **argv )
 {
   gchar *db_uri = NULL;
   gchar *raw_type_name = g_strdup ("adc-16le");
-  gchar *amp_type_name = g_strdup ("uint16");
+  gchar *amp_type_name = g_strdup ("amp-i16");
   gdouble frequency = 0.0;
   gdouble duration = 0.0;
   gdouble discretization = 0.0;
@@ -85,7 +85,7 @@ int main( int argc, char **argv )
     GOptionEntry entries[] =
       {
         { "raw-type", 'r', 0, G_OPTION_ARG_STRING, &raw_type_name, "Raw data type (adc-14le, adc-16le, adc-24le, float)", NULL },
-        { "amp-type", 'a', 0, G_OPTION_ARG_STRING, &amp_type_name, "amplitude data type (uint8, uint16, uint32, float, normal8, normal16)", NULL },
+        { "amp-type", 'a', 0, G_OPTION_ARG_STRING, &amp_type_name, "amplitude data type (float, amp-i8, amp-i16, amp-i32, amp-f8, amp-f16)", NULL },
         { "discretization", 'd', 0, G_OPTION_ARG_DOUBLE, &discretization, "Signal discretization, Hz", NULL },
         { "frequency", 'f', 0, G_OPTION_ARG_DOUBLE, &frequency, "Signal frequency, Hz", NULL },
         { "duration", 't', 0, G_OPTION_ARG_DOUBLE, &duration, "Signal duration, s", NULL },
