@@ -13,6 +13,7 @@ add_executable (forward-look-player-test forward-look-player-test.c hyscan-fl-ge
 add_executable (geo-test geo-test.c)
 add_executable (depthometer-test depthometer-test.c)
 add_executable (depth-nmea-test depth-nmea-test.c)
+add_executable (nmea-parser-test nmea-parser-test.c)
 add_executable (tile-color-test tile-color-test.c)
 add_executable (waterfall-tile-test waterfall-tile-test.c)
 add_executable (tile-queue-test tile-queue-test.c)
@@ -28,6 +29,7 @@ target_link_libraries (forward-look-player-test ${TEST_LIBRARIES})
 target_link_libraries (geo-test ${TEST_LIBRARIES})
 target_link_libraries (depthometer-test ${TEST_LIBRARIES})
 target_link_libraries (depth-nmea-test ${TEST_LIBRARIES})
+target_link_libraries (nmea-parser-test ${TEST_LIBRARIES})
 target_link_libraries (tile-color-test ${TEST_LIBRARIES})
 target_link_libraries (waterfall-tile-test ${TEST_LIBRARIES})
 target_link_libraries (tile-queue-test ${TEST_LIBRARIES})
@@ -43,6 +45,7 @@ install (TARGETS data-writer-test
                  geo-test
                  depthometer-test
                  depth-nmea-test
+                 nmea-parser-test
                  projector-test
                  waterfall-mark-data-test
                  mark-manager-test

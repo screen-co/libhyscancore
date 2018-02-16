@@ -1,4 +1,4 @@
-#include <hyscan-depth-nmea.h>
+#include <hyscan-nmea-parser.h>
 #include <hyscan-data-writer.h>
 #include <hyscan-cached.h>
 #include <string.h>
@@ -29,8 +29,8 @@ main (int argc, char **argv)
   HyScanAntennaPosition  position;
 
   /* Тестируемые объекты.*/
-  HyScanDepthNMEA *nmea;
-  HyScanDepth     *idepth;
+  HyScanNMEAParser *nmea;
+  HyScanNavData     *idepth;
 
   gint i;
 
@@ -102,31 +102,33 @@ main (int argc, char **argv)
     }
 
   /* Теперь потестируем объект. */
-  nmea = hyscan_depth_nmea_new (db, name, name, CHANNEL);
-  idepth = HYSCAN_DEPTH (nmea);
+  nmea = hyscan_nmea_parser_new (db, name, name, CHANNEL,
+                                 HYSCAN_SOURCE_NMEA_DPT,
+                                 HYSCAN_NMEA_FIELD_DEPTH);
+  idepth = HYSCAN_NAV_DATA (nmea);
 
-  /* hyscan_depth_get_range */
+  /* hyscan_nav_data_get_range */
   {
     guint32 dclindex, dcrindex;
     gboolean status;
 
-    status = hyscan_depth_get_range (idepth, &dclindex, &dcrindex);
+    status = hyscan_nav_data_get_range (idepth, &dclindex, &dcrindex);
 
     if (dcrindex - dclindex + 1 != SAMPLES || !status)
       g_error ("Failed to get data range");
   }
 
-  /* hyscan_depth_find_data */
+  /* hyscan_nav_data_find_data */
   {
     guint32 lindex, rindex, index;
     gint64 ltime, rtime;
     HyScanDBFindStatus status;
 
-    status = hyscan_depth_find_data (idepth, 0, NULL, NULL, NULL, NULL);
+    status = hyscan_nav_data_find_data (idepth, 0, NULL, NULL, NULL, NULL);
     if (status != HYSCAN_DB_FIND_LESS)
       g_error ("Failed to find data");
 
-    status = hyscan_depth_find_data (idepth, time_for_index (SAMPLES + 10), &lindex, &rindex, &ltime, &rtime);
+    status = hyscan_nav_data_find_data (idepth, time_for_index (SAMPLES + 10), &lindex, &rindex, &ltime, &rtime);
 
     if (status != HYSCAN_DB_FIND_GREATER)
       g_error ("Failed to find data");
@@ -134,7 +136,7 @@ main (int argc, char **argv)
     /* Найдем данные для произвольного индекса. */
     index = SAMPLES / 2;
 
-    status = hyscan_depth_find_data (idepth, time_for_index (index) + 1, &lindex, &rindex, &ltime, &rtime);
+    status = hyscan_nav_data_find_data (idepth, time_for_index (index) + 1, &lindex, &rindex, &ltime, &rtime);
     if (status != HYSCAN_DB_FIND_OK ||
         lindex != index ||
         rindex != index + 1 ||
@@ -144,46 +146,46 @@ main (int argc, char **argv)
         g_error ("Failed to find data");
       }
   }
-  /* hyscan_depth_get_position */
+  /* hyscan_nav_data_get_position */
   {
-    HyScanAntennaPosition acquired = hyscan_depth_get_position (idepth);
+    HyScanAntennaPosition acquired = hyscan_nav_data_get_position (idepth);
 
     if (!compare_position (acquired, position))
       g_error ("Antenna positions are not equal");
   }
 
-  /* hyscan_depth_is_writable */
+  /* hyscan_nav_data_is_writable */
   {
     gboolean true_expected, false_expected;
-    true_expected = hyscan_depth_is_writable (idepth);
+    true_expected = hyscan_nav_data_is_writable (idepth);
     hyscan_data_writer_stop (writer);
-    false_expected = hyscan_depth_is_writable (idepth);
+    false_expected = hyscan_nav_data_is_writable (idepth);
 
     if (true_expected != TRUE || false_expected != FALSE)
       g_error ("Data channel writeability fail");
   }
 
-  /* hyscan_depth_get */
+  /* hyscan_nav_data_get */
   {
     gdouble val;
     for (i = 0; i < SAMPLES; i++)
       {
-        val = hyscan_depth_get (idepth, i, NULL);
+        hyscan_nav_data_get (idepth, i, NULL, &val);
         if (val != (gdouble)i)
-          g_error ("Failed to get data at index %i", i);
+           g_error ("Failed to get data at index %i", i);
       }
   }
 
-  /* hyscan_depth_get с кэшем. */
-  hyscan_depth_set_cache (idepth, cache, "pfx");
+  /* hyscan_nav_data_get с кэшем. */
+  hyscan_nav_data_set_cache (idepth, cache, "pfx");
   {
     gdouble val;
     for (i = 0; i < SAMPLES; i++)
       {
         /* Считываем дважды, чтобы гарантированно данные
          * оказались в кэше. */
-        val = hyscan_depth_get (idepth, i, NULL);
-        val = hyscan_depth_get (idepth, i, NULL);
+        hyscan_nav_data_get (idepth, i, NULL, &val);
+        hyscan_nav_data_get (idepth, i, NULL, &val);
         if (val != (gdouble)i)
           g_error ("Failed to get data at index %i", i);
       }

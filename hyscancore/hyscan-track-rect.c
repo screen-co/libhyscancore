@@ -10,7 +10,7 @@
 
 #include "hyscan-track-rect.h"
 #include <hyscan-depthometer.h>
-#include <hyscan-depth-nmea.h>
+#include <hyscan-nmea-parser.h>
 #include <hyscan-projector.h>
 
 typedef struct
@@ -68,14 +68,14 @@ struct _HyScanTrackRectPrivate
 
   HyScanProjector        *pj;
   HyScanDepthometer      *depth;
-  HyScanDepth            *idepth;
+  HyScanNavData            *idepth;
 };
 
 static void      hyscan_track_rect_object_constructed  (GObject    *object);
 static void      hyscan_track_rect_object_finalize     (GObject    *object);
 
 static HyScanProjector    *hyscan_track_rect_open_projector   (HyScanTrackRect *self);
-static HyScanDepth        *hyscan_track_rect_open_depth       (HyScanTrackRect *self);
+static HyScanNavData        *hyscan_track_rect_open_depth       (HyScanTrackRect *self);
 static HyScanDepthometer  *hyscan_track_rect_open_depthometer (HyScanTrackRect *self);
 static gboolean  hyscan_track_rect_sync_states         (HyScanTrackRect *self);
 static gboolean  hyscan_track_rect_apply_updates       (HyScanTrackRect *self);
@@ -171,23 +171,25 @@ hyscan_track_rect_open_projector (HyScanTrackRect *self)
   return pj;
 }
 
-static HyScanDepth*
+static HyScanNavData*
 hyscan_track_rect_open_depth (HyScanTrackRect *self)
 {
   HyScanTrackRectPrivate *priv = self->priv;
-  HyScanDepth *idepth = NULL;
+  HyScanNavData *idepth = NULL;
 
   if (HYSCAN_SOURCE_NMEA_DPT == priv->cur_state.depth_source)
     {
-      HyScanDepthNMEA *dnmea;
-      dnmea = hyscan_depth_nmea_new (priv->cur_state.db,
-                                     priv->cur_state.project,
-                                     priv->cur_state.track,
-                                     priv->cur_state.depth_channel);
-      idepth = HYSCAN_DEPTH (dnmea);
+      HyScanNMEAParser *dnmea;
+      dnmea = hyscan_nmea_parser_new (priv->cur_state.db,
+                                      priv->cur_state.project,
+                                      priv->cur_state.track,
+                                      priv->cur_state.depth_channel,
+                                      HYSCAN_SOURCE_NMEA_DPT,
+                                      HYSCAN_NMEA_FIELD_DEPTH);
+      idepth = HYSCAN_NAV_DATA (dnmea);
     }
 
-  hyscan_depth_set_cache (idepth, priv->cur_state.cache, priv->cur_state.prefix);
+  hyscan_nav_data_set_cache (idepth, priv->cur_state.cache, priv->cur_state.prefix);
   return idepth;
 }
 
@@ -325,7 +327,7 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
       if (priv->depth != NULL)
         hyscan_depthometer_set_cache (priv->depth, state->cache, state->prefix);
       if (priv->idepth != NULL)
-        hyscan_depth_set_cache (priv->idepth, state->cache, state->prefix);
+        hyscan_nav_data_set_cache (priv->idepth, state->cache, state->prefix);
 
       state->cache_changed = FALSE;
       if (!state->speed_changed && !state->velocity_changed && !state->type_changed)
@@ -404,7 +406,10 @@ hyscan_track_rect_watcher (gpointer data)
           const HyScanAcousticData *cdc;
           priv->pj = pj = hyscan_track_rect_open_projector (self);
           if (pj == NULL)
-            continue;
+            {
+              g_usleep (1);
+              continue;
+            }
           cdc = hyscan_projector_get_acoustic_data (pj);
           dc = (HyScanAcousticData*)cdc;
         }

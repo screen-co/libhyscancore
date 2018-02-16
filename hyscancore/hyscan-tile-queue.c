@@ -57,7 +57,7 @@
 #include "hyscan-tile-queue.h"
 #include <hyscan-core-marshallers.h>
 #include <hyscan-waterfall-tile.h>
-#include <hyscan-depth-nmea.h>
+#include <hyscan-nmea-parser.h>
 #include <string.h>
 #include <zlib.h>
 
@@ -172,9 +172,9 @@ static void                hyscan_tile_queue_object_finalize    (GObject        
 
 static HyScanAcousticData *hyscan_tile_queue_open_dc            (HyScanTileQueueState   *state,
                                                                  HyScanSourceType        source);
-static HyScanDepth        *hyscan_tile_queue_open_depth         (HyScanTileQueueState   *state);
+static HyScanNavData        *hyscan_tile_queue_open_depth         (HyScanTileQueueState   *state);
 static HyScanDepthometer  *hyscan_tile_queue_open_depthometer   (HyScanTileQueueState   *state,
-                                                                 HyScanDepth            *depth);
+                                                                 HyScanNavData            *depth);
 static HyScanAcousticData *hyscan_tile_queue_get_dc             (HyScanTileQueuePrivate *priv,
                                                                  HyScanSourceType        source,
                                                                  gint                    gen_id);
@@ -364,21 +364,24 @@ hyscan_tile_queue_open_dc (HyScanTileQueueState *state,
 }
 
 /* Функция создает объект определения глубины. */
-static HyScanDepth*
+static HyScanNavData*
 hyscan_tile_queue_open_depth (HyScanTileQueueState *state)
 {
   HyScanSourceType source = state->depth_source;
-  HyScanDepth *depth = NULL;
+  HyScanNavData *depth = NULL;
 
   if (HYSCAN_SOURCE_NMEA_DPT == source)
     {
-      HyScanDepthNMEA *dnmea;
-      dnmea = hyscan_depth_nmea_new (state->db, state->project, state->track, state->depth_channel);
-      depth = HYSCAN_DEPTH (dnmea);
+      HyScanNMEAParser *dnmea;
+      dnmea = hyscan_nmea_parser_new (state->db, state->project, state->track,
+                                      state->depth_channel,
+                                      HYSCAN_SOURCE_NMEA_DPT,
+                                      HYSCAN_NMEA_FIELD_DEPTH);
+      depth = HYSCAN_NAV_DATA (dnmea);
     }
 
   /* Устанавливаем кэш, создаем объект измерения глубины. */
-  hyscan_depth_set_cache (depth, state->cache, state->prefix);
+  hyscan_nav_data_set_cache (depth, state->cache, state->prefix);
 
   return depth;
 }
@@ -386,7 +389,7 @@ hyscan_tile_queue_open_depth (HyScanTileQueueState *state)
 /* Функция создает объект определения глубины. */
 static HyScanDepthometer*
 hyscan_tile_queue_open_depthometer (HyScanTileQueueState *state,
-                                    HyScanDepth          *depth)
+                                    HyScanNavData          *depth)
 {
   HyScanDepthometer *meter = NULL;
 
@@ -437,7 +440,7 @@ static HyScanDepthometer*
 hyscan_tile_queue_get_depthometer (HyScanTileQueuePrivate *priv,
                                    gint                    gen_id)
 {
-  HyScanDepth *depth = NULL;
+  HyScanNavData *depth = NULL;
   HyScanDepthometer *meter = NULL;
 
   gint64 depth_key = gen_id + xDEPTH;
@@ -636,7 +639,7 @@ hyscan_tile_queue_apply_updates (HyScanTileQueue *self)
       g_hash_table_iter_init (&iter, dctable);
       while (g_hash_table_iter_next (&iter, &key, &value))
         {
-          if (HYSCAN_IS_DEPTH (value) || HYSCAN_IS_DEPTHOMETER (value))
+          if (HYSCAN_IS_NAV_DATA (value) || HYSCAN_IS_DEPTHOMETER (value))
             g_hash_table_remove (dctable, key);
         }
       goto cache_setup;
@@ -665,8 +668,8 @@ cache_setup:
         {
           if (HYSCAN_IS_DEPTHOMETER (value))
             hyscan_depthometer_set_cache (HYSCAN_DEPTHOMETER (value), state->cache, state->prefix);
-          if (HYSCAN_IS_DEPTH (value))
-            hyscan_depth_set_cache (HYSCAN_DEPTH (value), state->cache, state->prefix);
+          if (HYSCAN_IS_NAV_DATA (value))
+            hyscan_nav_data_set_cache (HYSCAN_NAV_DATA (value), state->cache, state->prefix);
         }
       goto exit;
     }

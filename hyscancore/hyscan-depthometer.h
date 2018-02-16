@@ -27,7 +27,7 @@
 #ifndef __HYSCAN_DEPTHOMETER_H__
 #define __HYSCAN_DEPTHOMETER_H__
 
-#include <hyscan-depth.h>
+#include <hyscan-nav-data.h>
 
 G_BEGIN_DECLS
 
@@ -65,7 +65,7 @@ GType                   hyscan_depthometer_get_type             (void);
  * \return объект HyScanDepthometer.
  */
 HYSCAN_API
-HyScanDepthometer      *hyscan_depthometer_new                 (HyScanDepth            *depth);
+HyScanDepthometer      *hyscan_depthometer_new                 (HyScanNavData            *depth);
 
 /**
  *

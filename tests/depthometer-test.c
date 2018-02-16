@@ -1,5 +1,5 @@
 #include <hyscan-depthometer.h>
-#include <hyscan-depth-nmea.h>
+#include <hyscan-nmea-parser.h>
 #include <hyscan-cached.h>
 #include <hyscan-data-writer.h>
 #include <string.h>
@@ -21,7 +21,7 @@ void set_get_check        (gchar             *log_prefix,
                            gfloat             expected);
 
 void test                 (gchar             *log_prefix,
-                           HyScanDepth       *idepth,
+                           HyScanNavData       *idepth,
                            HyScanCache       *cache);
 
 int
@@ -40,7 +40,7 @@ main (int argc, char **argv)
   HyScanAntennaPosition   position = {0};
 
   /* Тестируемые объекты.*/
-  HyScanDepthNMEA        *depth_nmea;
+  HyScanNMEAParser       *depth_nmea;
   gint64 time;
   gint i;
 
@@ -106,8 +106,10 @@ main (int argc, char **argv)
     }
 
   /* Тестируем определение глубины по NMEA. */
-  depth_nmea = hyscan_depth_nmea_new (db, name, name, NMEA_DPT_CHANNEL);
-  test ("nmea", HYSCAN_DEPTH (depth_nmea), cache);
+  depth_nmea = hyscan_nmea_parser_new (db, name, name, NMEA_DPT_CHANNEL,
+                                       HYSCAN_SOURCE_NMEA_DPT,
+                                       HYSCAN_NMEA_FIELD_DEPTH);
+  test ("nmea", HYSCAN_NAV_DATA (depth_nmea), cache);
   g_clear_object (&depth_nmea);
 
   /* Удаляем созданный проект. */
@@ -164,7 +166,7 @@ set_get_check (gchar             *log_prefix,
 
 
 void test (gchar             *log_prefix,
-           HyScanDepth       *idepth,
+           HyScanNavData       *idepth,
            HyScanCache       *cache)
 {
   HyScanDepthometer *meter = hyscan_depthometer_new (idepth);
@@ -181,7 +183,7 @@ void test (gchar             *log_prefix,
   set_get_check (log_prefix, meter, 2, t, (MORE + LESS) / 2.0);
   set_get_check (log_prefix, meter, 4, t, (MORE + 3 * LESS) / 4.0);
 
-  hyscan_depth_set_cache (idepth, cache, "test_prefix");
+  hyscan_nav_data_set_cache (idepth, cache, "test_prefix");
   hyscan_depthometer_set_cache (meter, cache, "test_prefix");
   hyscan_depthometer_set_validity_time (meter, DB_TIME_INC);
 
