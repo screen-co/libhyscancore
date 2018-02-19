@@ -44,6 +44,17 @@
     <key id="sonar" name="Sonar info" type="string" view="schema"/>
   </schema>
 
+  <schema id="log">
+    <node id="schema">
+      <key id="id" name="Log channel schema id" type="integer" access="readonly">
+        <default>3957463010395734756</default>
+      </key>
+      <key id="version" name="Log channel schema version" type="integer" access="readonly">
+        <default>20170100</default>
+      </key>
+    </node>
+  </schema>
+
   <schema id="sensor">
     <node id="schema">
       <key id="id" name="Sensor channel schema id" type="integer" access="readonly">

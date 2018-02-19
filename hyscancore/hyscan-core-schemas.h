@@ -20,6 +20,9 @@
 #define TRACK_SCHEMA_ID                        1715033709558529337
 #define TRACK_SCHEMA_VERSION                   20170100
 
+#define LOG_SCHEMA_ID                          3957463010395734756
+#define LOG_SCHEMA_VERSION                     20170100
+
 #define SENSOR_CHANNEL_SCHEMA_ID               5474665919775311270
 #define SENSOR_CHANNEL_SCHEMA_VERSION          20170100
 
@@ -37,6 +40,7 @@
 
 #define PROJECT_SCHEMA                         "project"
 #define TRACK_SCHEMA                           "track"
+#define LOG_CHANNEL_SCHEMA                     "log"
 #define SENSOR_CHANNEL_SCHEMA                  "sensor"
 #define RAW_CHANNEL_SCHEMA                     "raw"
 #define SIGNAL_CHANNEL_SCHEMA                  "signal"

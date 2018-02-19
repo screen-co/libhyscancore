@@ -162,6 +162,36 @@ hyscan_core_params_set_tvg_info (HyScanDB *db,
   return status;
 }
 
+/* Функция проверяет схему канала информационных сообщений. */
+gboolean
+hyscan_core_params_check_log_schema (HyScanDB *db,
+                                     gint32    param_id)
+{
+  HyScanParamList *param_list;
+  gboolean status = FALSE;
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != LOG_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != LOG_SCHEMA_VERSION))
+    {
+      goto exit;
+    }
+
+  status = TRUE;
+
+exit:
+  g_object_unref (param_list);
+
+  return status;
+}
+
 /* Функция загружает местоположение приёмной антенны гидролокатора. */
 gboolean
 hyscan_core_params_load_antenna_position (HyScanDB              *db,

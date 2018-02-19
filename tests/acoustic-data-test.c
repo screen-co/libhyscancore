@@ -211,7 +211,10 @@ int main( int argc, char **argv )
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
 
   /* Объект записи данных */
-  writer = hyscan_data_writer_new (db);
+  writer = hyscan_data_writer_new ();
+
+  /* Система хранения. */
+  hyscan_data_writer_set_db (writer, db);
 
   /* Местоположение приёмной антенны. */
   hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);

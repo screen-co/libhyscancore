@@ -72,7 +72,11 @@ main (int argc, char **argv)
     g_error ("can't open db <%s>", db_uri);
 
   /* Создаем объект записи данных. */
-  writer = hyscan_data_writer_new (db);
+  writer = hyscan_data_writer_new ();
+
+  /* Система хранения. */
+  hyscan_data_writer_set_db (writer, db);
+
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
     g_error ("can't start write");
 

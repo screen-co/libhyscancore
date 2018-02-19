@@ -45,6 +45,11 @@ gboolean       hyscan_core_params_set_tvg_info                 (HyScanDB        
                                                                 gint32                     channel_id,
                                                                 gdouble                    data_rate);
 
+/* Функция проверяет схему канала информационных сообщений. */
+HYSCAN_API
+gboolean       hyscan_core_params_check_log_schema             (HyScanDB                  *db,
+                                                                gint32                     param_id);
+
 /* Функция загружает местоположение приёмной антенны. */
 HYSCAN_API
 gboolean       hyscan_core_params_load_antenna_position        (HyScanDB                  *db,

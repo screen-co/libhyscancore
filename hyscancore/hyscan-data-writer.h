@@ -12,7 +12,8 @@
  *
  * Для установки параметров записи предназначены функции:
  *
- * - #hyscan_data_writer_set_operator_name - устанавливает имя оператора гидролокатора.
+ * - #hyscan_data_writer_set_db - устанавливает систему хранения;
+ * - #hyscan_data_writer_set_operator_name - устанавливает имя оператора гидролокатора;
  * - #hyscan_data_writer_set_sonar_info - для задания информации о гидролокаторе;
  * - #hyscan_data_writer_set_mode - устанавливает режим записи данных \link HyScanDataWriterModeType \endlink;
  * - #hyscan_data_writer_set_chunk_size - устанавливает максимальный размер файлов в галсе;
@@ -34,6 +35,7 @@
  *
  * Для записи данных используются следующие функции:
  *
+ * - #hyscan_data_writer_log_add_message - для записи информационных сообщений;
  * - #hyscan_data_writer_sensor_add_data - для записи данных от датчика;
  * - #hyscan_data_writer_raw_add_data - для записи "сырых" данных от гидролокатора;
  * - #hyscan_data_writer_raw_add_noise - для записи "сырых" данных от гидролокатора без излучения;
@@ -62,12 +64,10 @@ G_BEGIN_DECLS
 /** \brief Режимы записи данных. */
 typedef enum
 {
-  HYSCAN_DATA_WRITER_MODE_INVALID                      = 0,    /**< Недопустимый режим, ошибка. */
-
-  HYSCAN_DATA_WRITER_MODE_NONE                         = 101,  /**< Не записывать данные. */
-  HYSCAN_DATA_WRITER_MODE_RAW                          = 102,  /**< Записывать только "сырые" данные. */
-  HYSCAN_DATA_WRITER_MODE_COMPUTED                     = 103,  /**< Записывать только обработанные данные. */
-  HYSCAN_DATA_WRITER_MODE_BOTH                         = 104   /**< Записывать оба типа данных. */
+  HYSCAN_DATA_WRITER_MODE_NONE,             /**< Не записывать данные. */
+  HYSCAN_DATA_WRITER_MODE_RAW,              /**< Записывать только "сырые" данные. */
+  HYSCAN_DATA_WRITER_MODE_COMPUTED,         /**< Записывать только обработанные данные. */
+  HYSCAN_DATA_WRITER_MODE_BOTH              /**< Записывать оба типа данных. */
 } HyScanDataWriterModeType;
 
 #define HYSCAN_TYPE_DATA_WRITER             (hyscan_data_writer_get_type ())
@@ -100,13 +100,26 @@ GType                  hyscan_data_writer_get_type                     (void);
  *
  * Функция создаёт новый объект \link HyScanDataWriter \endlink.
  *
- * \param db указатель на интерфейс \link HyScanDB \endlink.
- *
  * \return Указатель на объект \link HyScanDataWriter \endlink.
  *
  */
 HYSCAN_API
-HyScanDataWriter      *hyscan_data_writer_new                          (HyScanDB                      *db);
+HyScanDataWriter      *hyscan_data_writer_new                          (void);
+
+/**
+ *
+ * Функция устанавливает систему хранения данных. Система хранения может быть
+ * установлена только при отключенной записи.
+ *
+ * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param db указатель на интерфейс \link HyScanDB \endlink.
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+HYSCAN_API
+gboolean               hyscan_data_writer_set_db                       (HyScanDataWriter              *writer,
+                                                                        HyScanDB                      *db);
 
 /**
  *
@@ -218,7 +231,7 @@ gboolean               hyscan_data_writer_set_save_size                (HyScanDa
 HYSCAN_API
 void                   hyscan_data_writer_sensor_set_position          (HyScanDataWriter              *writer,
                                                                         const gchar                   *sensor,
-                                                                        HyScanAntennaPosition         *position);
+                                                                        const HyScanAntennaPosition   *position);
 
 /**
  *
@@ -236,7 +249,7 @@ void                   hyscan_data_writer_sensor_set_position          (HyScanDa
 HYSCAN_API
 void                   hyscan_data_writer_sonar_set_position           (HyScanDataWriter              *writer,
                                                                         HyScanSourceType               source,
-                                                                        HyScanAntennaPosition         *position);
+                                                                        const HyScanAntennaPosition   *position);
 
 /**
  *
@@ -267,6 +280,26 @@ gboolean               hyscan_data_writer_start                        (HyScanDa
  */
 HYSCAN_API
 void                   hyscan_data_writer_stop                         (HyScanDataWriter              *writer);
+
+/**
+ *
+ * Функция записывает информационные сообщения.
+ *
+ * \param writer указатель на объект \link HyScanDataWriter \endlink;
+ * \param source название источника сообщения;
+ * \param time метка времени, мкс;
+ * \param level тип сообщения;
+ * \param message сообщение.
+ *
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
+ *
+ */
+HYSCAN_API
+gboolean               hyscan_data_writer_log_add_message              (HyScanDataWriter              *writer,
+                                                                        const gchar                   *source,
+                                                                        gint64                         time,
+                                                                        HyScanLogLevel                 level,
+                                                                        const gchar                   *message);
 
 /**
  *

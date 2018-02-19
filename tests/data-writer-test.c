@@ -81,14 +81,17 @@ sonar_get_type (guint n_channel)
 HyScanAntennaPosition
 antenna_get_position (guint n_channel)
 {
-  HyScanAntennaPosition position;
+  HyScanAntennaPosition position = {0};
 
-  position.x =     10.0 * n_channel + 0.1;
-  position.y =     10.0 * n_channel + 0.2;
-  position.z =     10.0 * n_channel + 0.3;
-  position.psi =   10.0 * n_channel + 0.4;
-  position.gamma = 10.0 * n_channel + 0.5;
-  position.theta = 10.0 * n_channel + 0.6;
+  if (n_channel % 2)
+    {
+      position.x =     10.0 * n_channel + 0.1;
+      position.y =     10.0 * n_channel + 0.2;
+      position.z =     10.0 * n_channel + 0.3;
+      position.psi =   10.0 * n_channel + 0.4;
+      position.gamma = 10.0 * n_channel + 0.5;
+      position.theta = 10.0 * n_channel + 0.6;
+    }
 
   return position;
 }
@@ -358,6 +361,7 @@ sonar_add_data (HyScanDataWriter *writer,
   guint16 *data_values;
   HyScanComplexFloat *signal_points;
   gfloat *tvg_gains;
+
   guint i, j;
 
   data_buffer = hyscan_buffer_new ();
@@ -432,6 +436,20 @@ sonar_add_data (HyScanDataWriter *writer,
   g_free (data_values);
   g_free (signal_points);
   g_free (tvg_gains);
+}
+
+/* Функция записывает информационные сообщения. */
+void
+log_add_data (HyScanDataWriter *writer)
+{
+  guint32 i;
+
+  for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
+    {
+      gchar *message = g_strdup_printf ("test log message for time %d", i);
+      hyscan_data_writer_log_add_message (writer, "test", i, HYSCAN_LOG_LEVEL_INFO, message);
+      g_free (message);
+    }
 }
 
 /* Функция проверяет данные датчиков. */
@@ -714,6 +732,76 @@ sonar_check_data (HyScanDB    *db,
   g_object_unref (tvg_buffer);
 }
 
+/* Функция проверяет информационные сообщения. */
+void
+log_check_data (HyScanDB    *db,
+                const gchar *track_name)
+{
+  gint32 project_id;
+  gint32 track_id;
+  gint32 channel_id;
+  gint32 param_id;
+
+  const gchar *channel_name;
+  HyScanBuffer *buffer;
+  guint i;
+
+  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_LOG, FALSE, 1);
+  buffer = hyscan_buffer_new ();
+
+  g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
+
+  project_id = hyscan_db_project_open (db, PROJECT_NAME);
+  if (project_id < 0)
+    g_error ("can't open project");
+
+  track_id = hyscan_db_track_open (db, project_id, track_name);
+  if (track_id < 0)
+    g_error ("can't open track");
+
+  channel_id = hyscan_db_channel_open (db, track_id, channel_name);
+  if (channel_id < 0)
+    g_error ("can't open channel");
+
+  param_id = hyscan_db_channel_param_open (db, channel_id);
+  if (param_id < 0)
+    g_error ("can't open parameters");
+
+  if (!hyscan_core_params_check_log_schema (db, param_id))
+    g_error ("schema error");
+
+  /* Проверка данных. */
+  for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
+    {
+      const  gchar *log;
+      gchar *log_orig;
+      guint32 log_size;
+      gint64 time;
+
+      log_orig = g_strdup_printf ("test\t%s\ttest log message for time %d",
+                                  hyscan_log_level_get_name_by_type (HYSCAN_LOG_LEVEL_INFO), i);
+
+      if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &time))
+        g_error ("can't read data from channel %d", i);
+
+      if (time != i)
+        g_error ("time stamp mismatch");
+
+      log = hyscan_buffer_get_data (buffer, &log_size);
+      if (g_strcmp0 (log_orig, log) != 0)
+        g_error ("log content mismatch ('%s', '%s')", log_orig, log);
+
+      g_free (log_orig);
+    }
+
+  hyscan_db_close (db, param_id);
+  hyscan_db_close (db, channel_id);
+  hyscan_db_close (db, track_id);
+  hyscan_db_close (db, project_id);
+
+  g_object_unref (buffer);
+}
+
 /* Функция проверяет отсутствие гидролокационных данных. */
 void
 sonar_check_misses (HyScanDB    *db,
@@ -796,7 +884,10 @@ main (int    argc,
     g_error ("can't open db at: %s", argv[1]);
 
   /* Объект записи данных. */
-  writer = hyscan_data_writer_new (db);
+  writer = hyscan_data_writer_new ();
+
+  /* Система хранения. */
+  hyscan_data_writer_set_db (writer, db);
 
   /* Имя оператора. */
   hyscan_data_writer_set_operator_name (writer, OPERATOR_NAME);
@@ -804,20 +895,21 @@ main (int    argc,
   /* Информация о гидролокаторе. */
   hyscan_data_writer_set_sonar_info (writer, SONAR_INFO);
 
-  /* Местоположение антенн "датчиков". */
+  /* Местоположение антенн "датчиков" и "гидролокатора". */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
       HyScanAntennaPosition position = antenna_get_position (i);
 
-      hyscan_data_writer_sensor_set_position (writer, sensor_get_name (i), &position);
-    }
-
-  /* Местоположение антенн "гидролокатора". */
-  for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
-    {
-      HyScanAntennaPosition position = antenna_get_position (i);
-
-      hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), &position);
+      if (i % 2)
+        {
+          hyscan_data_writer_sensor_set_position (writer, sensor_get_name (i), &position);
+          hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), &position);
+        }
+      else
+        {
+          hyscan_data_writer_sensor_set_position (writer, sensor_get_name (i), NULL);
+          hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), NULL);
+        }
     }
 
   /* Пустой галс. */
@@ -830,6 +922,7 @@ main (int    argc,
       sonar_add_data  (writer, 0, i, TRUE);
       sonar_add_data  (writer, 0, i, FALSE);
     }
+  log_add_data (writer);
 
   if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
@@ -847,6 +940,7 @@ main (int    argc,
       sonar_add_data  (writer, 1000, i, TRUE);
       sonar_add_data  (writer, 1000, i, FALSE);
     }
+  log_add_data (writer);
 
   /* Второй галс. */
   g_message ("creating track-2");
@@ -860,6 +954,7 @@ main (int    argc,
       sonar_add_data  (writer, 2000, i, TRUE);
       sonar_add_data  (writer, 2000, i, FALSE);
     }
+  log_add_data (writer);
 
   /* Третий галс - только сырые данные от гидролокатора. */
   g_message ("creating track-3");
@@ -874,6 +969,7 @@ main (int    argc,
       sonar_add_data  (writer, 3000, i, TRUE);
       sonar_add_data  (writer, 3000, i, FALSE);
     }
+  log_add_data (writer);
 
   /* Четвёртый галс - только обработанные данные от гидролокатора. */
   g_message ("creating track-4");
@@ -888,6 +984,7 @@ main (int    argc,
       sonar_add_data  (writer, 4000, i, TRUE);
       sonar_add_data  (writer, 4000, i, FALSE);
     }
+  log_add_data (writer);
 
   /* Пятый галс - запись отключена. */
   g_message ("creating track-5");
@@ -902,6 +999,7 @@ main (int    argc,
       sonar_add_data  (writer, 5000, i, TRUE);
       sonar_add_data  (writer, 5000, i, FALSE);
     }
+  log_add_data (writer);
 
   /* Дублирование галса. */
   g_message ("duplicate track-0");
@@ -932,6 +1030,7 @@ main (int    argc,
       sonar_check_data  (db, "track-1", 1000, i, TRUE);
       sonar_check_data  (db, "track-1", 1000, i, FALSE);
     }
+  log_check_data (db, "track-1");
 
   /* Второй галс. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -940,6 +1039,7 @@ main (int    argc,
       sonar_check_data  (db, "track-2", 2000, i, TRUE);
       sonar_check_data  (db, "track-2", 2000, i, FALSE);
     }
+  log_check_data (db, "track-2");
 
   /* Третий галс - только сырые данные. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -948,6 +1048,7 @@ main (int    argc,
       sonar_check_data   (db, "track-3", 3000, i, TRUE);
       sonar_check_misses (db, "track-3", i, FALSE);
     }
+  log_check_data (db, "track-3");
 
   /* Четвёртый галс - только обработанные данные. */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
@@ -956,6 +1057,7 @@ main (int    argc,
       sonar_check_data   (db, "track-4", 4000, i, FALSE);
       sonar_check_misses (db, "track-4", i, TRUE);
     }
+  log_check_data (db, "track-4");
 
   /* Пятый галс - пустой. */
   track_id = hyscan_db_track_open (db, project_id, "track-5");
