@@ -159,11 +159,11 @@ void                   hyscan_data_writer_set_sonar_info               (HyScanDa
  * \param writer указатель на объект \link HyScanDataWriter \endlink;
  * \param mode режим записи данных \link HyScanDataWriterModeType \endlink;
  *
- * \return Нет.
+ * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
  *
  */
 HYSCAN_API
-void                   hyscan_data_writer_set_mode                     (HyScanDataWriter              *writer,
+gboolean               hyscan_data_writer_set_mode                     (HyScanDataWriter              *writer,
                                                                         HyScanDataWriterModeType       mode);
 
 /**

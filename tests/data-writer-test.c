@@ -926,6 +926,7 @@ main (int    argc,
 
   if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
     g_error ("can't start writer");
+  hyscan_data_writer_stop (writer);
 
   /* Первый галс. */
   g_message ("creating track-1");
@@ -942,6 +943,8 @@ main (int    argc,
     }
   log_add_data (writer);
 
+  hyscan_data_writer_stop (writer);
+
   /* Второй галс. */
   g_message ("creating track-2");
   if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY))
@@ -955,6 +958,8 @@ main (int    argc,
       sonar_add_data  (writer, 2000, i, FALSE);
     }
   log_add_data (writer);
+
+  hyscan_data_writer_stop (writer);
 
   /* Третий галс - только сырые данные от гидролокатора. */
   g_message ("creating track-3");
@@ -971,6 +976,8 @@ main (int    argc,
     }
   log_add_data (writer);
 
+  hyscan_data_writer_stop (writer);
+
   /* Четвёртый галс - только обработанные данные от гидролокатора. */
   g_message ("creating track-4");
   hyscan_data_writer_set_mode (writer, HYSCAN_DATA_WRITER_MODE_COMPUTED);
@@ -985,6 +992,8 @@ main (int    argc,
       sonar_add_data  (writer, 4000, i, FALSE);
     }
   log_add_data (writer);
+
+  hyscan_data_writer_stop (writer);
 
   /* Пятый галс - запись отключена. */
   g_message ("creating track-5");

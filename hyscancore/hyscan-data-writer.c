@@ -775,19 +775,33 @@ hyscan_data_writer_set_sonar_info (HyScanDataWriter *writer,
 }
 
 /* Функция устанавливает режим записи данных от гидролокатора. */
-void
+gboolean
 hyscan_data_writer_set_mode (HyScanDataWriter         *writer,
                              HyScanDataWriterModeType  mode)
 {
-  g_return_if_fail (HYSCAN_IS_DATA_WRITER (writer));
+  HyScanDataWriterPrivate *priv;
 
-  if ((mode == HYSCAN_DATA_WRITER_MODE_NONE) ||
-      (mode == HYSCAN_DATA_WRITER_MODE_RAW) ||
-      (mode == HYSCAN_DATA_WRITER_MODE_COMPUTED) ||
-      (mode == HYSCAN_DATA_WRITER_MODE_BOTH))
+  gboolean status = FALSE;
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
+
+  priv = writer->priv;
+
+  g_mutex_lock (&priv->lock);
+  if (priv->track_id < 0)
     {
-      g_atomic_int_set (&writer->priv->mode, mode);
+      if ((mode == HYSCAN_DATA_WRITER_MODE_NONE) ||
+          (mode == HYSCAN_DATA_WRITER_MODE_RAW) ||
+          (mode == HYSCAN_DATA_WRITER_MODE_COMPUTED) ||
+          (mode == HYSCAN_DATA_WRITER_MODE_BOTH))
+        {
+          priv->mode = mode;
+          status = TRUE;
+        }
     }
+  g_mutex_unlock (&priv->lock);
+
+  return status;
 }
 
 /* Функция устанавливает максимальный размер файлов в галсе. */
@@ -1062,6 +1076,8 @@ void
 hyscan_data_writer_stop (HyScanDataWriter *writer)
 {
   HyScanDataWriterPrivate *priv;
+  GHashTableIter iter;
+  gpointer data;
 
   g_return_if_fail (HYSCAN_IS_DATA_WRITER (writer));
 
@@ -1072,6 +1088,23 @@ hyscan_data_writer_stop (HyScanDataWriter *writer)
   /* Закрываем все открытые каналы. */
   g_hash_table_remove_all (priv->sensor_channels);
   g_hash_table_remove_all (priv->sonar_channels);
+
+  /* Обнуляем текущие параметры ВАРУ и сигналы. */
+  g_hash_table_iter_init (&iter, priv->signals);
+  while (g_hash_table_iter_next (&iter, NULL, &data))
+    {
+      HyScanDataWriterSignal *signal = data;
+      hyscan_buffer_set_size (signal->signal, 0);
+      signal->time = 0;
+    }
+
+  g_hash_table_iter_init (&iter, priv->tvg);
+  while (g_hash_table_iter_next (&iter, NULL, &data))
+    {
+      HyScanDataWriterTVG *tvg = data;
+      hyscan_buffer_set_size (tvg->gains, 0);
+      tvg->time = 0;
+    }
 
   /* Закрываем текущий галс. */
   if (priv->db != NULL)
