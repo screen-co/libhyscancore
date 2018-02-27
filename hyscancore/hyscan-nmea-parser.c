@@ -59,12 +59,6 @@ struct _HyScanNMEAParserPrivate
   HyScanNMEAData        *dc;            /* Канал данных. */
   gchar                 *token;         /* Токен. */
 
-  /* Система кэширования. */
-  HyScanCache           *cache;         /* Кэш. */
-  gchar                 *prefix;        /* Префикс системы кэширования. */
-  gchar                 *key;           /* Ключ кэша. */
-  gint                   key_length;    /* Длина ключа. */
-
   HyScanAntennaPosition  position;      /* Местоположение приемника. */
 
   /* Параметры лексического анализа. */
@@ -80,8 +74,6 @@ static void     hyscan_nmea_parser_set_property         (GObject                
                                                         GParamSpec               *pspec);
 static void     hyscan_nmea_parser_object_constructed   (GObject                 *object);
 static void     hyscan_nmea_parser_object_finalize      (GObject                 *object);
-static void     hyscan_nmea_parser_update_cache_key     (HyScanNMEAParserPrivate *priv,
-                                                         guint32                  index);
 static gboolean hyscan_nmea_parser_setup                (HyScanNMEAParserPrivate *priv);
 static const gchar * hyscan_nmea_parser_shift           (const gchar             *sentence,
                                                          guint                    field);
@@ -135,9 +127,9 @@ hyscan_nmea_parser_class_init (HyScanNMEAParserClass *klass)
 }
 
 static void
-hyscan_nmea_parser_init (HyScanNMEAParser *ndata_nmea)
+hyscan_nmea_parser_init (HyScanNMEAParser *parser)
 {
-  ndata_nmea->priv = hyscan_nmea_parser_get_instance_private (ndata_nmea);
+  parser->priv = hyscan_nmea_parser_get_instance_private (parser);
 }
 
 static void
@@ -146,8 +138,8 @@ hyscan_nmea_parser_set_property (GObject      *object,
                                  const GValue *value,
                                  GParamSpec   *pspec)
 {
-  HyScanNMEAParser *ndata = HYSCAN_NMEA_PARSER (object);
-  HyScanNMEAParserPrivate *priv = ndata->priv;
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (object);
+  HyScanNMEAParserPrivate *priv = parser->priv;
 
   if (prop_id == PROP_DB)
     priv->db = g_value_dup_object (value);
@@ -162,7 +154,7 @@ hyscan_nmea_parser_set_property (GObject      *object,
   else if (prop_id == PROP_FIELD_TYPE)
     priv->field_type = g_value_get_int (value);
   else
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (ndata, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (parser, prop_id, pspec);
 }
 
 static void
@@ -181,13 +173,10 @@ hyscan_nmea_parser_object_constructed (GObject *object)
 
   /* Генерируем токен. */
   db_uri = hyscan_db_get_uri (priv->db);
-  priv->token = g_strdup_printf ("nmea_parser.%s.%s.%s.%i.%i.%i",
+  priv->token = g_strdup_printf ("nmea_parser.%s.%s.%s.%i.%i",
                                  db_uri, priv->project, priv->track,
                                  priv->source_type,
-                                 priv->channel_n,
-                                 priv->field_type);
-
-  priv->position = hyscan_nmea_data_get_position (priv->dc);
+                                 priv->channel_n);
 
   if (!hyscan_nmea_parser_setup (priv))
     g_clear_object (&priv->dc);
@@ -209,29 +198,7 @@ hyscan_nmea_parser_object_finalize (GObject *object)
   g_clear_object (&priv->db);
   g_free (priv->token);
 
-  g_clear_object (&priv->cache);
-  g_free (priv->prefix);
-  g_free (priv->key);
-
   G_OBJECT_CLASS (hyscan_nmea_parser_parent_class)->finalize (object);
-}
-
-/* Функция генерации и обновления ключа кэширования. */
-static void
-hyscan_nmea_parser_update_cache_key (HyScanNMEAParserPrivate *priv,
-                                     guint32                 index)
-{
-  if (priv->key == NULL)
-    {
-      priv->key = g_strdup_printf ("NMEA_PARSER.%s.%s.%u",
-                                    priv->prefix, priv->token,
-                                    G_MAXUINT32);
-      priv->key_length = strlen (priv->key);
-    }
-
-  g_snprintf (priv->key, priv->key_length,
-              "NMEA_PARSER.%s.%s.%u",
-              priv->prefix, priv->token, index);
 }
 
 static gboolean
@@ -403,85 +370,35 @@ hyscan_nmea_parser_parse_meters (const gchar *sentence,
 
 /* Функция установки кэша. */
 static void
-hyscan_nmea_parser_set_cache (HyScanNavData *ndata,
+hyscan_nmea_parser_set_cache (HyScanNavData *navdata,
                               HyScanCache   *cache,
                               const gchar   *prefix)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
-  HyScanNMEAParserPrivate *priv = parser->priv;
-
-  g_free (priv->prefix);
-  g_clear_object (&priv->cache);
-
-  if (cache == NULL)
-    return;
-
-  priv->cache = g_object_ref (cache);
-
-  if (prefix == NULL)
-    prefix = "none";
-
-  priv->prefix = g_strdup ("none");
-
-  hyscan_nmea_data_set_cache (priv->dc, cache, prefix);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
+  hyscan_nmea_data_set_cache (parser->priv->dc, cache, prefix);
 }
 
 /* Функция получения глубины. */
 static gboolean
-hyscan_nmea_parser_get (HyScanNavData *ndata,
+hyscan_nmea_parser_get (HyScanNavData *navdata,
                         guint32        index,
                         gint64        *time,
                         gdouble       *value)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   HyScanNMEAParserPrivate *priv = parser->priv;
 
   const gchar *nmea_sentence;
   gdouble nmea_value;
   gint64 nmea_time;
 
-  /* Ищем уже посчитанное значение в кэше. */
-  if (priv->cache != NULL)
-    {
-      HyScanTimeVal tv[2];
-      guint32 tv_size;
-      gboolean found;
-
-      tv_size = sizeof (tv);
-      hyscan_nmea_parser_update_cache_key (priv, index);
-
-      /* Проверяем наличие и совпадение размера. */
-      found = hyscan_cache_get (priv->cache, priv->key, NULL, &tv, &tv_size);
-      if (found && tv_size == sizeof (HyScanTimeVal))
-        {
-          nmea_value = tv[0].value;
-          nmea_time = tv[0].time;
-          goto exit;
-        }
-    }
-
-  /* Если в кэше значения нет, то придется считать.
-   * Забираем строку из БД и парсим её. */
+  /* Забираем строку из БД (или кэша, как повезет) и парсим её. */
   nmea_sentence = hyscan_nmea_data_get_sentence (priv->dc, index, NULL, &nmea_time);
 
   nmea_sentence = hyscan_nmea_parser_shift (nmea_sentence, priv->field_n);
   if (!(priv->parse_func) (nmea_sentence, &nmea_value))
     return FALSE;
 
-  /* Кэшируем. */
-  if (priv->cache != NULL)
-    {
-      HyScanTimeVal tv;
-      guint32 tv_size;
-
-      tv.time = nmea_time;
-      tv.value = nmea_value;
-      tv_size = sizeof (HyScanTimeVal);
-
-      hyscan_cache_set (priv->cache, priv->key, NULL, &tv, tv_size);
-    }
-
-exit:
   if (time != NULL)
     *time = nmea_time;
   if (value != NULL)
@@ -492,56 +409,56 @@ exit:
 
 /* Функция поиска данных. */
 static HyScanDBFindStatus
-hyscan_nmea_parser_find_data (HyScanNavData *ndata,
-                              gint64       time,
-                              guint32     *lindex,
-                              guint32     *rindex,
-                              gint64      *ltime,
-                              gint64      *rtime)
+hyscan_nmea_parser_find_data (HyScanNavData *navdata,
+                              gint64         time,
+                              guint32       *lindex,
+                              guint32       *rindex,
+                              gint64        *ltime,
+                              gint64        *rtime)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   return hyscan_nmea_data_find_data (parser->priv->dc, time, lindex, rindex, ltime, rtime);
 }
 
 /* Функция определения диапазона. */
 static gboolean
-hyscan_nmea_parser_get_range (HyScanNavData *ndata,
-                              guint32     *first,
-                              guint32     *last)
+hyscan_nmea_parser_get_range (HyScanNavData *navdata,
+                              guint32       *first,
+                              guint32       *last)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   return hyscan_nmea_data_get_range (parser->priv->dc, first, last);
 }
 
 /* Функция получения местоположения антенны. */
 static HyScanAntennaPosition
-hyscan_nmea_parser_get_position (HyScanNavData *ndata)
+hyscan_nmea_parser_get_position (HyScanNavData *navdata)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
-  return parser->priv->position;
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
+  return hyscan_nmea_data_get_position (parser->priv->dc);
 }
 
 /* Функция определяет, возможна ли дозапись в канал данных. */
 static gboolean
-hyscan_nmea_parser_is_writable (HyScanNavData *ndata)
+hyscan_nmea_parser_is_writable (HyScanNavData *navdata)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   return hyscan_nmea_data_is_writable (parser->priv->dc);
 }
 
 /* Функция возвращает токен объекта. */
 static const gchar*
-hyscan_nmea_parser_get_token (HyScanNavData *ndata)
+hyscan_nmea_parser_get_token (HyScanNavData *navdata)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   return parser->priv->token;
 }
 
 /* Функция возвращает значение счётчика изменений. */
-guint32
-hyscan_nmea_parser_get_mod_count (HyScanNavData *ndata)
+static guint32
+hyscan_nmea_parser_get_mod_count (HyScanNavData *navdata)
 {
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (ndata);
+  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   return hyscan_nmea_data_get_mod_count (parser->priv->dc);
 }
 
@@ -563,7 +480,7 @@ hyscan_nmea_parser_new (HyScanDB        *db,
                          "source-channel", source_channel,
                          "source-type", source_type,
                          "field-type", field_type,
-                       NULL);
+                         NULL);
 
   if (parser->priv->dc == NULL)
     g_clear_object (&parser);

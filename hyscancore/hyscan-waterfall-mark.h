@@ -1,30 +1,13 @@
-/**
- *
- * \file hyscan-waterfall-mark.h
- *
- * \brief Структуры и вспомогательные функции для меток водопада.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
- *
- * \defgroup HyScanWaterfallMark HyScanWaterfallMark - Структуры  и вспомогательные
- * функции для тайлов.
- *
- * Метки привязываются к каналу данных, конкретной строке и отсчету.
- *
- * Здесь описывается структура \link HyScanWaterfallMark \endlink, в которой
- * хранятся параметры меток. Помимо это представлены функции для копирования,
- * и освобождения меток.
- *
- */
-
 #ifndef __HYSCAN_WATERFALL_MARK_H__
 #define __HYSCAN_WATERFALL_MARK_H__
 
+#include <hyscan-api.h>
 #include <hyscan-core-types.h>
+#include <glib-object.h>
 
-/** \brief Структура с информацией о метке. */
-typedef struct
+typedef struct _HyScanWaterfallMark HyScanWaterfallMark;
+
+struct _HyScanWaterfallMark
 {
   gchar            *track;             /**< Идентификатор галса. */
   gchar            *name;              /**< Название метки. */
@@ -38,36 +21,44 @@ typedef struct
   guint32           count0;            /**< Отсчёт в строке. */
   guint32           width;             /**< Ширина. */
   guint32           height;            /**< Высота. */
-} HyScanWaterfallMark;
+};
 
-/**
- *
- * Функция освобождает внутренние поля структуры.
- *
- * \param mark указатель на метку.
- *
- */
 HYSCAN_API
-void                 hyscan_waterfall_mark_free         (HyScanWaterfallMark       *mark);
+HyScanWaterfallMark   *hyscan_waterfall_mark_new                    (void);
 
-/**
- *
- * Функция полностью освобождает память, занятую меткой.
- *
- * \param mark указатель на метку.
- */
 HYSCAN_API
-void                 hyscan_waterfall_mark_deep_free    (HyScanWaterfallMark       *mark);
+HyScanWaterfallMark   *hyscan_waterfall_mark_copy                   (HyScanWaterfallMark  *mark);
 
-/**
- *
- * Функция возвращает полную копию метки.
- *
- * \param mark указатель на метку.
- *
- * \return указатель на копию метки. Эту память требуется освободить.
- */
 HYSCAN_API
-HyScanWaterfallMark *hyscan_waterfall_mark_copy         (const HyScanWaterfallMark *mark);
+void                   hyscan_waterfall_mark_free                   (HyScanWaterfallMark  *mark);
+
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_track              (HyScanWaterfallMark   *mark,
+                                                                     const gchar           *track);
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_text               (HyScanWaterfallMark   *mark,
+                                                                     const gchar           *name,
+                                                                     const gchar           *description,
+                                                                     const gchar           *oper);
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_labels             (HyScanWaterfallMark   *mark,
+                                                                     guint64                labels);
+
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_ctime              (HyScanWaterfallMark   *mark,
+                                                                     gint64                 creation);
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_mtime           (HyScanWaterfallMark   *mark,
+                                                                     gint64                 modification);
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_center             (HyScanWaterfallMark   *mark,
+                                                                     HyScanSourceType       source,
+                                                                     guint32                index,
+                                                                     guint32                count);
+HYSCAN_API
+void                   hyscan_waterfall_mark_set_size               (HyScanWaterfallMark   *mark,
+                                                                     guint32                width,
+                                                                     guint32                height);
+G_END_DECLS
 
 #endif /* __HYSCAN_WATERFALL_MARK_H__ */

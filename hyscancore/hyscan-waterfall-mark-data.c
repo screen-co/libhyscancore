@@ -222,18 +222,18 @@ hyscan_waterfall_mark_data_get_internal (HyScanWaterfallMarkDataPrivate *priv,
   if (mark == NULL)
     goto exit;
 
-  mark->track             = g_strdup (g_variant_get_string (param_values[2], NULL));
-  mark->name              = g_strdup (g_variant_get_string (param_values[3], NULL));
-  mark->description       = g_strdup (g_variant_get_string (param_values[4], NULL));
-  mark->labels            = g_variant_get_int64 (param_values[5]);
-  mark->operator_name     = g_strdup (g_variant_get_string (param_values[6], NULL));
-  mark->creation_time     = g_variant_get_int64 (param_values[7]);
-  mark->modification_time = g_variant_get_int64 (param_values[8]);
-  mark->source0           = g_variant_get_int64 (param_values[9]);
-  mark->index0            = g_variant_get_int64 (param_values[10]);
-  mark->count0            = g_variant_get_int64 (param_values[11]);
-  mark->width             = g_variant_get_int64 (param_values[12]);
-  mark->height            = g_variant_get_int64 (param_values[13]);
+  hyscan_waterfall_mark_set_track  (mark, g_variant_get_string (param_values[2], NULL));
+  hyscan_waterfall_mark_set_text   (mark, g_variant_get_string (param_values[3], NULL),
+                                          g_variant_get_string (param_values[4], NULL),
+                                          g_variant_get_string (param_values[6], NULL));
+  hyscan_waterfall_mark_set_labels (mark, g_variant_get_int64 (param_values[5]));
+  hyscan_waterfall_mark_set_ctime (mark, g_variant_get_int64 (param_values[7]));
+  hyscan_waterfall_mark_set_mtime (mark, g_variant_get_int64 (param_values[8]));
+  hyscan_waterfall_mark_set_center (mark, g_variant_get_int64 (param_values[9]),
+                                          g_variant_get_int64 (param_values[10]),
+                                          g_variant_get_int64 (param_values[11]));
+  hyscan_waterfall_mark_set_size   (mark, g_variant_get_int64 (param_values[12]),
+                                          g_variant_get_int64 (param_values[13]));
 
 exit:
   for (i = 0; i < 14; i++)
@@ -388,7 +388,7 @@ hyscan_waterfall_mark_data_get (HyScanWaterfallMarkData *data,
 
   g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), FALSE);
 
-  mark = g_new0 (HyScanWaterfallMark, 1);
+  mark = hyscan_waterfall_mark_new ();
 
   status = hyscan_waterfall_mark_data_get_internal (data->priv, id, mark);
 

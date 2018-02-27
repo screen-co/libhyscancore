@@ -121,7 +121,7 @@ hyscan_mark_manager_object_constructed (GObject *object)
   priv->alerter = g_timeout_add (1000, hyscan_mark_manager_signaller, manager);
 
   priv->marks = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                       (GDestroyNotify)hyscan_waterfall_mark_deep_free);
+                                       (GDestroyNotify)hyscan_waterfall_mark_free);
 }
 
 static void
@@ -193,7 +193,7 @@ hyscan_mark_manager_add_task (HyScanMarkManagerPrivate    *priv,
   task = g_new (HyScanMarkManagerTask, 1);
   task->action = action;
   task->id = (id != NULL) ? g_strdup (id) : NULL;
-  task->mark = (mark != NULL) ? hyscan_waterfall_mark_copy (mark) : NULL;
+  task->mark = hyscan_waterfall_mark_copy ((HyScanWaterfallMark*)mark);
 
   /* Отправляем задание в очередь. */
   g_mutex_lock (&priv->tasks_lock);
@@ -213,7 +213,7 @@ hyscan_mark_manager_free_task (gpointer data)
 {
   HyScanMarkManagerTask *task = data;
   g_free (task->id);
-  hyscan_waterfall_mark_deep_free (task->mark);
+  hyscan_waterfall_mark_free (task->mark);
   g_free (task);
 }
 
@@ -334,7 +334,7 @@ hyscan_mark_manager_processing (gpointer data)
 
       /* Забираем метки из БД во временную хэш-таблицу. */
       mark_list = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                         (GDestroyNotify)hyscan_waterfall_mark_deep_free);
+                                         (GDestroyNotify)hyscan_waterfall_mark_free);
 
       id_list = hyscan_waterfall_mark_data_get_ids (mdata, &len);
       for (i = 0; i < len; i++)
@@ -477,7 +477,7 @@ hyscan_mark_manager_get (HyScanMarkManager *manager)
     }
 
   marks = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                 (GDestroyNotify)hyscan_waterfall_mark_deep_free);
+                                 (GDestroyNotify)hyscan_waterfall_mark_free);
   /* Переписываем метки. */
   g_hash_table_iter_init (&iter, priv->marks);
   while (g_hash_table_iter_next (&iter, &key, &value))

@@ -278,17 +278,14 @@ hyscan_projector_count_to_coord_internal (HyScanProjector   *self,
 
   for (max = i = 0; i < size; i++)
     {
-      if (count > sv_counts[i])
-        {
-          max = i;
-          if (i > 0)
-            coord += (sv_counts[i] - sv_counts[i - 1]) * sv_sound[i - 1];
-        }
-      else
-        {
-          break;
-        }
+      if (count <= sv_counts[i])
+        break;
+
+      max = i;
+      if (i > 0)
+        coord += (sv_counts[i] - sv_counts[i - 1]) * sv_sound[i - 1];
     }
+    
   coord += (count - sv_counts[max]) * sv_sound[max];
   coord /= priv->dfreq * 2;
 

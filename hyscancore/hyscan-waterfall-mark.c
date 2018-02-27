@@ -1,60 +1,118 @@
-/*
- * \file hyscan-waterfall-mark.c
- *
- * \brief Исходный код вспомогательных функций для меток.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
- *
- */
-#include <hyscan-waterfall-mark.h>
+#include "hyscan-waterfall-mark.h"
 
-/* Функция освобождает внутренние поля структуры. */
+G_DEFINE_BOXED_TYPE (HyScanWaterfallMark, hyscan_waterfall_mark,
+                     hyscan_waterfall_mark_copy, hyscan_waterfall_mark_free)
+
+HyScanWaterfallMark*
+hyscan_waterfall_mark_new (void)
+{
+  HyScanWaterfallMark* mark;
+  mark = g_slice_new0 (HyScanWaterfallMark);
+  return mark;
+}
+
+
+HyScanWaterfallMark*
+hyscan_waterfall_mark_copy (HyScanWaterfallMark *mark)
+{
+  HyScanWaterfallMark* copy;
+
+  if (mark == NULL)
+    return NULL;
+  
+  copy = hyscan_waterfall_mark_new ();
+
+  hyscan_waterfall_mark_set_track (copy, mark->track);
+  hyscan_waterfall_mark_set_text (copy, mark->name,
+                                  mark->description,
+                                  mark->operator_name);
+  hyscan_waterfall_mark_set_labels (copy, mark->labels);
+  hyscan_waterfall_mark_set_ctime (copy, mark->creation_time);
+  hyscan_waterfall_mark_set_mtime (copy, mark->modification_time);
+  hyscan_waterfall_mark_set_center (copy, mark->source0,
+                                    mark->index0, mark->count0);
+  hyscan_waterfall_mark_set_size (copy, mark->width, mark->height);
+
+  return copy;
+}
+
+
 void
 hyscan_waterfall_mark_free (HyScanWaterfallMark *mark)
 {
   if (mark == NULL)
     return;
-
+  
   g_free (mark->track);
   g_free (mark->name);
   g_free (mark->description);
   g_free (mark->operator_name);
+
+  g_slice_free (HyScanWaterfallMark, mark);
 }
 
-/* Функция полностью освобождает память, занятую меткой. */
+
 void
-hyscan_waterfall_mark_deep_free (HyScanWaterfallMark *mark)
+hyscan_waterfall_mark_set_track (HyScanWaterfallMark *mark,
+                                  const gchar          *track)
 {
-  if (mark == NULL)
-    return;
-
-  hyscan_waterfall_mark_free (mark);
-  g_free (mark);
+  g_free (mark->track);
+  mark->track = g_strdup (track);
 }
 
-/* Функция возвращает полную копию метки. */
-HyScanWaterfallMark*
-hyscan_waterfall_mark_copy (const HyScanWaterfallMark *_mark)
+void
+hyscan_waterfall_mark_set_text (HyScanWaterfallMark *mark,
+                                 const gchar          *name,
+                                 const gchar          *description,
+                                 const gchar          *oper)
 {
-  HyScanWaterfallMark *mark;
+  g_free (mark->name);
+  g_free (mark->description);
+  g_free (mark->operator_name);
 
-  g_return_val_if_fail (_mark != NULL, NULL);
+  mark->name = g_strdup (name);
+  mark->description = g_strdup (description);
+  mark->operator_name = g_strdup (oper);
 
-  mark = g_new (HyScanWaterfallMark, 1);
+}
 
-  mark->track             = g_strdup (_mark->track);
-  mark->name              = g_strdup (_mark->name);
-  mark->description       = g_strdup (_mark->description);
-  mark->operator_name     = g_strdup (_mark->operator_name);
-  mark->labels            = _mark->labels;
-  mark->creation_time     = _mark->creation_time;
-  mark->modification_time = _mark->modification_time;
-  mark->source0           = _mark->source0;
-  mark->index0            = _mark->index0;
-  mark->count0            = _mark->count0;
-  mark->width             = _mark->width;
-  mark->height            = _mark->height;
+void
+hyscan_waterfall_mark_set_labels (HyScanWaterfallMark *mark,
+                                   guint64               labels)
+{
+  mark->labels = labels;
+}
 
-  return mark;
+void
+hyscan_waterfall_mark_set_ctime (HyScanWaterfallMark   *mark,
+                                         gint64                 creation)
+{
+  mark->creation_time = creation;
+}
+
+void
+hyscan_waterfall_mark_set_mtime (HyScanWaterfallMark   *mark,
+                                    gint64                 modification)
+{
+  mark->modification_time = modification;
+}
+
+void
+hyscan_waterfall_mark_set_center (HyScanWaterfallMark *mark,
+                                   HyScanSourceType      source,
+                                   guint32               index,
+                                   guint32               count)
+{
+  mark->source0 = source;
+  mark->index0 = index;
+  mark->count0 = count;
+}
+
+void
+hyscan_waterfall_mark_set_size (HyScanWaterfallMark *mark,
+                                 guint32               width,
+                                 guint32               height)
+{
+  mark->width = width;
+  mark->height = height;
 }

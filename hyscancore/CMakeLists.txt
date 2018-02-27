@@ -55,6 +55,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-tile-queue.c
              hyscan-track-rect.c
              hyscan-projector.c
+             hyscan-const-depth.c
              hyscan-waterfall-mark.c
              hyscan-waterfall-mark-data.c
              hyscan-mark-manager.c
@@ -92,7 +93,7 @@ install (FILES hyscan-core-types.h
                hyscan-forward-look-player.h
                hyscan-geo.h
                hyscan-nav-data.c
-         hyscan-nmea-parser.c
+               hyscan-nmea-parser.c
                hyscan-depthometer.c
                hyscan-tile-common.c
                hyscan-tile-color.c
@@ -100,6 +101,7 @@ install (FILES hyscan-core-types.h
                hyscan-tile-queue.c
                hyscan-track-rect.c
                hyscan-projector.c
+               hyscan-const-depth.c
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

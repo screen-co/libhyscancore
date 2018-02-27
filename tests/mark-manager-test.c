@@ -310,7 +310,7 @@ mark_manager_test (gpointer data)
     }
   update_list (mark, (HyScanWaterfallMark*)value, action);
 
-  hyscan_waterfall_mark_deep_free (mark);
+  hyscan_waterfall_mark_free (mark);
   g_hash_table_unref (ht);
 
   g_rand_free (grand);
