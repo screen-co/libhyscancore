@@ -182,10 +182,10 @@ hyscan_mark_manager_track_sync (HyScanMarkManagerPrivate *priv)
 
 /* Функция создает новое задание. */
 static void
-hyscan_mark_manager_add_task (HyScanMarkManagerPrivate    *priv,
-                              const gchar                 *id,
-                              const HyScanWaterfallMark   *mark,
-                              gint                         action)
+hyscan_mark_manager_add_task (HyScanMarkManagerPrivate  *priv,
+                              const gchar               *id,
+                              const HyScanWaterfallMark *mark,
+                              gint                       action)
 {
   /* Создаем задание. */
   HyScanMarkManagerTask *task;

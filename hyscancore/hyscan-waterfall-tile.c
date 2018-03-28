@@ -179,13 +179,18 @@ static gfloat          *hyscan_waterfall_tile_compose_frame             (HyScanW
                                                                          gfloat                      up_start,
                                                                          gfloat                      up_step);
 
+static void derivativate (gfloat*, guint32);
+static gfloat * pf_get_values
+(HyScanAcousticData *, guint32 i, guint32 l, guint32 r, guint32* n_vals, gint64 *time);
+
+
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanWaterfallTile, hyscan_waterfall_tile, G_TYPE_OBJECT);
 
 static void
 hyscan_waterfall_tile_class_init (HyScanWaterfallTileClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
+  
   object_class->constructed = hyscan_waterfall_tile_object_constructed;
   object_class->finalize = hyscan_waterfall_tile_object_finalize;
 }
@@ -448,6 +453,8 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   gfloat step = params->step;
   guint32 lindex = params->frame_lindex;
   guint32 rindex = params->frame_rindex;
+  guint32 reallindex;
+  guint32 realrindex;
   guint32 lindex2 = params->frame_lindex2;
   guint32 rindex2 = params->frame_rindex2;
   gint64 dc_ltime = params->dc_ltime;
@@ -459,14 +466,18 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   const gfloat *vals;
   guint32 n_vals, n_vals1;
 
+  gboolean is_profiler;
+
   have_data_int = FALSE;
   vals          = NULL;
   n_vals        = n_vals1 = 0;
   jsum          = jtot = jprev = 0;
 
   /* Узнаем время первой записи в КД. */
-  if (hyscan_acoustic_data_get_range (dc, &i, NULL))
-    hyscan_acoustic_data_get_values (dc, i, &n_vals, &dc_ltime);
+  if (hyscan_acoustic_data_get_range (dc, &reallindex, &realrindex))
+    hyscan_acoustic_data_get_values (dc, reallindex, &n_vals, &dc_ltime);
+
+  is_profiler = HYSCAN_SOURCE_PROFILER == hyscan_acoustic_data_get_source (dc);
 
   for (i = lindex; i <= rindex; i++)
     {
@@ -475,7 +486,11 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
         goto exit;
 
       /* Забираем строку из БД. */
-      vals = hyscan_acoustic_data_get_values (dc, i, &n_vals, &time);
+      if (is_profiler)
+        vals = pf_get_values (dc, i, reallindex, realrindex, &n_vals, &time);
+      else
+        vals = hyscan_acoustic_data_get_values (dc, i, &n_vals, &time);
+
       if (vals == NULL)
         continue;
 
@@ -492,6 +507,10 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
 
           if (priv->tile.flags & HYSCAN_TILE_GROUND)
             depth = hyscan_depthometer_get (priv->depth, time);
+
+          /* Crutch Driven Development. */
+          if (is_profiler)
+            derivativate ((gfloat*)vals, n_vals);
 
           status = hyscan_waterfall_tile_make_string (priv, data0 + j * w, w, weight + j * w,
                                                       vals, n_vals, step, priv->tile.flags,
@@ -1278,4 +1297,71 @@ hyscan_waterfall_tile_terminate (HyScanWaterfallTile *wfall)
     g_atomic_int_set (&wfall->priv->generator_term, 1);
 
   return TRUE;
+}
+
+#define NAN_F(x) if ((x) < 0) g_error ("FUCK");
+
+static void derivativate (gfloat* data, guint32 size)
+{
+  guint32 i;
+  for (i = 0; i < size - 1; ++i)
+    {
+      data[i] = MAX (0, data[i+1] - data[i]);
+    }
+  data[size - 1] = data[size - 2];
+}
+
+static gfloat * pf_get_values
+(HyScanAcousticData *dc, guint32 i, guint32 l, guint32 r, guint32* n_vals, gint64 *time)
+{
+  gint k0, k1, k2;
+  gfloat *d0, *d1;
+  guint32 s0, s1, s2, j;
+
+  k0 = (i >= l + 1) ? i - 1 : l;
+  k1 = i;
+  k2 = (i <= r - 1) ? i + 1 : r;
+
+  hyscan_acoustic_data_get_values (dc, k0, &s0, time);
+  d1 = hyscan_acoustic_data_get_values (dc, k1, &s1, time);
+  hyscan_acoustic_data_get_values (dc, k2, &s2, time);
+  // for (k0 = 0; k0 < s1; ++k0)
+    // d1[k0] = 1.0;
+
+  //derivativate (d1, s1);
+  //return d1;
+
+  s0 = MIN (MIN (s0, s1), s2);
+
+  d0 = g_malloc0 (sizeof (gfloat) * s0);
+
+  d1 = hyscan_acoustic_data_get_values (dc, k0, &s1, time);
+  memcpy (d0, d1, s0 * sizeof (gfloat));
+
+  d1 = hyscan_acoustic_data_get_values (dc, k1, &s1, time);
+  
+  for (j = 0; j < s0; ++j)
+    {
+      d0[j] += d1[j];
+      NAN_F (d0[j]);
+      
+    }
+
+  d1 = hyscan_acoustic_data_get_values (dc, k2, &s1, time);
+  
+  for (j = 0; j < s0; ++j)
+    {
+      d1[j] += d0[j];
+      d1[j] /= 3;
+      NAN_F (d1[j]);
+    }
+
+  g_free (d0);
+  
+  if (n_vals != NULL)
+    *n_vals = s0;
+  derivativate (d1, s0);
+
+  return d1;
+  
 }
