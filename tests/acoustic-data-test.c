@@ -105,7 +105,7 @@ int main( int argc, char **argv )
   raw_info.adc.vref = 1.0;
   raw_info.adc.offset = 0;
 
-  acoustic_info.data.type = HYSCAN_DATA_UINT16;
+  acoustic_info.data.type = HYSCAN_DATA_AMPLITUDE_INT_16LE;
   acoustic_info.data.rate = discretization;
   acoustic_info.antenna.pattern.vertical = 40.0;
   acoustic_info.antenna.pattern.horizontal = 2.0;
