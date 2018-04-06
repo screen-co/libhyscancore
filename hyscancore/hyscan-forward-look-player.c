@@ -446,7 +446,7 @@ hyscan_forward_look_player_processor (gpointer user_data)
 
           doa = hyscan_forward_look_data_get_doa_values (priv->data.data, priv->cur_state.index,
                                                          &n_points, &doa_time);
-          if (doa == NULL)
+          if (doa != NULL)
             {
               g_mutex_lock (&priv->data.lock);
 
