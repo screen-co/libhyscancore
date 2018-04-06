@@ -446,20 +446,22 @@ hyscan_forward_look_player_processor (gpointer user_data)
 
           doa = hyscan_forward_look_data_get_doa_values (priv->data.data, priv->cur_state.index,
                                                          &n_points, &doa_time);
+          if (doa == NULL)
+            {
+              g_mutex_lock (&priv->data.lock);
 
-          g_mutex_lock (&priv->data.lock);
+              priv->data.doa = doa;
+              priv->data.n_points = n_points;
+              priv->data.doa_index = priv->cur_state.index;
+              priv->data.doa_time = doa_time;
+              priv->data.doa_changed = TRUE;
+              priv->cur_state.index_changed = FALSE;
 
-          priv->data.doa = doa;
-          priv->data.n_points = n_points;
-          priv->data.doa_index = priv->cur_state.index;
-          priv->data.doa_time = doa_time;
-          priv->data.doa_changed = TRUE;
-          priv->cur_state.index_changed = FALSE;
+              if (mode == HYSCAN_FORWARD_LOOK_PLAYER_START)
+                start_time = doa_time;
 
-          if (mode == HYSCAN_FORWARD_LOOK_PLAYER_START)
-            start_time = doa_time;
-
-          g_mutex_unlock (&priv->data.lock);
+              g_mutex_unlock (&priv->data.lock);
+            }
         }
 
       /* Ожидание новых команд или данных. */
