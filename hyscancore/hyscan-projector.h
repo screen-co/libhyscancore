@@ -100,8 +100,7 @@ HyScanProjector        *hyscan_projector_new                    (HyScanDB       
 
 HYSCAN_API
 void                    hyscan_projector_set_cache              (HyScanProjector   *projector,
-                                                                 HyScanCache       *cache,
-                                                                 const gchar       *prefix);
+                                                                 HyScanCache       *cache);
 /**
  *
  * Функция проверяет источник данных.

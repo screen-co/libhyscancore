@@ -158,7 +158,7 @@ main (int argc, char **argv)
   time_without_cache = g_timer_elapsed (timer, NULL);
 
   /* Анализируем данные с кэшем. */
-  hyscan_nmea_data_set_cache (nmea, cache, "pfix");
+  hyscan_nmea_data_set_cache (nmea, cache);
 
   g_timer_start (timer);
   for (j = 0; j < readouts; j++)

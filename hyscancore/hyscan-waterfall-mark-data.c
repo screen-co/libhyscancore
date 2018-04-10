@@ -393,7 +393,7 @@ hyscan_waterfall_mark_data_get (HyScanWaterfallMarkData *data,
   status = hyscan_waterfall_mark_data_get_internal (data->priv, id, mark);
 
   if (!status)
-    g_clear_pointer (&mark, g_free);
+    g_clear_pointer (&mark, hyscan_waterfall_mark_free);
 
   return mark;
 }

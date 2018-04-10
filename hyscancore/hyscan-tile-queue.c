@@ -106,7 +106,6 @@ typedef struct
 
   /* Кэш. */
   HyScanCache            *cache;                 /* Интерфейс системы кэширования. */
-  gchar                  *prefix;                /* Префикс ключа кэширования. */
 
   /* Определение глубины. */
   HyScanSourceType        depth_source;          /* Источник данных. */
@@ -195,7 +194,6 @@ static gint                hyscan_tile_queue_task_finder        (gconstpointer  
 
 static void                hyscan_tile_queue_state_hash         (HyScanTileQueueState   *state);
 static gchar              *hyscan_tile_queue_cache_key          (const HyScanTile       *tile,
-                                                                 const gchar            *prefix,
                                                                  guint32                 hash);
 
 static guint   hyscan_tile_queue_signals[SIGNAL_LAST] = {0};
@@ -325,14 +323,12 @@ hyscan_tile_queue_object_finalize (GObject *object)
   g_clear_pointer (&priv->cur_state.project, g_free);
   g_clear_pointer (&priv->cur_state.track, g_free);
   g_clear_object (&priv->cur_state.cache);
-  g_clear_pointer (&priv->cur_state.prefix, g_free);
   g_clear_pointer (&priv->cur_state.sound_velocity, g_array_unref);
 
   g_clear_object (&priv->des_state.db);
   g_clear_pointer (&priv->des_state.project, g_free);
   g_clear_pointer (&priv->des_state.track, g_free);
   g_clear_object (&priv->des_state.cache);
-  g_clear_pointer (&priv->des_state.prefix, g_free);
   g_clear_pointer (&priv->des_state.sound_velocity, g_array_unref);
 
   /* Очищаем список заданий. */
@@ -358,7 +354,7 @@ hyscan_tile_queue_open_dc (HyScanTileQueueState *state,
     return NULL;
 
   /* Если получилось открыть, устанавливаем кэш. */
-  hyscan_acoustic_data_set_cache (dc, state->cache, state->prefix);
+  hyscan_acoustic_data_set_cache (dc, state->cache, "PREFIX");
 
   return dc;
 }
@@ -381,7 +377,7 @@ hyscan_tile_queue_open_depth (HyScanTileQueueState *state)
     }
 
   /* Устанавливаем кэш, создаем объект измерения глубины. */
-  hyscan_nav_data_set_cache (depth, state->cache, state->prefix);
+  hyscan_nav_data_set_cache (depth, state->cache);
 
   return depth;
 }
@@ -400,7 +396,7 @@ hyscan_tile_queue_open_depthometer (HyScanTileQueueState *state,
   if (meter == NULL)
     return NULL;
 
-  hyscan_depthometer_set_cache (meter, state->cache, state->prefix);
+  hyscan_depthometer_set_cache (meter, state->cache);
   hyscan_depthometer_set_filter_size (meter, state->depth_size);
   hyscan_depthometer_set_validity_time (meter, state->depth_time);
 
@@ -551,10 +547,8 @@ hyscan_tile_queue_sync_states (HyScanTileQueue *self)
   if (new_st->cache_changed)
     {
       g_clear_object (&cur_st->cache);
-      g_clear_pointer (&cur_st->prefix, g_free);
 
       cur_st->cache = g_object_ref (new_st->cache);
-      cur_st->prefix = g_strdup (new_st->prefix);
 
       new_st->cache_changed = FALSE;
       cur_st->cache_changed = TRUE;
@@ -667,9 +661,9 @@ cache_setup:
       while (g_hash_table_iter_next (&iter, &key, &value))
         {
           if (HYSCAN_IS_DEPTHOMETER (value))
-            hyscan_depthometer_set_cache (HYSCAN_DEPTHOMETER (value), state->cache, state->prefix);
+            hyscan_depthometer_set_cache (HYSCAN_DEPTHOMETER (value), state->cache);
           if (HYSCAN_IS_NAV_DATA (value))
-            hyscan_nav_data_set_cache (HYSCAN_NAV_DATA (value), state->cache, state->prefix);
+            hyscan_nav_data_set_cache (HYSCAN_NAV_DATA (value), state->cache);
         }
       goto exit;
     }
@@ -905,7 +899,7 @@ hyscan_tile_queue_task_processor (gpointer data,
   /* И кладем в кэш при возможности. */
   if (cache != NULL)
     {
-      key = hyscan_tile_queue_cache_key (&tile, state->prefix, state->hash);
+      key = hyscan_tile_queue_cache_key (&tile, state->hash);
       hyscan_cache_set2 (cache, key, NULL, &tile, sizeof (HyScanTile), image, image_size);
       g_free (key);
     }
@@ -953,18 +947,17 @@ hyscan_tile_queue_state_hash (HyScanTileQueueState *state)
   gchar *str;
   guint32 hash;
 
-  if (state->project == NULL || state->track == NULL || state->prefix == NULL)
+  if (state->project == NULL || state->track == NULL)
     {
       state->hash = 0;
       return;
     }
 
-  str = g_strdup_printf ("%p.%s.%s.%i.%s.%i.%u.%lu.%i.%f",
+  str = g_strdup_printf ("%p.%s.%s.%i.%i.%u.%lu.%i.%f",
                           state->db,
                           state->project,
                           state->track,
                           state->raw,
-                          state->prefix,
                           state->depth_source,
                           state->depth_channel,
                           state->depth_time,
@@ -983,11 +976,9 @@ hyscan_tile_queue_state_hash (HyScanTileQueueState *state)
 /* Функция генерирует ключ для системы кэширования. */
 static gchar*
 hyscan_tile_queue_cache_key (const HyScanTile *tile,
-                             const gchar      *prefix,
                              guint32           hash)
 {
-  gchar *key = g_strdup_printf ("tilequeue.%s.%u|%i.%i.%i.%i.%010.3f.%06.3f|%u.%i.%i.%i",
-                                prefix,
+  gchar *key = g_strdup_printf ("tilequeue.%u|%i.%i.%i.%i.%010.3f.%06.3f|%u.%i.%i.%i",
                                 hash,
 
                                 tile->across_start,
@@ -1016,8 +1007,7 @@ hyscan_tile_queue_new (gint max_generators)
 /* Функция устанавливает кэш. */
 void
 hyscan_tile_queue_set_cache (HyScanTileQueue *self,
-                             HyScanCache     *cache,
-                             const gchar     *prefix)
+                             HyScanCache     *cache)
 {
   HyScanTileQueuePrivate *priv;
   HyScanTileQueueState *state;
@@ -1029,10 +1019,8 @@ hyscan_tile_queue_set_cache (HyScanTileQueue *self,
   g_mutex_lock (&priv->state_lock);
 
   g_clear_object (&state->cache);
-  g_free (state->prefix);
 
   state->cache = (cache != NULL) ? g_object_ref (cache) : NULL;
-  state->prefix = (prefix != NULL) ? g_strdup (prefix) : NULL;
   state->cache_changed = TRUE;
   priv->state_changed = TRUE;
 
@@ -1246,7 +1234,7 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   if (priv->cur_state.cache == NULL)
     goto exit;
 
-  key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.prefix, priv->des_state.hash);
+  key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.hash);
 
   /* Ищем тайл в кэше. */
   found = hyscan_cache_get (priv->cur_state.cache, key, NULL, cached_tile, &size);
@@ -1295,7 +1283,7 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
   if (priv->cur_state.cache == NULL)
     goto exit;
 
-  key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.prefix, priv->des_state.hash);
+  key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.hash);
 
   /* Ищем тайл в кэше. */
   status = hyscan_cache_get (priv->cur_state.cache, key, NULL, NULL, &size2);

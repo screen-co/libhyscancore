@@ -25,7 +25,6 @@ typedef struct
   HyScanTileType          type;                  /* Тип тайлов. */
   /* Кэш. */
   HyScanCache            *cache;                 /* Интерфейс системы кэширования. */
-  gchar                  *prefix;                /* Префикс ключа кэширования. */
 
   /* Определение глубины. */
   HyScanSourceType        depth_source;          /* Источник данных. */
@@ -68,7 +67,7 @@ struct _HyScanTrackRectPrivate
 
   HyScanProjector        *pj;
   HyScanDepthometer      *depth;
-  HyScanNavData            *idepth;
+  HyScanNavData          *idepth;
 };
 
 static void      hyscan_track_rect_object_constructed  (GObject    *object);
@@ -137,14 +136,12 @@ hyscan_track_rect_object_finalize (GObject *object)
   g_clear_object (&priv->cur_state.cache);
   g_free (priv->cur_state.project);
   g_free (priv->cur_state.track);
-  g_free (priv->cur_state.prefix);
 
   g_array_unref (priv->new_state.sound_velocity);
   g_clear_object (&priv->new_state.db);
   g_clear_object (&priv->new_state.cache);
   g_free (priv->new_state.project);
   g_free (priv->new_state.track);
-  g_free (priv->new_state.prefix);
 
   G_OBJECT_CLASS (hyscan_track_rect_parent_class)->finalize (object);
 }
@@ -164,7 +161,7 @@ hyscan_track_rect_open_projector (HyScanTrackRect *self)
   if (pj == NULL)
     return NULL;
 
-  hyscan_projector_set_cache (pj, state->cache, state->prefix);
+  hyscan_projector_set_cache (pj, state->cache);
   hyscan_projector_set_ship_speed (pj, state->ship_speed);
   hyscan_projector_set_sound_velocity (pj, state->sound_velocity);
 
@@ -189,7 +186,7 @@ hyscan_track_rect_open_depth (HyScanTrackRect *self)
       idepth = HYSCAN_NAV_DATA (dnmea);
     }
 
-  hyscan_nav_data_set_cache (idepth, priv->cur_state.cache, priv->cur_state.prefix);
+  hyscan_nav_data_set_cache (idepth, priv->cur_state.cache);
   return idepth;
 }
 
@@ -203,7 +200,7 @@ hyscan_track_rect_open_depthometer (HyScanTrackRect *self)
   if (depth == NULL)
     return NULL;
 
-  hyscan_depthometer_set_cache (depth, priv->cur_state.cache, priv->cur_state.prefix);
+  hyscan_depthometer_set_cache (depth, priv->cur_state.cache);
   hyscan_depthometer_set_filter_size (depth, priv->cur_state.depth_size);
   hyscan_depthometer_set_validity_time (depth, priv->cur_state.depth_time);
 
@@ -237,10 +234,8 @@ hyscan_track_rect_sync_states (HyScanTrackRect *self)
   if (new_st->cache_changed)
     {
       g_clear_object (&cur_st->cache);
-      g_clear_pointer (&cur_st->prefix, g_free);
 
       cur_st->cache = g_object_ref (new_st->cache);
-      cur_st->prefix = g_strdup (new_st->prefix);
 
       new_st->cache_changed = FALSE;
       cur_st->cache_changed = TRUE;
@@ -323,11 +318,11 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
   else if (state->cache_changed)
     {
       if (priv->pj != NULL)
-        hyscan_projector_set_cache (priv->pj, state->cache, state->prefix);
+        hyscan_projector_set_cache (priv->pj, state->cache);
       if (priv->depth != NULL)
-        hyscan_depthometer_set_cache (priv->depth, state->cache, state->prefix);
+        hyscan_depthometer_set_cache (priv->depth, state->cache);
       if (priv->idepth != NULL)
-        hyscan_nav_data_set_cache (priv->idepth, state->cache, state->prefix);
+        hyscan_nav_data_set_cache (priv->idepth, state->cache);
 
       state->cache_changed = FALSE;
       if (!state->speed_changed && !state->velocity_changed && !state->type_changed)
@@ -567,8 +562,7 @@ hyscan_track_rect_set_sound_velocity (HyScanTrackRect *self,
 /* Функция устанавливает кэш.*/
 void
 hyscan_track_rect_set_cache (HyScanTrackRect *self,
-                            HyScanCache     *cache,
-                            const gchar     *prefix)
+                            HyScanCache     *cache)
 {
   HyScanTrackRectPrivate *priv;
 
@@ -578,10 +572,8 @@ hyscan_track_rect_set_cache (HyScanTrackRect *self,
   g_mutex_lock (&priv->state_lock);
 
   g_clear_object (&priv->new_state.cache);
-  g_free (priv->new_state.prefix);
 
   priv->new_state.cache = (cache != NULL) ? g_object_ref (cache) : NULL;
-  priv->new_state.prefix = (prefix != NULL) ? g_strdup (prefix) : NULL;
   priv->new_state.cache_changed = TRUE;
 
   g_atomic_int_set (&priv->abort, TRUE);

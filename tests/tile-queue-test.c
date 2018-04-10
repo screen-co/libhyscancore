@@ -147,7 +147,7 @@ main (int argc, char **argv)
 
 
   hyscan_tile_queue_close (tq);
-  hyscan_tile_queue_set_cache (tq, cache, NULL);
+  hyscan_tile_queue_set_cache (tq, cache);
   hyscan_tile_queue_open (tq, db, name, name, FALSE);
 
   g_message ("Generating with cache.");

@@ -12,10 +12,14 @@
  * тайл одним цветом, другой поток может поменять цветовую схему.
  *
  */
+
 #include "hyscan-tile-color.h"
 #include <math.h>
 #include <string.h>
 #include <zlib.h>
+
+/* Макрос для поиска элементов в одномерном массиве. */
+#define HYSCAN_COLOR_AT(i, j) *((guint32*)(data + (i) * (stride) + (j) * sizeof (guint32)))
 
 typedef struct
 {
@@ -35,11 +39,10 @@ struct _HyScanTileColorPrivate
 
   GMutex       setup_lock;
   HyScanCache *cache;          /* Кэш. */
-  gchar       *prefix;         /* Префикс системы кэширования (заданный пользователем). */
   gchar       *path;           /* Префикс системы кэширования (составленный из БД/проекта/галса). */
 
   GHashTable  *colorinfos;
-  GMutex       cmap_lock;
+  GMutex       lock;
 };
 
 static void     hyscan_tile_color_object_constructed           (GObject                *object);
@@ -60,8 +63,9 @@ static gboolean hyscan_tile_color_set_colormap_internal        (HyScanTileColor 
                                                                 guint32                *colormap,
                                                                 guint                   length,
                                                                 guint32                 background);
-static gchar   *hyscan_tile_color_cache_key                    (HyScanTileColorPrivate *priv,
-                                                                HyScanTile             *tile);
+static gchar   *hyscan_tile_color_cache_key                    (HyScanTile             *tile,
+                                                                const gchar            *mnemonic,
+                                                                const gchar            *path);
 static void     hyscan_tile_color_update_mnemonic              (HyScanTileColorInfo    *cmap);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanTileColor, hyscan_tile_color, G_TYPE_OBJECT);
@@ -88,7 +92,7 @@ hyscan_tile_color_object_constructed (GObject *object)
   HyScanTileColorPrivate *priv = color->priv;
   HyScanTileColorInfo *cmap;
 
-  g_mutex_init (&priv->cmap_lock);
+  g_mutex_init (&priv->lock);
   g_mutex_init (&priv->setup_lock);
   priv->colorinfos = g_hash_table_new_full (NULL, NULL, NULL, hyscan_tile_color_destroy_info);
 
@@ -106,10 +110,9 @@ hyscan_tile_color_object_finalize (GObject *object)
   g_clear_object (&priv->cache);
 
   g_hash_table_unref (priv->colorinfos);
-  g_mutex_clear (&priv->cmap_lock);
+  g_mutex_clear (&priv->lock);
   g_mutex_clear (&priv->setup_lock);
 
-  g_free (priv->prefix);
   g_free (priv->path);
 
   G_OBJECT_CLASS (hyscan_tile_color_parent_class)->finalize (object);
@@ -159,7 +162,6 @@ hyscan_tile_color_lookup_info (HyScanTileColorPrivate *priv,
 
   /* Ищем цветовую схему для запрошенного КД. */
   cmap = g_hash_table_lookup (priv->colorinfos, GINT_TO_POINTER (source));
-
   if (cmap != NULL)
     return cmap;
 
@@ -204,7 +206,7 @@ hyscan_tile_color_set_levels_internal (HyScanTileColor *color,
       return FALSE;
     }
 
-  g_mutex_lock (&priv->cmap_lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем в хэш-таблице. */
   link = g_hash_table_lookup (priv->colorinfos, GINT_TO_POINTER (source));
@@ -224,7 +226,7 @@ hyscan_tile_color_set_levels_internal (HyScanTileColor *color,
   /* Обновляем строку. */
   hyscan_tile_color_update_mnemonic (link);
 
-  g_mutex_unlock (&priv->cmap_lock);
+  g_mutex_unlock (&priv->lock);
 
   return TRUE;
 }
@@ -243,7 +245,7 @@ hyscan_tile_color_set_colormap_internal (HyScanTileColor *color,
   if (colormap == NULL || length == 0)
     return FALSE;
 
-  g_mutex_lock (&priv->cmap_lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем в хэш-таблице. */
   link = g_hash_table_lookup (priv->colorinfos, GINT_TO_POINTER (source));
@@ -270,31 +272,20 @@ hyscan_tile_color_set_colormap_internal (HyScanTileColor *color,
   /* Обновляем строку. */
   hyscan_tile_color_update_mnemonic (link);
 
-  g_mutex_unlock (&priv->cmap_lock);
+  g_mutex_unlock (&priv->lock);
 
   return TRUE;
 }
 
 /* Функция генерирует ключ для системы кэширования. */
 static gchar*
-hyscan_tile_color_cache_key (HyScanTileColorPrivate *priv,
-                             HyScanTile             *tile)
+hyscan_tile_color_cache_key (HyScanTile  *tile,
+                             const gchar *mnemonic,
+                             const gchar *path)
 {
   gchar *key;
-  HyScanTileColorInfo *cmap;
-
-  g_mutex_lock (&priv->cmap_lock);
-
-  /* Ищем цветовую схему для КД, указанного в тайле. */
-  cmap = hyscan_tile_color_lookup_info (priv, tile->source);
-
-  if (cmap == NULL)
-    return NULL;
-
-  key = g_strdup_printf ("color.%s.%s.%s|%i.%i.%i.%i.%010.3f.%06.3f|%u.%i.%i.%i",
-                                priv->prefix,
-                                priv->path,
-                                cmap->mnemonic,
+  key = g_strdup_printf ("color.%s.%s|%i.%i.%i.%i.%010.3f.%06.3f|%u.%i.%i.%i",
+                                path, mnemonic,
 
                                 tile->across_start,
                                 tile->along_start,
@@ -307,8 +298,6 @@ hyscan_tile_color_cache_key (HyScanTileColorPrivate *priv,
                                 tile->type,
                                 tile->rotate,
                                 tile->source);
-
-  g_mutex_unlock (&priv->cmap_lock);
 
   return key;
 }
@@ -345,8 +334,7 @@ hyscan_tile_color_new (void)
 /* Функция устанавливает кэш. */
 void
 hyscan_tile_color_set_cache (HyScanTileColor    *color,
-                             HyScanCache        *cache,
-                             const gchar        *cache_prefix)
+                             HyScanCache        *cache)
 {
   HyScanTileColorPrivate *priv;
 
@@ -359,14 +347,9 @@ hyscan_tile_color_set_cache (HyScanTileColor    *color,
   if (priv->open)
     return;
 
-  if (cache_prefix == NULL)
-    cache_prefix = "none";
-
   g_clear_object (&priv->cache);
-  g_free (priv->prefix);
 
   priv->cache = g_object_ref (cache);
-  priv->prefix = g_strdup (cache_prefix);
 }
 
 /* Функция открывает галс. */
@@ -381,6 +364,8 @@ hyscan_tile_color_open (HyScanTileColor *color,
   g_return_if_fail (HYSCAN_IS_TILE_COLOR (color));
   priv = color->priv;
 
+  g_mutex_lock (&priv->lock);
+
   g_clear_pointer (&priv->path, g_free);
 
   if (project == NULL || track == NULL)
@@ -392,6 +377,8 @@ hyscan_tile_color_open (HyScanTileColor *color,
   priv->path = g_strdup_printf ("%s.%s.%s", db_uri, project, track);
 
   priv->open = TRUE;
+
+  g_mutex_unlock (&priv->lock);
 }
 
 /* Функция закрывает галс. */
@@ -416,23 +403,37 @@ hyscan_tile_color_check (HyScanTileColor *color,
                          HyScanTile      *requested_tile,
                          HyScanTile      *cached_tile)
 {
+  HyScanTileColorPrivate *priv;
+  HyScanTileColorInfo *cmap;
   gchar *key;
   gboolean found;
 
   guint32 size = sizeof (HyScanTile);
 
   g_return_val_if_fail (HYSCAN_IS_TILE_COLOR (color), FALSE);
+  priv = color->priv;
 
   if (requested_tile == NULL ||  cached_tile == NULL)
     return FALSE;
 
-  if (color->priv->cache == NULL)
+  if (priv->cache == NULL)
     return FALSE;
 
-  /* Ищем тайл в кэше. */
-  key = hyscan_tile_color_cache_key (color->priv, requested_tile);
-  found = hyscan_cache_get (color->priv->cache, key, NULL, cached_tile, &size);
+  /* Cоставляем ключ из тайла, цветовой схемы и пути. */
+  g_mutex_lock (&priv->lock);
+  cmap = hyscan_tile_color_lookup_info (priv, requested_tile->source);
 
+  if (cmap == NULL)
+    {
+      g_mutex_unlock (&priv->lock);
+      return FALSE;
+    }
+
+  key = hyscan_tile_color_cache_key (requested_tile, cmap->mnemonic, priv->path);
+  g_mutex_unlock (&priv->lock);
+
+  /* Ищем тайл в кэше. */
+  found = hyscan_cache_get (priv->cache, key, NULL, cached_tile, &size);
   g_free (key);
   return found;
 }
@@ -444,27 +445,44 @@ hyscan_tile_color_get (HyScanTileColor   *color,
                        HyScanTile        *cached_tile,
                        HyScanTileSurface *surface)
 {
+  HyScanTileColorPrivate *priv;
   gchar *key;
   guint32 size1, size2;
+  HyScanTileColorInfo *cmap;
   gboolean status;
 
   g_return_val_if_fail (HYSCAN_IS_TILE_COLOR (color), FALSE);
+  priv = color->priv;
 
   if (requested_tile == NULL || cached_tile == NULL || surface == NULL)
     return FALSE;
 
-  if (color->priv->cache == NULL)
+  if (priv->cache == NULL)
     return FALSE;
 
+  /* Cоставляем ключ из тайла, цветовой схемы и пути. */
+  g_mutex_lock (&priv->lock);
+  cmap = hyscan_tile_color_lookup_info (priv, requested_tile->source);
+
+  if (cmap == NULL)
+    {
+      g_mutex_unlock (&priv->lock);
+      return FALSE;
+    }
+
+  key = hyscan_tile_color_cache_key (requested_tile, cmap->mnemonic, priv->path);
+  g_mutex_unlock (&priv->lock);
+
   /* Ищем тайл в кэше. */
-  key = hyscan_tile_color_cache_key (color->priv, requested_tile);
-  status = hyscan_cache_get (color->priv->cache, key, NULL, NULL, &size2);
+  status = hyscan_cache_get (priv->cache, key, NULL, NULL, &size2);
 
   if (status)
     {
       size1 = sizeof (HyScanTile);
       size2 -= size1;
-      hyscan_cache_get2 (color->priv->cache, key, NULL, cached_tile, &size1, surface->data, &size2);
+      hyscan_cache_get2 (priv->cache, key, NULL,
+                         cached_tile, &size1,
+                         surface->data, &size2);
     }
 
   g_free (key);
@@ -483,7 +501,6 @@ hyscan_tile_color_add (HyScanTileColor   *color,
   GArray  *colormap;
   guint32 *colormap_data;
   guint32  background;
-  gchar   *mnemonic;
   HyScanTileColorInfo *cmap;
 
   gchar *key, *data;
@@ -503,9 +520,8 @@ hyscan_tile_color_add (HyScanTileColor   *color,
   size2  = height * stride;
   priv   = color->priv;
 
-  g_mutex_lock (&priv->cmap_lock);
-
-  /* Ищем цветовую схему для КД, указанного в тайле. */
+  /* Ищем цветовую схему для КД, указанного в тайле и составляем ключ. */
+  g_mutex_lock (&priv->lock);
   cmap = hyscan_tile_color_lookup_info (priv, tile->source);
 
   if (cmap == NULL)
@@ -520,9 +536,13 @@ hyscan_tile_color_add (HyScanTileColor   *color,
   levels = colormap->len;
 
   background = cmap->background;
-  mnemonic = g_strdup (cmap->mnemonic);
 
-  g_mutex_unlock (&priv->cmap_lock);
+  if (priv->cache != NULL)
+    key = hyscan_tile_color_cache_key (tile, cmap->mnemonic, priv->path);
+  else
+    key = NULL;
+
+  g_mutex_unlock (&priv->lock);
 
   /* Уровни и цвет. */
   for (i = 0; i < height; i++)
@@ -530,19 +550,20 @@ hyscan_tile_color_add (HyScanTileColor   *color,
       for (j = 0; j < width; j++)
         {
           gfloat point = input[i * width + j];
+
           /* Преобразование уровней. */
           if (point >= white)
             point = 1.0;
-          else if (point <= black && point > 0.0)
+          else if (point <= black && point >= 0.0)
             point = 0.0;
           else if (point >= 0)
             point = pow((point - black) / (white - black), gamma);
 
           /* Складываем в выходной массив. */
-          if (point < 0)
-            *((guint32*)(data + i * stride + j * sizeof (guint32))) = background;
+          if (G_LIKELY (point >= 0))
+            HYSCAN_COLOR_AT (i, j) = colormap_data[(gint)(point * (levels - 1))];
           else
-            *((guint32*)(data + i * stride + j * sizeof (guint32))) = colormap_data[(gint)(point * (levels - 1))];
+            HYSCAN_COLOR_AT (i, j) = background;
         }
    }
 
@@ -551,22 +572,18 @@ hyscan_tile_color_add (HyScanTileColor   *color,
 # warning HYSCAN_CORE_TILE_BORDERS is defined. I will draw tile borders.
   for (i = 0; i < 10; i++)
     {
-      *((guint32*)(data + 1 * stride + (i + 1) * sizeof (guint32))) = 0xFFFF0000;
-      *((guint32*)(data + (i + 1) * stride + 1 * sizeof (guint32))) = 0xFFFF0000;
-      *((guint32*)(data + (height - 2) * stride + (width - 2 - i) * sizeof (guint32))) = (tile->finalized) ? 0xFF00FF00 : 0xFF0000FF;
-      *((guint32*)(data + (height - 2 - i) * stride + (width - 2) * sizeof (guint32))) = (tile->finalized) ? 0xFF00FF00 : 0xFF0000FF;
+      HYSCAN_COLOR_AT (1, i + 1) = 0xFFFF0000;
+      HYSCAN_COLOR_AT (i + 1, 1) = 0xFFFF0000;
+      HYSCAN_COLOR_AT (height - 2, width - 2 - i) = (tile->finalized) ? 0xFF00FF00 : 0xFF0000FF;
+      HYSCAN_COLOR_AT (height - 2 - i, width - 2) = (tile->finalized) ? 0xFF00FF00 : 0xFF0000FF;
     }
 #endif
 
-  /* Теперь складываем в кэш.*/
+  /* Теперь складываем в кэш. */
   if (priv->cache != NULL)
-    {
-      key = hyscan_tile_color_cache_key (priv, tile);
-      hyscan_cache_set2 (priv->cache, key, NULL, tile, size1, data, size2);
-      g_free (key);
-    }
+    hyscan_cache_set2 (priv->cache, key, NULL, tile, size1, data, size2);
 
-  g_free (mnemonic);
+  g_free (key);
   g_array_unref (colormap);
 }
 
@@ -746,4 +763,22 @@ hyscan_tile_color_converter_i2d (guint32  color,
     *red   = ((color >> 16) & 0x000000FF) / 255.0;
   if (alpha != NULL)
     *alpha = ((color >> 24) & 0x000000FF) / 255.0;
+}
+
+/* Функция упаковывает целочисленные цвета в 32-х битное значение. */
+guint32
+hyscan_tile_color_converter_c2i (guchar red,
+                                 guchar green,
+                                 guchar blue,
+                                 guchar alpha)
+{
+  guint32 color;
+  guint32 ired = red;
+  guint32 igreen = green;
+  guint32 iblue = blue;
+  guint32 ialpha = alpha;
+
+  color = (ialpha << 24) | (ired << 16) | (igreen << 8) | (iblue);
+
+  return color;
 }

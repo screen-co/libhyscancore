@@ -191,13 +191,12 @@ hyscan_const_depth_set_distance (HyScanConstDepth *self,
 /* Функция установки кэша. */
 static void
 hyscan_const_depth_set_cache (HyScanNavData *ndata,
-                              HyScanCache   *cache,
-                              const gchar   *prefix)
+                              HyScanCache   *cache)
 {
   HyScanConstDepth *self = HYSCAN_CONST_DEPTH (ndata);
   HyScanConstDepthPrivate *priv = self->priv;
 
-  hyscan_projector_set_cache (priv->projector, cache, prefix);
+  hyscan_projector_set_cache (priv->projector, cache);
 }
 
 /* Функция получения глубины. */

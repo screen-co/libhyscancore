@@ -98,13 +98,11 @@ void                    hyscan_track_rect_set_sound_velocity   (HyScanTrackRect 
  *
  * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
  * \param cache указатель на интерфейс HyScanCache;
- * \param prefix префикс системы кэширования.
  *
  */
 HYSCAN_API
 void                    hyscan_track_rect_set_cache            (HyScanTrackRect        *track_rect,
-                                                                HyScanCache            *cache,
-                                                                const gchar            *prefix);
+                                                                HyScanCache            *cache);
 
 /**
  *

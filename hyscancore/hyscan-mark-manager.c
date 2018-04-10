@@ -316,7 +316,9 @@ hyscan_mark_manager_processing (gpointer data)
           /* Создаем объект работы с метками.
            * Если не получилось (например потому, что проект ещё не создан),
            * повторим через некоторое время. */
-          mdata = hyscan_waterfall_mark_data_new (priv->cur_state.db, priv->cur_state.project);
+          if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
+            mdata = hyscan_waterfall_mark_data_new (priv->cur_state.db, priv->cur_state.project);
+          
           if (mdata == NULL)
             {
               g_atomic_int_set (&priv->im_flag, 1);

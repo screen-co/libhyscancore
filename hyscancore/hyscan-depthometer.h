@@ -73,13 +73,11 @@ HyScanDepthometer      *hyscan_depthometer_new                 (HyScanNavData   
  *
  * \param depthometer объект \link HyScanDepthometer \endlink;
  * \param cache интерфейс \link HyScanCache \endlink;
- * \param prefix префикс системы кэширования.
  *
  */
 HYSCAN_API
 void                    hyscan_depthometer_set_cache           (HyScanDepthometer      *depthometer,
-                                                                HyScanCache            *cache,
-                                                                gchar                  *prefix);
+                                                                HyScanCache            *cache);
 
 /**
  *

@@ -98,13 +98,11 @@ HyScanNMEAData         *hyscan_nmea_data_new                    (HyScanDB       
  *
  * \param data указатель на объект \link HyScanNMEAData \endlink;
  * \param cache указатель на интерфейс \link HyScanCache \endlink или NULL;
- * \param prefix префикс ключа кэширования или NULL.
  *
  */
 HYSCAN_API
 void                    hyscan_nmea_data_set_cache              (HyScanNMEAData        *data,
-                                                                 HyScanCache           *cache,
-                                                                 const gchar           *prefix);
+                                                                 HyScanCache           *cache);
 /**
  *
  * Функция возвращает информацию о местоположении приёмной антенны.

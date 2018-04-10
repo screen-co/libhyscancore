@@ -127,13 +127,11 @@ HyScanTileQueue        *hyscan_tile_queue_new                  (gint            
  *
  * \param tilequeue - указатель на \link HyScanTileQueue \endlink;
  * \param cache - указатель на систему кэширования;
- * \param cache_prefix - префикс системы кэширования.
  *
  */
 HYSCAN_API
 void                    hyscan_tile_queue_set_cache            (HyScanTileQueue        *tilequeue,
-                                                                HyScanCache            *cache,
-                                                                const gchar            *cache_prefix);
+                                                                HyScanCache            *cache);
 /**
  *
  * Функция настройки объекта измерения глубины.

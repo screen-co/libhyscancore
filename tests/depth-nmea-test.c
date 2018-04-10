@@ -177,7 +177,7 @@ main (int argc, char **argv)
   }
 
   /* hyscan_nav_data_get с кэшем. */
-  hyscan_nav_data_set_cache (idepth, cache, "pfx");
+  hyscan_nav_data_set_cache (idepth, cache);
   {
     gdouble val;
     for (i = 0; i < SAMPLES; i++)

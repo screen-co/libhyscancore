@@ -20,8 +20,7 @@ hyscan_nav_data_default_init (HyScanNavDataInterface *iface)
 /* Функция установки кэша. */
 void
 hyscan_nav_data_set_cache (HyScanNavData *navdata,
-                           HyScanCache   *cache,
-                           const gchar   *prefix)
+                           HyScanCache   *cache)
 {
   HyScanNavDataInterface *iface;
 
@@ -29,7 +28,7 @@ hyscan_nav_data_set_cache (HyScanNavData *navdata,
   iface = HYSCAN_NAV_DATA_GET_IFACE (navdata);
 
   if (iface->set_cache != NULL)
-    (*iface->set_cache) (navdata, cache, prefix);
+    (*iface->set_cache) (navdata, cache);
 }
 
 /* Функция получения значения. */

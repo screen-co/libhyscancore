@@ -33,7 +33,6 @@ struct _HyScanNMEADataPrivate
   guint                 source_channel;            /* Индекс канала данных. */
 
   HyScanCache          *cache;                     /* Интерфейс системы кэширования. */
-  gchar                *prefix;                    /* Префикс ключа кэширования. */
   gchar                *path;                      /* Путь к БД, проекту, галсу и каналу. */
 
   gchar                *key;                       /* Ключ кэширования. */
@@ -155,8 +154,6 @@ hyscan_nmea_data_object_constructed (GObject *object)
   const gchar *channel = NULL;
   gboolean status = FALSE;
 
-  priv->prefix = g_strdup ("none");
-
   priv->channel_id = -1;
 
   channel = hyscan_channel_get_name_by_types (priv->source_type, TRUE, priv->source_channel);
@@ -266,7 +263,6 @@ hyscan_nmea_data_object_finalize (GObject *object)
   g_free (priv->path);
 
   g_free (priv->key);
-  g_free (priv->prefix);
 
   g_free (priv->string);
 
@@ -283,8 +279,7 @@ hyscan_nmea_data_update_cache_key (HyScanNMEADataPrivate *priv,
 {
   if (priv->key == NULL)
     {
-      priv->key = g_strdup_printf ("NMEA.%s.%s.%u",
-                                    priv->prefix,
+      priv->key = g_strdup_printf ("NMEA.%s.%u",
                                     priv->path,
                                     G_MAXUINT32);
 
@@ -292,8 +287,7 @@ hyscan_nmea_data_update_cache_key (HyScanNMEADataPrivate *priv,
     }
 
   g_snprintf (priv->key, priv->key_length,
-              "NMEA.%s.%s.%u",
-              priv->prefix,
+              "NMEA.%s.%u",
               priv->path,
               index);
 }
@@ -411,25 +405,18 @@ hyscan_nmea_data_new (HyScanDB         *db,
 /* Функция задаёт используемый кэш и префикс. */
 void
 hyscan_nmea_data_set_cache (HyScanNMEAData *data,
-                            HyScanCache    *cache,
-                            const gchar    *prefix)
+                            HyScanCache    *cache)
 {
   HyScanNMEADataPrivate *priv;
   g_return_if_fail (HYSCAN_IS_NMEA_DATA (data));
   priv = data->priv;
 
   g_clear_object (&priv->cache);
-  g_clear_pointer (&priv->prefix, g_free);
   g_clear_pointer (&priv->key, g_free);
 
   if (cache == NULL)
     return;
-
-  if (prefix == NULL)
-    priv->prefix = g_strdup ("none");
-  else
-    priv->prefix = g_strdup (prefix);
-
+  
   priv->cache = g_object_ref (cache);
 }
 

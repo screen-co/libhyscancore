@@ -353,15 +353,14 @@ hyscan_projector_new (HyScanDB         *db,
 
 void
 hyscan_projector_set_cache (HyScanProjector *self,
-                            HyScanCache     *cache,
-                            const gchar     *prefix)
+                            HyScanCache     *cache)
 {
   g_return_if_fail (HYSCAN_IS_PROJECTOR (self));
 
   if (self->priv->dc == NULL)
     return;
 
-  hyscan_acoustic_data_set_cache (self->priv->dc, cache, prefix);
+  hyscan_acoustic_data_set_cache (self->priv->dc, cache, "PREFIX");
 }
 
 gboolean

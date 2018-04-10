@@ -20,21 +20,6 @@ gchar    *generate_string  (gfloat  seed);
 int
 main (int argc, char **argv)
 {
-  /*
-  HYSCAN_NMEA_FIELD_TIME
-  HYSCAN_NMEA_FIELD_LAT
-  HYSCAN_NMEA_FIELD_LON
-  HYSCAN_NMEA_FIELD_SPEED
-  HYSCAN_NMEA_FIELD_TRACK
-  HYSCAN_NMEA_FIELD_DATE
-  HYSCAN_NMEA_FIELD_MAG_VAR
-  HYSCAN_NMEA_FIELD_FIX_QUAL
-  HYSCAN_NMEA_FIELD_N_SATS
-  HYSCAN_NMEA_FIELD_HDOP
-  HYSCAN_NMEA_FIELD_ALTITUDE
-  HYSCAN_NMEA_FIELD_HOG
-  HYSCAN_NMEA_FIELD_DEPTH
-  */
   GError      *error;
   gchar       *db_uri = NULL;
   gchar       *name = "test";
@@ -120,8 +105,8 @@ main (int argc, char **argv)
       {
         expected = i * 0.5;
         hyscan_nav_data_get (idepth, i, NULL, &val);
-        if (-val != expected)
-           g_error ("Failed to get data at index %i (%f, %f)", i, val, expected);
+        if (ABS (val) - ABS (expected) > 1e-5)
+          g_error ("Failed to get data at index %i (%f, %f)", i, val, expected);
       }
   }
 

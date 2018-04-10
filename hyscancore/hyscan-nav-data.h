@@ -57,8 +57,7 @@ struct _HyScanNavDataInterface
   GTypeInterface            g_iface;
 
   void                    (*set_cache)                    (HyScanNavData       *ndata,
-                                                           HyScanCache         *cache,
-                                                           const gchar         *prefix);
+                                                           HyScanCache         *cache);
   gboolean                (*get)                          (HyScanNavData       *ndata,
                                                            guint32              index,
                                                            gint64              *time,
@@ -88,13 +87,11 @@ GType                   hyscan_nav_data_get_type        (void);
  *
  * \param ndata указатель на объект \link HyScanNavData \endlink;
  * \param cache указатель на интерфейс \link HyScanCache \endlink или NULL;
- * \param prefix префикс ключа кэширования или NULL.
  *
  */
 HYSCAN_API
 void                    hyscan_nav_data_set_cache       (HyScanNavData          *ndata,
-                                                         HyScanCache            *cache,
-                                                         const gchar            *prefix);
+                                                         HyScanCache            *cache);
 /**
  *
  * Функция возвращает значение для заданного индекса.

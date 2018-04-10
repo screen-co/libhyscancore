@@ -141,7 +141,7 @@ main (int argc, char **argv)
 
   /* Добавляем кэш. */
   hyscan_tile_color_close (color);
-  hyscan_tile_color_set_cache (color, cache, "prefix");
+  hyscan_tile_color_set_cache (color, cache);
   hyscan_tile_color_open (color, "db", "project", "track");
   hyscan_tile_color_add (color, &tile1, data, size, &surface);
 

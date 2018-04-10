@@ -371,11 +371,10 @@ hyscan_nmea_parser_parse_meters (const gchar *sentence,
 /* Функция установки кэша. */
 static void
 hyscan_nmea_parser_set_cache (HyScanNavData *navdata,
-                              HyScanCache   *cache,
-                              const gchar   *prefix)
+                              HyScanCache   *cache)
 {
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
-  hyscan_nmea_data_set_cache (parser->priv->dc, cache, prefix);
+  hyscan_nmea_data_set_cache (parser->priv->dc, cache);
 }
 
 /* Функция получения глубины. */

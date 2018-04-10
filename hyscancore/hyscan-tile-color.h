@@ -106,8 +106,7 @@ HyScanTileColor        *hyscan_tile_color_new                  (void);
  */
 HYSCAN_API
 void                    hyscan_tile_color_set_cache            (HyScanTileColor        *color,
-                                                                HyScanCache            *cache,
-                                                                const gchar            *cache_prefix);
+                                                                HyScanCache            *cache);
 /**
  *
  * Функция "открывает" БД, проект и галс.
