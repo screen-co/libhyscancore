@@ -1121,6 +1121,28 @@ hyscan_control_sonar_tvg_set_points (HyScanSonar      *sonar,
                                       source, time_step, gains, n_gains);
 }
 
+/* Метод HyScanSonar->tvg_set_constant. */
+static gboolean
+hyscan_control_sonar_tvg_set_constant (HyScanSonar      *sonar,
+                                       HyScanSourceType  source,
+                                       gdouble           gain)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+
+  HyScanControlSourceInfo *source_info;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if (source_info == NULL)
+    return FALSE;
+
+  return hyscan_sonar_tvg_set_constant (HYSCAN_SONAR (source_info->device),
+                                        source, gain);
+}
+
 /* Метод HyScanSonar->tvg_set_linear_db. */
 static gboolean
 hyscan_control_sonar_tvg_set_linear_db (HyScanSonar      *sonar,
@@ -2113,6 +2135,7 @@ hyscan_control_sonar_interface_init (HyScanSonarInterface *iface)
   iface->generator_set_extended = hyscan_control_sonar_generator_set_extended;
   iface->tvg_set_auto = hyscan_control_sonar_tvg_set_auto;
   iface->tvg_set_points = hyscan_control_sonar_tvg_set_points;
+  iface->tvg_set_constant = hyscan_control_sonar_tvg_set_constant;
   iface->tvg_set_linear_db = hyscan_control_sonar_tvg_set_linear_db;
   iface->tvg_set_logarithmic = hyscan_control_sonar_tvg_set_logarithmic;
   iface->set_software_ping = hyscan_control_sonar_set_software_ping;

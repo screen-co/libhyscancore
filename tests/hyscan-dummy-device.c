@@ -89,6 +89,7 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_EXTENDED,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_POINTS,
+  HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_CONSTANT,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LINEAR_DB,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LOGARITHMIC,
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOFTWARE_PING,
@@ -529,6 +530,20 @@ hyscan_dummy_device_sonar_tvg_set_points (HyScanSonar      *sonar,
   priv->tvg_gains = gains;
   priv->tvg_n_gains = n_gains;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_POINTS;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_sonar_tvg_set_constant (HyScanSonar      *sonar,
+                                            HyScanSourceType  source,
+                                            gdouble           gain)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->tvg_gain0 = gain;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_CONSTANT;
 
   return TRUE;
 }
@@ -1084,6 +1099,35 @@ hyscan_dummy_device_check_tvg_points (HyScanDummyDevice *dummy,
 /**
  * hyscan_dummy_device_check_tvg_linear_db:
  * @dummy: указатель на #HyScanDummyDevice
+ * @gain: уровень усиления
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_tvg_set_constant.
+ */
+gboolean
+hyscan_dummy_device_check_tvg_constant (HyScanDummyDevice *dummy,
+                                        gdouble            gain)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_CONSTANT)
+    return FALSE;
+
+  if (priv->tvg_gain0 != gain)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+  priv->tvg_gain0 = 0.0;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_tvg_linear_db:
+ * @dummy: указатель на #HyScanDummyDevice
  * @gain0: начальный уровень усиления
  * @gain_step: величина изменения усиления каждые 100 метров
  *
@@ -1548,6 +1592,7 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
 
   capabilities.tvg = HYSCAN_SONAR_TVG_MODE_AUTO |
                      HYSCAN_SONAR_TVG_MODE_POINTS |
+                     HYSCAN_SONAR_TVG_MODE_CONSTANT |
                      HYSCAN_SONAR_TVG_MODE_LINEAR_DB |
                      HYSCAN_SONAR_TVG_MODE_LOGARITHMIC;
 
@@ -1825,6 +1870,7 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
   iface->generator_set_extended = hyscan_dummy_device_sonar_generator_set_extended;
   iface->tvg_set_auto = hyscan_dummy_device_sonar_tvg_set_auto;
   iface->tvg_set_points = hyscan_dummy_device_sonar_tvg_set_points;
+  iface->tvg_set_constant = hyscan_dummy_device_sonar_tvg_set_constant;
   iface->tvg_set_linear_db = hyscan_dummy_device_sonar_tvg_set_linear_db;
   iface->tvg_set_logarithmic = hyscan_dummy_device_sonar_tvg_set_logarithmic;
   iface->set_software_ping = hyscan_dummy_device_sonar_set_software_ping;

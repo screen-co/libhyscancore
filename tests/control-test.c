@@ -719,6 +719,18 @@ check_sonar_tvg_set_points (HyScanSourceType source)
 }
 
 void
+check_sonar_tvg_set_constant (HyScanSourceType source)
+{
+  HyScanDummyDevice *device = get_sonar_device (source);
+  gdouble gain = g_random_double ();
+
+  if (!hyscan_sonar_tvg_set_constant (sonar, source, gain))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_tvg_constant (device, gain))
+    g_error ("param failed");
+}
+void
 check_sonar_tvg_set_linear_db (HyScanSourceType source)
 {
   HyScanDummyDevice *device = get_sonar_device (source);
@@ -1193,6 +1205,10 @@ main (int    argc,
   g_message ("Check hyscan_sonar_tvg_set_points");
   for (i = 0; i < n_sources; i++)
     check_sonar_tvg_set_points (sources[i]);
+
+  g_message ("Check hyscan_sonar_tvg_set_constant");
+  for (i = 0; i < n_sources; i++)
+    check_sonar_tvg_set_constant (sources[i]);
 
   g_message ("Check hyscan_sonar_tvg_set_linear_db");
   for (i = 0; i < n_sources; i++)

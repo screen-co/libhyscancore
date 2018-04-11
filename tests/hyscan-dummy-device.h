@@ -121,6 +121,9 @@ gboolean                 hyscan_dummy_device_check_tvg_points         (HyScanDum
                                                                        const gdouble                  *gains,
                                                                        guint32                         n_gains);
 
+gboolean                 hyscan_dummy_device_check_tvg_constant       (HyScanDummyDevice              *dummy,
+                                                                       gdouble                         gain);
+
 gboolean                 hyscan_dummy_device_check_tvg_linear_db      (HyScanDummyDevice              *dummy,
                                                                        gdouble                         gain0,
                                                                        gdouble                         gain_step);
