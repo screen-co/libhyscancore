@@ -175,10 +175,15 @@ hyscan_forward_look_data_object_constructed (GObject *object)
   channel_info1 = hyscan_raw_data_get_info (priv->channel1);
   channel_info2 = hyscan_raw_data_get_info (priv->channel2);
 
-  /* Проверяем параметры каналов данных. */
-  if ((fabs (channel_info1.data.rate - channel_info2.data.rate) > 0.1) ||
+  /* Проверяем параметры каналов данных.
+   * Должны быть указаны рабочая частота и база антенны, а также должны
+   * совпадать рабочие частоты каналов и частоты оцифровки данных.*/
+  if ((channel_info1.antenna.frequency < 1.0) ||
+      (fabs (channel_info1.antenna.offset.horizontal - channel_info2.antenna.offset.horizontal) < 1e-4) ||
+      (fabs (channel_info1.data.rate - channel_info2.data.rate) > 0.1) ||
       (fabs (channel_info1.antenna.frequency - channel_info2.antenna.frequency) > 0.1))
     {
+      g_warning ("HyScanForwardLookData: error in channels parameters");
       g_clear_object (&priv->channel1);
       g_clear_object (&priv->channel2);
 
