@@ -84,22 +84,22 @@ G_BEGIN_DECLS
 /** \brief Используемые системы координат. */
 typedef enum
 {
-  HYSCAN_GEO_CS_INVALID          =   0, /**< Некорректная СК. */
-  HYSCAN_GEO_CS_WGS84            = 101, /**< WGS84. */
-  HYSCAN_GEO_CS_SK42             = 102, /**< SK42. */
-  HYSCAN_GEO_CS_SK95             = 104, /**< SK95. */
-  HYSCAN_GEO_CS_PZ90             = 105, /**< PZ90. */
-  HYSCAN_GEO_CS_PZ90_02          = 106, /**< PZ90_02. */
-  HYSCAN_GEO_CS_PZ90_11          = 107  /**< PZ90_11. */
+  HYSCAN_GEO_CS_INVALID, /**< Некорректная СК. */
+  HYSCAN_GEO_CS_WGS84,   /**< WGS84. */
+  HYSCAN_GEO_CS_SK42,    /**< SK42. */
+  HYSCAN_GEO_CS_SK95,    /**< SK95. */
+  HYSCAN_GEO_CS_PZ90,    /**< PZ90. */
+  HYSCAN_GEO_CS_PZ90_02, /**< PZ90_02. */
+  HYSCAN_GEO_CS_PZ90_11  /**< PZ90_11. */
 } HyScanGeoCSType;
 
-/** \brief Типы используемых референц - эллипсоидов */
+/** \brief Типы используемых референц-эллипсоидов */
 typedef enum
 {
-  HYSCAN_GEO_ELLIPSOID_INVALID      =   0, /**< Некорректный эллипсоид. */
-  HYSCAN_GEO_ELLIPSOID_WGS84        = 101, /**< Эллипсоид WGS-84. */
-  HYSCAN_GEO_ELLIPSOID_KRASSOVSKY   = 102, /**< Эллипсоид Крассовского. */
-  HYSCAN_GEO_ELLIPSOID_PZ90         = 103  /**< Эллипсоид ПЗ-90. */
+  HYSCAN_GEO_ELLIPSOID_INVALID,    /**< Некорректный эллипсоид. */
+  HYSCAN_GEO_ELLIPSOID_WGS84,      /**< Эллипсоид WGS-84. */
+  HYSCAN_GEO_ELLIPSOID_KRASSOVSKY, /**< Эллипсоид Крассовского. */
+  HYSCAN_GEO_ELLIPSOID_PZ90        /**< Эллипсоид ПЗ-90. */
 } HyScanGeoEllipsoidType;
 
 /** \brief Геодезические координаты (B, L, H) или (lat, long, H). */
@@ -230,6 +230,17 @@ HYSCAN_API
 gboolean                hyscan_geo_set_origin_user             (HyScanGeo                      *geo,
                                                                 HyScanGeoGeodetic               origin,
                                                                 HyScanGeoEllipsoidParam         ell_params);
+/**
+ *
+ * Эта функция задает количество итераций, смотри #hyscan_geo_topoXY2geo.
+ *
+ * \param[in] geo - указатель на объект класcа;
+ * \param[in] iters - количество итераций.
+ *
+ */
+HYSCAN_API
+void                    hyscan_geo_set_number_of_iterations    (HyScanGeo                      *geo,
+                                                                guint                           iters);
 
 /**
  *
@@ -313,8 +324,7 @@ HYSCAN_API
 gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo                      *geo,
                                                                 HyScanGeoGeodetic              *dst_geod,
                                                                 HyScanGeoCartesian2D            src_topoXY,
-                                                                gdouble                         h_geodetic,
-                                                                guint                           num_of_iter);
+                                                                gdouble                         h_geodetic);
 
 /* Функции для пересчета геодезических координат в различные СК. */
 

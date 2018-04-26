@@ -4,11 +4,11 @@
 
 #define DEG2RAD(x) ((x) * G_PI / 180.0)
 #define RAD2DEG(x) ((x) * 180.0 / G_PI)
-#define SECONDS_TO_RAD 4.84813681109536e-6 /* pi / (180 * 60 * 60) */
-#define MAX_ABS_INPUT_LON 180.0 /*2*G_PI*/
-#define MAX_ABS_INPUT_LAT 90.0 /*G_PI_2*/
-#define MAX_ABS_CALC_LON  540.0 /*3*G_PI*/
-#define MAX_ABS_CALC_LAT  180.0 /*G_PI*/
+#define SEC2RAD(x) ((x) * 4.84813681109536e-6)
+#define MAX_ABS_INPUT_LON 180.0
+#define MAX_ABS_INPUT_LAT 90.0
+#define MAX_ABS_CALC_LON  540.0
+#define MAX_ABS_CALC_LAT  180.0
 #define EPS 1.0e-6
 
 #define LON_OUT_OF_RANGE(x) (fabs(x)>MAX_ABS_INPUT_LON)
@@ -30,27 +30,26 @@ struct HyScanGeoPrivate
   gdouble                  B0;
   gdouble                  L0;
   gdouble                  A0;
-  gdouble                  sinB0;
-  gdouble                  cosB0;
-  gdouble                  sinL0;
-  gdouble                  cosL0;
-  gdouble                  sinA0;
-  gdouble                  cosA0;
+
   gdouble                  A1;
   gdouble                  A2;
   gdouble                  A3;
+
   gdouble                  B1;
   gdouble                  B2;
   gdouble                  B3;
+
   gdouble                  C1;
   gdouble                  C2;
   gdouble                  C3;
+
   gdouble                  N0;
   gdouble                  N0_e;
 
   HyScanGeoEllipsoidParam  sphere_params;
 
   gint                     initialized;
+  guint                    n_iter;
 };
 
 static void             hyscan_geo_constructed          (GObject  *object);
@@ -91,131 +90,15 @@ hyscan_geo_init (HyScanGeo *geo)
 static void
 hyscan_geo_constructed (GObject  *object)
 {
-  /* Здесь ничего нет.
-   * Класс может как использоваться отдельно, так и быть родительским
-   * для HyScanLocation. Поэтому при создании объекта все установки
-   * значений происходят в конструкторе, а при использовании этого
-   * класса как родителя значения необходимо устанавливать
-   * специально с помощью сеттеров, а именно
-   * hyscan_geo_set_origin или hyscan_geo_set_origin_user.
-   */
-}
+  HyScanGeo *geo = HYSCAN_GEO (object);
 
-HyScanGeo *
-hyscan_geo_new (HyScanGeoGeodetic      origin,
-                HyScanGeoEllipsoidType ell_type)
-{
-  HyScanGeo *geo;
-
-  /* Проверка на попадание в диапазон. */
-  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
-    return NULL;
-
-  geo = g_object_new (HYSCAN_TYPE_GEO, NULL);
-
-  hyscan_geo_set_origin (geo, origin, ell_type);
-
-  return geo;
-}
-
-HyScanGeo *
-hyscan_geo_new_user (HyScanGeoGeodetic       origin,
-                     HyScanGeoEllipsoidParam ell_params)
-{
-  HyScanGeo *geo;
-
-  /* Проверка на попадание в диапазон. */
-  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
-    return NULL;
-
-  geo = g_object_new (HYSCAN_TYPE_GEO, NULL);
-
-  hyscan_geo_set_origin_user (geo, origin, ell_params);
-
-  return geo;
+  hyscan_geo_set_number_of_iterations (geo, 1);
 }
 
 static void
 hyscan_geo_finalize (GObject *object)
 {
   G_OBJECT_CLASS (hyscan_geo_parent_class)->finalize (object);
-}
-
-gboolean
-hyscan_geo_set_origin (HyScanGeo               *geo,
-                       HyScanGeoGeodetic        origin,
-                       HyScanGeoEllipsoidType   ell_type)
-{
-  HyScanGeoEllipsoidParam ell_params;
-
-  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
-
-  /* Проверка на попадание в диапазон. */
-  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
-    return FALSE;
-
-  if (hyscan_geo_init_ellipsoid (&ell_params, ell_type))
-    {
-      if (hyscan_geo_set_origin_user  (geo, origin, ell_params))
-        return TRUE;
-    }
-
-  return FALSE;
-}
-
-gboolean
-hyscan_geo_set_origin_user (HyScanGeo              *geo,
-                            HyScanGeoGeodetic       origin,
-                            HyScanGeoEllipsoidParam ell_params)
-{
-  HyScanGeoPrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
-  priv = geo->priv;
-
-  /* Проверка на попадание в диапазон. */
-  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
-    return FALSE;
-
-  priv->sphere_params = ell_params;
-  priv->B0 = DEG2RAD(origin.lat);
-  priv->L0 = DEG2RAD(origin.lon);
-  priv->A0 = DEG2RAD(origin.h);
-  priv->sinB0 = sin (DEG2RAD(origin.lat));
-  priv->cosB0 = cos (DEG2RAD(origin.lat));
-  priv->sinL0 = sin (DEG2RAD(origin.lon));
-  priv->cosL0 = cos (DEG2RAD(origin.lon));
-  priv->sinA0 = sin (DEG2RAD(origin.h));
-  priv->cosA0 = cos (DEG2RAD(origin.h));
-  priv->A1 = -priv->sinB0 * priv->cosL0 * priv->cosA0 - priv->sinL0 * priv->sinA0;
-  priv->A2 = -priv->sinB0 * priv->cosL0 * priv->sinA0 + priv->sinL0 * priv->cosA0;
-  priv->A3 =  priv->cosB0 * priv->cosL0;
-  priv->B1 = -priv->sinB0 * priv->sinL0 * priv->cosA0 + priv->cosL0 * priv->sinA0;
-  priv->B2 = -priv->sinB0 * priv->sinL0 * priv->sinA0 - priv->cosL0 * priv->cosA0;
-  priv->B3 =  priv->cosB0 * priv->sinL0;
-  priv->C1 =  priv->cosB0 * priv->cosA0;
-  priv->C2 =  priv->cosB0 * priv->sinA0;
-  priv->C3 =  priv->sinB0;
-  priv->N0_e = ell_params.e2 * priv->sinB0;
-  priv->N0 = ell_params.a / sqrt (1.0 - priv->N0_e * priv->sinB0);
-  priv->N0_e = priv->N0 * priv->N0_e;
-
-  /* Устанавливаем флаг готовности. */
-  g_atomic_int_set (&(geo->priv->initialized), 1);
-
-  return TRUE;
-}
-
-gboolean
-hyscan_geo_ready (HyScanGeo *geo,
-                  gboolean   uninit)
-{
-  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
-
-  if (uninit)
-    g_atomic_int_set (&(geo->priv->initialized), 0);
-
-  return g_atomic_int_get (&(geo->priv->initialized));
 }
 
 /*
@@ -252,6 +135,7 @@ hyscan_geo_geo2ecef (HyScanGeoCartesian3D   *dst,
   dst->x = a * cosl;
   dst->y = a * sinl;
   dst->z = (N * (1.0 - params.e2) + H) * sinb;
+
 }
 
 /*
@@ -278,6 +162,7 @@ hyscan_geo_ecef2topo (HyScanGeo            *geo,
   dst->x = x_t;
   dst->y = y_t;
   dst->z = z_t;
+
 }
 
 /*
@@ -302,6 +187,7 @@ hyscan_geo_topo2ecef (HyScanGeo            *geo,
   dst->x = x_c;
   dst->y = y_c;
   dst->z = z_c;
+
 }
 
 /*
@@ -363,6 +249,151 @@ hyscan_geo_ecef2geo (HyScanGeoGeodetic      *dst,
       dst->lon = hyscan_geo_fit_lon_in_range(lon);
       dst->h = h;
     }
+
+}
+
+/* Функция определяет параметры эллипсоида по типу СК. */
+static HyScanGeoEllipsoidType
+hyscan_geo_get_ellipse_by_cs (HyScanGeoCSType cs_type)
+{
+  switch (cs_type)
+    {
+    case HYSCAN_GEO_CS_WGS84:
+      return HYSCAN_GEO_ELLIPSOID_WGS84;
+    case HYSCAN_GEO_CS_SK42:
+    case HYSCAN_GEO_CS_SK95:
+      return HYSCAN_GEO_ELLIPSOID_KRASSOVSKY;
+    case HYSCAN_GEO_CS_PZ90:
+    case HYSCAN_GEO_CS_PZ90_02:
+    case HYSCAN_GEO_CS_PZ90_11:
+      return HYSCAN_GEO_ELLIPSOID_PZ90;
+    default:
+      return HYSCAN_GEO_ELLIPSOID_INVALID;
+    }
+}
+
+HyScanGeo *
+hyscan_geo_new (HyScanGeoGeodetic      origin,
+                HyScanGeoEllipsoidType ell_type)
+{
+  HyScanGeo *geo;
+
+  geo = g_object_new (HYSCAN_TYPE_GEO, NULL);
+
+  if (!hyscan_geo_set_origin (geo, origin, ell_type))
+    g_clear_object (&geo);
+
+  return geo;
+}
+
+HyScanGeo *
+hyscan_geo_new_user (HyScanGeoGeodetic       origin,
+                     HyScanGeoEllipsoidParam ell_params)
+{
+  HyScanGeo *geo;
+
+  /* Проверка на попадание в диапазон. */
+  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
+    return NULL;
+
+  geo = g_object_new (HYSCAN_TYPE_GEO, NULL);
+
+  hyscan_geo_set_origin_user (geo, origin, ell_params);
+
+  return geo;
+}
+
+gboolean
+hyscan_geo_set_origin (HyScanGeo               *geo,
+                       HyScanGeoGeodetic        origin,
+                       HyScanGeoEllipsoidType   ell_type)
+{
+  HyScanGeoEllipsoidParam ell_params;
+
+  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
+
+  /* Проверка на попадание в диапазон. */
+  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
+    return FALSE;
+
+  if (hyscan_geo_init_ellipsoid (&ell_params, ell_type))
+    {
+      if (hyscan_geo_set_origin_user  (geo, origin, ell_params))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+gboolean
+hyscan_geo_set_origin_user (HyScanGeo              *geo,
+                            HyScanGeoGeodetic       origin,
+                            HyScanGeoEllipsoidParam ell_params)
+{
+  gdouble sinB0, sinL0, sinA0;
+  gdouble cosB0, cosL0, cosA0;
+  HyScanGeoPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
+  priv = geo->priv;
+
+  /* Проверка на попадание в диапазон. */
+  if (LAT_OUT_OF_RANGE(origin.lat) || LON_OUT_OF_RANGE(origin.lon) || fabs (origin.h) > 360.0)
+    return FALSE;
+
+  priv->sphere_params = ell_params;
+  priv->B0 = DEG2RAD(origin.lat);
+  priv->L0 = DEG2RAD(origin.lon);
+  priv->A0 = DEG2RAD(origin.h);
+
+  sinB0 = sin (priv->B0);
+  cosB0 = cos (priv->B0);
+  sinL0 = sin (priv->L0);
+  cosL0 = cos (priv->L0);
+  sinA0 = sin (priv->A0);
+  cosA0 = cos (priv->A0);
+
+  priv->A1 = -sinB0 * cosL0 * cosA0 - sinL0 * sinA0;
+  priv->A2 = -sinB0 * cosL0 * sinA0 + sinL0 * cosA0;
+  priv->A3 =  cosB0 * cosL0;
+
+  priv->B1 = -sinB0 * sinL0 * cosA0 + cosL0 * sinA0;
+  priv->B2 = -sinB0 * sinL0 * sinA0 - cosL0 * cosA0;
+  priv->B3 =  cosB0 * sinL0;
+
+  priv->C1 =  cosB0 * cosA0;
+  priv->C2 =  cosB0 * sinA0;
+  priv->C3 =  sinB0;
+
+  priv->N0_e = ell_params.e2 * sinB0;
+  priv->N0 = ell_params.a / sqrt (1.0 - priv->N0_e * sinB0);
+  priv->N0_e = priv->N0 * priv->N0_e;
+
+  /* Устанавливаем флаг готовности. */
+  geo->priv->initialized = 1;
+
+  return TRUE;
+}
+
+void
+hyscan_geo_set_number_of_iterations (HyScanGeo *geo,
+                                     guint      iters)
+{
+  g_return_if_fail (HYSCAN_IS_GEO (geo));
+
+  geo->priv->n_iter = iters;
+}
+
+gboolean
+hyscan_geo_ready (HyScanGeo *geo,
+                  gboolean   uninit)
+{
+  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
+
+  if (uninit)
+    geo->priv->initialized = 0;
+
+  return geo->priv->initialized;
 }
 
 gboolean
@@ -377,7 +408,7 @@ hyscan_geo_geo2topo (HyScanGeo            *geo,
   priv = geo->priv;
 
   /* Убеждаемся, что эллипсоид и начальная точка заданы. */
-  if (g_atomic_int_get (&(priv->initialized)) == 0)
+  if (priv->initialized == 0)
     return FALSE;
 
   /* Убеждаемся, что точка лежит в нормальных пределах. */
@@ -389,7 +420,7 @@ hyscan_geo_geo2topo (HyScanGeo            *geo,
   src_rad.h = src_geod.h;
 
   /* Преобразовываем геодезические в ECEF. */
-  hyscan_geo_geo2ecef (dst_topo, src_rad, geo->priv->sphere_params);
+  hyscan_geo_geo2ecef (dst_topo, src_rad, priv->sphere_params);
 
   /* Преобразовываем ECEF в топоцентрические. */
   hyscan_geo_ecef2topo (geo, dst_topo, *dst_topo);
@@ -409,14 +440,14 @@ hyscan_geo_topo2geo (HyScanGeo           *geo,
   priv = geo->priv;
 
   /* Убеждаемся, что эллипсоид и начальная точка заданы. */
-  if (g_atomic_int_get (&(priv->initialized)) == 0)
+  if (priv->initialized == 0)
     return FALSE;
 
   /* Преобразовываем топоцентрические в ECEF. */
   hyscan_geo_topo2ecef (geo, &src_topo, src_topo);
 
   /* Преобразовываем ECEF в геодезические. */
-  hyscan_geo_ecef2geo (&dst_rad, src_topo, geo->priv->sphere_params);
+  hyscan_geo_ecef2geo (&dst_rad, src_topo, priv->sphere_params);
 
   dst_geod->lat = RAD2DEG (dst_rad.lat);
   dst_geod->lon = RAD2DEG (dst_rad.lon);
@@ -438,7 +469,7 @@ hyscan_geo_geo2topoXY (HyScanGeo            *geo,
   priv = geo->priv;
 
   /* Убеждаемся, что эллипсоид и начальная точка заданы. */
-  if (g_atomic_int_get (&(priv->initialized)) == 0)
+  if (priv->initialized == 0)
     return FALSE;
 
   /* Убеждаемся, что точка лежит в нормальных пределах. */
@@ -450,7 +481,7 @@ hyscan_geo_geo2topoXY (HyScanGeo            *geo,
   src_rad.h = src_geod.h;
 
   /* Преобразовываем геодезические в ECEF. */
-  hyscan_geo_geo2ecef (&dst_topo, src_rad, geo->priv->sphere_params);
+  hyscan_geo_geo2ecef (&dst_topo, src_rad, priv->sphere_params);
 
   /* Преобразовываем ECEF в топоцентрические. */
   hyscan_geo_ecef2topo (geo, &dst_topo, dst_topo);
@@ -465,8 +496,7 @@ gboolean
 hyscan_geo_topoXY2geo (HyScanGeo           *geo,
                        HyScanGeoGeodetic   *dst_geod,
                        HyScanGeoCartesian2D src_topoXY,
-                       gdouble              h_geodetic,
-                       guint                num_of_iter)
+                       gdouble              h_geodetic)
 {
   HyScanGeoPrivate *priv;
 
@@ -481,7 +511,7 @@ hyscan_geo_topoXY2geo (HyScanGeo           *geo,
   guint i;
 
   /* Убеждаемся, что эллипсоид и начальная точка заданы. */
-  if (g_atomic_int_get (&(priv->initialized)) == 0)
+  if (priv->initialized == 0)
     return FALSE;
 
   x_orig = src_topoXY.x;
@@ -501,7 +531,7 @@ hyscan_geo_topoXY2geo (HyScanGeo           *geo,
   hyscan_geo_topo2geo (geo, &dst_rad, topoXYZ);
 
   /* Если требуется, делаем дополнительные итерации */
-  for (i = 0; i < num_of_iter; ++i)
+  for (i = 0; i < priv->n_iter; ++i)
     {
       /* Устанавливаем высоту. */
       dst_rad.h = h_geodetic;
@@ -526,10 +556,10 @@ hyscan_geo_topoXY2geo (HyScanGeo           *geo,
 
 /* Перевод геодезических координат. */
 gboolean
-hyscan_geo_cs_transform (HyScanGeoGeodetic    *dst,
-                         HyScanGeoGeodetic     src,
-                         HyScanGeoCSType       cs_in,
-                         HyScanGeoCSType       cs_out)
+hyscan_geo_cs_transform (HyScanGeoGeodetic *dst,
+                         HyScanGeoGeodetic  src,
+                         HyScanGeoCSType    cs_in,
+                         HyScanGeoCSType    cs_out)
 {
   HyScanGeoDatumParam datum_param;
   HyScanGeoGeodetic src_rad, dst_rad;
@@ -570,11 +600,11 @@ hyscan_geo_cs_transform (HyScanGeoGeodetic    *dst,
 }
 
 gboolean
-hyscan_geo_cs_transform_user (HyScanGeoGeodetic          *dst,
-                              HyScanGeoGeodetic           src,
-                              HyScanGeoEllipsoidParam     el_params_in,
-                              HyScanGeoEllipsoidParam     el_params_out,
-                              HyScanGeoDatumParam         datum_param)
+hyscan_geo_cs_transform_user (HyScanGeoGeodetic       *dst,
+                              HyScanGeoGeodetic        src,
+                              HyScanGeoEllipsoidParam  el_params_in,
+                              HyScanGeoEllipsoidParam  el_params_out,
+                              HyScanGeoDatumParam      datum_param)
 {
   gdouble wx, wy, wz, m_1, x_w, y_w, z_w;
   HyScanGeoCartesian3D ref;
@@ -626,8 +656,8 @@ hyscan_geo_get_helmert_params_to_wgs84 (HyScanGeoCSType cs_type)
       params.dY = -141.27;
       params.dZ = -80.9;
       params.wx = 0;
-      params.wy = -0.35 * SECONDS_TO_RAD;
-      params.wz = -0.86 * SECONDS_TO_RAD;
+      params.wy = SEC2RAD (-0.35);
+      params.wz = SEC2RAD (-0.86);
       params.m = -0.12e-6;
       break;
 
@@ -638,7 +668,7 @@ hyscan_geo_get_helmert_params_to_wgs84 (HyScanGeoCSType cs_type)
       params.dZ = -82.66;
       params.wx = 0;
       params.wy = 0;
-      params.wz = -0.20 * SECONDS_TO_RAD;
+      params.wz = SEC2RAD (-0.20);
       params.m = -0.12e-6;
       break;
 
@@ -660,18 +690,18 @@ hyscan_geo_get_helmert_params_to_wgs84 (HyScanGeoCSType cs_type)
       params.dZ = -0.92;
       params.wx = 0;
       params.wy = 0;
-      params.wz = -0.07 * SECONDS_TO_RAD;
+      params.wz = SEC2RAD (-0.07);
       params.m = 0.1e-6;
       break;
 
-    /* ПЗ-90.11 на ПЗ-90 (atminst.ru/up_files/seminar_28-05-2013_doklad1.pdf). */
+    /* ПЗ-90.11 на ПЗ-90 (atminst.ru/up_files/seminar_28-05-2013_doklad1.pdf) */
     case HYSCAN_GEO_CS_PZ90_11:
       params.dX = 0.013;
       params.dY = -0.106;
       params.dZ = -0.022;
-      params.wx = 2.30 * SECONDS_TO_RAD;
-      params.wy = -3.54 * SECONDS_TO_RAD;
-      params.wz = 4.21 * SECONDS_TO_RAD;
+      params.wx = SEC2RAD ( 2.30);
+      params.wy = SEC2RAD (-3.54);
+      params.wz = SEC2RAD ( 4.21);
       params.m = 0.008e-6;
       break;
     default:
@@ -700,26 +730,6 @@ hyscan_geo_get_datum_params (HyScanGeoCSType cs_in,
   in_params.m  -= out_params.m;
 
   return in_params;
-}
-
-/* Функция определяет параметры эллипсоида по типу СК. */
-static HyScanGeoEllipsoidType
-hyscan_geo_get_ellipse_by_cs (HyScanGeoCSType cs_type)
-{
-  switch (cs_type)
-    {
-    case HYSCAN_GEO_CS_WGS84:
-      return HYSCAN_GEO_ELLIPSOID_WGS84;
-    case HYSCAN_GEO_CS_SK42:
-    case HYSCAN_GEO_CS_SK95:
-      return HYSCAN_GEO_ELLIPSOID_KRASSOVSKY;
-    case HYSCAN_GEO_CS_PZ90:
-    case HYSCAN_GEO_CS_PZ90_02:
-    case HYSCAN_GEO_CS_PZ90_11:
-      return HYSCAN_GEO_ELLIPSOID_PZ90;
-    default:
-      return HYSCAN_GEO_ELLIPSOID_INVALID;
-    }
 }
 
 /* Функция возвращает параметры эллипсоида по его типу. */

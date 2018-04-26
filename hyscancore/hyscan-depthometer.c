@@ -20,18 +20,18 @@ enum
 
 struct _HyScanDepthometerPrivate
 {
-  HyScanNavData  *source;           /* Источник. */
+  HyScanNavData *source;           /* Источник. */
 
-  HyScanCache  *cache;            /* Кэш. */
-  gchar        *key;              /* Ключ кэширования. */
-  gint          key_length;       /* Длина ключа. */
+  HyScanCache   *cache;            /* Кэш. */
+  gchar         *key;              /* Ключ кэширования. */
+  gint           key_length;       /* Длина ключа. */
 
-  guint32      *indexes;          /* Массив индексов. */
-  gint          real_size;        /* Размер массива. */
-  gint          size;             /* Количество точек для аппроксимации. */
+  guint32       *indexes;          /* Массив индексов. */
+  gint           real_size;        /* Размер массива. */
+  gint           size;             /* Количество точек для аппроксимации. */
 
-  gint64        valid;            /* Окно валидности в мкс. */
-  gint64        half_valid;       /* Половина окна валидности. */
+  gint64         valid;            /* Окно валидности в мкс. */
+  gint64         half_valid;       /* Половина окна валидности. */
 };
 
 static void    hyscan_depthometer_set_property             (GObject               *object,

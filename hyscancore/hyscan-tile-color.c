@@ -315,13 +315,12 @@ hyscan_tile_color_update_mnemonic (HyScanTileColorInfo *cmap)
   if (cmap->mnemonic != NULL)
     g_free (cmap->mnemonic);
 
-  cmap->mnemonic = g_strdup_printf ("%07.4f.%07.4f.%07.4f.%u.%u",
+  cmap->mnemonic = g_strdup_printf (".%f.%f.%f.%u.%u",
                                      cmap->black,
                                      cmap->gamma,
                                      cmap->white,
                                      hash,
                                      cmap->background);
-
 }
 
 /* Функция создает новый объект HyScanTileColor. */

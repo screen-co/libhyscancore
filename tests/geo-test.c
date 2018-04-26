@@ -126,12 +126,13 @@ int main (void)
   g_print ("Geodetic to topocentric  in 2 dimensions transformation test\nWGS-84->topocentric->WGS-84\n");
 
 
+  hyscan_geo_set_number_of_iterations (geo, 2);
   for (i = 0; i < 100000; i++)
     {
       for (j = 0; j < num_of_points; j++)
         {
           hyscan_geo_geo2topoXY (geo, &topo2d, buf1[j]);
-          hyscan_geo_topoXY2geo (geo, &buf1[j], topo2d, buf1[j].h, 2);
+          hyscan_geo_topoXY2geo (geo, &buf1[j], topo2d, buf1[j].h);
         }
     }
 

@@ -1,4 +1,3 @@
-
 set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
                     ${MATH_LIBRARIES}
                     ${LIBXML2_LIBRARIES}
@@ -12,6 +11,7 @@ add_executable (forward-look-data-test forward-look-data-test.c hyscan-fl-gen.c)
 add_executable (forward-look-player-test forward-look-player-test.c hyscan-fl-gen.c)
 add_executable (geo-test geo-test.c)
 add_executable (depthometer-test depthometer-test.c)
+add_executable (mloc-test mloc-test.c)
 add_executable (depth-nmea-test depth-nmea-test.c)
 add_executable (nmea-parser-test nmea-parser-test.c)
 add_executable (tile-color-test tile-color-test.c)
@@ -28,6 +28,7 @@ target_link_libraries (forward-look-data-test ${TEST_LIBRARIES})
 target_link_libraries (forward-look-player-test ${TEST_LIBRARIES})
 target_link_libraries (geo-test ${TEST_LIBRARIES})
 target_link_libraries (depthometer-test ${TEST_LIBRARIES})
+target_link_libraries (mloc-test ${TEST_LIBRARIES})
 target_link_libraries (depth-nmea-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-parser-test ${TEST_LIBRARIES})
 target_link_libraries (tile-color-test ${TEST_LIBRARIES})
@@ -44,6 +45,7 @@ install (TARGETS data-writer-test
                  forward-look-player-test
                  geo-test
                  depthometer-test
+                 mloc-test
                  depth-nmea-test
                  nmea-parser-test
                  projector-test

@@ -49,6 +49,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nav-data.c
              hyscan-nmea-parser.c
              hyscan-depthometer.c
+             hyscan-mloc.c
              hyscan-tile-common.c
              hyscan-tile-color.c
              hyscan-waterfall-tile.c
