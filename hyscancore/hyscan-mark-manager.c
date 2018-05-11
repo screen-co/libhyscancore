@@ -9,6 +9,8 @@
  */
 
 #include "hyscan-mark-manager.h"
+#include <hyscan-mloc.h>
+#include <hyscan-projector.h>
 
 #define DELAY (1 * G_TIME_SPAN_SECOND)
 
@@ -25,13 +27,21 @@ enum
   SIGNAL_LAST
 };
 
-/* Задание, структура с информацией о том, что требуется сделать. */
+/* Задание. Структура с информацией о том, что требуется сделать. */
 typedef struct
 {
   gchar               *id;        /* Идентификатор метки. */
   HyScanWaterfallMark *mark;      /* Метка. */
   gint                 action;    /* Требуемое действие. */
 } HyScanMarkManagerTask;
+
+/* Для координат. */
+typedef struct
+{
+  gchar               *track;      /* Название галса. */
+  HyScanmLoc          *mloc;   /* Объект для определения местоположения. */
+  GHashTable          *projectors; /* Проекторы (для каждого канала). */
+} HyScanMarkManagerLocation;
 
 /* Состояние объекта. */
 typedef struct
@@ -60,6 +70,8 @@ struct _HyScanMarkManagerPrivate
 
   GHashTable              *marks;            /* Список меток (отдаваемый наружу). */
   GMutex                   marks_lock;       /* Блокировка списка меток. */
+
+  GHashTable              *marks_w_coords;   /* Список меток с координатами . */
 };
 
 static void     hyscan_mark_manager_object_constructed       (GObject                   *object);
@@ -150,10 +162,11 @@ hyscan_mark_manager_object_finalize (GObject *object)
 
 /* Функция очищает состояние. */
 static void
-hyscan_mark_manager_clear_state (HyScanMarkManagerState   *state)
+hyscan_mark_manager_clear_state (HyScanMarkManagerState *state)
 {
   g_clear_pointer (&state->project, g_free);
   g_clear_object (&state->db);
+  state->project_changed = FALSE;
 }
 
 /* Функция синхронизирует состояния. */
@@ -212,9 +225,56 @@ static void
 hyscan_mark_manager_free_task (gpointer data)
 {
   HyScanMarkManagerTask *task = data;
-  g_free (task->id);
   hyscan_waterfall_mark_free (task->mark);
+  g_free (task->id);
   g_free (task);
+}
+
+HyScanMarkManagerMarkLoc *
+hyscan_mark_manager_mark_coords (GHashTable             * locstore,
+                                 HyScanWaterfallMark    * mark,
+                                 HyScanMarkManagerState * state)
+{
+  gdouble along, across;
+  HyScanProjector *projector;
+  HyScanAcousticData *adata;
+  HyScanAntennaPosition apos;
+  gint64 time;
+  guint32 n;
+  HyScanGeoGeodetic position;
+  HyScanMarkManagerMarkLoc *res;
+  HyScanMarkManagerLocation *location = g_hash_table_lookup (locstore, mark->track);
+
+  projector = g_hash_table_lookup (location->projectors, GINT_TO_POINTER (mark->source0));
+  if (projector == NULL)
+    {
+      projector = hyscan_projector_new (state->db, state->project, location->track, mark->source0, FALSE);
+      if (projector == NULL)
+        projector = hyscan_projector_new (state->db, state->project, location->track, mark->source0, TRUE);
+      if (projector == NULL)
+        return NULL;
+
+      g_hash_table_insert (location->projectors, GINT_TO_POINTER (mark->source0), projector);
+    }
+
+  hyscan_projector_index_to_coord (projector, mark->index0, &along);
+  hyscan_projector_count_to_coord (projector, mark->count0, &across, 0);
+
+  adata = (HyScanAcousticData*)hyscan_projector_get_acoustic_data (projector);
+  apos = hyscan_acoustic_data_get_position (adata);
+  hyscan_acoustic_data_get_values (adata, mark->index0, &n, &time);
+
+  if (mark->source0 == HYSCAN_SOURCE_SIDE_SCAN_PORT)
+    across *= -1;
+
+  hyscan_mloc_get (location->mloc, time, &apos, across, &position);
+
+  res = g_new (HyScanMarkManagerMarkLoc, 1);
+  res->mark = hyscan_waterfall_mark_copy (mark);
+  res->lat = position.lat;
+  res->lon = position.lon;
+
+  return res;
 }
 
 /* Функция выполняет задание. */
@@ -263,6 +323,50 @@ hyscan_mark_manager_do_all_tasks (HyScanMarkManagerPrivate  *priv,
   g_slist_free_full (tasks, hyscan_mark_manager_free_task);
 }
 
+static HyScanMarkManagerMarkLoc *
+hyscan_mark_manager_mark_loc_copy (gpointer data)
+{
+  HyScanMarkManagerMarkLoc *src = data;
+  HyScanMarkManagerMarkLoc *dst = g_new (HyScanMarkManagerMarkLoc, 1);
+  dst->mark = hyscan_waterfall_mark_copy (src->mark);
+  dst->lat = src->lat;
+  dst->lon = src->lon;
+
+  return dst;
+}
+
+static void
+hyscan_mark_manager_mark_loc_free (gpointer data)
+{
+  HyScanMarkManagerMarkLoc *loc = data;
+
+  hyscan_waterfall_mark_free (loc->mark);
+}
+
+static void
+hyscan_mark_manager_location_free (gpointer data)
+{
+  HyScanMarkManagerLocation *loc = data;
+  g_free (loc->track);      /* Название галса. */
+  g_object_unref (loc->mloc);   /* Объект для определения местоположения. */
+  g_hash_table_unref (loc->projectors); /* Проекторы (для каждого канала). */
+}
+
+static HyScanMarkManagerLocation *
+hyscan_mark_manager_location_new (HyScanDB    *db,
+                                  const gchar *project,
+                                  const gchar *track)
+{
+  HyScanMarkManagerLocation *loc;
+
+  loc = g_new0 (HyScanMarkManagerLocation, 1);
+  loc->track = g_strdup (track);
+  loc->mloc = hyscan_mloc_new (db, project, track);
+  loc->projectors = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+                                           (GDestroyNotify)g_object_unref);
+  return loc;
+}
+
 /* Поток асинхронной работы с БД. */
 static gpointer
 hyscan_mark_manager_processing (gpointer data)
@@ -271,12 +375,17 @@ hyscan_mark_manager_processing (gpointer data)
   HyScanWaterfallMarkData *mdata = NULL; /* Объект работы с метками. */
   gchar **id_list;                       /* Идентификаторы меток. */
   GHashTable *mark_list;                 /* Метки из БД. */
+  GHashTable *mark_coords_list;                 /* Метки из БД. */
+  GHashTable *projects_ids;                  /* Метки из БД. */
   GMutex im_lock;                        /* Мьютекс нужен для GCond. */
   HyScanWaterfallMark *mark;
   guint len, i;
   guint32 oldmc, mc;                     /* Значения счетчика изменений. */
 
-  oldmc = mc = 0;
+  guint32 project_oldmc, project_mc;     /* Значения счетчика изменений уровня проекта. */
+  gint32 project_fd = -1;
+
+  project_oldmc = project_mc = oldmc = mc = 0;
   g_mutex_init (&im_lock);
 
   while (!g_atomic_int_get (&priv->stop))
@@ -309,16 +418,24 @@ hyscan_mark_manager_processing (gpointer data)
           if (mdata != NULL)
             hyscan_mark_manager_do_all_tasks (priv, mdata);
           g_clear_object (&mdata);
+
+          hyscan_db_close (priv->cur_state.db, project_fd);
+          project_fd = -1;
         }
 
+      /* Если надо, создаем объект работы с метками. */
       if (mdata == NULL)
         {
-          /* Создаем объект работы с метками.
-           * Если не получилось (например потому, что проект ещё не создан),
-           * повторим через некоторое время. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
-            mdata = hyscan_waterfall_mark_data_new (priv->cur_state.db, priv->cur_state.project);
-          
+            {
+              mdata = hyscan_waterfall_mark_data_new (priv->cur_state.db,
+                                                      priv->cur_state.project);
+              project_fd = hyscan_db_project_open (priv->cur_state.db,
+                                                   priv->cur_state.project);
+            }
+
+          /* Если не получилось (например потому, что проект ещё не создан),
+           * повторим через некоторое время. */
           if (mdata == NULL)
             {
               g_atomic_int_set (&priv->im_flag, 1);
@@ -327,6 +444,8 @@ hyscan_mark_manager_processing (gpointer data)
             }
 
           mc = hyscan_waterfall_mark_data_get_mod_count (mdata);
+          project_mc = hyscan_db_get_mod_count (priv->cur_state.db, project_fd);
+          project_oldmc = ~project_mc;
         }
 
       oldmc = mc;
@@ -334,28 +453,82 @@ hyscan_mark_manager_processing (gpointer data)
       /* Выполняем все задания. */
       hyscan_mark_manager_do_all_tasks (priv, mdata);
 
+      /* Проверяем, есть ли новые галсы в проекте. */
+      project_mc = hyscan_db_get_mod_count (priv->cur_state.db, project_fd);
+      if (project_mc != project_oldmc)
+        {
+          HyScanDB *db = priv->cur_state.db;
+          gchar ** track_list;
+          gchar ** name;
+
+          projects_ids = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                                (GDestroyNotify)hyscan_mark_manager_location_free);
+
+          track_list = hyscan_db_track_list (db, project_fd);
+
+          for (name = track_list; name != NULL && *name != NULL; ++name)
+            {
+              gint32 track_fd, param_fd;
+              gchar *id;
+
+              track_fd = hyscan_db_track_open (db, project_fd, *name);
+              param_fd = hyscan_db_track_param_open (db, track_fd);
+              id = hyscan_db_param_get_string (db, param_fd, NULL, "/id");
+
+              /* Ежели этого галса ещё нет в нашей чудесной хэш-таблице,
+               * внедрим его туда. */
+              if (!g_hash_table_contains (projects_ids, id))
+                {
+                  HyScanMarkManagerLocation *loc;
+                  loc = hyscan_mark_manager_location_new (db, priv->cur_state.project, *name);
+
+                  g_hash_table_insert (projects_ids, g_strdup (id), loc);
+                }
+
+              hyscan_db_close (db, track_fd);
+              hyscan_db_close (db, param_fd);
+              g_free (id);
+            }
+
+          g_strfreev (track_list);
+        }
+
       /* Забираем метки из БД во временную хэш-таблицу. */
       mark_list = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
                                          (GDestroyNotify)hyscan_waterfall_mark_free);
+      mark_coords_list = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                         (GDestroyNotify)hyscan_mark_manager_mark_loc_free);
 
       id_list = hyscan_waterfall_mark_data_get_ids (mdata, &len);
       for (i = 0; i < len; i++)
         {
+          HyScanMarkManagerMarkLoc * mwcoords;
           mark = hyscan_waterfall_mark_data_get (mdata, id_list[i]);
-          if (mark != NULL)
-            g_hash_table_insert (mark_list, g_strdup (id_list[i]), mark);
+          if (mark == NULL)
+            continue;
+
+          /* Кладем в список меток. */
+          g_hash_table_insert (mark_list, g_strdup (id_list[i]), mark);
+
+          /* Ещё надо координаты посчитать. */
+          mwcoords = hyscan_mark_manager_mark_coords (projects_ids, mark, &priv->cur_state);
+          g_hash_table_insert (mark_coords_list, g_strdup (id_list[i]), mwcoords);
+
         }
       g_strfreev (id_list);
 
       /* Очищаем хэш-таблицу из привата и помещаем туда свежесозданную. */
       g_mutex_lock (&priv->marks_lock);
       g_clear_pointer (&priv->marks, g_hash_table_unref);
+      g_clear_pointer (&priv->marks_w_coords, g_hash_table_unref);
       priv->marks = mark_list;
+      priv->marks_w_coords = mark_coords_list;
       priv->marks_changed = TRUE;
       g_mutex_unlock (&priv->marks_lock);
     }
 
   g_clear_object (&mdata);
+  hyscan_db_close (priv->cur_state.db, project_fd);
   g_mutex_clear (&im_lock);
   return NULL;
 }
@@ -484,6 +657,38 @@ hyscan_mark_manager_get (HyScanMarkManager *manager)
   g_hash_table_iter_init (&iter, priv->marks);
   while (g_hash_table_iter_next (&iter, &key, &value))
     g_hash_table_insert (marks, g_strdup (key), hyscan_waterfall_mark_copy (value));
+
+  g_mutex_unlock (&priv->marks_lock);
+
+  return marks;
+}
+
+GHashTable *
+hyscan_mark_manager_get_w_coords (HyScanMarkManager *manager)
+{
+  HyScanMarkManagerPrivate *priv;
+  GHashTable *marks;
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_return_val_if_fail (HYSCAN_IS_MARK_MANAGER (manager), NULL);
+  priv = manager->priv;
+
+  g_mutex_lock (&priv->marks_lock);
+
+  /* Проверяем, что метки есть. */
+  if (priv->marks_w_coords == NULL)
+    {
+      g_mutex_unlock (&priv->marks_lock);
+      return NULL;
+    }
+
+  marks = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                 (GDestroyNotify)hyscan_mark_manager_mark_loc_free);
+  /* Переписываем метки. */
+  g_hash_table_iter_init (&iter, priv->marks_w_coords);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    g_hash_table_insert (marks, g_strdup (key), hyscan_mark_manager_mark_loc_copy (value));
 
   g_mutex_unlock (&priv->marks_lock);
 

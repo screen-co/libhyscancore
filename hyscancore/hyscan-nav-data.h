@@ -62,6 +62,9 @@ struct _HyScanNavDataInterface
                                                            guint32              index,
                                                            gint64              *time,
                                                            gdouble             *value);
+  gboolean                (*get_by_time)                  (HyScanNavData       *ndata,
+                                                           gint64              *time,
+                                                           gdouble             *value);
   HyScanDBFindStatus      (*find_data)                    (HyScanNavData       *ndata,
                                                            gint64               time,
                                                            guint32             *lindex,
@@ -107,6 +110,23 @@ void                    hyscan_nav_data_set_cache       (HyScanNavData          
 HYSCAN_API
 gboolean                hyscan_nav_data_get             (HyScanNavData         *ndata,
                                                          guint32                index,
+                                                         gint64                *time,
+                                                         gdouble               *value);
+
+/**
+ *
+ * Функция возвращает значение для заданного времени.
+ *
+ * \param ndata указатель на интерфейс \link HyScanNavData \endlink;
+ * \param index индекс записи в канале данных;
+ * \param time время данных;
+ * \param value значение.
+ *
+ * \return TRUE, если удалось определить, FALSE в случае ошибки.
+ *
+ */
+HYSCAN_API
+gboolean                hyscan_nav_data_get_by_time     (HyScanNavData         *ndata,
                                                          gint64                *time,
                                                          gdouble               *value);
 

@@ -562,7 +562,7 @@ hyscan_track_rect_set_sound_velocity (HyScanTrackRect *self,
 /* Функция устанавливает кэш.*/
 void
 hyscan_track_rect_set_cache (HyScanTrackRect *self,
-                            HyScanCache     *cache)
+                             HyScanCache     *cache)
 {
   HyScanTrackRectPrivate *priv;
 

@@ -148,6 +148,20 @@ hyscan_mloc_new (HyScanDB    *db,
                        NULL);
 }
 
+void
+hyscan_mloc_set_cache (HyScanmLoc  *self,
+                       HyScanCache *cache)
+{
+  HyScanmLocPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_MLOC (self));
+  priv = self->priv;
+
+  hyscan_nav_data_set_cache (priv->lat, cache);
+  hyscan_nav_data_set_cache (priv->lon, cache);
+  hyscan_nav_data_set_cache (priv->trk, cache);
+}
+
 gboolean
 hyscan_mloc_get (HyScanmLoc            *self,
                  gint64                 time,
@@ -178,7 +192,6 @@ hyscan_mloc_get (HyScanmLoc            *self,
   hyscan_nav_data_get (priv->trk, index, NULL, &origin.h);
 
   /* Устанавливаем в эту точку (и с этим углом) начало топоцентрической СК. */
-  origin.h = 0;
   hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
   /* Сдвигаю куда следует. Тут небольшой костыль, т.к. система координат в гео
@@ -186,6 +199,52 @@ hyscan_mloc_get (HyScanmLoc            *self,
    * а в гео - левее. */
   topo.x = -priv->position.x + antenna->x;
   topo.y = priv->position.y - antenna->y - shift;
+  topo.z = -priv->position.z + antenna->z;
+
+  /* Перевожу обратно в геодезичесие. */
+  hyscan_geo_topo2geo (priv->geo, position, topo);
+
+  return TRUE;
+}
+
+gboolean
+hyscan_mloc_get_fl (HyScanmLoc            *self,
+                    gint64                 time,
+                    HyScanAntennaPosition *antenna,
+                    gdouble                shift_x,
+                    gdouble                shift_y,
+                    HyScanGeoGeodetic     *position)
+{
+  HyScanmLocPrivate *priv;
+  HyScanGeoCartesian3D topo;
+  HyScanGeoGeodetic origin;
+  HyScanDBFindStatus fstatus;
+  guint32 lindex, rindex, index;
+
+  g_return_val_if_fail (HYSCAN_IS_MLOC (self), FALSE);
+  priv = self->priv;
+
+  /* Выясняем координаты приемника в требуемый момент. */
+  hyscan_nav_data_get_range (priv->lat, &lindex, &rindex);
+  fstatus = hyscan_nav_data_find_data (priv->lat, time, &lindex, &rindex, NULL, NULL);
+
+  if (fstatus != HYSCAN_DB_FIND_OK)
+    return FALSE;
+
+  index = lindex;
+
+  hyscan_nav_data_get (priv->lat, index, NULL, &origin.lat);
+  hyscan_nav_data_get (priv->lon, index, NULL, &origin.lon);
+  hyscan_nav_data_get (priv->trk, index, NULL, &origin.h);
+
+  /* Устанавливаем в эту точку (и с этим углом) начало топоцентрической СК. */
+  hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
+
+  /* Сдвигаю куда следует. Тут небольшой костыль, т.к. система координат в гео
+   * и в остальном хайскане не совпадает. В хайскане Y+ - это на правый борт,
+   * а в гео - левее. */
+  topo.x = -priv->position.x + antenna->x + shift_x;
+  topo.y = priv->position.y - antenna->y - shift_y;
   topo.z = -priv->position.z + antenna->z;
 
   /* Перевожу обратно в геодезичесие. */

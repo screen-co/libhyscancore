@@ -52,7 +52,7 @@ struct _HyScanNMEAParserPrivate
   gchar                 *project;       /* Имя проекта. */
   gchar                 *track;         /* Имя галса. */
   HyScanSourceType       source_type;   /* Тип данных. */
-  guint                  channel_n;      /* Номер канала для используемого типа данных. */
+  guint                  channel_n;     /* Номер канала для используемого типа данных. */
   HyScanNMEAField        field_type;    /* Тип анализируемых данных. */
 
   /* Переменные, определяющиеся на этапе конструирования. */

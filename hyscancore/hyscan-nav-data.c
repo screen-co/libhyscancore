@@ -49,6 +49,23 @@ hyscan_nav_data_get (HyScanNavData *navdata,
   return FALSE;
 }
 
+/* Функция получения значения. */
+gboolean
+hyscan_nav_data_get_by_time (HyScanNavData *navdata,
+                             gint64        *time,
+                             gdouble       *value)
+{
+  HyScanNavDataInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_NAV_DATA (navdata), FALSE);
+  iface = HYSCAN_NAV_DATA_GET_IFACE (navdata);
+
+  if (iface->get != NULL)
+    return (*iface->get_by_time) (navdata, time, value);
+
+  return FALSE;
+}
+
 /* Функция поиска данных. */
 HyScanDBFindStatus
 hyscan_nav_data_find_data (HyScanNavData *navdata,

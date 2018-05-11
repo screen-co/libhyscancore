@@ -42,6 +42,13 @@ typedef struct _HyScanMarkManager HyScanMarkManager;
 typedef struct _HyScanMarkManagerPrivate HyScanMarkManagerPrivate;
 typedef struct _HyScanMarkManagerClass HyScanMarkManagerClass;
 
+typedef struct
+{
+  HyScanWaterfallMark *mark;
+  gdouble lat;
+  gdouble lon;
+} HyScanMarkManagerMarkLoc;
+
 struct _HyScanMarkManager
 {
   GObject parent_instance;
@@ -133,7 +140,18 @@ void                    hyscan_mark_manager_remove_mark   (HyScanMarkManager    
  * а значением - структура HyScanWaterfallMark.
  */
 HYSCAN_API
-GHashTable*             hyscan_mark_manager_get           (HyScanMarkManager         *manager);
+GHashTable *            hyscan_mark_manager_get           (HyScanMarkManager         *manager);
+
+/**
+ * Функция возвращает список меток из внутреннего буфера.
+ *
+ * \param manager указатель на \link HyScanMarkManager \endlink;
+ *
+ * \return GHashTable, где ключом является идентификатор метки,
+ * а значением - структура HyScanWaterfallMark.
+ */
+HYSCAN_API
+GHashTable *            hyscan_mark_manager_get_w_coords  (HyScanMarkManager         *manager);
 
 G_END_DECLS
 

@@ -37,10 +37,20 @@ HyScanmLoc             *hyscan_mloc_new              (HyScanDB       *db,
                                                       const gchar    *project,
                                                       const gchar    *track);
 
+void                    hyscan_mloc_set_cache        (HyScanmLoc            *mloc,
+                                                      HyScanCache           *cache);
+
 gboolean                hyscan_mloc_get              (HyScanmLoc            *mloc,
                                                       gint64                 time,
                                                       HyScanAntennaPosition *antenna,
                                                       gdouble                shift,
+                                                      HyScanGeoGeodetic     *position);
+
+gboolean                hyscan_mloc_get_fl           (HyScanmLoc            *mloc,
+                                                      gint64                 time,
+                                                      HyScanAntennaPosition *antenna,
+                                                      gdouble                shift_x,
+                                                      gdouble                angle_y,
                                                       HyScanGeoGeodetic     *position);
 G_END_DECLS
 

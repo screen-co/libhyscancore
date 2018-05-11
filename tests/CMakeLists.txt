@@ -20,6 +20,7 @@ add_executable (tile-queue-test tile-queue-test.c)
 add_executable (projector-test projector-test.c)
 add_executable (waterfall-mark-data-test waterfall-mark-data-test.c)
 add_executable (mark-manager-test mark-manager-test.c)
+add_executable (mman-test mman-test.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -37,6 +38,7 @@ target_link_libraries (tile-queue-test ${TEST_LIBRARIES})
 target_link_libraries (projector-test ${TEST_LIBRARIES})
 target_link_libraries (waterfall-mark-data-test ${TEST_LIBRARIES})
 target_link_libraries (mark-manager-test ${TEST_LIBRARIES})
+target_link_libraries (mman-test ${TEST_LIBRARIES})
 
 install (TARGETS data-writer-test
                  acoustic-data-test
@@ -51,6 +53,7 @@ install (TARGETS data-writer-test
                  projector-test
                  waterfall-mark-data-test
                  mark-manager-test
+                 mman-test
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
