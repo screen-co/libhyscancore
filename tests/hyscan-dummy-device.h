@@ -93,7 +93,8 @@ gboolean                 hyscan_dummy_device_check_sound_velocity     (HyScanDum
                                                                        GList                          *svp);
 
 gboolean                 hyscan_dummy_device_check_receiver_time      (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         receive_time);
+                                                                       gdouble                         receive_time,
+                                                                       gdouble                         wait_time);
 
 gboolean                 hyscan_dummy_device_check_receiver_auto      (HyScanDummyDevice              *dummy);
 

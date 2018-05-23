@@ -81,6 +81,7 @@ typedef enum
 {
   HYSCAN_DUMMY_DEVICE_COMMAND_INVALID,
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY,
+  HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_GET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_PRESET,
@@ -113,6 +114,7 @@ struct _HyScanDummyDevicePrivate
   GList                           *svp;
 
   gdouble                          receiver_time;
+  gdouble                          wait_time;
 
   gint64                           generator_preset;
   HyScanSonarGeneratorSignalType   generator_signal;
@@ -413,14 +415,32 @@ hyscan_dummy_device_sonar_set_sound_velocity (HyScanSonar *sonar,
 }
 
 static gboolean
+hyscan_dummy_device_sonar_receiver_get_time (HyScanSonar      *sonar,
+                                             HyScanSourceType  source,
+                                             gdouble          *receive_time,
+                                             gdouble          *wait_time)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  *receive_time *= 2.0;
+  *wait_time *= 2.0;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_GET_TIME;
+
+  return TRUE;
+}
+
+static gboolean
 hyscan_dummy_device_sonar_receiver_set_time (HyScanSonar      *sonar,
                                              HyScanSourceType  source,
-                                             gdouble           receive_time)
+                                             gdouble           receive_time,
+                                             gdouble           wait_time)
 {
   HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
   priv->receiver_time = receive_time;
+  priv->wait_time = wait_time;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME;
 
   return TRUE;
@@ -842,12 +862,14 @@ hyscan_dummy_device_check_sound_velocity (HyScanDummyDevice *dummy,
  * hyscan_dummy_device_check_receiver_time:
  * @dummy: указатель на #HyScanDummyDevice
  * @receive_time: время приёма эхосигнала
+ * @wait_time: время задержки излучения после приёма
  *
  * Функция проверяет параметры функций #hyscan_sonar_receiver_set_time.
  */
 gboolean
 hyscan_dummy_device_check_receiver_time (HyScanDummyDevice *dummy,
-                                         gdouble            receive_time)
+                                         gdouble            receive_time,
+                                         gdouble            wait_time)
 {
   HyScanDummyDevicePrivate *priv;
 
@@ -858,11 +880,12 @@ hyscan_dummy_device_check_receiver_time (HyScanDummyDevice *dummy,
   if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME)
     return FALSE;
 
-  if (priv->receiver_time != receive_time)
+  if ((priv->receiver_time != receive_time) || (priv->wait_time != wait_time))
     return FALSE;
 
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
   priv->receiver_time = 0.0;
+  priv->wait_time = 0.0;
 
   return TRUE;
 }
@@ -1862,6 +1885,7 @@ static void
 hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 {
   iface->set_sound_velocity = hyscan_dummy_device_sonar_set_sound_velocity;
+  iface->receiver_get_time = hyscan_dummy_device_sonar_receiver_get_time;
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
   iface->generator_set_preset = hyscan_dummy_device_sonar_generator_set_preset;

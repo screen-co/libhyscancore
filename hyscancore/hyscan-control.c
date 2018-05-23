@@ -232,9 +232,15 @@ static gboolean    hyscan_control_param_get                    (HyScanParam     
 static gboolean    hyscan_control_sonar_set_sound_velocity     (HyScanSonar                    *sonar,
                                                                 GList                          *svp);
 
+static gboolean    hyscan_control_sonar_receiver_get_time      (HyScanSonar                    *sonar,
+                                                                HyScanSourceType                source,
+                                                                gdouble                        *receive_time,
+                                                                gdouble                        *wait_time);
+
 static gboolean    hyscan_control_sonar_receiver_set_time      (HyScanSonar                    *sonar,
                                                                 HyScanSourceType                source,
-                                                                gdouble                         receive_time);
+                                                                gdouble                         receive_time,
+                                                                gdouble                         wait_time);
 
 static gboolean    hyscan_control_sonar_receiver_set_auto      (HyScanSonar                    *sonar,
                                                                 HyScanSourceType                source);
@@ -940,11 +946,35 @@ hyscan_control_sonar_set_sound_velocity (HyScanSonar *sonar,
   return status;
 }
 
+/* Метод HyScanSonar->receiver_get_time. */
+static gboolean
+hyscan_control_sonar_receiver_get_time (HyScanSonar      *sonar,
+                                        HyScanSourceType  source,
+                                        gdouble          *receive_time,
+                                        gdouble          *wait_time)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+
+  HyScanControlSourceInfo *source_info;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if (source_info == NULL)
+    return FALSE;
+
+  return hyscan_sonar_receiver_get_time (HYSCAN_SONAR (source_info->device),
+                                         source, receive_time, wait_time);
+}
+
 /* Метод HyScanSonar->receiver_set_time. */
 static gboolean
 hyscan_control_sonar_receiver_set_time (HyScanSonar      *sonar,
                                         HyScanSourceType  source,
-                                        gdouble           receive_time)
+                                        gdouble           receive_time,
+                                        gdouble           wait_time)
 {
   HyScanControl *control = HYSCAN_CONTROL (sonar);
   HyScanControlPrivate *priv = control->priv;
@@ -959,7 +989,7 @@ hyscan_control_sonar_receiver_set_time (HyScanSonar      *sonar,
     return FALSE;
 
   return hyscan_sonar_receiver_set_time (HYSCAN_SONAR (source_info->device),
-                                         source, receive_time);
+                                         source, receive_time, wait_time);
 }
 
 /* Метод HyScanSonar->receiver_set_auto. */
@@ -2127,6 +2157,7 @@ static void
 hyscan_control_sonar_interface_init (HyScanSonarInterface *iface)
 {
   iface->set_sound_velocity = hyscan_control_sonar_set_sound_velocity;
+  iface->receiver_get_time = hyscan_control_sonar_receiver_get_time;
   iface->receiver_set_time = hyscan_control_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_control_sonar_receiver_set_auto;
   iface->generator_set_preset = hyscan_control_sonar_generator_set_preset;

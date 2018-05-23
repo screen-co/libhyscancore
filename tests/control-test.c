@@ -608,15 +608,34 @@ check_sonar_set_sound_velocity (void)
 }
 
 void
+check_sonar_receiver_get_time (HyScanSourceType source)
+{
+  gdouble receive_time_in, receive_time_out;
+  gdouble wait_time_in, wait_time_out;
+
+  receive_time_in = receive_time_out = g_random_double ();
+  wait_time_in = wait_time_out = g_random_double ();
+  if (!hyscan_sonar_receiver_get_time (sonar, source, &receive_time_out, &wait_time_out))
+    g_error ("call failed");
+
+  if ((receive_time_in != (receive_time_out / 2.0)) ||
+      (wait_time_in != (wait_time_out / 2.0)))
+    {
+      g_error ("param failed");
+    }
+}
+
+void
 check_sonar_receiver_set_time (HyScanSourceType source)
 {
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble receive_time = g_random_double ();
+  gdouble wait_time = g_random_double ();
 
-  if (!hyscan_sonar_receiver_set_time (sonar, source, receive_time))
+  if (!hyscan_sonar_receiver_set_time (sonar, source, receive_time, wait_time))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_receiver_time (device, receive_time))
+  if (!hyscan_dummy_device_check_receiver_time (device, receive_time, wait_time))
     g_error ("param failed");
 }
 
@@ -1173,6 +1192,10 @@ main (int    argc,
 
   g_message ("Check hyscan_sonar_set_sound_velocity");
   check_sonar_set_sound_velocity ();
+
+  g_message ("Check hyscan_sonar_receiver_get_time");
+  for (i = 0; i < n_sources; i++)
+    check_sonar_receiver_get_time (sources[i]);
 
   g_message ("Check hyscan_sonar_receiver_set_time");
   for (i = 0; i < n_sources; i++)
