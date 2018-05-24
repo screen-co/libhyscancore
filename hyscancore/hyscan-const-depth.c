@@ -21,7 +21,7 @@ struct _HyScanConstDepthPrivate
 
   HyScanProjector      *projector; /* Проецирование. */
   HyScanAcousticData   *dc;        /* КД. */
-  
+
   gchar                *db_uri;    /* Путь к БД. */
   gchar                *token;     /* Токен объекта. */
 
@@ -121,7 +121,7 @@ hyscan_const_depth_object_constructed (GObject *object)
   HyScanConstDepthPrivate *priv = const_depth->priv;
   const HyScanAcousticData *dc;
   gchar *db_uri;
-  
+
   if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
     return;
 
@@ -132,10 +132,10 @@ hyscan_const_depth_object_constructed (GObject *object)
 
   /* Здесь требуется выполнить преобразование типов. */
   dc = hyscan_projector_get_acoustic_data (priv->projector);
-  priv->dc = (HyScanAcousticData*) dc; 
+  priv->dc = (HyScanAcousticData*) dc;
 
   db_uri = hyscan_db_get_uri (priv->db);
-  priv->token = g_strdup_printf ("const_depth.%s.%s.%s.%i.%i", 
+  priv->token = g_strdup_printf ("const_depth.%s.%s.%s.%i.%i",
                                  db_uri, priv->project, priv->track,
                                  priv->source, priv->raw);
   g_free (db_uri);
@@ -164,13 +164,13 @@ hyscan_const_depth_new (HyScanDB         *db,
 {
   HyScanConstDepth *cdepth;
 
-  cdepth = g_object_new (HYSCAN_TYPE_CONST_DEPTH, 
-                         "db", db, 
-                         "project-name", project, 
-                         "track-name", track, 
-                         "source-type", source_type, 
+  cdepth = g_object_new (HYSCAN_TYPE_CONST_DEPTH,
+                         "db", db,
+                         "project-name", project,
+                         "track-name", track,
+                         "source-type", source_type,
                          "raw", raw,
-                         NULL); 
+                         NULL);
 
   if (cdepth->priv->projector == NULL)
     g_clear_object (&cdepth);
@@ -207,20 +207,19 @@ hyscan_const_depth_get (HyScanNavData *ndata,
                         gdouble       *value)
 {
   guint32 n_vals;
-  gfloat const * vals;
   gdouble depth;
-  
+
   HyScanConstDepth *self = HYSCAN_CONST_DEPTH (ndata);
   HyScanConstDepthPrivate *priv = self->priv;
 
   if (NULL == hyscan_acoustic_data_get_values (priv->dc, index, &n_vals, time))
     return FALSE;
 
-  depth = n_vals / priv->distance; 
+  depth = n_vals / priv->distance;
 
   if (hyscan_projector_count_to_coord (priv->projector, depth, value, 0.0))
     return TRUE;
-  
+
   return FALSE;
 }
 
@@ -234,7 +233,7 @@ hyscan_const_depth_find_data (HyScanNavData *ndata,
                               gint64      *rtime)
 {
   HyScanConstDepth *self = HYSCAN_CONST_DEPTH (ndata);
-  return hyscan_acoustic_data_find_data (self->priv->dc, time, 
+  return hyscan_acoustic_data_find_data (self->priv->dc, time,
                                          lindex, rindex,
                                          ltime, rtime);
 }

@@ -261,7 +261,7 @@ make_tile (gint seed)
   tile.scale = 1000;
   tile.ppi = 25.4;
   tile.upsample = 1;
-  tile.type = HYSCAN_TILE_SLANT;
+  tile.flags = 0;
   tile.rotate = 0;
 
   tile.source = (seed % 2) ? SSS : SSP;

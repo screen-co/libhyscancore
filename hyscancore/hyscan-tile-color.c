@@ -295,7 +295,7 @@ hyscan_tile_color_cache_key (HyScanTile  *tile,
                                 tile->ppi,
 
                                 tile->upsample,
-                                tile->type,
+                                tile->flags,
                                 tile->rotate,
                                 tile->source);
 

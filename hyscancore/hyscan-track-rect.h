@@ -142,17 +142,17 @@ void                    hyscan_track_rect_set_depth_time       (HyScanTrackRect 
 
 /**
  *
- * Функция устанавливает тип отображения (наклонная/горизонтальная дальность).
- * От типа отображения зависит ширина одного и того же галса.
+ * Функция устанавливает флаги генерации.
+ * От них может зависеть ширина одного и того же галса.
  *
  * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param type - тип отображения (см \link HyScanTileType\endlink).
+ * \param flags - флаги отображения (см \link HyScanTileFlags\endlink).
  *
  * \return TRUE, если хотя бы один из каналов открыт в режиме записи.
  */
 HYSCAN_API
 void                    hyscan_track_rect_set_type             (HyScanTrackRect        *track_rect,
-                                                                HyScanTileType          type);
+                                                                HyScanTileFlags         flags);
 
 /**
  *

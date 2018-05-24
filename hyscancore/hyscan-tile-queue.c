@@ -862,7 +862,7 @@ hyscan_tile_queue_task_processor (gpointer data,
     }
 
   /* В случае тайла в наклонной дальности глубиномер не требуется. */
-  if (task->tile.type == HYSCAN_TILE_GROUND)
+  if (task->tile.flags & HYSCAN_TILE_GROUND)
     {
       depth = hyscan_tile_queue_get_depthometer (priv, gen_id);
       if (depth == NULL)
@@ -989,7 +989,7 @@ hyscan_tile_queue_cache_key (const HyScanTile *tile,
                                 tile->ppi,
 
                                 tile->upsample,
-                                tile->type,
+                                tile->flags,
                                 tile->rotate,
                                 tile->source);
   return key;

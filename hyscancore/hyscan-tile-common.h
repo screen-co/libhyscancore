@@ -18,12 +18,11 @@
 #include <glib.h>
 #include <hyscan-core-types.h>
 
-/** \brief Типы тайлов по способу отображения. */
 typedef enum
 {
-  HYSCAN_TILE_SLANT    = 100,        /**< Наклонная дальность. */
-  HYSCAN_TILE_GROUND   = 101,        /**< Горизонтальная дальность. */
-} HyScanTileType;
+  HYSCAN_TILE_GROUND   = 1 << 0,
+  HYSCAN_TILE_PROFILER = 1 << 1
+} HyScanTileFlags;
 
 /** \brief Информация о тайле. */
 typedef struct
@@ -40,10 +39,10 @@ typedef struct
   gint32               h;            /**< Высота тайла в пикселях. */
 
   guint                upsample;     /**< Величина передискретизации. */
-  HyScanTileType       type;         /**< Тип отображения. */
   gboolean             rotate;       /**< Поворот тайла. */
 
   HyScanSourceType     source;       /**< Канал данных для тайла. */
+  HyScanTileFlags      flags;        /**< Флаги генерации. */
 
   gboolean             finalized;    /**< Требуется ли перегенерация тайла. */
 } HyScanTile;

@@ -109,7 +109,7 @@ main (int argc, char **argv)
   tile.scale        = 1000;
   tile.ppi          = 25.4;
   tile.upsample     = 1;
-  tile.type         = HYSCAN_TILE_SLANT;
+  tile.flags        = 0;
   tile.rotate       = FALSE;
   hyscan_waterfall_tile_set_depth (wf, NULL);
   hyscan_waterfall_tile_set_speeds (wf, 1.0, 2.0);

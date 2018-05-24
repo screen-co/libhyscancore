@@ -139,7 +139,7 @@ static gboolean         hyscan_waterfall_tile_make_string               (HyScanW
                                                                          const gfloat               *input,
                                                                          guint32                     input_size,
                                                                          gfloat                      step,
-                                                                         HyScanTileType              type,
+                                                                         HyScanTileFlags             flags,
                                                                          gfloat                      dfreq,
                                                                          gfloat                      depth);
 static void             hyscan_waterfall_tile_string_helper             (HyScanWaterfallTilePrivate *params,
@@ -490,11 +490,11 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
           jtot++;
           jprev = j;
 
-          if (priv->tile.type == HYSCAN_TILE_GROUND)
+          if (priv->tile.flags & HYSCAN_TILE_GROUND)
             depth = hyscan_depthometer_get (priv->depth, time);
 
           status = hyscan_waterfall_tile_make_string (priv, data0 + j * w, w, weight + j * w,
-                                                      vals, n_vals, step, priv->tile.type,
+                                                      vals, n_vals, step, priv->tile.flags,
                                                       dc_info.data.rate, depth);
 
           if (status)
@@ -521,12 +521,12 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
           vals = hyscan_acoustic_data_get_values (dc, i, &n_vals, &time);
           if (vals != NULL)
             {
-              if (priv->tile.type == HYSCAN_TILE_GROUND)
+              if (priv->tile.flags & HYSCAN_TILE_GROUND)
                 depth = hyscan_depthometer_get (priv->depth, time);
 
               status = hyscan_waterfall_tile_make_string (priv, data_add + j * w, w,
                                                           weight_add + j * w,
-                                                          vals, n_vals, step, priv->tile.type,
+                                                          vals, n_vals, step, priv->tile.flags,
                                                           dc_info.data.rate, depth);
               if (status)
                 have_data_int = TRUE;
@@ -562,7 +562,7 @@ hyscan_waterfall_tile_make_string (HyScanWaterfallTilePrivate *priv,
                                    const gfloat               *input,
                                    guint32                     input_size,
                                    gfloat                      step,
-                                   HyScanTileType              s_type,
+                                   HyScanTileFlags             flags,
                                    gfloat                      dfreq,
                                    gfloat                      depth)
 {
@@ -573,6 +573,7 @@ hyscan_waterfall_tile_make_string (HyScanWaterfallTilePrivate *priv,
   gint64 k           = 0;
   guint32 j, istart, iend;
   gfloat real_index;
+  gboolean slant = !(flags & HYSCAN_TILE_GROUND);
 
   depth *= 1000.0; /* Из м в мм. */
 
@@ -582,7 +583,7 @@ hyscan_waterfall_tile_make_string (HyScanWaterfallTilePrivate *priv,
   if (start > end)
     SWAP (start, end, gint32);
 
-  if (s_type == HYSCAN_TILE_SLANT)
+  if (slant)
     {
       istart = dfreq * start / speed; /* Начальный индекс входной строки. */
       iend = dfreq * end / speed;     /* Конечный индекс входной строки. */
@@ -627,7 +628,7 @@ hyscan_waterfall_tile_make_string (HyScanWaterfallTilePrivate *priv,
             }
         }
     }
-  if (s_type == HYSCAN_TILE_GROUND)
+  if (!slant) /* То есть горизонтальная дальность. */
     {
       istart = sqrt (pow ((gfloat)start, 2) + depth * depth) * dfreq / speed; /* Начальный индекс входной строки. */
       iend = sqrt (pow ((gfloat)end, 2) + depth * depth) * dfreq / speed; /* Конечный индекс входной строки. */

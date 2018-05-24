@@ -22,7 +22,7 @@ typedef struct
   HyScanSourceType        source;                /* Источник данных. */
   gboolean                raw;                   /* Использовать сырые данные. */
 
-  HyScanTileType          type;                  /* Тип тайлов. */
+  HyScanTileFlags         flags;                 /* Флаги генерации. */
   /* Кэш. */
   HyScanCache            *cache;                 /* Интерфейс системы кэширования. */
 
@@ -38,7 +38,7 @@ typedef struct
   gfloat                  sound_velocity1;       /* Скорость звука для тех, кто не умеет в профиль скорости звука. */
 
   gboolean                track_changed;         /* Флаг на смену галса. */
-  gboolean                type_changed;          /* Флаг на смену типа тайлов. */
+  gboolean                flags_changed;         /* Флаг на смену, хм, флагов. */
   gboolean                cache_changed;         /* Флаг на смену кэша. */
   gboolean                depth_source_changed;  /* Флаг на смену источника данных глубины. */
   gboolean                depth_time_changed;    /* Флаг на смену временного окна данных глубины. */
@@ -292,13 +292,13 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
   HyScanTrackRectPrivate *priv = self->priv;
   HyScanTrackRectState *state = &priv->cur_state;
 
-  if (state->track_changed || state->type_changed)
+  if (state->track_changed || state->flags_changed)
     {
       g_clear_object (&priv->pj);
       g_clear_object (&priv->depth);
       g_clear_object (&priv->idepth);
       state->track_changed = FALSE;
-      state->type_changed = FALSE;
+      state->flags_changed = FALSE;
     }
   else if (state->depth_source_changed)
     {
@@ -325,7 +325,7 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
         hyscan_nav_data_set_cache (priv->idepth, state->cache);
 
       state->cache_changed = FALSE;
-      if (!state->speed_changed && !state->velocity_changed && !state->type_changed)
+      if (!state->speed_changed && !state->velocity_changed && !state->flags_changed)
         return FALSE;
     }
 
@@ -410,7 +410,7 @@ hyscan_track_rect_watcher (gpointer data)
         }
 
       /* И ещё надо открыть глубину. */
-      if (priv->cur_state.type == HYSCAN_TILE_GROUND && priv->depth == NULL)
+      if (priv->cur_state.flags & HYSCAN_TILE_GROUND && priv->depth == NULL)
         {
           if (priv->idepth == NULL)
             priv->idepth = hyscan_track_rect_open_depth (self);
@@ -440,7 +440,7 @@ hyscan_track_rect_watcher (gpointer data)
               hyscan_acoustic_data_get_values (dc, i, &nvals, &itime);
 
               /* Определяем глубину. */
-              if (priv->cur_state.type == HYSCAN_TILE_GROUND && depth != NULL)
+              if (priv->cur_state.flags & HYSCAN_TILE_GROUND && depth != NULL)
                 dpt = hyscan_depthometer_get (depth, itime);
               else
                 dpt = 0.0;
@@ -651,7 +651,7 @@ hyscan_track_rect_set_depth_time (HyScanTrackRect   *self,
 /* Функция выбора наклонной или горизонтальной дальности. */
 void
 hyscan_track_rect_set_type (HyScanTrackRect *self,
-                            HyScanTileType   type)
+                            HyScanTileFlags  flags)
 {
   HyScanTrackRectPrivate *priv;
 
@@ -660,8 +660,8 @@ hyscan_track_rect_set_type (HyScanTrackRect *self,
 
   g_mutex_lock (&priv->state_lock);
 
-  priv->new_state.type = type;
-  priv->new_state.type_changed = TRUE;
+  priv->new_state.flags = flags;
+  priv->new_state.flags_changed = TRUE;
   priv->state_changed = TRUE;
 
   g_atomic_int_set (&priv->abort, TRUE);

@@ -71,7 +71,7 @@ main (int argc, char **argv)
   tile1.upsample = 1;
   tile1.w = 10;
   tile1.h = 10;
-  tile1.type = 1;
+  tile1.flags = 0;
   tile1.rotate = 1;
   tile1.source = 1;
   tile1.finalized = 1;
