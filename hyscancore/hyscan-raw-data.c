@@ -572,32 +572,31 @@ hyscan_raw_data_load_signals (HyScanRawDataPrivate *priv)
 
   for (; i <= last_signal_index; i++)
     {
-      gint64 time;
-      guint32 io_size;
       HyScanRawDataSignal signal_info = {0};
+      HyScanDBFindStatus find_status;
+      guint32 lindex, rindex;
+      guint32 io_size;
+      gint64 ltime, rtime;
+      gint64 time;
 
       /* Считываем образ сигнала и проверяем его размер. */
       io_size = hyscan_raw_data_read_raw_data (priv, priv->signal_id, i, &time);
       if ((io_size == 0) || ((io_size % sizeof (HyScanComplexFloat)) != 0))
         return;
 
+      /* Ищем индекс данных с которого начинает действовать сигнал. */
+      find_status = hyscan_db_channel_find_data (priv->db, priv->channel_id, time,
+                                                 &lindex, &rindex, &ltime, &rtime);
+      if (find_status == HYSCAN_DB_FIND_OK)
+        signal_info.index = rindex;
+      else if (find_status == HYSCAN_DB_FIND_LESS)
+        signal_info.index = first_signal_index;
+      else
+        return;
+
       /* Объект свёртки. */
       if (io_size > sizeof (HyScanComplexFloat))
         {
-          gint64 ltime, rtime;
-          guint32 lindex, rindex;
-          HyScanDBFindStatus find_status;
-
-          /* Ищем индекс данных с которого начинает действовать сигнал. */
-          find_status = hyscan_db_channel_find_data (priv->db, priv->channel_id, time,
-                                                     &lindex, &rindex, &ltime, &rtime);
-          if (find_status == HYSCAN_DB_FIND_OK)
-            signal_info.index = rindex;
-          else if (find_status == HYSCAN_DB_FIND_LESS)
-            signal_info.index = first_signal_index;
-          else
-            return;
-
           signal_info.time = time;
           signal_info.image = g_memdup (priv->raw_buffer->data, io_size);
           signal_info.n_points = io_size / sizeof (HyScanComplexFloat);
