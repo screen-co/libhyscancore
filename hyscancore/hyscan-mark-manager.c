@@ -245,6 +245,9 @@ hyscan_mark_manager_mark_coords (GHashTable             * locstore,
   HyScanMarkManagerMarkLoc *res;
   HyScanMarkManagerLocation *location = g_hash_table_lookup (locstore, mark->track);
 
+  if (location == NULL)
+    return NULL;
+
   projector = g_hash_table_lookup (location->projectors, GINT_TO_POINTER (mark->source0));
   if (projector == NULL)
     {
@@ -512,7 +515,8 @@ hyscan_mark_manager_processing (gpointer data)
 
           /* Ещё надо координаты посчитать. */
           mwcoords = hyscan_mark_manager_mark_coords (projects_ids, mark, &priv->cur_state);
-          g_hash_table_insert (mark_coords_list, g_strdup (id_list[i]), mwcoords);
+          if (mwcoords != NULL)
+            g_hash_table_insert (mark_coords_list, g_strdup (id_list[i]), mwcoords);
 
         }
       g_strfreev (id_list);
