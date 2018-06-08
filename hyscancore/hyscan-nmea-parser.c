@@ -164,6 +164,10 @@ hyscan_nmea_parser_object_constructed (GObject *object)
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (object);
   HyScanNMEAParserPrivate *priv = parser->priv;
 
+  /* Пробуем настроить поля. */
+  if (!hyscan_nmea_parser_setup (priv))
+    return;
+
   /* Открываем КД. */
   priv->dc = hyscan_nmea_data_new (priv->db, priv->project, priv->track,
                                    priv->source_type, priv->channel_n);
@@ -177,9 +181,6 @@ hyscan_nmea_parser_object_constructed (GObject *object)
                                  db_uri, priv->project, priv->track,
                                  priv->source_type,
                                  priv->channel_n);
-
-  if (!hyscan_nmea_parser_setup (priv))
-    g_clear_object (&priv->dc);
 
   g_free (db_uri);
 }
@@ -255,6 +256,7 @@ hyscan_nmea_parser_parse_value (const gchar *sentence,
   gchar *end;
   gdouble val;
 
+
   val = g_ascii_strtod (sentence, &end);
 
   if (val == 0 && end == sentence)
@@ -278,11 +280,17 @@ hyscan_nmea_parser_parse_date (const gchar *sentence,
   if (sentence == NULL || sentence[0] == ',')
     return FALSE;
 
-  day =   sentence[0] * 10 + sentence[1];
-  month = sentence[2] * 10 + sentence[3];
-  year =  sentence[4] * 10 + sentence[5];
+  day =   (sentence[0] - '0') * 10 + (sentence[1] - '0');
+  month = (sentence[2] - '0') * 10 + (sentence[3] - '0');
+  year =  (sentence[4] - '0') * 10 + (sentence[5] - '0');
 
   dt = g_date_time_new_utc (year, month, day, 0, 0, 0);
+
+  if (dt == NULL)
+    {
+      g_message ("failed to parse date <%s>", sentence);
+      return FALSE;
+    }
   val = g_date_time_to_unix (dt);
   g_date_time_unref (dt);
 
@@ -304,11 +312,19 @@ hyscan_nmea_parser_parse_time (const gchar *sentence,
   if (sentence == NULL || sentence[0] == ',')
     return FALSE;
 
-  hour = sentence[0] * 10 + sentence[1];
-  min =  sentence[2] * 10 + sentence[3];
-  sec =  sentence[4] * 10 + sentence[5];
+  hour = (sentence[0] - '0') * 10 + (sentence[1] - '0');
+  min =  (sentence[2] - '0') * 10 + (sentence[3] - '0');
 
-  dt = g_date_time_new_utc (0, 0, 0, hour, min, sec);
+  sec =  g_ascii_strtod(sentence+4, NULL);
+
+  dt = g_date_time_new_utc (1970, 1, 1, hour, min, sec);
+
+  if (dt == NULL)
+    {
+      g_message ("failed to parse time <%s> %i %i %f", sentence, hour, min, sec);
+      return FALSE;
+    }
+
   val = g_date_time_to_unix (dt);
   g_date_time_unref (dt);
 
@@ -323,6 +339,7 @@ hyscan_nmea_parser_parse_latlon (const gchar *sentence,
 {
   gchar *end, side;
   gdouble val, deg, min;
+
 
   val = g_ascii_strtod (sentence, &end);
 
@@ -354,6 +371,7 @@ hyscan_nmea_parser_parse_meters (const gchar *sentence,
 {
   gchar *end;
   gdouble val;
+
 
   val = g_ascii_strtod (sentence, &end);
 
@@ -485,6 +503,40 @@ hyscan_nmea_parser_new (HyScanDB        *db,
     g_clear_object (&parser);
 
   return parser;
+}
+
+HyScanNMEAParser*
+hyscan_nmea_parser_new_empty (HyScanSourceType  source_type,
+                              guint             field_type)
+{
+  return g_object_new (HYSCAN_TYPE_NMEA_PARSER,
+                       "source-type", source_type,
+                       "field-type", field_type,
+                         NULL);
+}
+
+gboolean
+hyscan_nmea_parser_from_string (HyScanNMEAParser *parser,
+                                const gchar      *string,
+                                gdouble          *val)
+{
+  gdouble nmea_value;
+  HyScanNMEAParserPrivate *priv;
+
+  if (string == NULL)
+    return FALSE;
+
+  g_return_val_if_fail (HYSCAN_IS_NMEA_PARSER (parser), FALSE);
+  priv = parser->priv;
+
+  string = hyscan_nmea_parser_shift (string, priv->field_n);
+  if (!(priv->parse_func) (string, &nmea_value))
+    return FALSE;
+
+  if (val != NULL)
+    *val = nmea_value;
+
+  return TRUE;
 }
 
 static void
