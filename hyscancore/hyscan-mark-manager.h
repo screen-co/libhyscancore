@@ -153,6 +153,11 @@ GHashTable *            hyscan_mark_manager_get           (HyScanMarkManager    
 HYSCAN_API
 GHashTable *            hyscan_mark_manager_get_w_coords  (HyScanMarkManager         *manager);
 
+HYSCAN_API
+HyScanMarkManagerMarkLoc * hyscan_mark_manager_mark_loc_copy (gpointer data);
+HYSCAN_API
+void hyscan_mark_manager_mark_loc_free (gpointer data);
+
 G_END_DECLS
 
 #endif /* __HYSCAN_MARK_MANAGER_H__ */

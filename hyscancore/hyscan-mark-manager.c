@@ -326,26 +326,6 @@ hyscan_mark_manager_do_all_tasks (HyScanMarkManagerPrivate  *priv,
   g_slist_free_full (tasks, hyscan_mark_manager_free_task);
 }
 
-static HyScanMarkManagerMarkLoc *
-hyscan_mark_manager_mark_loc_copy (gpointer data)
-{
-  HyScanMarkManagerMarkLoc *src = data;
-  HyScanMarkManagerMarkLoc *dst = g_new (HyScanMarkManagerMarkLoc, 1);
-  dst->mark = hyscan_waterfall_mark_copy (src->mark);
-  dst->lat = src->lat;
-  dst->lon = src->lon;
-
-  return dst;
-}
-
-static void
-hyscan_mark_manager_mark_loc_free (gpointer data)
-{
-  HyScanMarkManagerMarkLoc *loc = data;
-
-  hyscan_waterfall_mark_free (loc->mark);
-}
-
 static void
 hyscan_mark_manager_location_free (gpointer data)
 {
@@ -697,4 +677,24 @@ hyscan_mark_manager_get_w_coords (HyScanMarkManager *manager)
   g_mutex_unlock (&priv->marks_lock);
 
   return marks;
+}
+
+HyScanMarkManagerMarkLoc *
+hyscan_mark_manager_mark_loc_copy (gpointer data)
+{
+  HyScanMarkManagerMarkLoc *src = data;
+  HyScanMarkManagerMarkLoc *dst = g_new (HyScanMarkManagerMarkLoc, 1);
+  dst->mark = hyscan_waterfall_mark_copy (src->mark);
+  dst->lat = src->lat;
+  dst->lon = src->lon;
+
+  return dst;
+}
+
+void
+hyscan_mark_manager_mark_loc_free (gpointer data)
+{
+  HyScanMarkManagerMarkLoc *loc = data;
+
+  hyscan_waterfall_mark_free (loc->mark);
 }
