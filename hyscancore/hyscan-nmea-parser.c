@@ -168,6 +168,9 @@ hyscan_nmea_parser_object_constructed (GObject *object)
   if (!hyscan_nmea_parser_setup (priv))
     return;
 
+  if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
+    return;
+
   /* Открываем КД. */
   priv->dc = hyscan_nmea_data_new (priv->db, priv->project, priv->track,
                                    priv->source_type, priv->channel_n);
@@ -256,7 +259,6 @@ hyscan_nmea_parser_parse_value (const gchar *sentence,
   gchar *end;
   gdouble val;
 
-
   val = g_ascii_strtod (sentence, &end);
 
   if (val == 0 && end == sentence)
@@ -314,8 +316,7 @@ hyscan_nmea_parser_parse_time (const gchar *sentence,
 
   hour = (sentence[0] - '0') * 10 + (sentence[1] - '0');
   min =  (sentence[2] - '0') * 10 + (sentence[3] - '0');
-
-  sec =  g_ascii_strtod(sentence+4, NULL);
+  sec =  g_ascii_strtod (sentence + 4, NULL);
 
   dt = g_date_time_new_utc (1970, 1, 1, hour, min, sec);
 
