@@ -221,9 +221,9 @@ hyscan_track_rect_sync_states (HyScanTrackRect *self)
       g_clear_pointer (&cur_st->track, g_free);
 
       /* Копируем из нового. */
-      cur_st->db = g_object_ref (new_st->db);
-      cur_st->project = g_strdup (new_st->project);
-      cur_st->track = g_strdup (new_st->track);
+      cur_st->db = (new_st->db != NULL) ? g_object_ref (new_st->db) : NULL;
+      cur_st->project = (new_st->project != NULL) ? g_strdup (new_st->project) : NULL;
+      cur_st->track = (new_st->track != NULL) ? g_strdup (new_st->track) : NULL;
       cur_st->source = new_st->source;
       cur_st->raw = new_st->raw;
 
@@ -689,9 +689,9 @@ hyscan_track_rect_open (HyScanTrackRect *self,
   g_clear_pointer (&priv->new_state.project, g_free);
   g_clear_pointer (&priv->new_state.track, g_free);
 
-  priv->new_state.db = g_object_ref (db);
-  priv->new_state.project = g_strdup (project);
-  priv->new_state.track = g_strdup (track);
+  priv->new_state.db = (db != NULL) ? g_object_ref (db) : NULL;
+  priv->new_state.project = (project != NULL) ? g_strdup (project) : NULL;
+  priv->new_state.track = (track != NULL) ? g_strdup (track) : NULL;
   priv->new_state.source = source;
   priv->new_state.raw = raw;
 

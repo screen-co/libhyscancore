@@ -166,7 +166,12 @@ hyscan_nmea_parser_object_constructed (GObject *object)
 
   /* Пробуем настроить поля. */
   if (!hyscan_nmea_parser_setup (priv))
-    return;
+    {
+      g_warning ("Parser setup failed. It's a mistake");
+      priv->parse_func = NULL;
+      priv->field_n = -1;
+      return;
+    }
 
   if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
     return;
@@ -226,6 +231,9 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
     {-1,  -1,   1, hyscan_nmea_parser_parse_value}   /* HYSCAN_NMEA_FIELD_DEPTH     */
   };
 
+  if (priv->field_n < 0)
+    return FALSE;
+
   priv->parse_func = fields[priv->field_type].func;
 
   if (priv->source_type == HYSCAN_SOURCE_NMEA_RMC)
@@ -235,9 +243,6 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
   if (priv->source_type == HYSCAN_SOURCE_NMEA_DPT)
     priv->field_n = fields[priv->field_type].DPT_field_n;
 
-  if (priv->field_n == -1)
-    return FALSE;
-
   return TRUE;
 }
 
@@ -245,8 +250,16 @@ static const gchar *
 hyscan_nmea_parser_shift (const gchar *sentence,
                           guint        field)
 {
+  const gchar *pointer;
   for (; sentence != NULL && field > 0; --field)
-    sentence = strchr (sentence, ',') + 1;
+    {
+      pointer = strchr (sentence, ',');
+
+      if (pointer == NULL)
+        return NULL;
+
+      sentence = pointer + 1;
+    }
 
   return sentence;
 }
@@ -524,13 +537,23 @@ hyscan_nmea_parser_from_string (HyScanNMEAParser *parser,
   gdouble nmea_value;
   HyScanNMEAParserPrivate *priv;
 
-  if (string == NULL)
-    return FALSE;
-
   g_return_val_if_fail (HYSCAN_IS_NMEA_PARSER (parser), FALSE);
   priv = parser->priv;
 
+  if (string == NULL)
+    return FALSE;
+
+  if (HYSCAN_SOURCE_INVALID == hyscan_nmea_data_check_sentence (string))
+    {
+      g_message ("Broken string <%s>", string);
+      return FALSE;
+    }
+
   string = hyscan_nmea_parser_shift (string, priv->field_n);
+
+  if (string == NULL)
+    return FALSE;
+
   if (!(priv->parse_func) (string, &nmea_value))
     return FALSE;
 

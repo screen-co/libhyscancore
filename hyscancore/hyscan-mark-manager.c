@@ -225,8 +225,8 @@ static void
 hyscan_mark_manager_free_task (gpointer data)
 {
   HyScanMarkManagerTask *task = data;
-  hyscan_waterfall_mark_free (task->mark);
-  g_free (task->id);
+  g_clear_pointer (&task->mark, hyscan_waterfall_mark_free);
+  g_clear_pointer (&task->id, g_free);
   g_free (task);
 }
 
@@ -263,7 +263,7 @@ hyscan_mark_manager_mark_coords (GHashTable             * locstore,
   hyscan_projector_index_to_coord (projector, mark->index0, &along);
   hyscan_projector_count_to_coord (projector, mark->count0, &across, 0);
 
-  adata = (HyScanAcousticData*)hyscan_projector_get_acoustic_data (projector);
+  adata = (HyScanAcousticData*) hyscan_projector_get_acoustic_data (projector);
   apos = hyscan_acoustic_data_get_position (adata);
   hyscan_acoustic_data_get_values (adata, mark->index0, &n, &time);
 
@@ -330,9 +330,9 @@ static void
 hyscan_mark_manager_location_free (gpointer data)
 {
   HyScanMarkManagerLocation *loc = data;
-  g_free (loc->track);      /* Название галса. */
-  g_object_unref (loc->mloc);   /* Объект для определения местоположения. */
-  g_hash_table_unref (loc->projectors); /* Проекторы (для каждого канала). */
+  g_clear_pointer(&loc->track, g_free);
+  g_clear_object (&loc->mloc);
+  g_clear_pointer(&loc->projectors, g_hash_table_unref);
 }
 
 static HyScanMarkManagerLocation *
@@ -347,6 +347,10 @@ hyscan_mark_manager_location_new (HyScanDB    *db,
   loc->mloc = hyscan_mloc_new (db, project, track);
   loc->projectors = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
                                            (GDestroyNotify)g_object_unref);
+
+  if (loc->mloc == NULL)
+    g_clear_pointer (&loc, hyscan_mark_manager_location_free);
+
   return loc;
 }
 
@@ -357,11 +361,11 @@ hyscan_mark_manager_processing (gpointer data)
   HyScanMarkManagerPrivate *priv = data;
   HyScanWaterfallMarkData *mdata = NULL; /* Объект работы с метками. */
   gchar **id_list;                       /* Идентификаторы меток. */
-  GHashTable *mark_list;                 /* Метки из БД. */
-  GHashTable *mark_coords_list;                 /* Метки из БД. */
-  GHashTable *projects_ids;                  /* Метки из БД. */
+  GHashTable *mark_list = NULL;          /* Метки из БД. */
+  GHashTable *mark_coords_list = NULL;   /* Метки из БД. */
+  GHashTable *projects_ids = NULL;       /* Метки из БД. */
   GMutex im_lock;                        /* Мьютекс нужен для GCond. */
-  HyScanWaterfallMark *mark;
+  HyScanWaterfallMark *mark = NULL;
   guint len, i;
   guint32 oldmc, mc;                     /* Значения счетчика изменений. */
 
@@ -444,8 +448,9 @@ hyscan_mark_manager_processing (gpointer data)
           gchar ** track_list;
           gchar ** name;
 
-          projects_ids = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                                (GDestroyNotify)hyscan_mark_manager_location_free);
+          if (projects_ids == NULL)
+            projects_ids = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                                  (GDestroyNotify)hyscan_mark_manager_location_free);
 
           track_list = hyscan_db_track_list (db, project_fd);
 

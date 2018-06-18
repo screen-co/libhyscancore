@@ -91,7 +91,7 @@ hyscan_mloc_object_constructed (GObject *object)
   HyScanmLoc *self = HYSCAN_MLOC (object);
   HyScanmLocPrivate *priv = self->priv;
   HyScanNMEAParser *plat, *plon, *ptrk;
-  HyScanGeoGeodetic origin;
+  HyScanGeoGeodetic origin = {0, 0, 0};
   guint32 first;
 
   plat = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
@@ -103,6 +103,9 @@ hyscan_mloc_object_constructed (GObject *object)
   ptrk = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
                                  1, HYSCAN_SOURCE_NMEA_RMC,
                                  HYSCAN_NMEA_FIELD_TRACK);
+
+  if (plat == NULL || plon == NULL || ptrk == NULL)
+    return;
 
   priv->lat = HYSCAN_NAV_DATA (plat);
   priv->lon = HYSCAN_NAV_DATA (plon);
@@ -141,11 +144,21 @@ hyscan_mloc_new (HyScanDB    *db,
                  const gchar *project,
                  const gchar *track)
 {
-  return g_object_new (HYSCAN_TYPE_MLOC,
+  HyScanmLoc * mloc;
+  mloc = g_object_new (HYSCAN_TYPE_MLOC,
                        "db", db,
                        "project", project,
                        "track", track,
                        NULL);
+
+  if (mloc->priv->lat == NULL ||
+      mloc->priv->lon == NULL ||
+      mloc->priv->trk == NULL)
+    {
+      g_clear_object (&mloc);
+    }
+
+  return mloc;
 }
 
 void
