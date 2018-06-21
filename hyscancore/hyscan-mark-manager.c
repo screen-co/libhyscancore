@@ -463,6 +463,9 @@ hyscan_mark_manager_processing (gpointer data)
               param_fd = hyscan_db_track_param_open (db, track_fd);
               id = hyscan_db_param_get_string (db, param_fd, NULL, "/id");
 
+              if (id == NULL)
+                continue;
+
               /* Ежели этого галса ещё нет в нашей чудесной хэш-таблице,
                * внедрим его туда. */
               if (!g_hash_table_contains (projects_ids, id))
