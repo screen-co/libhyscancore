@@ -66,18 +66,17 @@
  * содержит вспомогательные функции для определения параметров устройств и
  * задания системы хранения данных.
  *
+ * Список устройств, управляемых #HyScanControl, можно получить с помощью
+ * функции #hyscan_control_devices_list. В процессе работы, с устройством
+ * может быть потеряна связь или возникнет иная не штатная ситуация. При
+ * изменении состояния устройства посылается сигнал "device-state". Состояние
+ * устройства можно узнать с помощью функции #hyscan_control_device_get_status.
+ *
  * Список источников гидролокационных данных можно получить с помощью функции
  * #hyscan_control_get_sources, а список датчиков #hyscan_control_get_sensors.
  *
  * Информацию о датчиках и источниках данных можно получить с помощью функций
  * #hyscan_control_sensor_get_info и #hyscan_control_source_get_info.
- *
- * В процессе работы, с устройством может быть потеряна связь или возникнет
- * иная не штатная ситуация. В этом случае датчик или источник данных окажется
- * не доступным. При изменении состояния устройства посылается сигнал
- * "device-state". Само состояние датчика или источника данных можно узнать с
- * помощью функций #hyscan_control_sensor_get_enable и
- * #hyscan_control_source_get_enable.
  *
  * Задать местоположение приёмных антенн датчика или источника данных можно
  * с помощью функций #hyscan_control_sensor_set_position и
@@ -134,6 +133,7 @@ struct _HyScanControlPrivate
   GHashTable                  *params;                         /* Параметры. */
   HyScanParamList             *list;                           /* Список параметров. */
 
+  gchar                      **devices_list;                   /* Список устройств. */
   gchar                      **sensors_list;                   /* Список датчиков. */
   HyScanSourceType            *sources_list;                   /* Список источников данных. */
   guint32                      n_sources;                      /* Число источников данных. */
@@ -365,6 +365,7 @@ hyscan_control_object_finalize (GObject *object)
   while (g_hash_table_iter_next (&iter, &key, &value))
     g_signal_handlers_disconnect_by_data (value, control);
 
+  g_free (priv->devices_list);
   g_free (priv->sources_list);
   g_free (priv->sensors_list);
 
@@ -1641,45 +1642,73 @@ hyscan_control_device_bind (HyScanControl *control)
       GHashTableIter iter;
       gpointer key, value;
 
+      GHashTable *devices;
+
       guint n_sources;
       guint n_sensors;
+      guint n_devices;
+
+      /* Список идентификаторов устройств. */
+      devices = g_hash_table_new (g_str_hash, g_str_equal);
 
       /* Список источников данных. */
       n_sources = g_hash_table_size (priv->sources);
-      priv->sources_list = g_new0 (HyScanSourceType, n_sources);
-      priv->n_sources = n_sources;
-
-      n_sources = 0;
-      g_hash_table_iter_init (&iter, priv->sources);
-      while (g_hash_table_iter_next (&iter, &key, &value))
+      if (n_sources > 0)
         {
-          HyScanSourceType source = GPOINTER_TO_INT (key);
-          HyScanControlSourceInfo *info = value;
-          HyScanAntennaPosition *position;
+          priv->sources_list = g_new0 (HyScanSourceType, n_sources);
+          priv->n_sources = n_sources;
+          n_sources = 0;
 
-          position = (info->position != NULL) ? info->position : info->info->position;
-          hyscan_data_writer_sonar_set_position (priv->writer, source, position);
+          g_hash_table_iter_init (&iter, priv->sources);
+          while (g_hash_table_iter_next (&iter, &key, &value))
+            {
+              HyScanSourceType source = GPOINTER_TO_INT (key);
+              HyScanControlSourceInfo *info = value;
+              HyScanAntennaPosition *position;
 
-          priv->sources_list[n_sources++] = source;
+              position = (info->position != NULL) ? info->position : info->info->position;
+              hyscan_data_writer_sonar_set_position (priv->writer, source, position);
+
+              priv->sources_list[n_sources++] = source;
+              g_hash_table_insert (devices, (gpointer)info->info->dev_id, NULL);
+            }
         }
 
       /* Список датчиков. */
       n_sensors = g_hash_table_size (priv->sensors);
-      priv->sensors_list = g_new0 (gchar*, n_sensors + 1);
-
-      n_sensors = 0;
-      g_hash_table_iter_init (&iter, priv->sensors);
-      while (g_hash_table_iter_next (&iter, &key, &value))
+      if (n_sensors > 0)
         {
-          const gchar *sensor = key;
-          HyScanControlSensorInfo *info = value;
-          HyScanAntennaPosition *position;
+          priv->sensors_list = g_new0 (gchar*, n_sensors + 1);
+          n_sensors = 0;
 
-          position = (info->position != NULL) ? info->position : info->info->position;
-          hyscan_data_writer_sensor_set_position (priv->writer, sensor, position);
+          g_hash_table_iter_init (&iter, priv->sensors);
+          while (g_hash_table_iter_next (&iter, &key, &value))
+            {
+              const gchar *sensor = key;
+              HyScanControlSensorInfo *info = value;
+              HyScanAntennaPosition *position;
 
-          priv->sensors_list[n_sensors++] = key;
+              position = (info->position != NULL) ? info->position : info->info->position;
+              hyscan_data_writer_sensor_set_position (priv->writer, sensor, position);
+
+              priv->sensors_list[n_sensors++] = key;
+              g_hash_table_insert (devices, (gpointer)info->info->dev_id, NULL);
+            }
         }
+
+      /* Список идентификаторов устройств. */
+      n_devices = g_hash_table_size (devices);
+      if (n_devices > 0)
+        {
+          priv->devices_list = g_new0 (gchar*, n_devices + 1);
+          n_devices = 0;
+
+          g_hash_table_iter_init (&iter, devices);
+          while (g_hash_table_iter_next (&iter, &key, NULL))
+            priv->devices_list[n_devices++] = key;
+        }
+
+      g_hash_table_unref (devices);
 
       priv->binded = TRUE;
       status = TRUE;
@@ -1691,25 +1720,26 @@ hyscan_control_device_bind (HyScanControl *control)
 }
 
 /**
- * hyscan_control_get_software_ping:
+ * hyscan_control_devices_list:
  * @control: указатель на #HyScanControl
  *
- * Функция возвращает признак программного управления синхронизацией излучения.
- * Программное управление излучением возможно только если все зарегистрированные
- * гидролокаторы поддерживают такую возможность.
+ * Функция возвращает список устройств, управляемых #HyScanControl.
  *
- * Returns: %TRUE если программное управление излучением возможно, иначе %FALSE.
+ * Returns: (transfer none): Список устройств или NULL.
  */
-gboolean
-hyscan_control_get_software_ping (HyScanControl *control)
+const gchar * const *
+hyscan_control_devices_list (HyScanControl *control)
 {
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
 
-  return g_atomic_int_get (&control->priv->software_ping);
+  if (!g_atomic_int_get (&control->priv->binded))
+    return NULL;
+
+  return (const gchar **)control->priv->devices_list;
 }
 
 /**
- * hyscan_control_list_sensors:
+ * hyscan_control_sensors_list:
  * @control: указатель на #HyScanControl
  *
  * Функция возвращает список датчиков. Список возвращается в виде NULL
@@ -1730,7 +1760,7 @@ hyscan_control_sensors_list (HyScanControl *control)
 }
 
 /**
- * hyscan_control_list_sources:
+ * hyscan_control_sources_list:
  * @control: указатель на #HyScanControl
  * @n_sources: (out): число источников данных
  *
@@ -1755,7 +1785,82 @@ hyscan_control_sources_list (HyScanControl *control,
 }
 
 /**
- * hyscan_control_get_sensor_info:
+ * hyscan_control_get_software_ping:
+ * @control: указатель на #HyScanControl
+ *
+ * Функция возвращает признак программного управления синхронизацией излучения.
+ * Программное управление излучением возможно только если все зарегистрированные
+ * гидролокаторы поддерживают такую возможность.
+ *
+ * Returns: %TRUE если программное управление излучением возможно, иначе %FALSE.
+ */
+gboolean
+hyscan_control_get_software_ping (HyScanControl *control)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+
+  return g_atomic_int_get (&control->priv->software_ping);
+}
+
+/**
+ * hyscan_control_device_get_status:
+ * @control: указатель на #HyScanControl
+ * @dev_id: идентификатор устройства
+ *
+ * Функция возвращает состояние устройства.
+ *
+ * Returns: Состояние устройства.
+ */
+HyScanDeviceStatus
+hyscan_control_device_get_status (HyScanControl *control,
+                                  const gchar   *dev_id)
+{
+  HyScanControlPrivate *priv;
+  HyScanDeviceStatus status;
+  gchar key_id[128];
+  gpointer device;
+
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), HYSCAN_DEVICE_STATUS_ERROR);
+
+  priv = control->priv;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  g_snprintf (key_id, sizeof (key_id), "/state/%s/status", dev_id);
+  device = g_hash_table_lookup (priv->params, key_id);
+  if (device == NULL)
+    return HYSCAN_DEVICE_STATUS_ERROR;
+
+  g_mutex_lock (&priv->lock);
+
+  hyscan_param_list_clear (priv->list);
+  hyscan_param_list_add (priv->list, key_id);
+  if (hyscan_param_get (device, priv->list))
+    {
+      const gchar *status_str = hyscan_param_list_get_string (priv->list, key_id);
+
+      if (g_strcmp0 (status_str, HYSCAN_DEVICE_SCHEMA_STATUS_OK) == 0)
+        status = HYSCAN_DEVICE_STATUS_OK;
+      else if (g_strcmp0 (status_str, HYSCAN_DEVICE_SCHEMA_STATUS_WARNING) == 0)
+        status = HYSCAN_DEVICE_STATUS_WARNING;
+      else if (g_strcmp0 (status_str, HYSCAN_DEVICE_SCHEMA_STATUS_CRITICAL) == 0)
+        status = HYSCAN_DEVICE_STATUS_CRITICAL;
+      else
+        status = HYSCAN_DEVICE_STATUS_ERROR;
+    }
+  else
+    {
+      status = HYSCAN_DEVICE_STATUS_ERROR;
+    }
+
+  g_mutex_unlock (&priv->lock);
+
+  return status;
+}
+
+/**
+ * hyscan_control_sensor_get_info:
  * @control: указатель на #HyScanControl
  * @sensor: название датчика
  *
@@ -1780,7 +1885,7 @@ hyscan_control_sensor_get_info (HyScanControl *control,
 }
 
 /**
- * hyscan_control_get_source_info:
+ * hyscan_control_source_get_info:
  * @control: указатель на #HyScanControl
  * @source: источник гидролокационных данных
  *
@@ -1802,106 +1907,6 @@ hyscan_control_source_get_info (HyScanControl    *control,
   info = g_hash_table_lookup (control->priv->sources, GINT_TO_POINTER (source));
 
   return (info != NULL) ? info->info : NULL;
-}
-
-/**
- * hyscan_control_get_sensor_info:
- * @control: указатель на #HyScanControl
- * @sensor: название датчика
- *
- * Функция возвращает признак доступности датчика.
- *
- * Returns: %TRUE если датчик доступен для работы, иначе %FALSE.
- */
-gboolean
-hyscan_control_sensor_get_enable (HyScanControl *control,
-                                  const gchar   *sensor)
-{
-  HyScanControlPrivate *priv;
-  HyScanControlSensorInfo *info;
-
-  gpointer device;
-  gchar key_id[128];
-  gboolean enable;
-
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  priv = control->priv;
-
-  if (!g_atomic_int_get (&priv->binded))
-    return FALSE;
-
-  info = g_hash_table_lookup (priv->sensors, sensor);
-  if (info == NULL)
-    return FALSE;
-
-  g_snprintf (key_id, sizeof (key_id), "/state/%s/enable", info->info->dev_id);
-  device = g_hash_table_lookup (priv->params, key_id);
-  if (device == NULL)
-    return FALSE;
-
-  g_mutex_lock (&priv->lock);
-
-  hyscan_param_list_clear (priv->list);
-  hyscan_param_list_add (priv->list, key_id);
-  if (hyscan_param_get (device, priv->list))
-    enable = hyscan_param_list_get_boolean (priv->list, key_id);
-  else
-    enable = FALSE;
-
-  g_mutex_unlock (&priv->lock);
-
-  return enable;
-}
-
-/**
- * hyscan_control_get_source_info:
- * @control: указатель на #HyScanControl
- * @source: источник гидролокационных данных
- *
- * Функция возвращает признак доступности источника данных.
- *
- * Returns: %TRUE если источника данных доступен для работы, иначе %FALSE.
- */
-gboolean
-hyscan_control_source_get_enable (HyScanControl    *control,
-                                  HyScanSourceType  source)
-{
-  HyScanControlPrivate *priv;
-  HyScanControlSensorInfo *info;
-
-  gpointer device;
-  gchar key_id[128];
-  gboolean enable;
-
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  priv = control->priv;
-
-  if (!g_atomic_int_get (&priv->binded))
-    return FALSE;
-
-  info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
-  if (info == NULL)
-    return FALSE;
-
-  g_snprintf (key_id, sizeof (key_id), "/state/%s/enable", info->info->dev_id);
-  device = g_hash_table_lookup (priv->params, key_id);
-  if (device == NULL)
-    return FALSE;
-
-  g_mutex_lock (&priv->lock);
-
-  hyscan_param_list_clear (priv->list);
-  hyscan_param_list_add (priv->list, key_id);
-  if (hyscan_param_get (device, priv->list))
-    enable = hyscan_param_list_get_boolean (priv->list, key_id);
-  else
-    enable = FALSE;
-
-  g_mutex_unlock (&priv->lock);
-
-  return enable;
 }
 
 /**

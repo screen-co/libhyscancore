@@ -51,6 +51,23 @@ G_BEGIN_DECLS
 #define HYSCAN_IS_CONTROL_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_CONTROL))
 #define HYSCAN_CONTROL_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_CONTROL, HyScanControlClass))
 
+/**
+ * HyScanDeviceStatus:
+ * HYSCAN_DEVICE_STATUS_OK: устройство функционирует в штатном режиме
+ * HYSCAN_DEVICE_STATUS_WARNING: в работе устройства присутствуют кратковременные сбои
+ * HYSCAN_DEVICE_STATUS_CRITICAL: в работе устройства присутствуют постоянные сбои
+ * HYSCAN_DEVICE_STATUS_ERROR: ошибка в работе, устройство не может продолжать работу
+ *
+ * Типы состояния устройства.
+ */
+typedef enum
+{
+  HYSCAN_DEVICE_STATUS_OK,
+  HYSCAN_DEVICE_STATUS_WARNING,
+  HYSCAN_DEVICE_STATUS_CRITICAL,
+  HYSCAN_DEVICE_STATUS_ERROR
+} HyScanDeviceStatus;
+
 typedef struct _HyScanControl HyScanControl;
 typedef struct _HyScanControlPrivate HyScanControlPrivate;
 typedef struct _HyScanControlClass HyScanControlClass;
@@ -81,7 +98,7 @@ HYSCAN_API
 gboolean                       hyscan_control_device_bind              (HyScanControl                  *control);
 
 HYSCAN_API
-gboolean                       hyscan_control_get_software_ping        (HyScanControl                  *control);
+const gchar * const *          hyscan_control_devices_list             (HyScanControl                  *control);
 
 HYSCAN_API
 const gchar * const *          hyscan_control_sensors_list             (HyScanControl                  *control);
@@ -91,19 +108,18 @@ const HyScanSourceType *       hyscan_control_sources_list             (HyScanCo
                                                                         guint32                        *n_sources);
 
 HYSCAN_API
+gboolean                       hyscan_control_get_software_ping        (HyScanControl                  *control);
+
+HYSCAN_API
+HyScanDeviceStatus             hyscan_control_device_get_status        (HyScanControl                  *control,
+                                                                        const gchar                    *dev_id);
+
+HYSCAN_API
 const HyScanSensorInfoSensor * hyscan_control_sensor_get_info          (HyScanControl                  *control,
                                                                         const gchar                    *sensor);
 
 HYSCAN_API
 const HyScanSonarInfoSource *  hyscan_control_source_get_info          (HyScanControl                  *control,
-                                                                        HyScanSourceType                source);
-
-HYSCAN_API
-gboolean                       hyscan_control_sensor_get_enable        (HyScanControl                  *control,
-                                                                        const gchar                    *sensor);
-
-HYSCAN_API
-gboolean                       hyscan_control_source_get_enable        (HyScanControl                  *control,
                                                                         HyScanSourceType                source);
 
 HYSCAN_API

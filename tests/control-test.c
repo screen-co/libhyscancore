@@ -515,26 +515,18 @@ check_sources (void)
 void
 check_state_signal (void)
 {
-  const gchar * const *sensors;
-  const HyScanSourceType *sources;
-  guint32 n_sensors;
-  guint32 n_sources;
+  const gchar * const *devices;
+  guint32 n_devices;
   guint i;
 
-  sensors = hyscan_control_sensors_list (control2);
-  n_sensors = g_strv_length ((gchar**)sensors);
-  sources = hyscan_control_sources_list (control2, &n_sources);
+  devices = hyscan_control_devices_list (control2);
+  n_devices = g_strv_length ((gchar**)devices);
 
-  /* Проверяем что датчики и источники данных выключены. */
-  for (i = 0; i < n_sensors; i++)
+  /* Проверяем что устройства находятся в отключенном состоянии. */
+  for (i = 0; i < n_devices; i++)
     {
-      if (hyscan_control_sensor_get_enable (control2, sensors[i]))
-        g_error ("%s enabled", sensors[i]);
-    }
-  for (i = 0; i < n_sources; i++)
-    {
-      if (hyscan_control_source_get_enable (control2, sources[i]))
-        g_error ("%s enabled", hyscan_source_get_name_by_type (sources[i]));
+      if (hyscan_control_device_get_status (control2, devices[i]) != HYSCAN_DEVICE_STATUS_ERROR)
+        g_error ("%s activated", devices[i]);
     }
 
   /* Проверяем прохождение сигнала "device-state". */
@@ -548,16 +540,11 @@ check_state_signal (void)
   if (orig_dev_id != NULL)
     g_error ("failed %s", hyscan_dummy_device_get_id (device2));
 
-  /* Проверяем что датчики и источники данных включены. */
-  for (i = 0; i < n_sensors; i++)
+  /* Проверяем что устройства находятся в активном состоянии. */
+  for (i = 0; i < n_devices; i++)
     {
-      if (!hyscan_control_sensor_get_enable (control2, sensors[i]))
-        g_error ("%s disabled", sensors[i]);
-    }
-  for (i = 0; i < n_sources; i++)
-    {
-      if (!hyscan_control_source_get_enable (control2, sources[i]))
-        g_error ("%s disabled", hyscan_source_get_name_by_type (sources[i]));
+      if (hyscan_control_device_get_status (control2, devices[i]) != HYSCAN_DEVICE_STATUS_OK)
+        g_error ("%s activated", devices[i]);
     }
 }
 

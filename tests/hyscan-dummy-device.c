@@ -307,9 +307,9 @@ hyscan_dummy_device_object_constructed (GObject *object)
   hyscan_data_schema_builder_key_integer_create (builder, key_id, "id", NULL, 0);
   g_hash_table_insert (priv->params, key_id, GINT_TO_POINTER (uniq_value));
 
-  key_id = g_strdup_printf ("/state/%s/enable", priv->device_id);
-  hyscan_data_schema_builder_key_integer_create (builder, key_id, "id", NULL, 0);
-  g_hash_table_insert (priv->params, key_id, NULL);
+  key_id = g_strdup_printf ("/state/%s/status", priv->device_id);
+  hyscan_data_schema_builder_key_string_create (builder, key_id, "id", NULL, NULL);
+  g_hash_table_insert (priv->params, key_id, HYSCAN_DEVICE_SCHEMA_STATUS_ERROR);
 
   schema_data = hyscan_data_schema_builder_get_data (builder);
   priv->schema = hyscan_data_schema_new_from_string (schema_data, "device");
@@ -382,20 +382,20 @@ hyscan_dummy_device_param_get (HyScanParam     *param,
   keys = hyscan_param_list_params (list);
   for (i = 0; keys[i] != NULL; i++)
     {
-      gint32 value;
+      gpointer value;
 
       if (g_str_has_prefix (keys[i], "/info/"))
         return FALSE;
 
       if (g_hash_table_contains (priv->params, keys[i]))
-        value = GPOINTER_TO_INT (g_hash_table_lookup (priv->params, keys[i]));
+        value = g_hash_table_lookup (priv->params, keys[i]);
       else
         return FALSE;
 
-      if (g_str_has_suffix (keys[i], "/enable"))
-        hyscan_param_list_set_boolean (list, keys[i], value);
+      if (g_str_has_suffix (keys[i], "/status"))
+        hyscan_param_list_set_string (list, keys[i], value);
       else
-        hyscan_param_list_set_integer (list, keys[i], value);
+        hyscan_param_list_set_integer (list, keys[i], GPOINTER_TO_INT (value));
     }
 
   return TRUE;
@@ -738,8 +738,8 @@ hyscan_dummy_device_change_state (HyScanDummyDevice *dummy)
 
   priv = dummy->priv;
 
-  g_snprintf (key_id, sizeof (key_id), "/state/%s/enable", priv->device_id);
-  g_hash_table_replace (priv->params, g_strdup (key_id), GINT_TO_POINTER (1));
+  g_snprintf (key_id, sizeof (key_id), "/state/%s/status", priv->device_id);
+  g_hash_table_replace (priv->params, g_strdup (key_id), (gpointer)HYSCAN_DEVICE_SCHEMA_STATUS_OK);
 
   g_signal_emit_by_name (dummy, "device-state", priv->device_id);
 }
