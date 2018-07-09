@@ -457,11 +457,11 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   gfloat s;
   gboolean have_data_int, make_empty, status;
   const gfloat *vals;
-  guint32 n_vals, n_vals1;
+  guint32 n_vals;
 
   have_data_int = FALSE;
   vals          = NULL;
-  n_vals        = n_vals1 = 0;
+  n_vals        = 0;
   jsum          = jtot = jprev = 0;
 
   /* Узнаем время первой записи в КД. */
@@ -587,90 +587,54 @@ hyscan_waterfall_tile_make_string (HyScanWaterfallTilePrivate *priv,
     {
       istart = dfreq * start / speed; /* Начальный индекс входной строки. */
       iend = dfreq * end / speed;     /* Конечный индекс входной строки. */
-
-      istart = MAX (istart, 0);
-
-      /* Проходим по всем индексам. */
-      for (j = istart; j < iend; j++)
-        {
-          /* Если вышли за пределы входной строки, заполняем "прозрачностью". */
-          if (j >= input_size)
-            {
-              for ( ; k < data_size; k++)
-                {
-                  /* Будем делать прозрачную точку, только если ещё ничего нет. */
-                  if (weight[k] == 0.0)
-                    {
-                      data0[k] = TRANSPARENT;
-                      weight[k] = 1.0;
-                    }
-                }
-
-              /* При этом если вышли прям на первом индексе, то строка полностью пустая. */
-              if (istart >= input_size)
-                have_data = FALSE;
-
-              goto exit;
-            }
-
-          /* Если же не вышли, стягиваем строчку. */
-          real_index = ((j * speed / dfreq) - start) / step;
-          k = round (real_index);
-
-          if (k >= 0 && k < data_size)
-            {
-              data0[k] += input[j];
-              weight[k] += 1.0;
-            }
-          else if (k >= data_size)
-            {
-              goto exit;
-            }
-        }
     }
-  if (!slant) /* То есть горизонтальная дальность. */
+  else
     {
       istart = sqrt (pow ((gfloat)start, 2) + depth * depth) * dfreq / speed; /* Начальный индекс входной строки. */
       iend = sqrt (pow ((gfloat)end, 2) + depth * depth) * dfreq / speed; /* Конечный индекс входной строки. */
+    }
 
-      istart = MAX (istart, 0);
+  istart = MAX (istart, 0);
 
-      /* Проходим по всем индексам. */
-      for (j = istart; j < iend; j++)
+  /* Проходим по всем индексам. */
+  for (j = istart; j < iend; j++)
+    {
+      /* Если вышли за пределы входной строки, заполняем "прозрачностью". */
+      if (j >= input_size)
         {
-          /* Если вышли за пределы входной строки, заполняем "прозрачностью". */
-          if (j >= input_size)
+          for ( ; k < data_size; k++)
             {
-              for ( ; k < data_size; k++)
+              /* Будем делать прозрачную точку, только если ещё ничего нет. */
+              if (weight[k] == 0.0)
                 {
-                  /* Будем делать прозрачную точку, только если ещё ничего нет. */
-                  if (weight[k] == 0.0)
-                    {
-                      data0[k] = TRANSPARENT;
-                      weight[k] = 1.0;
-                    }
+                  data0[k] = TRANSPARENT;
+                  weight[k] = 1.0;
                 }
-
-              /* При этом если вышли прям на первом индексе, то строка полностью пустая. */
-              if (istart >= input_size)
-                have_data = FALSE;
-
-              goto exit;
             }
 
-          /* Если же не вышли, стягиваем строчку. */
-          real_index = (sqrt (pow (j * speed / dfreq, 2) - pow (depth, 2)) - start) / step;
-          k = round (real_index);
+          /* При этом если вышли прям на первом индексе, то строка полностью пустая. */
+          if (istart >= input_size)
+            have_data = FALSE;
 
-          if (k >= 0 && k < data_size)
-            {
-              data0[k] += input[j];
-              weight[k] += 1.0;
-            }
-          else if (k >= data_size)
-            {
-              goto exit;
-            }
+          goto exit;
+        }
+
+      /* Если же не вышли, стягиваем строчку. */
+      if (slant)
+        real_index = ((j * speed / dfreq) - start) / step;
+      else
+        real_index = (sqrt (pow (j * speed / dfreq, 2) - pow (depth, 2)) - start) / step;
+
+      k = round (real_index);
+
+      if (k >= 0 && k < data_size)
+        {
+          data0[k] += input[j];
+          weight[k] += 1.0;
+        }
+      else if (k >= data_size)
+        {
+          goto exit;
         }
     }
 
