@@ -23,7 +23,6 @@ struct _HyScanDepthometerPrivate
   HyScanDepth  *source;           /* Источник. */
 
   HyScanCache  *cache;            /* Кэш. */
-  gchar        *prefix;           /* Префикс системы кэширования. */
   gchar        *key;              /* Ключ кэширования. */
   gint          key_length;       /* Длина ключа. */
   HyScanBuffer *cache_buffer;     /* Буфер данных кэша. */
@@ -120,7 +119,6 @@ hyscan_depthometer_object_finalize (GObject *object)
   g_clear_object (&priv->cache_buffer);
   g_clear_object (&priv->source);
   g_clear_object (&priv->cache);
-  g_free (priv->prefix);
 
   g_free (priv->indexes);
 
@@ -141,14 +139,13 @@ hyscan_depthometer_update_cache_key (HyScanDepthometer *meter,
 
   if (priv->key == NULL)
     {
-      priv->key = g_strdup_printf ("depthometer.%s.%s.%i.%"G_GINT64_FORMAT".%"G_GINT64_FORMAT,
-                                    priv->prefix, token,
-                                    G_MAXINT, G_MAXINT64, G_MAXINT64);
+      priv->key = g_strdup_printf ("depthometer.%s.%i.%"G_GINT64_FORMAT".%"G_GINT64_FORMAT,
+                                    token, G_MAXINT, G_MAXINT64, G_MAXINT64);
       priv->key_length = strlen (priv->key);
     }
 
-  g_snprintf (priv->key, priv->key_length, "depthometer.%s.%s.%i.%"G_GINT64_FORMAT".%"G_GINT64_FORMAT,
-              priv->prefix, token, priv->size, priv->valid, time);
+  g_snprintf (priv->key, priv->key_length, "depthometer.%s.%i.%"G_GINT64_FORMAT".%"G_GINT64_FORMAT,
+              token, priv->size, priv->valid, time);
 }
 
 /* Функция выравнивания времени по окну валидности. */
@@ -181,8 +178,7 @@ hyscan_depthometer_new (HyScanDepth *depth)
 /* Функция устанавливает кэш. */
 void
 hyscan_depthometer_set_cache (HyScanDepthometer *meter,
-                              HyScanCache       *cache,
-                              gchar             *prefix)
+                              HyScanCache       *cache)
 {
   HyScanDepthometerPrivate *priv;
 
@@ -190,13 +186,9 @@ hyscan_depthometer_set_cache (HyScanDepthometer *meter,
   priv = meter->priv;
 
   g_clear_object (&priv->cache);
-  g_free (priv->prefix);
 
-  if (cache == NULL)
-    return;
-
-  priv->cache = g_object_ref (cache);
-  priv->prefix = g_strdup ((prefix == NULL) ? "none" : prefix);
+  if (cache != NULL)
+    priv->cache = g_object_ref (cache);
 }
 
 /* Функция устанавливает число точек для аппроксимации. */

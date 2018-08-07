@@ -1,3 +1,36 @@
+/* forward-look-data-test.c
+ *
+ * Copyright 2017-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
 
 #include <hyscan-forward-look-data.h>
 #include <hyscan-cached.h>
@@ -23,7 +56,7 @@ int main( int argc, char **argv )
   HyScanForwardLookData *reader;
 
   HyScanAntennaPosition position;
-  HyScanRawDataInfo raw_info;
+  HyScanAcousticDataInfo info;
 
   guint16 *raw_values1;
   guint16 *raw_values2;
@@ -77,16 +110,16 @@ int main( int argc, char **argv )
   position.gamma = 0.0;
   position.theta = 0.0;
 
-  raw_info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  raw_info.data_rate = 150000.0;
-  raw_info.antenna_voffset = 0.0;
-  raw_info.antenna_hoffset = 0.0;
-  raw_info.antenna_vpattern = 10.0;
-  raw_info.antenna_hpattern = 50.0;
-  raw_info.antenna_frequency = 100000.0;
-  raw_info.antenna_bandwidth = 10000.0;
-  raw_info.adc_vref = 1.0;
-  raw_info.adc_offset = 0;
+  info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  info.data_rate = 150000.0;
+  info.antenna_voffset = 0.0;
+  info.antenna_hoffset = 0.0;
+  info.antenna_vpattern = 10.0;
+  info.antenna_hpattern = 50.0;
+  info.antenna_frequency = 100000.0;
+  info.antenna_bandwidth = 10000.0;
+  info.adc_vref = 1.0;
+  info.adc_offset = 0;
 
   /* Буферы для данных. */
   raw_values1 = g_new0 (guint16, 2 * n_points);
@@ -99,7 +132,7 @@ int main( int argc, char **argv )
 
   /* Генератор данных. */
   generator = hyscan_fl_gen_new ();
-  hyscan_fl_gen_set_info (generator, &raw_info);
+  hyscan_fl_gen_set_info (generator, &info);
   hyscan_fl_gen_set_position (generator, &position);
 
   /* Проект для записи галсов. */
@@ -114,17 +147,14 @@ int main( int argc, char **argv )
     if (!hyscan_fl_gen_generate (generator, n_points, 1000 * (i + 1)))
       g_error ("can't generate data");
 
-  /* Объект обработки данных вперёдсмотрящего локатора. */
-  reader = hyscan_forward_look_data_new (db, PROJECT_NAME, TRACK_NAME, TRUE);
-  if (reader == NULL)
-    g_error ("can't create forward look data processor");
-
   /* Кэш данных */
   if (cache_size)
-    {
-      cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
-      hyscan_forward_look_data_set_cache (reader, cache, NULL);
-    }
+    cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
+
+  /* Объект обработки данных вперёдсмотрящего локатора. */
+  reader = hyscan_forward_look_data_new (db, cache, PROJECT_NAME, TRACK_NAME);
+  if (reader == NULL)
+    g_error ("can't create forward look data processor");
 
   /* Скорость звука для тестовых данных. */
   hyscan_forward_look_data_set_sound_velocity (reader, SOUND_VELOCITY);
@@ -151,7 +181,7 @@ int main( int argc, char **argv )
           gint64 doa_time;
 
           g_timer_start (timer);
-          doa = hyscan_forward_look_data_get_doa_values (reader, i, &doa_size, &doa_time);
+          doa = hyscan_forward_look_data_get_doa (reader, i, &doa_size, &doa_time);
           elapsed += g_timer_elapsed (timer, NULL);
 
           if (doa == NULL)

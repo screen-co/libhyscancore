@@ -181,8 +181,8 @@ void test (gchar             *log_prefix,
   set_get_check (log_prefix, meter, 2, t, (MORE + LESS) / 2.0);
   set_get_check (log_prefix, meter, 4, t, (MORE + 3 * LESS) / 4.0);
 
-  hyscan_depth_set_cache (idepth, cache, "test_prefix");
-  hyscan_depthometer_set_cache (meter, cache, "test_prefix");
+  hyscan_depth_set_cache (idepth, cache);
+  hyscan_depthometer_set_cache (meter, cache);
   hyscan_depthometer_set_validity_time (meter, DB_TIME_INC);
 
   t = DB_TIME_START + 50 * DB_TIME_INC;

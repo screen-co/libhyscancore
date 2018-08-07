@@ -38,9 +38,8 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshall
                     VERBATIM)
 
 add_library (${HYSCAN_CORE_LIBRARY} SHARED
-             hyscan-core-params.c
+             hyscan-core-common.c
              hyscan-data-writer.c
-             hyscan-raw-data.c
              hyscan-acoustic-data.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
@@ -74,9 +73,7 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
          DESTINATION "lib/pkgconfig"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-install (FILES hyscan-core-schemas.h
-               hyscan-data-writer.h
-               hyscan-raw-data.h
+install (FILES hyscan-data-writer.h
                hyscan-acoustic-data.h
                hyscan-forward-look-data.h
                hyscan-nmea-data.h

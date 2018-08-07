@@ -1,16 +1,35 @@
-/*
- * \file hyscan-fl-gen.h
+/* hyscan-fl-gen.h
  *
- * \brief Заголовочный файл класса генерации тестовых данных вперёдсмотрящего локатора
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2017-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
- * Класс предназначен для записи тестовых данных вперёдсмотрящего локатора.
+ * This file is part of HyScanCore library.
  *
- * Тестовые данные представляют собой отражение от целей по всей дистанции
- * приёма с изменением направления от крайнего левого до крайнего правого.
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
  */
 
 #ifndef __HYSCAN_FL_GEN_H__
@@ -45,29 +64,23 @@ struct _HyScanFLGenClass
 
 GType                  hyscan_fl_gen_get_type          (void);
 
-/* Функция создаёт новый объект HyScanFLGen. */
 HyScanFLGen           *hyscan_fl_gen_new               (void);
 
-/* Функция задаёт местоположение приёмной антенны локатора. */
 void                   hyscan_fl_gen_set_position      (HyScanFLGen                   *fl_gen,
                                                         HyScanAntennaPosition         *position);
 
-/* Функция задаёт параметры локатора. */
 void                   hyscan_fl_gen_set_info          (HyScanFLGen                   *fl_gen,
-                                                        HyScanRawDataInfo             *info);
+                                                        HyScanAcousticDataInfo        *info);
 
-/* Функция задаёт проект и галс в который ведётся запись. */
 gboolean               hyscan_fl_gen_set_track         (HyScanFLGen                   *fl_gen,
                                                         HyScanDB                      *db,
                                                         const gchar                   *project_name,
                                                         const gchar                   *track_name);
 
-/* Функция генерирует и записывает в галс одну строку данных. */
 gboolean               hyscan_fl_gen_generate          (HyScanFLGen                   *fl_gen,
                                                         guint32                        n_points,
                                                         gint64                         time);
 
-/* Функция проверяет валидность данных. */
 gboolean               hyscan_fl_gen_check             (const HyScanForwardLookDOA    *doa,
                                                         guint32                        n_points,
                                                         gint64                         time,

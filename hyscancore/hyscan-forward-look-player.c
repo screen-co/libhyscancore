@@ -32,14 +32,10 @@ typedef enum
 
 typedef struct
 {
-  HyScanCache                 *cache;                  /* Интерфейс системы кэширования. */
-  gchar                       *cache_prefix;           /* Префикс ключа кэширования. */
-  gboolean                     cache_changed;          /* Признак изменения кэша. */
-
   HyScanDB                    *db;                     /* Интерфейс базы данных. */
+  HyScanCache                 *cache;                  /* Интерфейс системы кэширования. */
   gchar                       *project_name;           /* Название проекта. */
   gchar                       *track_name;             /* Название галса. */
-  gboolean                     raw;                    /* Использовать сырые данные. */
   gboolean                     track_changed;          /* Признак изменения галса. */
 
   gdouble                      sound_velocity;         /* Скорость звука, м/с. */
@@ -177,36 +173,23 @@ static void
 hyscan_forward_look_player_sync_state (HyScanForwardLookPlayerState *new_state,
                                        HyScanForwardLookPlayerState *cur_state)
 {
-  /* Новые параметры системы кэширования. */
-  if (new_state->cache_changed)
-    {
-      g_clear_object (&cur_state->cache);
-      g_clear_pointer (&cur_state->cache_prefix, g_free);
-
-      cur_state->cache = new_state->cache;
-      cur_state->cache_prefix = new_state->cache_prefix;
-      cur_state->cache_changed = TRUE;
-
-      new_state->cache = NULL;
-      new_state->cache_prefix = NULL;
-      new_state->cache_changed = FALSE;
-    }
-
   /* Новый галс для отображения. */
   if (new_state->track_changed)
     {
       g_clear_object (&cur_state->db);
+      g_clear_object (&cur_state->cache);
       g_clear_pointer (&cur_state->project_name, g_free);
       g_clear_pointer (&cur_state->track_name, g_free);
 
       cur_state->db = new_state->db;
+      cur_state->cache = new_state->cache;
       cur_state->project_name = new_state->project_name;
       cur_state->track_name = new_state->track_name;
-      cur_state->raw = new_state->raw;
       cur_state->index = 0;
       cur_state->track_changed = TRUE;
 
       new_state->db = NULL;
+      new_state->cache = NULL;
       new_state->project_name = NULL;
       new_state->track_name = NULL;
       new_state->index = 0;
@@ -243,18 +226,12 @@ hyscan_forward_look_player_open_data (HyScanForwardLookPlayerState *state,
     {
       /* Закрываем предыдущий галс, открываем новый. */
       g_clear_object (&data->data);
-      data->data = hyscan_forward_look_data_new (state->db, state->project_name, state->track_name, state->raw);
+      data->data = hyscan_forward_look_data_new (state->db, state->cache, state->project_name, state->track_name);
     }
 
-  /* Устанавливаем кэш и скорость звука. */
+  /* Устанавливаем скорость звука. */
   if (data->data != NULL)
     {
-      if (state->cache_changed || state->track_changed)
-        {
-          hyscan_forward_look_data_set_cache (data->data, state->cache, state->cache_prefix);
-          state->cache_changed = FALSE;
-        }
-
       if (state->sound_velocity_changed || state->track_changed)
         {
           hyscan_forward_look_data_set_sound_velocity (data->data, state->sound_velocity);
@@ -444,7 +421,7 @@ hyscan_forward_look_player_processor (gpointer user_data)
           guint32 n_points;
           gint64 doa_time;
 
-          doa = hyscan_forward_look_data_get_doa_values (priv->data.data, priv->cur_state.index,
+          doa = hyscan_forward_look_data_get_doa (priv->data.data, priv->cur_state.index,
                                                          &n_points, &doa_time);
           if (doa != NULL)
             {
@@ -477,7 +454,6 @@ hyscan_forward_look_player_processor (gpointer user_data)
   g_clear_pointer (&priv->cur_state.track_name, g_free);
 
   g_clear_object  (&priv->cur_state.cache);
-  g_clear_pointer (&priv->cur_state.cache_prefix, g_free);
 
   g_timer_destroy (delay_timer);
   g_timer_destroy (play_timer);
@@ -539,34 +515,6 @@ hyscan_forward_look_player_new (void)
   return g_object_new (HYSCAN_TYPE_FORWARD_LOOK_PLAYER, NULL);
 }
 
-/* Функция задаёт используемый кэш. */
-void
-hyscan_forward_look_player_set_cache (HyScanForwardLookPlayer *player,
-                                      HyScanCache             *cache,
-                                      const gchar             *prefix)
-{
-  HyScanForwardLookPlayerPrivate *priv;
-
-  g_return_if_fail (HYSCAN_IS_FORWARD_LOOK_PLAYER (player));
-
-  priv = player->priv;
-
-  g_mutex_lock (&priv->ctl_lock);
-
-  g_clear_object (&priv->new_state.cache);
-  g_clear_pointer (&priv->new_state.cache_prefix, g_free);
-
-  if (cache != NULL)
-    {
-      priv->new_state.cache = g_object_ref (cache);
-      priv->new_state.cache_prefix = g_strdup (prefix);
-    }
-
-  priv->new_state.cache_changed = TRUE;
-
-  g_mutex_unlock (&priv->ctl_lock);
-}
-
 /* Функция устанавливает целевой уровень числа отображаемых кадров в секунду. */
 void
 hyscan_forward_look_player_set_fps (HyScanForwardLookPlayer *player,
@@ -616,9 +564,9 @@ hyscan_forward_look_player_set_sv (HyScanForwardLookPlayer *player,
 void
 hyscan_forward_look_player_open (HyScanForwardLookPlayer *player,
                                  HyScanDB                *db,
+                                 HyScanCache             *cache,
                                  const gchar             *project_name,
-                                 const gchar             *track_name,
-                                 gboolean                 raw)
+                                 const gchar             *track_name)
 {
   HyScanForwardLookPlayerPrivate *priv;
 
@@ -629,17 +577,18 @@ hyscan_forward_look_player_open (HyScanForwardLookPlayer *player,
   g_mutex_lock (&priv->ctl_lock);
 
   g_clear_object (&priv->new_state.db);
+  g_clear_object (&priv->new_state.cache);
   g_clear_pointer (&priv->new_state.project_name, g_free);
   g_clear_pointer (&priv->new_state.track_name, g_free);
-  priv->new_state.raw = FALSE;
 
-  if ((db != NULL) && (project_name != NULL) && (track_name != NULL))
-    {
+  if (db != NULL)
       priv->new_state.db = g_object_ref (db);
-      priv->new_state.project_name = g_strdup (project_name);
-      priv->new_state.track_name = g_strdup (track_name);
-      priv->new_state.raw = raw;
-    }
+  if (cache != NULL)
+      priv->new_state.cache = g_object_ref (cache);
+  if (project_name != NULL)
+    priv->new_state.project_name = g_strdup (project_name);
+  if (track_name != NULL)
+    priv->new_state.track_name = g_strdup (track_name);
 
   priv->new_state.track_changed = TRUE;
 
@@ -652,7 +601,7 @@ hyscan_forward_look_player_open (HyScanForwardLookPlayer *player,
 void
 hyscan_forward_look_player_close (HyScanForwardLookPlayer *player)
 {
-  hyscan_forward_look_player_open (player, NULL, NULL, NULL, FALSE);
+  hyscan_forward_look_player_open (player, NULL, NULL, NULL, NULL);
 }
 
 /* Функция включает режим отображения данных в реальном времени. */

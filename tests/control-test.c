@@ -33,7 +33,6 @@
  */
 
 #include <hyscan-control.h>
-#include <hyscan-raw-data.h>
 #include <hyscan-acoustic-data.h>
 #include <hyscan-nmea-data.h>
 
@@ -275,11 +274,13 @@ verify_position (const HyScanAntennaPosition *position1,
 }
 
 void
-verify_raw_info (const HyScanRawDataInfo *info1,
-                 const HyScanRawDataInfo *info2)
+verify_acoustic_info (const HyScanAcousticDataInfo *info1,
+                      const HyScanAcousticDataInfo *info2)
 {
   if ((info1->data_type != info2->data_type) ||
       (info1->data_rate != info2->data_rate) ||
+      (info1->signal_frequency != info2->signal_frequency) ||
+      (info1->signal_bandwidth != info2->signal_bandwidth) ||
       (info1->antenna_voffset != info2->antenna_voffset) ||
       (info1->antenna_hoffset != info2->antenna_hoffset) ||
       (info1->antenna_vpattern != info2->antenna_vpattern) ||
@@ -288,19 +289,6 @@ verify_raw_info (const HyScanRawDataInfo *info1,
       (info1->antenna_bandwidth != info2->antenna_bandwidth) ||
       (info1->adc_vref != info2->adc_vref) ||
       (info1->adc_offset != info2->adc_offset))
-    {
-      g_error ("raw data info failed");
-    }
-}
-
-void
-verify_acoustic_info (const HyScanAcousticDataInfo *info1,
-                      const HyScanAcousticDataInfo *info2)
-{
-  if ((info1->data_type != info2->data_type) ||
-      (info1->data_rate != info2->data_rate) ||
-      (info1->antenna_vpattern != info2->antenna_vpattern) ||
-      (info1->antenna_hpattern != info2->antenna_hpattern))
     {
       g_error ("acoustic data info failed");
     }
@@ -877,18 +865,13 @@ check_sensor_data (const gchar *sensor)
 void
 check_sonar_data (HyScanSourceType source)
 {
-  HyScanRawData *raw;
-  HyScanRawData *noise;
-  HyScanAcousticData *acoustic;
+  HyScanAcousticData *reader;
 
   HyScanAntennaPosition *orig_position;
   HyScanAntennaPosition  position;
 
-  HyScanRawDataInfo *orig_raw_info;
-  HyScanRawDataInfo  raw_info;
-
-  HyScanAcousticDataInfo *orig_acoustic_info;
-  HyScanAcousticDataInfo  acoustic_info;
+  HyScanAcousticDataInfo *orig_info;
+  HyScanAcousticDataInfo  info;
 
   HyScanComplexFloat *orig_cdata;
   const HyScanComplexFloat *cdata;
@@ -901,111 +884,60 @@ check_sonar_data (HyScanSourceType source)
 
   /* Проверочные данные. */
   orig_position = hyscan_dummy_device_get_source_position (source);
-  orig_raw_info = hyscan_dummy_device_get_raw_info (source);
-  orig_acoustic_info = hyscan_dummy_device_get_acoustic_info (source);
+  orig_info = hyscan_dummy_device_get_acoustic_info (source);
 
-  /* Открываем каналы данных. */
-  raw = hyscan_raw_data_new (db, project_name, track_name, source, 1);
-  noise = hyscan_raw_data_noise_new (db, project_name, track_name, source, 1);
-  acoustic = hyscan_acoustic_data_new (db, project_name, track_name, source, FALSE);
+  /* Открываем канал данных. */
+  reader = hyscan_acoustic_data_new (db, NULL, project_name, track_name, source, 1, FALSE);
 
-  if ((raw == NULL) ||
-      (noise == NULL) ||
-      (acoustic == NULL))
-    {
-      g_error ("can't open %s data", hyscan_source_get_name_by_type (source));
-    }
-
-  hyscan_raw_data_set_convolve (raw, FALSE);
-  hyscan_raw_data_set_convolve (noise, FALSE);
+  if (reader == NULL)
+    g_error ("can't open %s data", hyscan_source_get_name_by_type (source));
 
   /* Проверяем местоположение антенн. */
-  position = hyscan_raw_data_get_position (raw);
-  verify_position (orig_position, &position);
-  position = hyscan_raw_data_get_position (noise);
-  verify_position (orig_position, &position);
-  position = hyscan_acoustic_data_get_position (acoustic);
+  position = hyscan_acoustic_data_get_position (reader);
   verify_position (orig_position, &position);
 
   /* Проверяем параметры каналов данных. */
-  raw_info = hyscan_raw_data_get_info (raw);
-  verify_raw_info (orig_raw_info, &raw_info);
-  raw_info = hyscan_raw_data_get_info (noise);
-  verify_raw_info (orig_raw_info, &raw_info);
-  acoustic_info = hyscan_acoustic_data_get_info (acoustic);
-  verify_acoustic_info (orig_acoustic_info, &acoustic_info);
+  info = hyscan_acoustic_data_get_info (reader);
+  verify_acoustic_info (orig_info, &info);
 
   orig_cdata = hyscan_dummy_device_get_complex_float_data (source, &orig_n_points, &orig_time);
-
-  /* Проверяем образ сигнала. */
-  cdata = hyscan_raw_data_get_signal_image (raw, 0, &n_points, &time);
-  if ((orig_time != time) ||
-      (orig_n_points != n_points) ||
-      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
-    {
-      g_error ("%s raw signal error", hyscan_source_get_name_by_type (source));
-    }
-  cdata = hyscan_raw_data_get_signal_image (noise, 0, &n_points, &time);
-  if ((orig_time != time) ||
-      (orig_n_points != n_points) ||
-      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
-    {
-      g_error ("%s noise signal error", hyscan_source_get_name_by_type (source));
-    }
-
-  /* Проверяем сырые данные. */
-  cdata = hyscan_raw_data_get_quadrature_values (raw, 0, &n_points, &time);
-  if ((orig_time != time) ||
-      (orig_n_points != n_points) ||
-      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
-    {
-      g_error ("%s raw data error", hyscan_source_get_name_by_type (source));
-    }
-  cdata = hyscan_raw_data_get_quadrature_values (noise, 0, &n_points, &time);
-  if ((orig_time != time) ||
-      (orig_n_points != n_points) ||
-      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
-    {
-      g_error ("%s noise data error", hyscan_source_get_name_by_type (source));
-    }
-
   orig_fdata = hyscan_dummy_device_get_float_data (source, &orig_n_points, &orig_time);
 
-  /* Проверяем ВАРУ. */
-  fdata = hyscan_raw_data_get_tvg_values (raw, 0, &n_points, &time);
+  /* Проверяем образ сигнала. */
+  cdata = hyscan_acoustic_data_get_signal (reader, 0, &n_points, &time);
   if ((orig_time != time) ||
       (orig_n_points != n_points) ||
-      (memcmp (orig_fdata, fdata, n_points * sizeof (gfloat) != 0)))
+      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
     {
-      g_error ("%s raw tvg error", hyscan_source_get_name_by_type (source));
-    }
-  fdata = hyscan_raw_data_get_tvg_values (noise, 0, &n_points, &time);
-  if ((orig_time != time) ||
-      (orig_n_points != n_points) ||
-      (memcmp (orig_fdata, fdata, n_points * sizeof (gfloat) != 0)))
-    {
-      g_error ("%s noise tvg error", hyscan_source_get_name_by_type (source));
+      g_error ("%s signal error", hyscan_source_get_name_by_type (source));
     }
 
-  /* Проверяем амплитудные данные. */
-  fdata = hyscan_acoustic_data_get_values (acoustic, 0, &n_points, &time);
+  /* Проверяем ВАРУ. */
+  fdata = hyscan_acoustic_data_get_tvg (reader, 0, &n_points, &time);
   if ((orig_time != time) ||
       (orig_n_points != n_points) ||
       (memcmp (orig_fdata, fdata, n_points * sizeof (gfloat) != 0)))
     {
-      g_error ("%s acoustic data error", hyscan_source_get_name_by_type (source));
+      g_error ("%s tvg error", hyscan_source_get_name_by_type (source));
+    }
+
+  /* Проверяем данные. */
+  hyscan_acoustic_data_set_convolve (reader, FALSE, 1.0);
+  cdata = hyscan_acoustic_data_get_complex (reader, 0, &n_points, &time);
+  if ((orig_time != time) ||
+      (orig_n_points != n_points) ||
+      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
+    {
+      g_error ("%s data error", hyscan_source_get_name_by_type (source));
     }
 
   hyscan_antenna_position_free (orig_position);
-  hyscan_raw_data_info_free (orig_raw_info);
-  hyscan_acoustic_data_info_free (orig_acoustic_info);
+  hyscan_acoustic_data_info_free (orig_info);
 
   g_free (orig_cdata);
   g_free (orig_fdata);
 
-  g_object_unref (acoustic);
-  g_object_unref (noise);
-  g_object_unref (raw);
+  g_object_unref (reader);
 }
 
 int
@@ -1146,7 +1078,6 @@ main (int    argc,
   /* Параметры записи данных. */
   hyscan_control_writer_set_db (control2, db);
   hyscan_control_writer_set_operator_name (control2, OPERATOR_NAME);
-  hyscan_control_writer_set_mode (control2, HYSCAN_DATA_WRITER_MODE_BOTH);
 
   /* Настройка датчиков. */
   for (i = 0; sensors[i] != NULL; i++)

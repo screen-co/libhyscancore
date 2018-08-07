@@ -1,5 +1,37 @@
+/* acoustic-data-test.c
+ *
+ * Copyright 2015-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
 
-#include <hyscan-raw-data.h>
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
+
 #include <hyscan-acoustic-data.h>
 #include <hyscan-data-writer.h>
 #include <hyscan-buffer.h>
@@ -10,7 +42,7 @@
 #include <math.h>
 
 #define PROJECT_NAME           "test"
-#define TRACK_NAME             "track"
+#define TRACK_NAME             "test"
 
 typedef struct _test_info test_info;
 struct _test_info
@@ -20,7 +52,15 @@ struct _test_info
   gdouble              error;
 };
 
-test_info raw_test_types [] =
+test_info real_test_types [] =
+{
+  { "adc-14le", HYSCAN_DATA_ADC_14LE,          1e-4 },
+  { "adc-16le", HYSCAN_DATA_ADC_16LE,          1e-4 },
+  { "adc-24le", HYSCAN_DATA_ADC_24LE,          1e-5 },
+  { "float",    HYSCAN_DATA_FLOAT,             1e-5 },
+};
+
+test_info complex_test_types [] =
 {
   { "adc-14le", HYSCAN_DATA_COMPLEX_ADC_14LE,  1e-6 },
   { "adc-16le", HYSCAN_DATA_COMPLEX_ADC_16LE,  1e-6 },
@@ -28,55 +68,603 @@ test_info raw_test_types [] =
   { "float",    HYSCAN_DATA_COMPLEX_FLOAT,     1e-8 },
 };
 
-test_info amp_test_types [] =
+test_info amplitude_test_types [] =
 {
   { "float",    HYSCAN_DATA_FLOAT,             1e-9 },
   { "amp-i8",   HYSCAN_DATA_AMPLITUDE_INT8,    1e-4 },
   { "amp-i16",  HYSCAN_DATA_AMPLITUDE_INT16,   1e-6 },
   { "amp-i32",  HYSCAN_DATA_AMPLITUDE_INT32,   1e-9 },
   { "amp-f8",   HYSCAN_DATA_AMPLITUDE_FLOAT8,  1e-4 },
-  { "amp-f16",  HYSCAN_DATA_AMPLITUDE_FLOAT16, 1e-6 }
+  { "amp-f16",  HYSCAN_DATA_AMPLITUDE_FLOAT16, 1e-6 },
+  { "amp-f32",  HYSCAN_DATA_AMPLITUDE_FLOAT32, 1e-8 }
 };
 
-int main( int argc, char **argv )
+/* Функция записывает тестовые гидроакустические данные. Записывается
+ * n_signals * n_lines строк, каждая строка имеет размер 100 * n_signal_points,
+ * где n_signal_points - размер сигнала равный discretization * duration.
+ *
+ * Функция формирует действительные или комплексные выборки данных в зависимости
+ * от указанного типа данных - type.
+ *
+ * В строке, со смещением в два размера сигнала формируется синусоидальная
+ * последовательность, которая после свёртки преобразуется в треугольник.
+ *
+ * Каждые n_lines строк записывается новый образ сигнала с частотой frequency0
+ * и параметры ВАРУ, линейно увеличивающиеся по строке с шагом 1, начиная с tvg0.
+ */
+void
+create_complex_data (HyScanDataWriter *writer,
+                     HyScanSourceType  source,
+                     guint             channel,
+                     gboolean          noise,
+                     HyScanDataType    type,
+                     gdouble           discretization,
+                     gdouble           frequency,
+                     gdouble           duration,
+                     guint             n_signals,
+                     guint             n_lines)
+{
+  HyScanAcousticDataInfo acoustic_info;
+  HyScanAntennaPosition position;
+
+  HyScanBuffer *channel_buffer;
+  HyScanBuffer *data_buffer;
+
+  guint n_signal_points;
+  guint n_data_points;
+
+  guint i, j;
+
+  data_buffer = hyscan_buffer_new ();
+  channel_buffer = hyscan_buffer_new ();
+
+  /* Параметры данных. */
+  acoustic_info.data_type = type;
+  acoustic_info.data_rate = discretization;
+  acoustic_info.signal_frequency = frequency;
+  acoustic_info.signal_bandwidth = 0.1 * frequency;
+  acoustic_info.antenna_voffset = 0.0;
+  acoustic_info.antenna_hoffset = 0.0;
+  acoustic_info.antenna_vpattern = 40.0;
+  acoustic_info.antenna_hpattern = 2.0;
+  acoustic_info.antenna_frequency = frequency;
+  acoustic_info.antenna_bandwidth = 0.1 * frequency;
+  acoustic_info.adc_vref = 1.0;
+  acoustic_info.adc_offset = 0;
+
+  position.x = 0.0;
+  position.y = 0.0;
+  position.z = 0.0;
+  position.psi = 0.0;
+  position.gamma = 0.0;
+  position.theta = 0.0;
+
+  hyscan_data_writer_sonar_set_position (writer, source, &position);
+
+  n_signal_points = discretization * duration;
+  n_data_points = 100 * n_signal_points;
+
+  for (i = 0; i < n_signals * n_lines; i++)
+    {
+      gdouble df, frequency0, tvg0;
+      gint64 data_time;
+
+      df = frequency / (10.0 * (n_signals - 1));
+      frequency0 = -(df * (n_signals - 1) / 2.0) + (i / n_lines) * df;
+      tvg0 = i / n_lines;
+      data_time = 1000 * (i + 1);
+
+      /* Записываем образ сигнала каждые n_lines строк. */
+      if ((i % n_lines) == 0)
+        {
+          HyScanComplexFloat *data;
+          gboolean status;
+
+          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
+          hyscan_buffer_set_size (data_buffer, n_signal_points * sizeof (HyScanComplexFloat));
+          data = hyscan_buffer_get_complex_float (data_buffer, &n_signal_points);
+
+          for (j = 0; j < n_signal_points; j++)
+            {
+              gdouble time = (1.0 / discretization) * j;
+              gdouble phase = 2.0 * G_PI * frequency0 * time;
+
+              data[j].re = cos (phase);
+              data[j].im = sin (phase);
+            }
+
+          status = hyscan_data_writer_acoustic_add_signal (writer, source, channel,
+                                                           data_time, data_buffer);
+          if (!status)
+            g_error ("can't add signal image");
+        }
+
+      /* Записываем параметры ВАРУ каждые n_lines строк. */
+      if ((i % n_lines) == 0)
+        {
+          gfloat *data;
+          gboolean status;
+
+          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_FLOAT);
+          hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (gfloat));
+          data = hyscan_buffer_get_float (data_buffer, &n_data_points);
+
+          for (j = 0; j < n_data_points; j++)
+            data[j] = tvg0 + j;
+
+          status = hyscan_data_writer_acoustic_add_tvg (writer, source, channel,
+                                                        data_time, data_buffer);
+          if (!status)
+            g_error ("can't add tvg");
+        }
+
+      /* Записываем действительные данные. */
+      if (hyscan_discretization_get_type_by_data (type) == HYSCAN_DISCRETIZATION_REAL)
+        {
+          gfloat *data;
+          gboolean status;
+
+          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_FLOAT);
+          hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (gfloat));
+          data = hyscan_buffer_get_float (data_buffer, &n_data_points);
+
+          memset (data, 0, n_data_points * sizeof (gfloat));
+          for (j = 2 * n_signal_points; j < 3 * n_signal_points; j++)
+            {
+              gdouble time = (1.0 / discretization) * (j - 2 * n_signal_points);
+              gdouble phase = 2.0 * G_PI * (frequency + frequency0) * time;
+
+              data[j] = cos (phase);
+            }
+
+          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, type))
+            g_error ("can't export channel data");
+
+          status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
+                                                         data_time, &acoustic_info, channel_buffer);
+          if (!status)
+            g_error ("can't add channel data");
+        }
+
+      /* Записываем комплексные данные. */
+      if (hyscan_discretization_get_type_by_data (type) == HYSCAN_DISCRETIZATION_COMPLEX)
+        {
+          HyScanComplexFloat *data;
+          gboolean status;
+
+          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
+          hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (HyScanComplexFloat));
+          data = hyscan_buffer_get_complex_float (data_buffer, &n_data_points);
+
+          memset (data, 0, n_data_points * sizeof (HyScanComplexFloat));
+          for (j = 2 * n_signal_points; j < 3 * n_signal_points; j++)
+            {
+              gdouble time = (1.0 / discretization) * (j - 2 * n_signal_points);
+              gdouble phase = 2.0 * G_PI * frequency0 * time;
+
+              data[j].re = cos (phase);
+              data[j].im = sin (phase);
+            }
+
+          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, type))
+            g_error ("can't export channel data");
+
+          status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
+                                                         data_time, &acoustic_info, channel_buffer);
+          if (!status)
+            g_error ("can't add channel data");
+        }
+    }
+
+  g_object_unref (channel_buffer);
+  g_object_unref (data_buffer);
+}
+
+/* Функция записывает тестовые гидроакустические данные. Записывается
+ * n_lines строк, каждая строка имеет размер 100 * n_signal_points,
+ * где n_signal_points - размер сигнала равный discretization * duration.
+ * В строке, со смещением в два размера сигнала формируется синусоидальная
+ * последовательность.
+ *
+ * Функция формирует амплитудные выборки данных.
+ */
+void
+create_amplitude_data (HyScanDataWriter *writer,
+                       HyScanSourceType  source,
+                       guint             channel,
+                       gboolean          noise,
+                       HyScanDataType    type,
+                       gdouble           discretization,
+                       gdouble           frequency,
+                       gdouble           duration,
+                       guint             n_lines)
+{
+  HyScanAcousticDataInfo acoustic_info;
+  HyScanAntennaPosition position;
+
+  HyScanBuffer *data_buffer;
+  HyScanBuffer *channel_buffer;
+  guint n_signal_points;
+  guint n_data_points;
+  guint i, j;
+
+  data_buffer = hyscan_buffer_new ();
+  channel_buffer = hyscan_buffer_new ();
+
+  /* Параметры данных. */
+  acoustic_info.data_type = type;
+  acoustic_info.data_rate = discretization;
+  acoustic_info.signal_frequency = frequency;
+  acoustic_info.signal_bandwidth = 0.1 * frequency;
+  acoustic_info.antenna_voffset = 0.0;
+  acoustic_info.antenna_hoffset = 0.0;
+  acoustic_info.antenna_vpattern = 40.0;
+  acoustic_info.antenna_hpattern = 2.0;
+  acoustic_info.antenna_frequency = frequency;
+  acoustic_info.antenna_bandwidth = 0.1 * frequency;
+  acoustic_info.adc_vref = 1.0;
+  acoustic_info.adc_offset = 0;
+
+  position.x = 0.0;
+  position.y = 0.0;
+  position.z = 0.0;
+  position.psi = 0.0;
+  position.gamma = 0.0;
+  position.theta = 0.0;
+
+  hyscan_data_writer_sonar_set_position (writer, source, &position);
+
+  n_signal_points = discretization * duration;
+  n_data_points = 100 * n_signal_points;
+
+  for (i = 0; i < n_lines; i++)
+    {
+      gfloat *data;
+      gint64 data_time;
+      gboolean status;
+
+      data_time = 1000 * (i + 1);
+
+      hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_FLOAT);
+      hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (gfloat));
+      data = hyscan_buffer_get_float (data_buffer, &n_data_points);
+
+      memset (data, 0, n_data_points * sizeof (gfloat));
+      for (j = 2 * n_signal_points; j < 3 * n_signal_points; j++)
+        {
+          gdouble time = (1.0 / discretization) * (j + i);
+          gdouble phase = 2.0 * G_PI * frequency * time;
+
+          data[j] = fabs (sin (phase));
+        }
+
+      if (!hyscan_buffer_export_data (data_buffer, channel_buffer, type))
+        g_error ("can't export amplitude data");
+
+      status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
+                                                     data_time, &acoustic_info, channel_buffer);
+      if (!status)
+        g_error ("can't add acoustic data");
+    }
+
+  g_object_unref (channel_buffer);
+  g_object_unref (data_buffer);
+}
+
+/* Функция проверяет гидроакустические данные. При этом данные
+ * считываются из системы хранения и сравниваются с эталоном.
+ */
+void
+check_complex_data (HyScanDB         *db,
+                    HyScanCache      *cache,
+                    HyScanSourceType  source,
+                    guint             channel,
+                    gboolean          noise,
+                    gdouble           discretization,
+                    gdouble           frequency,
+                    gdouble           duration,
+                    guint             n_signals,
+                    guint             n_lines,
+                    gdouble           error)
+{
+  HyScanAcousticData *reader;
+  HyScanAcousticDataInfo info;
+  guint n_signal_points;
+  guint n_data_points;
+  guint i, j;
+
+  reader = hyscan_acoustic_data_new (db, cache, PROJECT_NAME, TRACK_NAME,
+                                     source, channel, noise);
+  info = hyscan_acoustic_data_get_info (reader);
+
+  if (info.signal_frequency != frequency)
+    g_error ("data frequency mismatch");
+
+  n_signal_points = discretization * duration;
+  n_data_points = 100 * n_signal_points;
+
+  for (i = 0; i < n_lines; i++)
+    {
+      gdouble df, frequency0, tvg0;
+
+      df = frequency / (10.0 * (n_signals - 1));
+      frequency0 = -(df * (n_signals - 1) / 2.0) + (i / n_lines) * df;
+      tvg0 = i / n_lines;
+
+      /* Проверяем образ сигнала. */
+      {
+        const HyScanComplexFloat *data;
+        gint64 data_time0;
+        gint64 data_time;
+        guint data_size;
+
+        data_time0 = 1000 * ((i / n_lines) * n_lines + 1);
+
+        data = hyscan_acoustic_data_get_signal (reader, i, &data_size, &data_time);
+        if (data == NULL)
+          g_error ("can't get signal");
+
+        if (data_size != n_signal_points)
+          g_error ("signal size error");
+
+        if (data_time0 != data_time)
+          g_error ("signal time error");
+
+        for (j = 0; j < n_signal_points; j++)
+          {
+            gdouble time = (1.0 / discretization) * j;
+            gdouble phase = 2.0 * G_PI * frequency0 * time;
+            gfloat re, im;
+
+            re = cos (phase);
+            im = sin (phase);
+
+            if ((data[j].re != re) || (data[j].im != im))
+              g_error ("error in signal image");
+          }
+      }
+
+      /* Проверяем параметры ВАРУ. */
+      {
+        const gfloat *data;
+        gint64 data_time0;
+        gint64 data_time;
+        guint data_size;
+
+        data_time0 = 1000 * ((i / n_lines) * n_lines + 1);
+
+        data = hyscan_acoustic_data_get_tvg (reader, i, &data_size, &data_time);
+        if (data == NULL)
+          g_error ("can't get tvg");
+
+        if (data_size != n_data_points)
+          g_error ("tvg size error");
+
+        if (data_time0 != data_time)
+          g_error ("tvg time error");
+
+        for (j = 0; j < n_data_points; j++)
+          {
+            if (data[j] != (tvg0 + j))
+              g_error ("error in tvg");
+          }
+      }
+
+      /* Проверяем действительные данные. */
+      if (hyscan_discretization_get_type_by_data (info.data_type) == HYSCAN_DISCRETIZATION_REAL)
+        {
+          const gfloat *data;
+          gint64 data_time0;
+          gint64 data_time;
+          guint data_size;
+          gdouble data_diff;
+
+          data_time0 = 1000 * (i + 1);
+
+          data = hyscan_acoustic_data_get_real (reader, i, &data_size, &data_time);
+          if (data == NULL)
+            g_error ("can't get real data");
+
+          if (data_size != n_data_points)
+            g_error ("real data size error");
+
+          if (data_time0 != data_time)
+            g_error ("real data time error");
+
+          data_diff = 0.0;
+          for (j = 0; j < n_data_points; j++)
+            {
+              gdouble time = (1.0 / discretization) * (j - 2 * n_signal_points);
+              gdouble phase = 2.0 * G_PI * (frequency + frequency0) * time;
+              gdouble amplitude = 0.0;
+
+              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+                amplitude = cos (phase);
+
+              data_diff += fabs (data[j] - amplitude);
+            }
+
+          if (data_diff > (error * n_data_points))
+            g_error ("error in real data %f %f", data_diff, error * n_data_points);
+        }
+
+      /* Проверяем комплексные данные. */
+      if (hyscan_discretization_get_type_by_data (info.data_type) == HYSCAN_DISCRETIZATION_COMPLEX)
+        {
+          const HyScanComplexFloat *data;
+          gint64 data_time0;
+          gint64 data_time;
+          guint data_size;
+          gdouble data_diff;
+
+          data_time0 = 1000 * (i + 1);
+
+          data = hyscan_acoustic_data_get_complex (reader, i, &data_size, &data_time);
+          if (data == NULL)
+            g_error ("can't get complex data");
+
+          if (data_size != n_data_points)
+            g_error ("complex data size error");
+
+          if (data_time0 != data_time)
+            g_error ("complex data time error");
+
+          data_diff = 0.0;
+          for (j = 0; j < n_data_points; j++)
+            {
+              gdouble amplitude = 0.0;
+              gfloat re = data[j].re;
+              gfloat im = data[j].im;
+
+              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
+                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
+              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
+
+              data_diff += fabs (sqrtf (re * re + im * im) - amplitude);
+            }
+
+          if (data_diff > (error * n_data_points))
+            g_error ("error in complex data");
+        }
+
+      /* Проверяем амплитудные данные. */
+      {
+        const gfloat *data;
+        gint64 data_time0;
+        gint64 data_time;
+        guint data_size;
+        gdouble data_diff;
+
+        data_time0 = 1000 * (i + 1);
+
+        data = hyscan_acoustic_data_get_amplitude (reader, i, &data_size, &data_time);
+        if (data == NULL)
+          g_error ("can't get amplitude data");
+
+        if (data_size != n_data_points)
+          g_error ("amplitude data size error");
+
+        if (data_time0 != data_time)
+          g_error ("amplitude data time error");
+
+        data_diff = 0.0;
+        for (j = 0; j < n_data_points; j++)
+          {
+            gdouble amplitude = 0.0;
+
+            if ((j >= n_signal_points) && (j < 2 * n_signal_points))
+              amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
+            if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+              amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
+
+            data_diff += fabs (data[j] - amplitude);
+          }
+
+        if (data_diff > (error * n_data_points))
+          g_error ("error in amplitude data %f %f", data_diff, error * n_data_points);
+      }
+    }
+
+  g_object_unref (reader);
+}
+
+/* Функция проверяет амплитудные гидроакустические данные. При этом данные
+ * считываются из системы хранения и сравниваются с эталоном.
+ */
+void
+check_amplitude_data (HyScanDB         *db,
+                      HyScanCache      *cache,
+                      HyScanSourceType  source,
+                      guint             channel,
+                      gboolean          noise,
+                      gdouble           discretization,
+                      gdouble           frequency,
+                      gdouble           duration,
+                      guint             n_lines,
+                      gdouble           error)
+{
+  HyScanAcousticData *reader;
+  guint n_signal_points;
+  guint n_data_points;
+  guint i, j;
+
+  reader = hyscan_acoustic_data_new (db, cache, PROJECT_NAME, TRACK_NAME,
+                                     source, channel, noise);
+
+  n_signal_points = discretization * duration;
+  n_data_points = 100 * n_signal_points;
+
+  for (i = 0; i < n_lines; i++)
+    {
+      const gfloat *data;
+      gint64 data_time0;
+      gint64 data_time;
+      guint data_size;
+      gdouble data_diff;
+
+      data_time0 = 1000 * (i + 1);
+
+      data = hyscan_acoustic_data_get_amplitude (reader, i, &data_size, &data_time);
+      if (data == NULL)
+        g_error ("can't get amplitude data");
+
+      if (data_size != n_data_points)
+        g_error ("amplitude data size error");
+
+      if (data_time0 != data_time)
+        g_error ("amplitude data time error");
+
+      data_diff = 0.0;
+      for (j = 0; j < n_data_points; j++)
+        {
+          gdouble time = (1.0 / discretization) * (j + i);
+          gdouble phase = 2.0 * G_PI * frequency * time;
+          gdouble amplitude = 0.0;
+
+          if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
+            amplitude = fabs (sin (phase));
+
+          data_diff += fabs (data[j] - amplitude);
+        }
+
+      if (data_diff > (error * n_data_points))
+        g_error ("amplitude data error %f %f", data_diff, error * n_data_points);
+    }
+
+  g_object_unref (reader);
+}
+
+int
+main (int    argc,
+      char **argv)
 {
   gchar *db_uri = NULL;
-  gchar *raw_type_name = g_strdup ("adc-16le");
-  gchar *amp_type_name = g_strdup ("amp-i16");
-  gdouble frequency = 0.0;
-  gdouble duration = 0.0;
-  gdouble discretization = 0.0;
+  gchar *real_type_name = g_strdup ("adc-16le");
+  gchar *complex_type_name = g_strdup ("adc-16le");
+  gchar *amplitude_type_name = g_strdup ("amp-i16");
+  gdouble frequency = 100000.0;
+  gdouble duration = 0.001;
+  gdouble discretization = 1000000.0;
+  guint n_lines = 100;
   guint n_signals = 10;
-  guint n_lines = 10;
-  guint n_tvgs = 5;
   guint cache_size = 0;
-  gboolean noise = FALSE;
 
   HyScanDB *db;
-  HyScanCache *cache = NULL;
+  HyScanCache *cache;
   HyScanDataWriter *writer;
-  HyScanRawData *raw_reader;
-  HyScanAcousticData *acoustic_reader;
 
-  HyScanAntennaPosition position;
-  HyScanRawDataInfo raw_info;
-  HyScanAcousticDataInfo acoustic_info;
+  HyScanDataType real_type;
+  HyScanDataType complex_type;
+  HyScanDataType amplitude_type;
 
-  HyScanBuffer *signal_buffer;
-  HyScanBuffer *tvg_buffer;
-  HyScanBuffer *cplx_buffer;
-  HyScanBuffer *amp_buffer;
-  HyScanBuffer *channel_buffer;
+  gdouble real_error = 0.0;
+  gdouble complex_error = 0.0;
+  gdouble amplitude_error = 0.0;
 
-  HyScanDataType raw_type;
-  HyScanDataType amp_type;
+  GTimer *timer;
 
-  guint32 n_signal_points;
-  guint32 n_data_points;
-  gdouble raw_error = 0.0;
-  gdouble amp_error = 0.0;
-
-  guint i, j, k;
+  guint i;
 
   {
     gchar **args;
@@ -84,16 +672,15 @@ int main( int argc, char **argv )
     GOptionContext *context;
     GOptionEntry entries[] =
       {
-        { "raw-type", 'r', 0, G_OPTION_ARG_STRING, &raw_type_name, "Raw data type (adc-14le, adc-16le, adc-24le, float)", NULL },
-        { "amp-type", 'a', 0, G_OPTION_ARG_STRING, &amp_type_name, "amplitude data type (float, amp-i8, amp-i16, amp-i32, amp-f8, amp-f16)", NULL },
+        { "real-type", 'r', 0, G_OPTION_ARG_STRING, &real_type_name, "Real data type (adc-14le, adc-16le, adc-24le, float)", NULL },
+        { "complex-type", 'q', 0, G_OPTION_ARG_STRING, &complex_type_name, "Complex data type (adc-14le, adc-16le, adc-24le, float)", NULL },
+        { "amplitude-type", 'a', 0, G_OPTION_ARG_STRING, &amplitude_type_name, "Amplitude data type (float, amp-i8, amp-i16, amp-i32, amp-f8, amp-f16)", NULL },
         { "discretization", 'd', 0, G_OPTION_ARG_DOUBLE, &discretization, "Signal discretization, Hz", NULL },
         { "frequency", 'f', 0, G_OPTION_ARG_DOUBLE, &frequency, "Signal frequency, Hz", NULL },
         { "duration", 't', 0, G_OPTION_ARG_DOUBLE, &duration, "Signal duration, s", NULL },
         { "signals", 's', 0, G_OPTION_ARG_INT, &n_signals, "Number of signals (1..100)", NULL },
         { "lines", 'l', 0, G_OPTION_ARG_INT, &n_lines, "Number of lines per signal (1..100)", NULL },
-        { "tvgs", 'g', 0, G_OPTION_ARG_INT, &n_tvgs, "Number of tvgs (1..100)", NULL },
         { "cache", 'c', 0, G_OPTION_ARG_INT, &cache_size, "Use cache with size, Mb", NULL },
-        { "noise", 'n', 0, G_OPTION_ARG_NONE, &noise, "Use noise channel for test", NULL },
         { NULL }
       };
 
@@ -141,65 +728,36 @@ int main( int argc, char **argv )
   if ((n_lines < 1) || (n_lines > 100))
     g_error ("the number of lines must be within 1 to 100");
 
-  if ((n_tvgs < 1) || (n_tvgs > 100))
-    g_error ("the number of tvgs must be within 1 to 100");
-
-  /* Формат записи данных. */
-  raw_type = HYSCAN_DATA_INVALID;
-  amp_type = HYSCAN_DATA_INVALID;
-  for (i = 0; i < sizeof (raw_test_types) / sizeof (test_info); i++)
-    if (g_strcmp0 (raw_type_name, raw_test_types[i].name) == 0)
+  /* Форматы записи данных. */
+  real_type = HYSCAN_DATA_INVALID;
+  for (i = 0; i < sizeof (real_test_types) / sizeof (test_info); i++)
+    if (g_strcmp0 (real_type_name, real_test_types[i].name) == 0)
       {
-        raw_type = raw_test_types[i].type;
-        raw_error = raw_test_types[i].error;
+        real_type = real_test_types[i].type;
+        real_error = real_test_types[i].error;
       }
-  for (i = 0; i < sizeof (amp_test_types) / sizeof (test_info); i++)
-    if (g_strcmp0 (amp_type_name, amp_test_types[i].name) == 0)
+  if (real_type == HYSCAN_DATA_INVALID)
+    g_error ("unsupported real type %s", real_type_name);
+
+  complex_type = HYSCAN_DATA_INVALID;
+  for (i = 0; i < sizeof (complex_test_types) / sizeof (test_info); i++)
+    if (g_strcmp0 (complex_type_name, complex_test_types[i].name) == 0)
       {
-        amp_type = amp_test_types[i].type;
-        amp_error = amp_test_types[i].error;
+        complex_type = complex_test_types[i].type;
+        complex_error = complex_test_types[i].error;
       }
+  if (complex_type == HYSCAN_DATA_INVALID)
+    g_error ("unsupported complex type %s", complex_type_name);
 
-  if (raw_type == HYSCAN_DATA_INVALID)
-    g_error ("unsupported raw type %s", raw_type_name);
-  if (amp_type == HYSCAN_DATA_INVALID)
-    g_error ("unsupported amplitude type %s", amp_type_name);
-
-  /* Параметры данных. */
-  position.x = 0.0;
-  position.y = 0.0;
-  position.z = 0.0;
-  position.psi = 0.0;
-  position.gamma = 0.0;
-  position.theta = 0.0;
-
-  raw_info.data_type = raw_type;
-  raw_info.data_rate = discretization;
-  raw_info.antenna_voffset = 0.0;
-  raw_info.antenna_hoffset = 0.0;
-  raw_info.antenna_vpattern = 40.0;
-  raw_info.antenna_hpattern = 2.0;
-  raw_info.antenna_frequency = frequency;
-  raw_info.antenna_bandwidth = 0.1 * frequency;
-  raw_info.adc_vref = 1.0;
-  raw_info.adc_offset = 0;
-
-  acoustic_info.data_type = amp_type;
-  acoustic_info.data_rate = discretization;
-  acoustic_info.antenna_vpattern = 40.0;
-  acoustic_info.antenna_hpattern = 2.0;
-
-  /* Буферы данных. */
-  signal_buffer = hyscan_buffer_new ();
-  tvg_buffer = hyscan_buffer_new ();
-  cplx_buffer = hyscan_buffer_new ();
-  amp_buffer = hyscan_buffer_new ();
-  channel_buffer = hyscan_buffer_new ();
-
-  hyscan_buffer_set_data_type (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
-  hyscan_buffer_set_data_type (tvg_buffer, HYSCAN_DATA_FLOAT);
-  hyscan_buffer_set_data_type (cplx_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
-  hyscan_buffer_set_data_type (amp_buffer, HYSCAN_DATA_FLOAT);
+  amplitude_type = HYSCAN_DATA_INVALID;
+  for (i = 0; i < sizeof (amplitude_test_types) / sizeof (test_info); i++)
+    if (g_strcmp0 (amplitude_type_name, amplitude_test_types[i].name) == 0)
+      {
+        amplitude_type = amplitude_test_types[i].type;
+        amplitude_error = amplitude_test_types[i].error;
+      }
+  if (amplitude_type == HYSCAN_DATA_INVALID)
+    g_error ("unsupported amplitude type %s", amplitude_type_name);
 
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
@@ -209,6 +767,8 @@ int main( int argc, char **argv )
   /* Кэш данных */
   if (cache_size)
     cache = HYSCAN_CACHE (hyscan_cached_new (cache_size));
+  else
+    cache = NULL;
 
   /* Объект записи данных */
   writer = hyscan_data_writer_new ();
@@ -216,307 +776,156 @@ int main( int argc, char **argv )
   /* Система хранения. */
   hyscan_data_writer_set_db (writer, db);
 
-  /* Местоположение приёмной антенны. */
-  hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);
-
   /* Создаём галс. */
   if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY))
     g_error( "can't start write");
 
-  /* Тестовые данные для проверки свёртки. Массив размером 100 * signal_size.
-   * Сигнал располагается со смещением в две длительности. Все остальные индексы
-   * массива заполнены нулями. Используется тональный сигнал. */
-  g_message ("Data generation");
-  n_signal_points = discretization * duration;
-  n_data_points = 100 * n_signal_points;
-  for (i = 0; i < n_lines * n_signals; i++)
-    {
-      gint64 index_time;
-      guint tvg_index;
-      guint signal_index;
-      gdouble work_frequency;
+  timer = g_timer_new ();
 
-      HyScanComplexFloat *raw_values;
-      gfloat *amp_values;
+  /* Формируем тестовые данные. */
+  g_print ("Creating real data.\n");
+  create_complex_data   (writer,
+                         HYSCAN_SOURCE_SIDE_SCAN_PORT, 1, FALSE,
+                         real_type, discretization, frequency, duration,
+                         n_signals, n_lines);
 
-      index_time = 1000 * (i + 1);
-      tvg_index = (i / n_tvgs);
-      signal_index = (i / n_lines);
-      work_frequency = (frequency - ((signal_index * frequency) / (5.0 * n_signals)));
+  g_print ("Creating complex data.\n");
+  create_complex_data   (writer,
+                         HYSCAN_SOURCE_SIDE_SCAN_PORT, 2, FALSE,
+                         complex_type, discretization, frequency, duration,
+                         n_signals, n_lines);
 
-      /* Записываем образ сигнала каждые n_lines строк. */
-      if ((i % n_lines) == 0)
-        {
-          HyScanComplexFloat *signal_image;
+  g_print ("Creating amplitude data.\n");
+  create_amplitude_data (writer,
+                         HYSCAN_SOURCE_SIDE_SCAN_PORT, 3, FALSE,
+                         amplitude_type, discretization, frequency, duration,
+                         n_signals * n_lines);
 
-          hyscan_buffer_set_size (signal_buffer, n_signal_points * sizeof (HyScanComplexFloat));
-          signal_image = hyscan_buffer_get_complex_float (signal_buffer, &n_signal_points);
-          for (j = 0; j < n_signal_points; j++)
-            {
-              gdouble time = (1.0 / discretization) * j;
-              gdouble phase = 2.0 * G_PI * work_frequency * time;
+  g_print ("Creating noise real data.\n");
+  create_complex_data   (writer,
+                         HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, TRUE,
+                         real_type, discretization, frequency, duration,
+                         n_signals, n_lines);
 
-              signal_image[j].re = cos (phase);
-              signal_image[j].im = sin (phase);
-            }
+  g_print ("Creating noise complex data.\n");
+  create_complex_data   (writer,
+                         HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 2, TRUE,
+                         complex_type, discretization, frequency, duration,
+                         n_signals, n_lines);
 
-          if (!hyscan_data_writer_raw_add_signal (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, index_time, signal_buffer))
-            g_error ("can't add signal image");
-        }
+  g_print ("Creating noise amplitude data.\n");
+  create_amplitude_data (writer,
+                         HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 3, TRUE,
+                         amplitude_type, discretization, frequency, duration,
+                         n_signals * n_lines);
 
-      /* Записываем "кривую" ВАРУ каждые n_tvgs строк. */
-      if ((i % n_tvgs) == 0)
-        {
-          gfloat *tvg_values;
+  g_print ("Checking real data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_PORT, 1, FALSE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, real_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-          hyscan_buffer_set_size (tvg_buffer, n_data_points * sizeof (gfloat));
-          tvg_values = hyscan_buffer_get_float (tvg_buffer, &n_data_points);
-          for (j = 0; j < n_data_points; j++)
-            tvg_values[j] = tvg_index + (((gdouble)tvg_index / (gdouble)n_data_points) * j);
+  g_print ("Checking complex data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_PORT, 2, FALSE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, complex_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-          if (!hyscan_data_writer_raw_add_tvg (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, index_time, tvg_buffer))
-            g_error ("can't add tvg");
-        }
+  g_print ("Checking amplitude data: ");
+  g_timer_start (timer);
+  check_amplitude_data (db, cache,
+                        HYSCAN_SOURCE_SIDE_SCAN_PORT, 3, FALSE,
+                        discretization, frequency, duration,
+                        n_lines, amplitude_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-      /* Записываем сырые данные. */
-      hyscan_buffer_set_size (cplx_buffer, n_data_points * sizeof (HyScanComplexFloat));
-      raw_values = hyscan_buffer_get_complex_float (cplx_buffer, &n_data_points);
-      for (j = 2 * n_signal_points; j < 3 * n_signal_points; j++)
-        {
-          gdouble time = (1.0 / discretization) * (j - 2 * n_signal_points);
-          gdouble phase = 2.0 * G_PI * work_frequency * time;
+  g_print ("Checking noise real data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, TRUE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, real_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-          raw_values[j].re = cos (phase);
-          raw_values[j].im = sin (phase);
-        }
+  g_print ("Checking noise complex data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 2, TRUE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, complex_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-      if (!hyscan_buffer_export_data (cplx_buffer, channel_buffer, raw_type))
-        g_error ("can't export complex data");
+  g_print ("Checking noise amplitude data: ");
+  g_timer_start (timer);
+  check_amplitude_data (db, cache,
+                        HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 3, TRUE,
+                        discretization, frequency, duration,
+                        n_lines, amplitude_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-      if (noise)
-        {
-          if (!hyscan_data_writer_raw_add_noise (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, index_time, &raw_info, channel_buffer))
-            g_error ("can't add noise data");
-        }
-      else
-        {
-          if (!hyscan_data_writer_raw_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, index_time, &raw_info, channel_buffer))
-            g_error ("can't add raw data");
-        }
+  g_print ("Checking cached real data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_PORT, 1, FALSE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, real_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-      /* Записываем амплитуду. */
-      hyscan_buffer_set_size (amp_buffer, n_data_points * sizeof (gfloat));
-      amp_values = hyscan_buffer_get_float (amp_buffer, &n_data_points);
-      for (j = n_signal_points; j < 3 * n_signal_points; j++)
-        {
-          if ((j >= n_signal_points) && (j < 2 * n_signal_points))
-            amp_values[j] = ((gdouble) (j - n_signal_points) / n_signal_points);
-          if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
-            amp_values[j] = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
-        }
+  g_print ("Checking cached complex data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_PORT, 2, FALSE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, complex_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-      if (!hyscan_buffer_export_data (amp_buffer, channel_buffer, amp_type))
-        g_error ("can't export amplitude data");
+  g_print ("Checking cached amplitude data: ");
+  g_timer_start (timer);
+  check_amplitude_data (db, cache,
+                        HYSCAN_SOURCE_SIDE_SCAN_PORT, 3, FALSE,
+                        discretization, frequency, duration,
+                        n_lines, amplitude_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-      if (!hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, index_time, &acoustic_info, channel_buffer))
-        g_error ("can't add acoustic data");
-    }
+  g_print ("Checking cached noise real data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, TRUE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, real_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-  /* Завершаем запись. */
-  g_clear_object (&writer);
+  g_print ("Checking cached noise complex data: ");
+  g_timer_start (timer);
+  check_complex_data (db, cache,
+                      HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 2, TRUE,
+                      discretization, frequency, duration,
+                      n_signals, n_lines, complex_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
-  /* Допустимые ошибки. */
-  amp_error *= n_data_points;
-  raw_error *= n_data_points;
-
-  /* Объект чтения сырых данных. */
-  if (noise)
-    raw_reader = hyscan_raw_data_noise_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
-  else
-    raw_reader = hyscan_raw_data_new (db, PROJECT_NAME, TRACK_NAME, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1);
-
-  if (raw_reader == NULL)
-    g_error ("can't open raw channel");
-  hyscan_raw_data_set_cache (raw_reader, cache, NULL);
-
-  /* Объект чтения акустических данных. */
-  acoustic_reader = hyscan_acoustic_data_new (db, PROJECT_NAME, TRACK_NAME,
-                                              HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, FALSE);
-  if (acoustic_reader == NULL)
-    g_error ("can't open acoustic channel");
-  hyscan_acoustic_data_set_cache (acoustic_reader, cache, NULL);
-
-  /* Для тонального сигнала проверяем, что его свёртка совпадает с треугольником,
-   * начинающимся с signal_size, пиком на 2 * signal_size и спадающим до 3 * signal_size. */
-  n_signal_points = discretization * duration;
-  n_data_points = 100 * n_signal_points;
-  for (k = 0; k < 2; k++)
-    {
-      GTimer *timer = g_timer_new ();
-      gdouble elapsed = 0.0;
-
-      if (k == 0)
-        g_message ("Data check");
-      else
-        g_message ("Cached data check");
-
-      for (i = 0; i < n_lines * n_signals; i++)
-        {
-          const HyScanComplexFloat *signal_image;
-          const HyScanComplexFloat *quadratures;
-          const gfloat *tvg_values;
-          const gfloat *amplitudes;
-
-          guint tvg_index;
-          guint signal_index;
-          gdouble work_frequency;
-          gdouble amp_diff;
-          guint32 io_size;
-
-          tvg_index = (i / n_tvgs);
-          signal_index = (i / n_lines);
-          work_frequency = (frequency - ((signal_index * frequency) / (5.0 * n_signals)));
-
-          /* Проверяем образ сигнала. */
-          g_timer_start (timer);
-          signal_image = hyscan_raw_data_get_signal_image (raw_reader, i, &io_size, NULL);
-          elapsed += g_timer_elapsed (timer, NULL);
-          if ((signal_image == NULL)|| (io_size != n_signal_points))
-            g_error ("can't get signal image");
-
-          for (j = 0; j < n_signal_points; j++)
-            {
-              gdouble time = (1.0 / discretization) * j;
-              gdouble phase = 2.0 * G_PI * work_frequency * time;
-
-              if ((fabs (signal_image[j].re - cos (phase)) > 1e-5) ||
-                  (fabs (signal_image[j].im - sin (phase)) > 1e-5))
-                {
-                  g_error ("signal image error");
-                }
-            }
-
-          /* Проверяем "кривую" ВАРУ. */
-          g_timer_start (timer);
-          tvg_values = hyscan_raw_data_get_tvg_values (raw_reader, i, &io_size, NULL);
-          elapsed += g_timer_elapsed (timer, NULL);
-          if (tvg_values == NULL)
-            g_error ("can't get tvg values");
-
-          if (io_size != n_data_points)
-            g_error ("tvg size mismatch");
-
-          for (j = 0; j < n_data_points; j++)
-            if (fabs (tvg_values[j] - (tvg_index + (((gdouble)tvg_index / (gdouble)n_data_points)) * j)) > 1e-5)
-              g_error ("tvg error");
-
-          /* Проверяем амплитуду акустических данных. */
-          g_timer_start (timer);
-          amplitudes = hyscan_acoustic_data_get_values (acoustic_reader, i, &io_size, NULL);
-          elapsed += g_timer_elapsed (timer, NULL);
-          if (amplitudes == NULL)
-            g_error ("can't get acoustic amplitude");
-
-          if (io_size != n_data_points)
-            g_error ("acoustic amplitude size mismatch");
-
-          amp_diff = 0.0;
-          for (j = 0; j < n_data_points; j++)
-            {
-              gdouble amplitude = 0.0;
-
-              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
-                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
-              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
-                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
-
-              amp_diff += fabs (amplitudes[j] - amplitude);
-            }
-
-          if (amp_diff > amp_error)
-            g_error ("acoustic amplitudes error");
-
-          /* Проверяем амплитуду сырых данных. */
-          g_timer_start (timer);
-          amplitudes = hyscan_raw_data_get_amplitude_values (raw_reader, i, &io_size, NULL);
-          elapsed += g_timer_elapsed (timer, NULL);
-          if (amplitudes == NULL)
-            g_error ("can't get raw amplitudes");
-
-          if (io_size != n_data_points)
-            g_error ("raw amplitudes size mismatch");
-
-          amp_diff = 0.0;
-          for (j = 0; j < n_data_points; j++)
-            {
-              gdouble amplitude = 0.0;
-
-              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
-                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
-              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
-                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
-
-              amp_diff += fabs (amplitudes[j] - amplitude);
-            }
-
-          if (amp_diff > raw_error)
-            g_error ("raw amplitudes error");
-
-          /* Проверяем квадратурные значения. */
-          g_timer_start (timer);
-          quadratures = hyscan_raw_data_get_quadrature_values (raw_reader, i, &io_size, NULL);
-          elapsed += g_timer_elapsed (timer, NULL);
-
-          if (quadratures == NULL)
-            g_error ("can't get raw quadratures");
-
-          if (io_size != n_data_points)
-            g_error ("raw quadratures size mismatch");
-
-          amp_diff = 0.0;
-          for (j = 0; j < n_data_points; j++)
-            {
-              gdouble amplitude = 0.0;
-              gfloat re = quadratures[j].re;
-              gfloat im = quadratures[j].im;
-
-              if ((j >= n_signal_points) && (j < 2 * n_signal_points))
-                amplitude = ((gdouble) (j - n_signal_points) / n_signal_points);
-              if ((j >= 2 * n_signal_points) && (j < 3 * n_signal_points))
-                amplitude = (1.0 - (gdouble) (j - 2 * n_signal_points) / n_signal_points);
-
-              amp_diff += fabs (sqrtf (re * re + im * im) - amplitude);
-            }
-
-          if (amp_diff > raw_error)
-            g_error ("raw quadratures error");
-        }
-
-      g_message ("Elapsed %.6fs", elapsed);
-      g_timer_destroy (timer);
-
-      if (cache == NULL)
-        break;
-    }
-
-  g_message ("All done");
-
-  g_clear_object (&raw_reader);
-  g_clear_object (&acoustic_reader);
+  g_print ("Checking cached noise amplitude data: ");
+  g_timer_start (timer);
+  check_amplitude_data (db, cache,
+                        HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 3, TRUE,
+                        discretization, frequency, duration,
+                        n_lines, amplitude_error);
+  g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
 
   hyscan_db_project_remove (db, PROJECT_NAME);
 
-  g_clear_object (&db);
+  g_clear_object (&writer);
   g_clear_object (&cache);
+  g_clear_object (&db);
 
-  g_object_unref (signal_buffer);
-  g_object_unref (tvg_buffer);
-  g_object_unref (cplx_buffer);
-  g_object_unref (amp_buffer);
-  g_object_unref (channel_buffer);
+  g_timer_destroy (timer);
 
-  g_free (raw_type_name);
-  g_free (amp_type_name);
+  g_free (real_type_name);
+  g_free (complex_type_name);
+  g_free (amplitude_type_name);
   g_free (db_uri);
 
   xmlCleanupParser ();

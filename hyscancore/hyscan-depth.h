@@ -58,8 +58,7 @@ struct _HyScanDepthInterface
                                                            HyScanSoundVelocity *velocity,
                                                            guint                length);
   void                    (*set_cache)                    (HyScanDepth         *depth,
-                                                           HyScanCache         *cache,
-                                                           const gchar         *prefix);
+                                                           HyScanCache         *cache);
   gdouble                 (*get)                          (HyScanDepth         *depth,
                                                            guint32              index,
                                                            gint64              *time);
@@ -99,18 +98,15 @@ void                    hyscan_depth_set_sound_velocity (HyScanDepth            
 
 /**
  *
- * Функция задаёт используемый кэш и префикс идентификаторов объектов для
- * хранения в нём.
+ * Функция задаёт используемый кэш.
  *
  * \param depth указатель на объект \link HyScanDepth \endlink;
- * \param cache указатель на интерфейс \link HyScanCache \endlink или NULL;
- * \param prefix префикс ключа кэширования или NULL.
+ * \param cache указатель на интерфейс \link HyScanCache \endlink или NULL.
  *
  */
 HYSCAN_API
 void                    hyscan_depth_set_cache          (HyScanDepth            *depth,
-                                                         HyScanCache            *cache,
-                                                         const gchar            *prefix);
+                                                         HyScanCache            *cache);
 /**
  *
  * Функция возвращает значение глубины для заданного индекса.

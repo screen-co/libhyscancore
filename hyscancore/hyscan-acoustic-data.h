@@ -1,52 +1,41 @@
-/**
- * \file hyscan-acoustic-data.h
+/* hyscan-acoustic-data.h
  *
- * \brief Заголовочный файл класса обработки акустических данных
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2015-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
- * \defgroup HyScanAcousticData HyScanAcousticData - класс обработки акустических данных
+ * This file is part of HyScanCore library.
  *
- * Класс HyScanAcousticData используется для получения амплитуды сигнала акустических данных.
- * В своей работе класс может использовать сырые или обработанные данные. Это указывается при
- * создании объекта функцией #hyscan_acoustic_data_new.
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * В своей работе класс HyScanAcousticData может использовать внешний кэш для хранения обработанных
- * данных. В случае запроса ранее обработанных данных пользователь получит их копию из кэша. Несколько
- * экземпляров класса HyScanAcousticData, обрабатывающих одинаковые каналы данных могут использовать
- * один и тот же кэш. Таким образом, данные обработанные в одной части приложения не потребуют повторной
- * обработки в другой его части. Для задания кэша предназанчена функция #hyscan_acoustic_data_set_cache.
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Местоположение приёмной антенны гидролокатора можно получить функцией #hyscan_acoustic_data_get_position.
- * Параметры данных можно получить функцией #hyscan_acoustic_data_get_info.
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
- * С помощью функции #hyscan_acoustic_data_get_source можно получить тип источника данных.
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
  *
- * Класс поддерживает обработку данных, запись которых производится в настоящий момент. В этом случае
- * могут появляться новые данные или исчезать уже записанные. Определить возможность изменения данных
- * можно с помощью функции #hyscan_acoustic_data_is_writable.
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
  *
- * Номер изменения в данных можно получить с помощью функции #hyscan_acoustic_data_get_mod_count.
- *
- * Функции #hyscan_acoustic_data_get_range и #hyscan_acoustic_data_find_data используются для определения
- * границ записанных данных и их поиска по метке времени. Эти функции аналогичны функциям
- * \link hyscan_db_channel_get_data_range \endlink и \link hyscan_db_channel_find_data \endlink интерфейса
- * \link HyScanDB \endlink.
- *
- * Для получения значений амплитуды сигнала используется функция #hyscan_acoustic_data_get_values.
- * Амплитудные значения находятся в пределах от нуля до единицы.
- *
- * HyScanAcousticData не поддерживает работу в многопоточном режиме. Рекомендуется создавать свой экземпляр
- * объекта обработки данных в каждом потоке и использовать единый кэш данных.
- *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
  */
 
 #ifndef __HYSCAN_ACOUSTIC_DATA_H__
 #define __HYSCAN_ACOUSTIC_DATA_H__
 
 #include <hyscan-db.h>
-#include <hyscan-types.h>
 #include <hyscan-cache.h>
 
 G_BEGIN_DECLS
@@ -75,167 +64,106 @@ struct _HyScanAcousticDataClass
 };
 
 HYSCAN_API
-GType                  hyscan_acoustic_data_get_type           (void);
+GType                          hyscan_acoustic_data_get_type           (void);
 
-/**
- *
- * Функция создаёт новый объект обработки акустических данных. Если данные отсутствуют,
- * функция вернёт значение NULL.
- *
- * \param db указатель на объект \link HyScanDB \endlink;
- * \param project_name название проекта;
- * \param track_name название галса;
- * \param source_type тип источника данных;
- * \param raw использовать - TRUE или нет - FALSE сырые данные.
- *
- * \return Указатель на объект \link HyScanAcousticData \endlink или NULL.
- *
- */
 HYSCAN_API
-HyScanAcousticData    *hyscan_acoustic_data_new                (HyScanDB         *db,
-                                                                const gchar      *project_name,
-                                                                const gchar      *track_name,
-                                                                HyScanSourceType  source_type,
-                                                                gboolean          raw);
+HyScanAcousticData            *hyscan_acoustic_data_new                (HyScanDB              *db,
+                                                                        HyScanCache           *cache,
+                                                                        const gchar           *project_name,
+                                                                        const gchar           *track_name,
+                                                                        HyScanSourceType       source,
+                                                                        guint                  channel,
+                                                                        gboolean               noise);
 
-/**
- *
- * Функция задаёт используемый кэш и префикс идентификаторов объектов для
- * хранения в нём.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param cache указатель на интерфейс \link HyScanCache \endlink или NULL;
- * \param prefix префикс ключа кэширования или NULL.
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_acoustic_data_set_cache          (HyScanAcousticData            *data,
-                                                                HyScanCache                   *cache,
-                                                                const gchar                   *prefix);
+HyScanDB *                     hyscan_acoustic_data_get_db             (HyScanAcousticData    *data);
 
-/**
- *
- * Функция возвращает информацию о местоположении приёмной антенны гидролокатора
- * в виде значения структуры \link HyScanAntennaPosition \endlink.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink.
- *
- * \return Местоположение приёмной антенны гидролокатора.
- *
- */
 HYSCAN_API
-HyScanAntennaPosition  hyscan_acoustic_data_get_position       (HyScanAcousticData            *data);
+const gchar *                  hyscan_acoustic_data_get_project_name   (HyScanAcousticData    *data);
 
-/**
- *
- * Функция возвращает параметры канала акустических данных в виде значения
- * структуры \link HyScanAcousticDataInfo \endlink.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink.
- *
- * \return Параметры канала акустических данных.
- *
- */
 HYSCAN_API
-HyScanAcousticDataInfo hyscan_acoustic_data_get_info           (HyScanAcousticData            *data);
+const gchar *                  hyscan_acoustic_data_get_track_name     (HyScanAcousticData    *data);
 
-/**
- *
- * Функция возвращает тип источника данных.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink.
- *
- * \return Тип источника данных из \link HyScanSourceType \endlink.
- *
- */
 HYSCAN_API
-HyScanSourceType       hyscan_acoustic_data_get_source         (HyScanAcousticData            *data);
+HyScanSourceType               hyscan_acoustic_data_get_source         (HyScanAcousticData    *data);
 
-/**
- *
- * Функция определяет возможность изменения данных. Если функция вернёт значение TRUE,
- * возможна ситуация когда могут появиться новые данные или исчезнуть уже записанные.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink.
- *
- * \return TRUE - если возможна запись данных, FALSE - если данные в режиме только чтения.
- *
- */
 HYSCAN_API
-gboolean               hyscan_acoustic_data_is_writable        (HyScanAcousticData            *data);
+guint                          hyscan_acoustic_data_get_channel        (HyScanAcousticData    *data);
 
-/**
- *
- * Функция возвращает диапазон значений индексов записанных данных. Функция вернёт значения
- * начального и конечного индекса записей.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param first_index начальный индекс данных или NULL;
- * \param last_index конечный индекс данных или NULL.
- *
- * \return TRUE - если границы записей определены, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_acoustic_data_get_range          (HyScanAcousticData            *data,
-                                                                guint32                       *first_index,
-                                                                guint32                       *last_index);
+gboolean                       hyscan_acoustic_data_is_noise           (HyScanAcousticData    *data);
 
-/**
- *
- * Функция возвращает номер изменения в данных. Программа не должна полагаться на значение
- * номера изменения, важен только факт смены номера по сравнению с предыдущим запросом.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink.
- *
- * \return Номер изменения.
- *
- */
 HYSCAN_API
-guint32                hyscan_acoustic_data_get_mod_count      (HyScanAcousticData            *data);
+HyScanDiscretizationType       hyscan_acoustic_data_get_discretization (HyScanAcousticData    *data);
 
-/**
- *
- * Функция ищет индекс данных для указанного момента времени.
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param time искомый момент времени;
- * \param lindex "левый" индекс данных или NULL;
- * \param rindex "правый" индекс данных или NULL;
- * \param ltime "левая" метка времени данных или NULL;
- * \param rtime "правая" метка времени данных или NULL.
- *
- * \return TRUE - если данные найдены, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-HyScanDBFindStatus     hyscan_acoustic_data_find_data          (HyScanAcousticData            *data,
-                                                                gint64                         time,
-                                                                guint32                       *lindex,
-                                                                guint32                       *rindex,
-                                                                gint64                        *ltime,
-                                                                gint64                        *rtime);
+HyScanAntennaPosition          hyscan_acoustic_data_get_position       (HyScanAcousticData    *data);
 
-/**
- *
- * Функция возвращает значения амплитуды сигнала.
- *
- *
- * \param data указатель на объект \link HyScanAcousticData \endlink;
- * \param index индекс считываемых данных;
- * \param n_points число точек данных;
- * \param time метка времени считанных данных или NULL.
- *
- * \return Значения амплитуд сигнала или NULL.
- *
- */
 HYSCAN_API
-const gfloat          *hyscan_acoustic_data_get_values         (HyScanAcousticData            *data,
-                                                                guint32                        index,
-                                                                guint32                       *n_points,
-                                                                gint64                        *time);
+HyScanAcousticDataInfo         hyscan_acoustic_data_get_info           (HyScanAcousticData    *data);
+
+HYSCAN_API
+gboolean                       hyscan_acoustic_data_is_writable        (HyScanAcousticData    *data);
+
+HYSCAN_API
+gboolean                       hyscan_acoustic_data_has_tvg            (HyScanAcousticData    *data);
+
+HYSCAN_API
+guint32                        hyscan_acoustic_data_get_mod_count      (HyScanAcousticData    *data);
+
+HYSCAN_API
+gboolean                       hyscan_acoustic_data_get_range          (HyScanAcousticData    *data,
+                                                                        guint32               *first_index,
+                                                                        guint32               *last_index);
+
+HYSCAN_API
+HyScanDBFindStatus             hyscan_acoustic_data_find_data          (HyScanAcousticData    *data,
+                                                                        gint64                 time,
+                                                                        guint32               *lindex,
+                                                                        guint32               *rindex,
+                                                                        gint64                *ltime,
+                                                                        gint64                *rtime);
+
+HYSCAN_API
+void                           hyscan_acoustic_data_set_convolve       (HyScanAcousticData    *data,
+                                                                        gboolean               convolve,
+                                                                        gdouble                scale);
+
+HYSCAN_API
+gboolean                       hyscan_acoustic_data_get_size_time      (HyScanAcousticData    *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
+
+HYSCAN_API
+const HyScanComplexFloat *     hyscan_acoustic_data_get_signal         (HyScanAcousticData    *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
+
+HYSCAN_API
+const gfloat *                 hyscan_acoustic_data_get_tvg            (HyScanAcousticData    *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
+
+HYSCAN_API
+const gfloat *                 hyscan_acoustic_data_get_real           (HyScanAcousticData    *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
+
+HYSCAN_API
+const HyScanComplexFloat *     hyscan_acoustic_data_get_complex        (HyScanAcousticData    *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
+
+HYSCAN_API
+const gfloat *                 hyscan_acoustic_data_get_amplitude      (HyScanAcousticData    *data,
+                                                                        guint32                index,
+                                                                        guint32               *n_points,
+                                                                        gint64                *time);
 
 G_END_DECLS
 

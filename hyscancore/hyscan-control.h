@@ -138,7 +138,7 @@ gboolean                       hyscan_control_sensor_set_channel       (HyScanCo
                                                                         guint                           channel);
 
 HYSCAN_API
-gboolean                       hyscan_control_writer_set_db            (HyScanControl                  *control,
+void                           hyscan_control_writer_set_db            (HyScanControl                  *control,
                                                                         HyScanDB                       *db);
 
 HYSCAN_API
@@ -146,20 +146,8 @@ void                           hyscan_control_writer_set_operator_name (HyScanCo
                                                                         const gchar                    *name);
 
 HYSCAN_API
-gboolean                       hyscan_control_writer_set_mode          (HyScanControl                  *control,
-                                                                        HyScanDataWriterModeType        mode);
-
-HYSCAN_API
-gboolean                       hyscan_control_writer_set_chunk_size    (HyScanControl                  *control,
+void                           hyscan_control_writer_set_chunk_size    (HyScanControl                  *control,
                                                                         gint32                          chunk_size);
-
-HYSCAN_API
-gboolean                       hyscan_control_writer_set_save_time     (HyScanControl                  *control,
-                                                                        gint64                          save_time);
-
-HYSCAN_API
-gboolean                       hyscan_control_writer_set_save_size     (HyScanControl                  *control,
-                                                                        gint64                          save_size);
 
 G_END_DECLS
 

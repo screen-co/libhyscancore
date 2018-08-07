@@ -46,7 +46,6 @@ struct _HyScanDepthNMEAPrivate
 
   /* Система кэширования. */
   HyScanCache           *cache;         /* Кэш. */
-  gchar                 *prefix;        /* Префикс системы кэширования. */
   gchar                 *key;           /* Ключ кэша. */
   gint                   key_length;    /* Длина ключа. */
   HyScanBuffer          *cache_buffer;  /* Буфер данных кеша. */
@@ -178,7 +177,6 @@ hyscan_depth_nmea_object_finalize (GObject *object)
 
   g_clear_object (&priv->cache_buffer);
   g_clear_object (&priv->cache);
-  g_free (priv->prefix);
   g_free (priv->key);
 
   G_OBJECT_CLASS (hyscan_depth_nmea_parent_class)->finalize (object);
@@ -191,15 +189,11 @@ hyscan_depth_nmea_update_cache_key (HyScanDepthNMEAPrivate *priv,
 {
   if (priv->key == NULL)
     {
-      priv->key = g_strdup_printf ("DEPTH_NMEA.%s.%s.%u",
-                                    priv->prefix, priv->token,
-                                    G_MAXUINT32);
+      priv->key = g_strdup_printf ("DEPTH_NMEA.%s.%u", priv->token, G_MAXUINT32);
       priv->key_length = strlen (priv->key);
     }
 
-  g_snprintf (priv->key, priv->key_length,
-              "DEPTH_NMEA.%s.%s.%u",
-              priv->prefix, priv->token, index);
+  g_snprintf (priv->key, priv->key_length, "DEPTH_NMEA.%s.%u", priv->token, index);
 }
 
 /* Функция извлекает глубину из NMEA-строки. */
@@ -221,26 +215,17 @@ hyscan_depth_nmea_parse_sentence (const gchar *sentence)
 /* Функция установки кэша. */
 static void
 hyscan_depth_nmea_set_cache (HyScanDepth  *depth,
-                             HyScanCache  *cache,
-                             const gchar  *prefix)
+                             HyScanCache  *cache)
 {
   HyScanDepthNMEA *dnmea = HYSCAN_DEPTH_NMEA (depth);
   HyScanDepthNMEAPrivate *priv = dnmea->priv;;
 
-  g_free (priv->prefix);
   g_clear_object (&priv->cache);
 
-  if (cache == NULL)
-    return;
+  if (cache != NULL)
+    priv->cache = g_object_ref (cache);
 
-  priv->cache = g_object_ref (cache);
-
-  if (prefix != NULL)
-    priv->prefix = g_strdup (prefix);
-  else
-    priv->prefix = g_strdup ("none");
-
-  hyscan_nmea_data_set_cache (priv->dc, cache, prefix);
+  hyscan_nmea_data_set_cache (priv->dc, cache);
 }
 
 /* Функция получения глубины. */

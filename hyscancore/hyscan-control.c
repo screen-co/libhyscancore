@@ -92,10 +92,9 @@
  *
  * Функция #hyscan_control_writer_set_db устанавливает систему хранения.
  *
- * Функции #hyscan_control_writer_set_operator_name,
- * #hyscan_control_writer_set_mode, #hyscan_control_writer_set_chunk_size,
- * #hyscan_control_writer_set_save_time и #hyscan_control_writer_set_save_size
- * аналогичны подобным функциям #HyScanDataWriter.
+ * Функции #hyscan_control_writer_set_operator_name и
+ * #hyscan_control_writer_set_chunk_size аналогичны подобным функциям
+ * #HyScanDataWriter.
  *
  * Класс HyScanControl поддерживает работу в многопоточном режиме.
  */
@@ -176,6 +175,7 @@ static void        hyscan_control_sensor_log                   (HyScanDevice    
 
 static void        hyscan_control_sonar_signal                 (HyScanDevice                   *device,
                                                                 gint                            source,
+                                                                guint                           channel,
                                                                 gint64                          time,
                                                                 HyScanBuffer                   *points,
                                                                 HyScanControl                  *control);
@@ -187,24 +187,10 @@ static void        hyscan_control_sonar_tvg                    (HyScanDevice    
                                                                 HyScanBuffer                   *gains,
                                                                 HyScanControl                  *control);
 
-static void        hyscan_control_sonar_raw_data               (HyScanDevice                   *device,
-                                                                gint                            source,
-                                                                guint                           channel,
-                                                                gint64                          time,
-                                                                HyScanRawDataInfo              *info,
-                                                                HyScanBuffer                   *data,
-                                                                HyScanControl                  *control);
-
-static void        hyscan_control_sonar_noise_data             (HyScanDevice                   *device,
-                                                                gint                            source,
-                                                                guint                           channel,
-                                                                gint64                          time,
-                                                                HyScanRawDataInfo              *info,
-                                                                HyScanBuffer                   *data,
-                                                                HyScanControl                  *control);
-
 static void        hyscan_control_sonar_acoustic_data          (HyScanDevice                   *device,
                                                                 gint                            source,
+                                                                guint                           channel,
+                                                                gboolean                        noise,
                                                                 gint64                          time,
                                                                 HyScanAcousticDataInfo         *info,
                                                                 HyScanBuffer                   *data,
@@ -590,6 +576,7 @@ hyscan_control_sensor_log (HyScanDevice  *device,
 static void
 hyscan_control_sonar_signal (HyScanDevice  *device,
                              gint           source,
+                             guint          channel,
                              gint64         time,
                              HyScanBuffer  *points,
                              HyScanControl *control)
@@ -604,13 +591,13 @@ hyscan_control_sonar_signal (HyScanDevice  *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_raw_add_signal (priv->writer, source, time, points))
+  if (!hyscan_data_writer_acoustic_add_signal (priv->writer, source, channel, time, points))
     {
       g_warning ("HyScanControl: can't set signal image for %s",
                  hyscan_source_get_name_by_type (source));
     }
 
-  g_signal_emit_by_name (control, "sonar-signal", source, time, points);
+  g_signal_emit_by_name (control, "sonar-signal", source, channel, time, points);
 }
 
 /* Обработчик сигнала sonar-tvg. */
@@ -632,7 +619,7 @@ hyscan_control_sonar_tvg (HyScanDevice  *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_raw_add_tvg (priv->writer, source, channel, time, gains))
+  if (!hyscan_data_writer_acoustic_add_tvg (priv->writer, source, channel, time, gains))
     {
       g_warning ("HyScanControl: can't set tvg for %s",
                  hyscan_source_get_name_by_type (source));
@@ -641,68 +628,12 @@ hyscan_control_sonar_tvg (HyScanDevice  *device,
   g_signal_emit_by_name (control, "sonar-tvg", source, channel, time, gains);
 }
 
-/* Обработчик сигнала sonar-raw-data. */
-static void
-hyscan_control_sonar_raw_data (HyScanDevice      *device,
-                               gint               source,
-                               guint              channel,
-                               gint64             time,
-                               HyScanRawDataInfo *info,
-                               HyScanBuffer      *data,
-                               HyScanControl     *control)
-{
-  HyScanControlPrivate *priv = control->priv;
-  HyScanControlSourceInfo *source_info;
-
-  if (!g_atomic_int_get (&priv->binded))
-    return;
-
-  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
-  if ((source_info == NULL) || (source_info->device != device))
-    return;
-
-  if (!hyscan_data_writer_raw_add_data (priv->writer, source, channel, time, info, data))
-    {
-      g_warning ("HyScanControl: can't add raw data for %s",
-                 hyscan_source_get_name_by_type (source));
-    }
-
-  g_signal_emit_by_name (control, "sonar-raw-data", source, channel, time, info, data);
-}
-
-/* Обработчик сигнала sonar-noise-data. */
-static void
-hyscan_control_sonar_noise_data (HyScanDevice      *device,
-                                 gint               source,
-                                 guint              channel,
-                                 gint64             time,
-                                 HyScanRawDataInfo *info,
-                                 HyScanBuffer      *data,
-                                 HyScanControl     *control)
-{
-  HyScanControlPrivate *priv = control->priv;
-  HyScanControlSourceInfo *source_info;
-
-  if (!g_atomic_int_get (&priv->binded))
-    return;
-
-  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
-  if ((source_info == NULL) || (source_info->device != device))
-    return;
-
-  if (!hyscan_data_writer_raw_add_noise (priv->writer, source, channel, time, info, data))
-    {
-      g_warning ("HyScanControl: can't add noise data for %s",
-                 hyscan_source_get_name_by_type (source));
-    }
-
-  g_signal_emit_by_name (control, "sonar-noise-data", source, channel, time, info, data);
-}
-
 /* Обработчик сигнала sonar-acoustic-data. */
 static void
 hyscan_control_sonar_acoustic_data (HyScanDevice           *device,
                                     gint                    source,
+                                    guint                   channel,
+                                    gboolean                noise,
                                     gint64                  time,
                                     HyScanAcousticDataInfo *info,
                                     HyScanBuffer           *data,
@@ -718,13 +649,17 @@ hyscan_control_sonar_acoustic_data (HyScanDevice           *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_acoustic_add_data (control->priv->writer, source, time, info, data))
+  if (!hyscan_data_writer_acoustic_add_data (control->priv->writer,
+                                             source, channel, noise,
+                                             time, info, data))
     {
       g_warning ("HyScanControl: can't add acoustic data for %s",
                  hyscan_source_get_name_by_type (source));
     }
 
-  g_signal_emit_by_name (control, "sonar-acoustic-data", source, time, info, data);
+  g_signal_emit_by_name (control, "sonar-acoustic-data",
+                                  source, channel, noise,
+                                  time, info, data);
 }
 
 /* Обработчик сигнала sonar-log. */
@@ -1581,10 +1516,6 @@ hyscan_control_device_add (HyScanControl *control,
                         G_CALLBACK (hyscan_control_sonar_signal), control);
       g_signal_connect (device, "sonar-tvg",
                         G_CALLBACK (hyscan_control_sonar_tvg), control);
-      g_signal_connect (device, "sonar-raw-data",
-                        G_CALLBACK (hyscan_control_sonar_raw_data), control);
-      g_signal_connect (device, "sonar-noise-data",
-                        G_CALLBACK (hyscan_control_sonar_noise_data), control);
       g_signal_connect (device, "sonar-acoustic-data",
                         G_CALLBACK (hyscan_control_sonar_acoustic_data), control);
       g_signal_connect (device, "sonar-log",
@@ -2043,13 +1974,13 @@ hyscan_control_sensor_set_channel (HyScanControl *control,
  * Функция устанавливает систему хранения данных. Система хранения может быть
  * установлена только в режиме ожидания.
  */
-gboolean
+void
 hyscan_control_writer_set_db (HyScanControl *control,
                               HyScanDB      *db)
 {
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+  g_return_if_fail (HYSCAN_IS_CONTROL (control));
 
-  return hyscan_data_writer_set_db (control->priv->writer, db);
+  hyscan_data_writer_set_db (control->priv->writer, db);
 }
 
 /**
@@ -2070,24 +2001,6 @@ hyscan_control_writer_set_operator_name (HyScanControl *control,
 }
 
 /**
- * hyscan_control_writer_set_mode:
- * @control: указатель на #HyScanControl
- * @mode: режим записи данных #HyScanDataWriterModeType
- *
- * Функция устанавливает режим записи данных от гидролокатора.
- *
- * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
- */
-gboolean
-hyscan_control_writer_set_mode (HyScanControl            *control,
-                                HyScanDataWriterModeType  mode)
-{
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  return hyscan_data_writer_set_mode (control->priv->writer, mode);
-}
-
-/**
  * hyscan_control_writer_set_chunk_size:
  * @control: указатель на #HyScanControl
  * @chunk_size: максимальный размер файлов в байтах или отрицательное число
@@ -2095,59 +2008,14 @@ hyscan_control_writer_set_mode (HyScanControl            *control,
  * Функция устанавливает максимальный размер файлов в галсе.
  *
  * Подробнее об этом можно прочитать в описании интерфейса #HyScanDB.
- *
- * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
  */
-gboolean
+void
 hyscan_control_writer_set_chunk_size (HyScanControl *control,
                                       gint32         chunk_size)
 {
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+  g_return_if_fail (HYSCAN_IS_CONTROL (control));
 
-  return hyscan_data_writer_set_chunk_size (control->priv->writer, chunk_size);
-}
-
-/**
- * hyscan_control_writer_set_save_time:
- * @control: указатель на #HyScanControl
- * @save_time: время хранения данных в микросекундах или отрицательное число
- *
- * Функция задаёт интервал времени, для которого сохраняются записываемые
- * данные. Если данные были записаны ранее "текущего времени" - "интервал
- * хранения" они удаляются.
- *
- * Подробнее об этом можно прочитать в описании интерфейса #HyScanDB.
- *
- * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
- */
-gboolean
-hyscan_control_writer_set_save_time (HyScanControl *control,
-                                     gint64         save_time)
-{
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  return hyscan_data_writer_set_save_time (control->priv->writer, save_time);
-}
-
-/**
- * hyscan_control_writer_set_save_size:
- * @control: указатель на #HyScanControl
- * @save_size: объём сохраняемых данных в байтах или отрицательное число
- *
- * Функция задаёт объём сохраняемых данных в канале. Если объём данных
- * превышает этот предел, старые данные удаляются.
- *
- * Подробнее об этом можно прочитать в описании интерфейса #HyScanDB.
- *
- * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
- */
-gboolean
-hyscan_control_writer_set_save_size (HyScanControl *control,
-                                     gint64         save_size)
-{
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  return hyscan_data_writer_set_save_size (control->priv->writer, save_size);
+  hyscan_data_writer_set_chunk_size (control->priv->writer, chunk_size);
 }
 
 static void

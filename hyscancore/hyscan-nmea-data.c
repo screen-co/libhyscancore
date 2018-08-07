@@ -10,7 +10,7 @@
 
 #include "hyscan-nmea-data.h"
 #include "hyscan-core-schemas.h"
-#include "hyscan-core-params.h"
+#include "hyscan-core-common.h"
 #include <string.h>
 
 #define CACHE_HEADER_MAGIC     0x3f0a4b87          /* Идентификатор заголовка кэша. */
@@ -43,7 +43,6 @@ struct _HyScanNMEADataPrivate
   guint                 source_channel;            /* Индекс канала данных. */
 
   HyScanCache          *cache;                     /* Интерфейс системы кэширования. */
-  gchar                *prefix;                    /* Префикс ключа кэширования. */
   gchar                *path;                      /* Путь к БД, проекту, галсу и каналу. */
   HyScanBuffer         *cache_buffer;              /* Буфер заголовка кэша данных. */
 
@@ -152,25 +151,25 @@ hyscan_nmea_data_object_constructed (GObject *object)
   HyScanNMEAData *data = HYSCAN_NMEA_DATA (object);
   HyScanNMEADataPrivate *priv = data->priv;
 
+  const char *channel_name;
+
   gint32 project_id = -1;
   gint32 track_id = -1;
   gint32 param_id = -1;
 
   gchar *db_uri = NULL;
-  const gchar *channel = NULL;
   gboolean status = FALSE;
-
-  priv->prefix = g_strdup ("none");
 
   priv->channel_id = -1;
 
   priv->cache_buffer = hyscan_buffer_new ();
   priv->nmea_buffer = hyscan_buffer_new ();
 
-  channel = hyscan_channel_get_name_by_types (priv->source_type, TRUE, priv->source_channel);
+  channel_name = hyscan_core_get_channel_name (priv->source_type, priv->source_channel, HYSCAN_CHANNEL_DATA);
 
   /* Проверяем БД, проект, галс и название канала. */
-  if ((priv->db == NULL) || (priv->project == NULL) || (priv->track == NULL) || (channel == NULL))
+  if ((priv->db == NULL) || (priv->project == NULL) ||
+      (priv->track == NULL) || (channel_name == NULL))
     {
       if (priv->db == NULL)
         g_warning ("HyScanNMEAData: db is not specified");
@@ -178,21 +177,21 @@ hyscan_nmea_data_object_constructed (GObject *object)
         g_warning ("HyScanNMEAData: project name is not specified");
       if (priv->track == NULL)
         g_warning ("HyScanNMEAData: track name is not specified");
-      if (channel == NULL)
+      if (channel_name == NULL)
         g_warning ("HyScanNMEAData: unknown channel name");
       goto exit;
     }
 
   if (!hyscan_source_is_sensor (priv->source_type))
     {
-      g_warning ("HyScanNMEAData: unsupported source type %s", channel);
+      g_warning ("HyScanNMEAData: unsupported source type %s", channel_name);
       goto exit;
     }
 
   /* Путь к БД. */
   db_uri = hyscan_db_get_uri (priv->db);
 
-  priv->path = g_strdup_printf ("%s.%s.%s.%s", db_uri, priv->project, priv->track, channel);
+  priv->path = g_strdup_printf ("%s.%s.%s.%s", db_uri, priv->project, priv->track, channel_name);
 
   project_id = hyscan_db_project_open (priv->db, priv->project);
   if (project_id < 0)
@@ -208,11 +207,11 @@ hyscan_nmea_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  priv->channel_id = hyscan_db_channel_open (priv->db, track_id, channel);
+  priv->channel_id = hyscan_db_channel_open (priv->db, track_id, channel_name);
   if (priv->channel_id < 0)
     {
       g_warning ("HyScanNMEAData: can't open channel '%s.%s.%s'",
-                 priv->project, priv->track, channel);
+                 priv->project, priv->track, channel_name);
       goto exit;
     }
 
@@ -225,7 +224,7 @@ hyscan_nmea_data_object_constructed (GObject *object)
   if (param_id < 0)
     {
       g_warning ("HyScanNMEAData: '%s.%s.%s': can't open parameters",
-                 priv->project, priv->track, channel);
+                 priv->project, priv->track, channel_name);
       goto exit;
     }
 
@@ -236,7 +235,7 @@ hyscan_nmea_data_object_constructed (GObject *object)
   if (!status)
     {
       g_warning ("HyScanNMEAData: '%s.%s.%s': can't read antenna position",
-                 priv->project, priv->track, channel);
+                 priv->project, priv->track, channel_name);
       goto exit;
     }
 
@@ -272,9 +271,7 @@ hyscan_nmea_data_object_finalize (GObject *object)
   g_free (priv->project);
   g_free (priv->track);
   g_free (priv->path);
-
   g_free (priv->key);
-  g_free (priv->prefix);
 
   g_object_unref (priv->cache_buffer);
   g_object_unref (priv->nmea_buffer);
@@ -292,8 +289,7 @@ hyscan_nmea_data_update_cache_key (HyScanNMEADataPrivate *priv,
 {
   if (priv->key == NULL)
     {
-      priv->key = g_strdup_printf ("NMEA.%s.%s.%u",
-                                    priv->prefix,
+      priv->key = g_strdup_printf ("NMEA.%s.%u",
                                     priv->path,
                                     G_MAXUINT32);
 
@@ -301,8 +297,7 @@ hyscan_nmea_data_update_cache_key (HyScanNMEADataPrivate *priv,
     }
 
   g_snprintf (priv->key, priv->key_length,
-              "NMEA.%s.%s.%u",
-              priv->prefix,
+              "NMEA.%s.%u",
               priv->path,
               index);
 }
@@ -362,29 +357,16 @@ hyscan_nmea_data_new (HyScanDB         *db,
   return data;
 }
 
-/* Функция задаёт используемый кэш и префикс. */
+/* Функция задаёт используемый кэш. */
 void
 hyscan_nmea_data_set_cache (HyScanNMEAData *data,
-                            HyScanCache    *cache,
-                            const gchar    *prefix)
+                            HyScanCache    *cache)
 {
-  HyScanNMEADataPrivate *priv;
   g_return_if_fail (HYSCAN_IS_NMEA_DATA (data));
-  priv = data->priv;
 
-  g_clear_object (&priv->cache);
-  g_clear_pointer (&priv->prefix, g_free);
-  g_clear_pointer (&priv->key, g_free);
-
-  if (cache == NULL)
-    return;
-
-  if (prefix == NULL)
-    priv->prefix = g_strdup ("none");
-  else
-    priv->prefix = g_strdup (prefix);
-
-  priv->cache = g_object_ref (cache);
+  g_clear_object (&data->priv->cache);
+  if (cache != NULL)
+    data->priv->cache = g_object_ref (cache);
 }
 
 /* Функция возвращает информацию о местоположении приёмной антенны. */

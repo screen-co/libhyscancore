@@ -35,8 +35,7 @@ hyscan_depth_set_sound_velocity (HyScanDepth         *depth,
 /* Функция установки кэша. */
 void
 hyscan_depth_set_cache (HyScanDepth *depth,
-                        HyScanCache *cache,
-                        const gchar *prefix)
+                        HyScanCache *cache)
 {
   HyScanDepthInterface *iface;
 
@@ -44,7 +43,7 @@ hyscan_depth_set_cache (HyScanDepth *depth,
   iface = HYSCAN_DEPTH_GET_IFACE (depth);
 
   if (iface->set_cache != NULL)
-    (*iface->set_cache) (depth, cache, prefix);
+    (*iface->set_cache) (depth, cache);
 }
 
 /* Функция получения глубины. */

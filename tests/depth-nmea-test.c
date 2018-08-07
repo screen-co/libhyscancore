@@ -176,7 +176,7 @@ main (int argc, char **argv)
   }
 
   /* hyscan_depth_get с кэшем. */
-  hyscan_depth_set_cache (idepth, cache, "pfx");
+  hyscan_depth_set_cache (idepth, cache);
   {
     gdouble val;
     for (i = 0; i < SAMPLES; i++)

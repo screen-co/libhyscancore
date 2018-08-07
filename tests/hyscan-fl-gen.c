@@ -1,10 +1,46 @@
-/*
- * \file hyscan-fl-gen.c
+/* hyscan-fl-gen.c
  *
- * \brief Исходный файл класса генерации тестовых данных вперёдсмотрящего локатора
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2017-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
+
+/**
+ * SECTION: hyscan-fl-gen
+ * @Short_description: класс генерации тестовых данных вперёдсмотрящего локатора
+ * @Title: HyScanFLGen
+ *
+ * Класс предназначен для записи тестовых данных вперёдсмотрящего локатора.
+ *
+ * Тестовые данные представляют собой отражение от целей по всей дистанции
+ * приёма с изменением направления от крайнего левого до крайнего правого.
  *
  */
 
@@ -20,8 +56,8 @@ struct _HyScanFLGenPrivate
 
   HyScanAntennaPosition        position;
 
-  HyScanRawDataInfo            info1;
-  HyScanRawDataInfo            info2;
+  HyScanAcousticDataInfo       info1;
+  HyScanAcousticDataInfo       info2;
 
   HyScanBuffer                *values1;
   HyScanBuffer                *values2;
@@ -65,12 +101,14 @@ hyscan_fl_gen_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_fl_gen_parent_class)->finalize (object);
 }
 
+/* Функция создаёт новый объект HyScanFLGen. */
 HyScanFLGen *
 hyscan_fl_gen_new (void)
 {
   return g_object_new (HYSCAN_TYPE_FL_GEN, NULL);
 }
 
+/* Функция задаёт местоположение приёмной антенны локатора. */
 void
 hyscan_fl_gen_set_position (HyScanFLGen           *fl_gen,
                             HyScanAntennaPosition *position)
@@ -80,9 +118,10 @@ hyscan_fl_gen_set_position (HyScanFLGen           *fl_gen,
   fl_gen->priv->position = *position;
 }
 
+/* Функция задаёт параметры локатора. */
 void
-hyscan_fl_gen_set_info (HyScanFLGen       *fl_gen,
-                        HyScanRawDataInfo *info)
+hyscan_fl_gen_set_info (HyScanFLGen            *fl_gen,
+                        HyScanAcousticDataInfo *info)
 {
   g_return_if_fail (HYSCAN_IS_FL_GEN (fl_gen));
 
@@ -96,6 +135,7 @@ hyscan_fl_gen_set_info (HyScanFLGen       *fl_gen,
   fl_gen->priv->info2.antenna_hoffset = 0.01;
 }
 
+/* Функция задаёт проект и галс в который ведётся запись. */
 gboolean
 hyscan_fl_gen_set_track (HyScanFLGen *fl_gen,
                          HyScanDB    *db,
@@ -121,6 +161,7 @@ hyscan_fl_gen_set_track (HyScanFLGen *fl_gen,
   return TRUE;
 }
 
+/* Функция генерирует и записывает в галс одну строку данных. */
 gboolean
 hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
                         guint32      n_points,
@@ -130,6 +171,8 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
 
   HyScanComplexFloat *raw_values1;
   HyScanComplexFloat *raw_values2;
+
+  gboolean status;
   guint i;
 
   g_return_val_if_fail (HYSCAN_IS_FL_GEN (fl_gen), FALSE);
@@ -164,15 +207,20 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
       raw_values2[i].im = sin (phase);
     }
 
-  if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 1, time, &priv->info1, priv->values1))
+  status = hyscan_data_writer_acoustic_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 1,
+                                                 FALSE, time, &priv->info1, priv->values1);
+  if (!status)
     return FALSE;
 
-  if (!hyscan_data_writer_raw_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2, time, &priv->info2, priv->values2))
+  status = hyscan_data_writer_acoustic_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2,
+                                                 FALSE, time, &priv->info2, priv->values2);
+  if (!status)
     return FALSE;
 
   return TRUE;
 }
 
+/* Функция проверяет валидность данных. */
 gboolean
 hyscan_fl_gen_check (const HyScanForwardLookDOA *doa,
                      guint32                     n_points,

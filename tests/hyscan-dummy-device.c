@@ -753,7 +753,7 @@ hyscan_dummy_device_change_state (HyScanDummyDevice *dummy)
 void
 hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
 {
-  HyScanBuffer *data = hyscan_buffer_new ();
+  HyScanBuffer *data;
   guint i;
 
   g_return_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy));
@@ -780,32 +780,25 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   for (i = 0; hyscan_dummy_device_sources[i] != HYSCAN_SOURCE_INVALID; i++)
     {
       HyScanSourceType source;
-      HyScanAcousticDataInfo *acoustic_info;
-      HyScanRawDataInfo *raw_info;
+      HyScanAcousticDataInfo *info;
       HyScanComplexFloat *cdata;
       gfloat *fdata;
       guint32 n_points;
       gint64 time;
 
       source = hyscan_dummy_device_sources[i];
-      raw_info = hyscan_dummy_device_get_raw_info (source);
-      acoustic_info = hyscan_dummy_device_get_acoustic_info (source);
+      info = hyscan_dummy_device_get_acoustic_info (source);
 
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
       hyscan_buffer_wrap_complex_float (data, cdata, n_points);
-
-      g_signal_emit_by_name (dummy, "sonar-signal", source, time, data);
-      g_signal_emit_by_name (dummy, "sonar-raw-data", source, 1, time, raw_info, data);
-      g_signal_emit_by_name (dummy, "sonar-noise-data", source, 1, time, raw_info, data);
+      g_signal_emit_by_name (dummy, "sonar-signal", source, 1, time, data);
+      g_signal_emit_by_name (dummy, "sonar-acoustic-data", source, 1, FALSE, time, info, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_float (data, fdata, N_POINTS);
-
+      hyscan_buffer_wrap_float (data, fdata, n_points);
       g_signal_emit_by_name (dummy, "sonar-tvg", source, 1, time, data);
-      g_signal_emit_by_name (dummy, "sonar-acoustic-data", source, time, acoustic_info, data);
 
-      hyscan_acoustic_data_info_free (acoustic_info);
-      hyscan_raw_data_info_free (raw_info);
+      hyscan_acoustic_data_info_free (info);
       g_free (cdata);
       g_free (fdata);
     }
@@ -1749,35 +1742,6 @@ exit:
 }
 
 /**
- * hyscan_dummy_device_get_raw_info:
- * @source: тип гидролокационного источника данных
- *
- * Функция возвращает эталонные значения параметров сырых
- * гидролокационных данных.
- *
- * Returns: (transfer full): Параметры сырых данных #HyScanRawDataInfo.
- * Для удаления #hyscan_raw_data_info_free.
- */
-HyScanRawDataInfo *
-hyscan_dummy_device_get_raw_info (HyScanSourceType source)
-{
-  HyScanRawDataInfo info;
-
-  info.data_type = HYSCAN_DATA_COMPLEX_FLOAT;
-  info.data_rate = source;
-  info.antenna_voffset = source;
-  info.antenna_hoffset = source;
-  info.antenna_vpattern = source;
-  info.antenna_hpattern = source;
-  info.antenna_frequency = source;
-  info.antenna_bandwidth = source;
-  info.adc_vref = source;
-  info.adc_offset = source;
-
-  return hyscan_raw_data_info_copy (&info);
-}
-
-/**
  * hyscan_dummy_device_get_acoustic_info:
  * @source: тип гидролокационного источника данных
  *
@@ -1791,10 +1755,18 @@ hyscan_dummy_device_get_acoustic_info (HyScanSourceType source)
 {
   HyScanAcousticDataInfo info;
 
-  info.data_type = HYSCAN_DATA_FLOAT;
-  info.data_rate = source;
-  info.antenna_vpattern = source;
-  info.antenna_hpattern = source;
+  info.data_type = HYSCAN_DATA_COMPLEX_FLOAT;
+  info.data_rate = 2.0 * source;
+  info.signal_frequency = 3.0 * source;
+  info.signal_bandwidth = 4.0 * source;
+  info.antenna_voffset = 5.0 * source;
+  info.antenna_hoffset = 6.0 * source;
+  info.antenna_vpattern = 7.0 * source;
+  info.antenna_hpattern = 8.0 * source;
+  info.antenna_frequency = 9.0 * source;
+  info.antenna_bandwidth = 10.0 * source;
+  info.adc_vref = 11.0 * source;
+  info.adc_offset = 12.0 * source;
 
   return hyscan_acoustic_data_info_copy (&info);
 }
