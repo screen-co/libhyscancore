@@ -1,17 +1,35 @@
-/**
- * \file hyscan-nmea-parser.h
+/* hyscan-nmea-parser.h
  *
- * \brief Заголовочный файл класса HyScanNMEAParser
- * \author Alexander Dmitriev (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
- * \defgroup HyScanNMEAParser HyScanNMEAParser - класс извлечения глубины из NMEA-сообщений.
+ * Copyright 2018 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
- * Класс HyScanNMEAParser реализует интерфейс \link HyScanDepth \endlink.
- * Обрабатываются только NMEA-DPT строки.
- * Публично доступен только метод #hyscan_nmea_parser_new, создающий новый объект.
+ * This file is part of HyScanCore library.
  *
- * Класс не является потокобезопасным.
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
  */
 
 #ifndef __HYSCAN_NMEA_PARSER_H__
@@ -44,9 +62,27 @@ struct _HyScanNMEAParserClass
   GObjectClass parent_class;
 };
 
+/**
+ * HyScanNMEAField:
+ * @HYSCAN_NMEA_FIELD_TIME: время
+ * @HYSCAN_NMEA_FIELD_LAT: широта
+ * @HYSCAN_NMEA_FIELD_LON: долгота
+ * @HYSCAN_NMEA_FIELD_SPEED: скорость
+ * @HYSCAN_NMEA_FIELD_TRACK: курс
+ * @HYSCAN_NMEA_FIELD_DATE: дата
+ * @HYSCAN_NMEA_FIELD_MAG_VAR: магнитное склонение
+ * @HYSCAN_NMEA_FIELD_FIX_QUAL: качество фикса
+ * @HYSCAN_NMEA_FIELD_N_SATS: количество спутников
+ * @HYSCAN_NMEA_FIELD_HDOP: HDOP
+ * @HYSCAN_NMEA_FIELD_ALTITUDE: высота
+ * @HYSCAN_NMEA_FIELD_HOG: HOG
+ * @HYSCAN_NMEA_FIELD_DEPTH: глубина
+ *
+ * Типы извлекаемых из NMEA-строки данных.
+ */
 typedef enum
 {
- HYSCAN_NMEA_FIELD_TIME = 0,
+ HYSCAN_NMEA_FIELD_TIME,
  HYSCAN_NMEA_FIELD_LAT,
  HYSCAN_NMEA_FIELD_LON,
  HYSCAN_NMEA_FIELD_SPEED,
@@ -64,26 +100,13 @@ typedef enum
 HYSCAN_API
 GType                   hyscan_nmea_parser_get_type      (void);
 
-/**
- *
- * Функция создает новый объект обработки строк NMEA.
- *
- * \param db указатель на интерфейс HyScanDB;
- * \param project название проекта;
- * \param track название галса;
- * \param source_channel номер канала.
- *
- * \return Указатель на объект \link HyScanNMEAParser \endlink или NULL, если не
- * удалось открыть канал данных.
- *
- */
 HYSCAN_API
-HyScanNMEAParser*        hyscan_nmea_parser_new           (HyScanDB         *db,
-                                                           const gchar      *project,
-                                                           const gchar      *track,
-                                                           HyScanSourceType  source_type,
-                                                           guint             source_channel,
-                                                           guint             field_type);
+HyScanNMEAParser*       hyscan_nmea_parser_new           (HyScanDB         *db,
+                                                          const gchar      *project,
+                                                          const gchar      *track,
+                                                          HyScanSourceType  source_type,
+                                                          guint             source_channel,
+                                                          guint             field_type);
 G_END_DECLS
 
 #endif /* __HYSCAN_NMEA_PARSER_H__ */

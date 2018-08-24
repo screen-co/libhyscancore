@@ -1,11 +1,43 @@
-/*
- * \file hyscan-nmea-parser.c
+/* hyscan-nmea-parser.c
  *
- * \brief Исходный файл класса парсера NMEA-строк.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2018
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2018 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
+
+/**
+ * SECTION: hyscan-nmea-parser
+ * @Short_description: класс парсинга NMEA-строк
+ * @Title: HyScanNMEAParser
+ *
+ * Класс HyScanNMEAParser реализует интерфейс #HyScanNavData.
  * Поскольку интерфейс HyScanNavData возвращает только одно значение,
  * нельзя вернуть значение+полушарие или день/минуту/секунду.
  * Поэтому все значения приводятся к одному числу.
@@ -14,7 +46,6 @@
 
 #include "hyscan-nmea-parser.h"
 #include <hyscan-nmea-data.h>
-#include "hyscan-core-schemas.h"
 #include <string.h>
 #include <math.h>
 
@@ -455,7 +486,18 @@ hyscan_nmea_parser_get_mod_count (HyScanNavData *navdata)
   return hyscan_nmea_data_get_mod_count (parser->priv->dc);
 }
 
-/* Функция создает новый объект. */
+/**
+ * hyscan_nmea_parser_new:
+ * @db: указатель на интерфейс HyScanDB
+ * @project: название проекта
+ * @track: название галса
+ * @source_channel: номер канала
+ *
+ * Функция создает новый объект обработки строк NMEA.
+ *
+ * Returns: Указатель на объект #HyScanNMEAParser или %NULL
+ *
+ */
 HyScanNMEAParser*
 hyscan_nmea_parser_new (HyScanDB        *db,
                         const gchar     *project,

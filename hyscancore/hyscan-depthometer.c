@@ -1,11 +1,50 @@
-/*
- * \file hyscan-depthometer.c
+/* hyscan-depthometer.c
  *
- * \brief Исходный файл класса определения и аппроксимации
- * \author Alexander Dmitriev (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2018 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
+
+/**
+ *
+ * SECTION: hyscan-depthometer
+ * @Short_description: класс определения и аппроксимации глубины по времени
+ * @Title: HyScanDepthometer
+ *
+ * HyScanDepthometer находится на более высоком уровне, чем #HyScanNavData.
+ * Если HyScanNavData работает непосредственно с каналами данных, то HyScanDepthometer ничего
+ * не знает о конкретных источниках данных. Однако он занимается определением глубины не для
+ * индекса, а для произвольного времени.
+ *
+ * Класс не является потокобезопасным. Для работы из разных потоков следует
+ * создавать как объект HyScanDepthometer, так и интерфейс HyScanNavData.
  */
 
 #include "hyscan-depthometer.h"
@@ -164,7 +203,14 @@ hyscan_depthometer_time_round (gint64 time,
   return out;
 }
 
-/* Функция создает новый объект. */
+/**
+ * hyscan_depthometer_new:
+ * @ndata: интерфейс #HyScanNavData
+ *
+ * Функция создает новый объект получения глубины.
+ *
+ * Returns: объект HyScanDepthometer.
+ */
 HyScanDepthometer*
 hyscan_depthometer_new (HyScanNavData *ndata)
 {
@@ -175,7 +221,13 @@ hyscan_depthometer_new (HyScanNavData *ndata)
                        "source", ndata, NULL);
 }
 
-/* Функция устанавливает кэш. */
+/**
+ * hyscan_depthometer_set_cache:
+ * @depthometer: #HyScanDepthometer
+ * @cache: (nullable): интерфейс #HyScanCache
+ *
+ * Функция устанавливает кэш.
+ */
 void
 hyscan_depthometer_set_cache (HyScanDepthometer *meter,
                               HyScanCache       *cache)
@@ -191,7 +243,17 @@ hyscan_depthometer_set_cache (HyScanDepthometer *meter,
     priv->cache = g_object_ref (cache);
 }
 
-/* Функция устанавливает число точек для аппроксимации. */
+/**
+ * hyscan_depthometer_set_filter_size:
+ * @depthometer: #HyScanDepthometer
+ * @size: число точек, используемых для определения глубины
+ *
+ * Функция устанавливает число точек для аппроксимации.
+ * Число точек должно быть больше нуля. Так как классу требуется четное число
+ * точек, то при передаче нечетного значения оно будет автоматически инкрементировано.
+ *
+ * Returns: TRUE, если удалось установить новое значение.
+ */
 gboolean
 hyscan_depthometer_set_filter_size (HyScanDepthometer *meter,
                                     guint              size)
@@ -211,7 +273,20 @@ hyscan_depthometer_set_filter_size (HyScanDepthometer *meter,
   return TRUE;
 }
 
-/* Функция устанавливает окно валидности данных. */
+/**
+ * hyscan_depthometer_set_validity_time:
+ * @depthometer: #HyScanDepthometer
+ * @microseconds: время в микросекундах, в течение которого считается, чт
+ * глубина не изменяется.
+ *
+ * Функция устанавливает окно валидности данных.
+ *
+ * Данные могут быть запрошены не для того момента, для которого они реально
+ * есть, а чуть раньше или позже. В этом случае есть два варианта:
+ * либо интерполировать данные, либо "нарезать" временную шкалу так,
+ * так что на каждом отрезке глубина считается постоянной. Функция задает
+ * длину этого отрезка в микросекундах.
+ */
 void
 hyscan_depthometer_set_validity_time (HyScanDepthometer *meter,
                                       gint64             microseconds)
@@ -226,7 +301,17 @@ hyscan_depthometer_set_validity_time (HyScanDepthometer *meter,
   meter->priv->half_valid = microseconds / 2;
 }
 
-/* Функция возвращает глубину. */
+/**
+ * hyscan_depthometer_get:
+ * @depthometer: #HyScanDepthometer
+ * @time: время
+ *
+ * Функция возвращает глубину.
+ * Если значение не найдено в кэше или кэш не установлен, функция
+ * произведет все необходимые вычисления.
+ *
+ * Returns: глубина в запрошенный момент времени или -1.0 в случае ошибки.
+ */
 gdouble
 hyscan_depthometer_get (HyScanDepthometer *meter,
                         gint64             time)
@@ -308,6 +393,18 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
   return retval;
 }
 
+/**
+ * hyscan_depthometer_check:
+ * @depthometer: #HyScanDepthometer
+ * @time: время
+ *
+ * Функция возвращает глубину.
+ * В отличие от #hyscan_depthometer_get эта функция только ищет
+ * значение в кэше. Если кэш не задан или значение не присутствует в кэше,
+ * будет возвращено значение -1.0.
+ *
+ * Returns: глубина в запрошенный момент времени или -1.0 в случае ошибки.
+ */
 gdouble
 hyscan_depthometer_check (HyScanDepthometer *meter,
                           gint64             time)

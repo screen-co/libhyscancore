@@ -1,10 +1,51 @@
-/*
- * \file hyscan-nmea-data.c
+/* hyscan-nmea-data.c
  *
- * \brief Исходный файл класса работы с NMEA-строками.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2018 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
+
+/**
+ * SECTION: hyscan-nmea-data
+ * @Short_description: класс работы с NMEA-строками
+ * @Title: HyScanNMEAData
+ *
+ * Класс предназначен для получения NMEA-строк из БД. Класс не осуществляет
+ * верификацию строк, однако это можно сделать вспомогательной функцией
+ * #hyscan_nmea_data_check_sentence.
+ *
+ * В канале HYSCAN_SOURCE_NMEA_ANY по одному индексу может оказаться несколько
+ * строк. В таком случае класс вернет всю строку целиком. Для разбиения этой
+ * строки на отдельные сообщения можно использовать функцию
+ * #hyscan_nmea_data_split_sentence, которая вернет нуль-терминированный список
+ * строк.
  *
  */
 
@@ -13,7 +54,7 @@
 #include "hyscan-core-common.h"
 #include <string.h>
 
-#define CACHE_HEADER_MAGIC     0x3f0a4b87          /* Идентификатор заголовка кэша. */
+#define CACHE_HEADER_MAGIC     0x3f0a4b87    /* Идентификатор заголовка кэша. */
 
 enum
 {
@@ -28,31 +69,31 @@ enum
 /* Структруа заголовка кэша. */
 typedef struct
 {
-  guint32               magic;                     /* Идентификатор заголовка. */
-  guint32               length;                    /* Длина NMEA строки. */
-  gint64                time;                      /* Метка времени. */
+  guint32               magic;          /* Идентификатор заголовка. */
+  guint32               length;         /* Длина NMEA строки. */
+  gint64                time;           /* Метка времени. */
 } HyScanNMEADataCacheHeader;
 
 struct _HyScanNMEADataPrivate
 {
-  HyScanDB             *db;                        /* Интерфейс базы данных. */
+  HyScanDB             *db;             /* Интерфейс базы данных. */
 
-  gchar                *project;                   /* Название проекта. */
-  gchar                *track;                     /* Название галса. */
-  HyScanSourceType      source_type;               /* Тип источника данных. */
-  guint                 source_channel;            /* Индекс канала данных. */
+  gchar                *project;        /* Название проекта. */
+  gchar                *track;          /* Название галса. */
+  HyScanSourceType      source_type;    /* Тип источника данных. */
+  guint                 source_channel; /* Индекс канала данных. */
 
-  HyScanCache          *cache;                     /* Интерфейс системы кэширования. */
-  gchar                *path;                      /* Путь к БД, проекту, галсу и каналу. */
-  HyScanBuffer         *cache_buffer;              /* Буфер заголовка кэша данных. */
+  HyScanCache          *cache;          /* Интерфейс системы кэширования. */
+  gchar                *path;           /* Путь к БД, проекту, галсу и каналу. */
+  HyScanBuffer         *cache_buffer;   /* Буфер заголовка кэша данных. */
 
-  gchar                *key;                       /* Ключ кэширования. */
-  gsize                 key_length;                /* Максимальная длина ключа. */
+  gchar                *key;            /* Ключ кэширования. */
+  gsize                 key_length;     /* Максимальная длина ключа. */
 
-  HyScanAntennaPosition position;                  /* Местоположение приёмной антенны. */
-  gint32                channel_id;                /* Идентификатор открытого канала данных. */
+  HyScanAntennaPosition position;       /* Местоположение приёмной антенны. */
+  gint32                channel_id;     /* Идентификатор открытого канала данных. */
 
-  HyScanBuffer         *nmea_buffer;               /* Буфер данных. */
+  HyScanBuffer         *nmea_buffer;    /* Буфер данных. */
 
 };
 
@@ -98,7 +139,7 @@ hyscan_nmea_data_class_init (HyScanNMEADataClass *klass)
                       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_SOURCE_CHANNEL,
-    g_param_spec_uint ("source-channel", "SourceChannel", "Source channel", 1, 5, 1,
+    g_param_spec_uint ("source-channel", "SourceChannel", "Source channel", 1, G_MAXUINT, 1,
                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
@@ -335,7 +376,20 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
   return TRUE;
 }
 
-/* Функция создаёт новый объект обработки NMEA строк. */
+/**
+ * hyscan_nmea_data_new:
+ * @db указатель на #HyScanDB
+ * @project_name название проекта
+ * @track_name название галса
+ * @source_type тип источника данных
+ * @source_channel индекс канала данных
+ *
+ * Функция создаёт новый объект обработки NMEA строк.
+ * В требуемом канале данных должна быть хотя бы одна запись,
+ * иначе будет возращен NULL.
+ *
+ * Returns: Указатель на объект #HyScanNMEAData или NULL.
+ */
 HyScanNMEAData*
 hyscan_nmea_data_new (HyScanDB         *db,
                       const gchar      *project_name,
@@ -359,7 +413,13 @@ hyscan_nmea_data_new (HyScanDB         *db,
   return data;
 }
 
-/* Функция задаёт используемый кэш. */
+/**
+ * hyscan_nmea_data_set_cache:
+ * @data указатель #HyScanNMEAData
+ * @cache указатель #HyScanCache
+ *
+ * Функция задаёт используемый кэш.
+ */
 void
 hyscan_nmea_data_set_cache (HyScanNMEAData *data,
                             HyScanCache    *cache)
@@ -371,7 +431,14 @@ hyscan_nmea_data_set_cache (HyScanNMEAData *data,
     data->priv->cache = g_object_ref (cache);
 }
 
-/* Функция возвращает информацию о местоположении приёмной антенны. */
+/**
+ * hyscan_nmea_data_get_position:
+ * @data указатель на #HyScanNMEAData
+ *
+ * Функция возвращает информацию о местоположении приёмной антенны
+ *
+ * \return Местоположение приёмной антенны.
+ */
 HyScanAntennaPosition
 hyscan_nmea_data_get_position (HyScanNMEAData *data)
 {
@@ -385,7 +452,14 @@ hyscan_nmea_data_get_position (HyScanNMEAData *data)
   return data->priv->position;
 }
 
-/* Функция возвращает тип источника данных. */
+/**
+ * hyscan_nmea_data_get_source:
+ * @data указатель на #HyScanNMEAData
+ *
+ * Функция возвращает тип источника данных.
+ *
+ * Returns: Тип источника данных из #HyScanSourceType.
+ */
 HyScanSourceType
 hyscan_nmea_data_get_source (HyScanNMEAData *data)
 {
@@ -397,7 +471,14 @@ hyscan_nmea_data_get_source (HyScanNMEAData *data)
   return data->priv->source_type;
 }
 
-/* Функция возвращает номер канала для этого канала данных. */
+/**
+ * hyscan_nmea_data_get_channel:
+ * @data: указатель на #HyScanNMEAData
+ *
+ * Функция возвращает номер канала для используемого источника данных.
+ *
+ * Returns: Номер канала.
+ */
 guint
 hyscan_nmea_data_get_channel (HyScanNMEAData *data)
 {
@@ -409,7 +490,15 @@ hyscan_nmea_data_get_channel (HyScanNMEAData *data)
   return data->priv->source_channel;
 }
 
-/* Функция определяет возможность изменения данных. */
+/**
+ * hyscan_nmea_data_is_writable:
+ * @data: указатель на #HyScanNMEAData
+ *
+ * Функция определяет возможность изменения данных. Если функция вернёт значение %TRUE,
+ * возможна ситуация когда могут появиться новые данные или исчезнуть уже записанные.
+ *
+ * Returns: %TRUE - если возможна запись данных, %FALSE - если данные в режиме только чтения.
+ */
 gboolean
 hyscan_nmea_data_is_writable (HyScanNMEAData *data)
 {
@@ -421,7 +510,17 @@ hyscan_nmea_data_is_writable (HyScanNMEAData *data)
   return hyscan_db_channel_is_writable (data->priv->db, data->priv->channel_id);
 }
 
-/* Функция возвращает диапазон значений индексов записанных данных. */
+/**
+ * hyscan_nmea_data_get_range:
+ * @data: указатель на #HyScanNMEAData
+ * @first: (out) (nullable): указатель на переменную для начального индекса
+ * @last: (out) (nullable): указатель на переменную для конечного индекса
+ *
+ * Функция возвращает диапазон значений индексов записанных данных. Функция вернёт значения
+ * начального и конечного индекса записей.
+ *
+ * Returns: %TRUE - если границы записей определены, %FALSE - в случае ошибки.
+ */
 gboolean
 hyscan_nmea_data_get_range (HyScanNMEAData *data,
                             guint32        *first,
@@ -436,7 +535,19 @@ hyscan_nmea_data_get_range (HyScanNMEAData *data,
                                            first, last);
 }
 
-/* Функция ищет индекс данных для указанного момента времени. */
+/**
+ * hyscan_nmea_data_find_data:
+ * @data: указатель на #HyScanNMEAData
+ * @time: искомый момент времени
+ * @lindex: (out) (nullable): "левый" индекс данных
+ * @rindex: (out) (nullable): "правый" индекс данных
+ * @ltime: (out) (nullable): "левая" метка времени данных
+ * @rtime: (out) (nullable): "правая" метка времени данных
+ *
+ * Функция ищет индекс данных для указанного момента времени.
+ *
+ * Returns: %TRUE - если данные найдены, %FALSE - в случае ошибки.
+ */
 HyScanDBFindStatus
 hyscan_nmea_data_find_data (HyScanNMEAData *data,
                             gint64          time,
@@ -454,7 +565,18 @@ hyscan_nmea_data_find_data (HyScanNMEAData *data,
                                       time, lindex, rindex, ltime, rtime);
 }
 
-/* Функция возвращает строку для указанного индекса. */
+/**
+ * hyscan_nmea_data_get_sentence:
+ * @data: указатель на #HyScanNMEAData
+ * @index: индекс считываемых данных
+ * @time: (out) (nullable): указатель на переменную для сохранения метки времени считанных данных
+ *
+ * Функция возвращает указатель на NMEA-строку.
+ * Строка будет гарантированно нуль-терминирована.
+ * Владельцем строки является класс, запрещено освобождать эту память.
+ *
+ * Returns: (transfer none): указатель на константную нуль-терминированную строку.
+ */
 const gchar*
 hyscan_nmea_data_get_sentence (HyScanNMEAData *data,
                                guint32         index,
@@ -503,7 +625,16 @@ hyscan_nmea_data_get_sentence (HyScanNMEAData *data,
   return nmea;
 }
 
-/* Функция возвращает номер изменения в данных. */
+/**
+ * hyscan_nmea_data_get_mod_count:
+ * @data: указатель на #HyScanNMEAData
+ *
+ * Функция возвращает номер изменения в данных. Нельзя полагаться на значение
+ * номера изменения, важен только факт смены номера по сравнению с предыдущим
+ * запросом.
+ *
+ * Returns: Номер изменения.
+ */
 guint32
 hyscan_nmea_data_get_mod_count (HyScanNMEAData *data)
 {
@@ -515,7 +646,20 @@ hyscan_nmea_data_get_mod_count (HyScanNMEAData *data)
   return hyscan_db_get_mod_count (data->priv->db, data->priv->channel_id);
 }
 
-/* Функция верифицирует nmea-сообщение. */
+/**
+ * hyscan_nmea_data_check_sentence:
+ * @sentence: указатель на строку
+ *
+ * Функция верифицирует NMEA-строку: проверяет контрольную сумму и тип строки.
+ * Если тип сообщения совпадает с DPT, RMC или GGA, будут возвращены
+ * соответственно HYSCAN_SOURCE_NMEA_DPT, HYSCAN_SOURCE_NMEA_GGA,
+ * HYSCAN_SOURCE_NMEA_RMC. Если тип сообщения не соотвествует перечисленным
+ * выше, но при этом контрольная сумма совпала, будет возвращено
+ * HYSCAN_SOURCE_NMEA_ANY. Если контрольная сумма не совпала, будет возвращено
+ * HYSCAN_SOURCE_INVALID.
+ *
+ * Returns: тип строки.
+ */
 HyScanSourceType
 hyscan_nmea_data_check_sentence (const gchar *sentence)
 {
@@ -561,7 +705,21 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
   return HYSCAN_SOURCE_NMEA_ANY;
 }
 
-/* Функция разделяет строку на подстроки. */
+/**
+ * hyscan_nmea_data_split_sentence:
+ * @sentence: указатель на строку
+ * @length: длина строки
+
+ * Функция разбивает строку, содержащую несколько NMEA-сообщений, на отдельные
+ * строки. В канале HYSCAN_SOURCE_NMEA_ANY по одному индексу может находиться
+ * сразу несколько сообщений. Эта функция генерирует нуль-терминированный вектор
+ * строк. Владельцем строки становится пользователь и после использования её нужно освободить
+ * функцией g_strfreev.
+ *
+ *
+ * Returns: указатель на нуль-терминированный список NMEA-строк. Используйте
+ * g_strfreev() чтобы освободить эту память.
+ */
 gchar**
 hyscan_nmea_data_split_sentence (const gchar *sentence,
                                  guint32      length)
