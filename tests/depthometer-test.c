@@ -1,5 +1,5 @@
 #include <hyscan-depthometer.h>
-#include <hyscan-depth-nmea.h>
+#include <hyscan-nmea-parser.h>
 #include <hyscan-cached.h>
 #include <hyscan-data-writer.h>
 #include <string.h>
@@ -21,7 +21,7 @@ void set_get_check        (gchar             *log_prefix,
                            gfloat             expected);
 
 void test                 (gchar             *log_prefix,
-                           HyScanDepth       *idepth,
+                           HyScanNavData     *ndata,
                            HyScanCache       *cache);
 
 int
@@ -40,7 +40,7 @@ main (int argc, char **argv)
   HyScanAntennaPosition   position = {0};
 
   /* Тестируемые объекты.*/
-  HyScanDepthNMEA        *depth_nmea;
+  HyScanNMEAParser       *parser;
   gint64 time;
   gint i;
 
@@ -105,9 +105,10 @@ main (int argc, char **argv)
     }
 
   /* Тестируем определение глубины по NMEA. */
-  depth_nmea = hyscan_depth_nmea_new (db, name, name, NMEA_DPT_CHANNEL);
-  test ("nmea", HYSCAN_DEPTH (depth_nmea), cache);
-  g_clear_object (&depth_nmea);
+  parser = hyscan_nmea_parser_new (db, name, name, HYSCAN_SOURCE_NMEA_DPT,
+                                   NMEA_DPT_CHANNEL, HYSCAN_NMEA_FIELD_DEPTH);
+  test ("nmea", HYSCAN_NAV_DATA (parser), cache);
+  g_clear_object (&parser);
 
   /* Удаляем созданный проект. */
   hyscan_db_project_remove (db, name);
@@ -163,11 +164,11 @@ set_get_check (gchar             *log_prefix,
 }
 
 
-void test (gchar             *log_prefix,
-           HyScanDepth       *idepth,
-           HyScanCache       *cache)
+void test (gchar         *log_prefix,
+           HyScanNavData *ndata,
+           HyScanCache   *cache)
 {
-  HyScanDepthometer *meter = hyscan_depthometer_new (idepth);
+  HyScanDepthometer *meter = hyscan_depthometer_new (ndata);
   gint64 t;
 
   t = DB_TIME_START - 50 * DB_TIME_INC;
@@ -181,7 +182,7 @@ void test (gchar             *log_prefix,
   set_get_check (log_prefix, meter, 2, t, (MORE + LESS) / 2.0);
   set_get_check (log_prefix, meter, 4, t, (MORE + 3 * LESS) / 4.0);
 
-  hyscan_depth_set_cache (idepth, cache);
+  hyscan_nav_data_set_cache (ndata, cache);
   hyscan_depthometer_set_cache (meter, cache);
   hyscan_depthometer_set_validity_time (meter, DB_TIME_INC);
 

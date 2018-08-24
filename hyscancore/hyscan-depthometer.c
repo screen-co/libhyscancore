@@ -20,7 +20,7 @@ enum
 
 struct _HyScanDepthometerPrivate
 {
-  HyScanDepth  *source;           /* Источник. */
+  HyScanNavData  *source;           /* Источник. */
 
   HyScanCache  *cache;            /* Кэш. */
   gchar        *key;              /* Ключ кэширования. */
@@ -60,7 +60,7 @@ hyscan_depthometer_class_init (HyScanDepthometerClass *klass)
   object_class->finalize = hyscan_depthometer_object_finalize;
 
   g_object_class_install_property (object_class, PROP_SOURCE,
-    g_param_spec_object ("source", "DepthSource", "Depth interface", HYSCAN_TYPE_DEPTH,
+    g_param_spec_object ("source", "DepthSource", "Depth interface", HYSCAN_TYPE_NAV_DATA,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
@@ -97,7 +97,7 @@ hyscan_depthometer_object_constructed (GObject *object)
   HyScanDepthometer *meter = HYSCAN_DEPTHOMETER (object);
   HyScanDepthometerPrivate *priv = meter->priv;
 
-  if (!HYSCAN_IS_DEPTH (priv->source))
+  if (!HYSCAN_IS_NAV_DATA (priv->source))
     g_clear_object (&priv->source);
 
   /* По умолчанию считаем, что окно валидности - 1 мс. */
@@ -135,7 +135,7 @@ hyscan_depthometer_update_cache_key (HyScanDepthometer *meter,
   const gchar *token;
   HyScanDepthometerPrivate *priv = meter->priv;
 
-  token = hyscan_depth_get_token (priv->source);
+  token = hyscan_nav_data_get_token (priv->source);
 
   if (priv->key == NULL)
     {
@@ -166,13 +166,13 @@ hyscan_depthometer_time_round (gint64 time,
 
 /* Функция создает новый объект. */
 HyScanDepthometer*
-hyscan_depthometer_new (HyScanDepth *depth)
+hyscan_depthometer_new (HyScanNavData *ndata)
 {
-  if (!HYSCAN_IS_DEPTH (depth))
+  if (!HYSCAN_IS_NAV_DATA (ndata))
     return NULL;
 
   return g_object_new (HYSCAN_TYPE_DEPTHOMETER,
-                       "source", depth, NULL);
+                       "source", ndata, NULL);
 }
 
 /* Функция устанавливает кэш. */
@@ -271,8 +271,8 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
     }
 
   /* Определяем диапазон данных для запрошенной временной метки. */
-  if (hyscan_depth_get_range (priv->source, &first, &last))
-    found = hyscan_depth_find_data (priv->source, time, &lindex, &rindex, &ltime, &rtime);
+  if (hyscan_nav_data_get_range (priv->source, &first, &last))
+    found = hyscan_nav_data_find_data (priv->source, time, &lindex, &rindex, &ltime, &rtime);
   else
     found = HYSCAN_DB_FIND_FAIL;
 
@@ -289,7 +289,11 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
 
   /* Получаем глубину для каждого индекса.*/
   for (i = 0; i < size; i++)
-    retval += hyscan_depth_get (priv->source, priv->indexes[i], NULL);
+    {
+      gdouble current = 0;
+      hyscan_nav_data_get (priv->source, priv->indexes[i], NULL, &current);
+      retval += current;
+    }
 
   /* Сейчас используется среднее арифметическое. */
   retval /= size;

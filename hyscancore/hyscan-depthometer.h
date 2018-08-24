@@ -9,13 +9,13 @@
  * \defgroup HyScanDepthometer HyScanDepthometer - определение глубины в произвольный
  * момент времени.
  *
- * HyScanDepthometer находится на более высоком уровне, чем \link HyScanDepth \endlink.
- * Если HyScanDepth работает непосредственно с каналами данных, то HyScanDepthometer ничего
+ * HyScanDepthometer находится на более высоком уровне, чем \link HyScanNavData \endlink.
+ * Если HyScanNavData работает непосредственно с каналами данных, то HyScanDepthometer ничего
  * не знает о конкретных источниках данных. Однако он занимается определением глубины не для
  * индекса, а для произвольного времени.
  *
  * Класс не является потокобезопасным. Для работы из разных потоков рекомендуется
- * создавать как объект HyScanDepthometer, так и интерфейс HyScanDepth.
+ * создавать как объект HyScanDepthometer, так и интерфейс HyScanNavData.
  *
  * Доступны следующие методы:
  * - #hyscan_depthometer_new - создает новый объект определения глубины;
@@ -27,7 +27,7 @@
 #ifndef __HYSCAN_DEPTHOMETER_H__
 #define __HYSCAN_DEPTHOMETER_H__
 
-#include <hyscan-depth.h>
+#include <hyscan-nav-data.h>
 
 G_BEGIN_DECLS
 
@@ -60,12 +60,12 @@ GType                   hyscan_depthometer_get_type             (void);
 /**
  * Функция создает новый объект получения глубины.
  *
- * \param depth интерфейс \link HyScanDepth \endlink.
+ * \param ndata интерфейс \link HyScanNavData \endlink.
  *
  * \return объект HyScanDepthometer.
  */
 HYSCAN_API
-HyScanDepthometer      *hyscan_depthometer_new                 (HyScanDepth            *depth);
+HyScanDepthometer      *hyscan_depthometer_new                 (HyScanNavData          *ndata);
 
 /**
  *

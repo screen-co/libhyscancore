@@ -151,7 +151,7 @@ hyscan_nmea_data_object_constructed (GObject *object)
   HyScanNMEAData *data = HYSCAN_NMEA_DATA (object);
   HyScanNMEADataPrivate *priv = data->priv;
 
-  const char *channel_name;
+  const gchar *channel_name;
 
   gint32 project_id = -1;
   gint32 track_id = -1;
@@ -165,7 +165,9 @@ hyscan_nmea_data_object_constructed (GObject *object)
   priv->cache_buffer = hyscan_buffer_new ();
   priv->nmea_buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_core_get_channel_name (priv->source_type, priv->source_channel, HYSCAN_CHANNEL_DATA);
+  channel_name = hyscan_core_get_channel_name (priv->source_type,
+                                               priv->source_channel,
+                                               HYSCAN_CHANNEL_DATA);
 
   /* Проверяем БД, проект, галс и название канала. */
   if ((priv->db == NULL) || (priv->project == NULL) ||
