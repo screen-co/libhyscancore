@@ -66,7 +66,9 @@
 #define xDEPTHOMETER 99991
 #define xDEPTH  9973
 
-#define WAIT_TIME 250 * G_TIME_SPAN_MILLISECOND
+#define WAIT_TIME (250 * G_TIME_SPAN_MILLISECOND)
+
+#define TILE_QUEUE_MAGIC 0x5bb0436f
 
 typedef struct
 {
@@ -75,6 +77,13 @@ typedef struct
   gint       status;  /* Состояние задачи. */
   gint       gen_id;  /* Номер генератора. */
 } HyScanTileQueueTask;
+
+typedef struct
+{
+  guint32    magic;
+  guint32    size;
+  HyScanTile tile;
+} HyScanTileQueueCache;
 
 enum
 {
@@ -160,6 +169,9 @@ struct _HyScanTileQueuePrivate
   GMutex                  dc_lock;               /* Блокировка доступа к каналам данных. */
 
   guint64                 view_id;               /* Идентификатор. */
+
+  HyScanBuffer           *header;                /* Буфер для заголовка (HyScanTile). */
+  HyScanBuffer           *data;                  /* Буфер для данных. */
 };
 
 static void                hyscan_tile_queue_set_property       (GObject                *object,
@@ -171,7 +183,7 @@ static void                hyscan_tile_queue_object_finalize    (GObject        
 
 static HyScanAcousticData *hyscan_tile_queue_open_dc            (HyScanTileQueueState   *state,
                                                                  HyScanSourceType        source);
-static HyScanNavData        *hyscan_tile_queue_open_depth         (HyScanTileQueueState   *state);
+static HyScanNavData      *hyscan_tile_queue_open_depth         (HyScanTileQueueState   *state);
 static HyScanDepthometer  *hyscan_tile_queue_open_depthometer   (HyScanTileQueueState   *state,
                                                                  HyScanNavData            *depth);
 static HyScanAcousticData *hyscan_tile_queue_get_dc             (HyScanTileQueuePrivate *priv,
@@ -269,6 +281,9 @@ hyscan_tile_queue_object_constructed (GObject *object)
   g_mutex_init (&priv->state_lock);
   g_cond_init (&priv->qcond);
 
+  priv->header = hyscan_buffer_new ();
+  priv->data = hyscan_buffer_new ();
+
   /* Инициализируем очередь. */
   priv->queue = g_queue_new ();
   priv->prequeue = g_array_new (FALSE, TRUE, sizeof(HyScanTile));
@@ -308,6 +323,9 @@ hyscan_tile_queue_object_finalize (GObject *object)
   g_atomic_int_set (&priv->stop, TRUE);
   g_clear_pointer (&priv->processing, g_thread_join);
 
+  g_clear_object (&priv->header);
+  g_clear_object (&priv->data);
+
   /* Глушим генераторы, закрываем КД. */
   for (i = 0; i < priv->max_generators; i++)
     g_clear_object (&priv->generator[i]);
@@ -332,7 +350,6 @@ hyscan_tile_queue_object_finalize (GObject *object)
   g_clear_pointer (&priv->des_state.sound_velocity, g_array_unref);
 
   /* Очищаем список заданий. */
-
   g_cond_clear (&priv->qcond);
   g_mutex_clear (&priv->qlock);
   g_mutex_clear (&priv->dc_lock);
@@ -348,14 +365,9 @@ hyscan_tile_queue_open_dc (HyScanTileQueueState *state,
 {
   HyScanAcousticData *dc;
 
-  dc = hyscan_acoustic_data_new (state->db, state->project, state->track, source, state->raw);
-
-  if (dc == NULL)
-    return NULL;
-
-  /* Если получилось открыть, устанавливаем кэш. */
-  hyscan_acoustic_data_set_cache (dc, state->cache, "PREFIX");
-
+  dc = hyscan_acoustic_data_new (state->db, state->cache,
+                                 state->project, state->track,
+                                 source, 1, FALSE);
   return dc;
 }
 
@@ -899,8 +911,21 @@ hyscan_tile_queue_task_processor (gpointer data,
   /* И кладем в кэш при возможности. */
   if (cache != NULL)
     {
+      HyScanTileQueueCache header;
+      HyScanBuffer *meta = hyscan_buffer_new ();
+      HyScanBuffer *data = hyscan_buffer_new ();
+
+      header.magic = TILE_QUEUE_MAGIC;
+      header.size = sizeof (header) + image_size;
+      header.tile = tile;
+      hyscan_buffer_wrap_data (meta, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_buffer_wrap_data (data, HYSCAN_DATA_BLOB, image, image_size);
+
       key = hyscan_tile_queue_cache_key (&tile, state->hash);
-      hyscan_cache_set2 (cache, key, NULL, &tile, sizeof (HyScanTile), image, image_size);
+      hyscan_cache_set2 (cache, key, NULL, meta, data);
+
+      g_object_unref (meta);
+      g_object_unref (data);
       g_free (key);
     }
 
@@ -1218,7 +1243,8 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   gchar *key;
   gboolean found = FALSE;
   gboolean regen = TRUE;
-  guint32 size = sizeof (HyScanTile);
+  guint32 size = sizeof (HyScanTileQueueCache);
+  HyScanTileQueueCache header = {.magic = 0};
   HyScanTileQueuePrivate *priv;
 
   g_return_val_if_fail (HYSCAN_IS_TILE_QUEUE (self), FALSE);
@@ -1236,15 +1262,17 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
 
   key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.hash);
 
-  /* Ищем тайл в кэше. */
-  found = hyscan_cache_get (priv->cur_state.cache, key, NULL, cached_tile, &size);
+  /* Ищем тайл в кэше и проверяем магическую константу. */
+  hyscan_buffer_wrap_data (priv->header, HYSCAN_DATA_BLOB, &header, size);
+  found = hyscan_cache_get (priv->cur_state.cache, key, NULL, priv->header);
+  found &= header.magic == TILE_QUEUE_MAGIC;
+
+  *cached_tile = header.tile;
 
   /* Разрешаем всю работу. */
   g_atomic_int_set (&priv->allow_work, TRUE);
 
-  /* Если тайл найден, сравниваем его с запрошенным.
-   * При этом убираем из сравнения то, что попало в ключ: координаты, масштаб и ppi. */
-  if (found && cached_tile->finalized)
+  if (found && header.tile.finalized)
     regen = FALSE;
 
   if (regenerate != NULL)
@@ -1267,8 +1295,10 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
 {
   gchar *key;
   gboolean status = FALSE;
-  guint32 size1, size2;
+  guint32 size1 = sizeof (HyScanTileQueueCache);
+  guint32 size2;
   HyScanTileQueuePrivate *priv;
+  HyScanTileQueueCache header;
 
   g_return_val_if_fail (HYSCAN_IS_TILE_QUEUE (self), FALSE);
   priv = self->priv;
@@ -1286,14 +1316,23 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
   key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.hash);
 
   /* Ищем тайл в кэше. */
-  status = hyscan_cache_get (priv->cur_state.cache, key, NULL, NULL, &size2);
-  if (status)
+  hyscan_buffer_wrap_data (priv->header, HYSCAN_DATA_BLOB, &header, size1);
+  status = hyscan_cache_get (priv->cur_state.cache, key, NULL, priv->header);
+  if (status && header.magic == TILE_QUEUE_MAGIC)
     {
-      size1 = sizeof (HyScanTile);
-      size2 -= size1;
-      *buffer = g_malloc0 (size2 * sizeof (gfloat));
-      hyscan_cache_get2 (priv->cur_state.cache, key, NULL, cached_tile, &size1, *buffer, &size2);
+      gfloat *tmp;
+      size2 = header.size - size1;
+
+      tmp = g_malloc0 (size2 * sizeof (gfloat));
+      hyscan_buffer_wrap_data (priv->data, HYSCAN_DATA_BLOB, tmp, size2);
+      hyscan_buffer_set_size (priv->header, size1);
+
+      hyscan_cache_get2 (priv->cur_state.cache, key, NULL,
+                         size1, priv->header, priv->data);
+
       *size = size2;
+      *buffer = tmp;
+      *cached_tile = header.tile;
     }
   else
     {
@@ -1313,6 +1352,7 @@ hyscan_tile_queue_add (HyScanTileQueue *self,
                        HyScanTile      *tile)
 {
   g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
+
   if (!g_atomic_int_compare_and_exchange (&self->priv->allow_work, TRUE, FALSE))
     return;
 

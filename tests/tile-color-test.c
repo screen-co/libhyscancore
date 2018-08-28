@@ -15,8 +15,10 @@ static TestColor make_color (gdouble   red,
                              gdouble   green,
                              gdouble   blue,
                              gdouble   alpha);
-static gboolean  cmp_color  (TestColor color1,
-                             TestColor color2);
+static gboolean  colors_equal  (TestColor color1,
+                                TestColor color2);
+
+static gboolean  conversion_test (void);
 
 int
 main (int argc, char **argv)
@@ -30,9 +32,7 @@ main (int argc, char **argv)
   gint size, i, pixels;
 
   guint32 *cmap, colors[2];
-  guint32 icolor1;
-  guint32 background;
-  TestColor dcolor1, dcolor2;
+  guint32 base;
   guint cmap_len;
 
   /* Запись данных. */
@@ -43,22 +43,8 @@ main (int argc, char **argv)
   color = hyscan_tile_color_new ();
 
   /* Сначала потестируем вспомогательные функции. */
-  dcolor1 = make_color (0.0, 1.0, 0.0, 1.0);
-  icolor1 = hyscan_tile_color_converter_d2i (dcolor1.red, dcolor1.green, dcolor1.blue, dcolor1.alpha);
-  hyscan_tile_color_converter_i2d (icolor1, &dcolor2.red, &dcolor2.green, &dcolor2.blue, &dcolor2.alpha);
-  if (!cmp_color (dcolor1, dcolor2))
-    {
-      g_print ("Color convertion fail");
-      goto exit;
-    }
-  dcolor1 = make_color (1.0, 0.0, 1.0, 0.0);
-  icolor1 = hyscan_tile_color_converter_d2i (dcolor1.red, dcolor1.green, dcolor1.blue, dcolor1.alpha);
-  hyscan_tile_color_converter_i2d (icolor1, &dcolor2.red, &dcolor2.green, &dcolor2.blue, &dcolor2.alpha);
-  if (!cmp_color (dcolor1, dcolor2))
-    {
-      g_print ("Color convertion fail");
-      goto exit;
-    }
+  if (!conversion_test ())
+    goto exit;
 
   hyscan_tile_color_open (color, "db", "project", "track");
 
@@ -91,9 +77,9 @@ main (int argc, char **argv)
     data[i] = (gfloat)i / pixels;
 
   /* Разукрасим тайл цветовой схемой, состоящей только из нулей. */
-  background = colors[1] = colors[0] = hyscan_tile_color_converter_d2i (0.0, 0.0, 0.0, 0.0);
+  base = colors[1] = colors[0] = hyscan_tile_color_converter_d2i (1.0, 0.5, 0.25, 0.0);
   cmap = hyscan_tile_color_compose_colormap (colors, 2, &cmap_len);
-  hyscan_tile_color_set_colormap_for_all (color, cmap, cmap_len, background);
+  hyscan_tile_color_set_colormap_for_all (color, cmap, cmap_len, base);
   g_free (cmap);
 
   hyscan_tile_color_add (color, &tile1, data, size, &surface);
@@ -102,18 +88,18 @@ main (int argc, char **argv)
     {
       guint32 val;
       val = ((guint32*)(surface.data))[i];
-      if (val != 0x00)
+      if (val != base)
         {
           g_print ("colorisation fail at line %i\n", __LINE__);
-          g_print ("Expected %x, got %x\n", 0xFFFFFFFF, val);
+          g_print ("Expected %x, got %x\n", base, val);
           goto exit;
         }
     }
 
   /* Разукрасим тайл цветовой схемой, состоящей только из 0xFFFFFFFF. */
-  background = colors[1] = colors[0] = hyscan_tile_color_converter_d2i (1.0, 1.0, 1.0, 1.0);
+  base = colors[1] = colors[0] = hyscan_tile_color_converter_d2i (0.25, 1.0, 0.5, 1.0);
   cmap = hyscan_tile_color_compose_colormap (colors, 2, &cmap_len);
-  hyscan_tile_color_set_colormap_for_all (color, cmap, cmap_len, background);
+  hyscan_tile_color_set_colormap_for_all (color, cmap, cmap_len, base);
   g_free (cmap);
 
   hyscan_tile_color_add (color, &tile1, data, size, &surface);
@@ -122,10 +108,10 @@ main (int argc, char **argv)
     {
       guint32 val;
       val = ((guint32*)(surface.data))[i];
-      if (val != 0xFFFFFFFF)
+      if (val != base)
         {
-          g_print ("colorisation fail at line %i\n", __LINE__);
-          g_print ("Expected %x, got %x\n", 0xFFFFFFFF, val);
+          g_print ("Colorisation fail at line %i\n", __LINE__);
+          g_print ("Expected %x, got %x\n", base, val);
           goto exit;
         }
     }
@@ -163,11 +149,11 @@ main (int argc, char **argv)
     {
       guint32 val;
       val = ((guint32*)(surface.data))[i];
-      if (val != 0xFFFFFFFF)
+      if (val != base)
         {
           g_print ("In tile from cache:\n");
           g_print ("Сolorisation fail at line %i\n", __LINE__);
-          g_print ("Expected %x, got %x\n", 0xFFFFFFFF, val);
+          g_print ("Expected %x, got %x\n", base, val);
           goto exit;
         }
     }
@@ -204,14 +190,33 @@ make_color (gdouble red,
 }
 
 static gboolean
-cmp_color (TestColor color1,
+colors_equal (TestColor color1,
            TestColor color2)
 {
-  if (color1.red   != color2.red   ||
-      color1.green != color2.green ||
-      color1.blue  != color2.blue  ||
-      color1.alpha != color2.alpha)
+  return (color1.red == color2.red && color1.green == color2.green &&
+          color1.blue == color2.blue && color1.alpha == color2.alpha);
+}
+
+static gboolean
+conversion_test (void)
+{
+  TestColor col1, col2;
+  guint32 tmp;
+
+  col1 = make_color (0.0, 1.0, 0.0, 1.0);
+  tmp = hyscan_tile_color_converter_d2i (col1.red, col1.green, col1.blue, col1.alpha);
+  hyscan_tile_color_converter_i2d (tmp, &col2.red, &col2.green, &col2.blue, &col2.alpha);
+  if (!colors_equal (col1, col2))
     {
+      g_print ("Color convertion fail");
+      return FALSE;
+    }
+  col1 = make_color (1.0, 0.0, 1.0, 0.0);
+  tmp = hyscan_tile_color_converter_d2i (col1.red, col1.green, col1.blue, col1.alpha);
+  hyscan_tile_color_converter_i2d (tmp, &col2.red, &col2.green, &col2.blue, &col2.alpha);
+  if (!colors_equal (col1, col2))
+    {
+      g_print ("Color convertion fail");
       return FALSE;
     }
 

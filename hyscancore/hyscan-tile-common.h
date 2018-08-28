@@ -16,7 +16,7 @@
 #define __HYSCAN_TILE_COMMON_H__
 
 #include <glib.h>
-#include <hyscan-core-types.h>
+#include <hyscan-types.h>
 
 typedef enum
 {

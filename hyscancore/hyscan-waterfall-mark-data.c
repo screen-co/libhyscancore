@@ -29,6 +29,9 @@ struct _HyScanWaterfallMarkDataPrivate
   gint32             param_id; /* Идентификатор группы параметров. */
 
   GRand             *rand;     /* Генератор случайных чисел. */
+
+  HyScanParamList   *read_plist;
+  HyScanParamList   *write_plist;
 };
 
 static void    hyscan_waterfall_mark_data_set_property            (GObject                         *object,
@@ -103,7 +106,21 @@ hyscan_waterfall_mark_data_set_property (GObject      *object,
 static void
 hyscan_waterfall_mark_data_object_constructed (GObject *object)
 {
+  gint i;
   gint32 project_id = 0;      /* Идентификатор проекта. */
+  const gchar *param_names[] = {"/track",
+                                "/name",
+                                "/description",
+                                "/label",
+                                "/operator",
+                                "/time/creation",
+                                "/time/modification",
+                                "/coordinates/source0",
+                                "/coordinates/index0",
+                                "/coordinates/count0",
+                                "/coordinates/width",
+                                "/coordinates/height",
+                                NULL};
 
   HyScanWaterfallMarkData *data = HYSCAN_WATERFALL_MARK_DATA (object);
   HyScanWaterfallMarkDataPrivate *priv = data->priv;
@@ -131,6 +148,19 @@ hyscan_waterfall_mark_data_object_constructed (GObject *object)
       goto exit;
     }
 
+  priv->read_plist = hyscan_param_list_new ();
+  priv->write_plist = hyscan_param_list_new ();
+
+  /* Добавляем названия параметров в списки. */
+  for (i = 0; param_names[i] != NULL; ++i)
+    {
+      hyscan_param_list_add (priv->read_plist, param_names[i]);
+      hyscan_param_list_add (priv->write_plist, param_names[i]);
+    }
+
+  hyscan_param_list_add (priv->read_plist, "/schema/id");
+  hyscan_param_list_add (priv->read_plist, "/schema/version");
+
   priv->rand = g_rand_new ();
 
 exit:
@@ -153,6 +183,9 @@ hyscan_waterfall_mark_data_object_finalize (GObject *object)
     hyscan_db_close (priv->db, priv->param_id);
 
   g_object_unref (priv->db);
+
+  g_object_unref (priv->read_plist);
+  g_object_unref (priv->write_plist);
 
   G_OBJECT_CLASS (hyscan_waterfall_mark_data_parent_class)->finalize (object);
 }
@@ -186,60 +219,41 @@ hyscan_waterfall_mark_data_get_internal (HyScanWaterfallMarkDataPrivate *priv,
                                          const gchar                    *id,
                                          HyScanWaterfallMark            *mark)
 {
-  const gchar *param_names[15];
-  GVariant *param_values[15];
-  gboolean status = FALSE;
-  gint i;
+  gint64 sid, sver;
 
-  param_names[ 0] = "/schema/id";
-  param_names[ 1] = "/schema/version";
-  param_names[ 2] = "/track";
-  param_names[ 3] = "/name";
-  param_names[ 4] = "/description";
-  param_names[ 5] = "/label";
-  param_names[ 6] = "/operator";
-  param_names[ 7] = "/time/creation";
-  param_names[ 8] = "/time/modification";
-  param_names[ 9] = "/coordinates/source0";
-  param_names[10] = "/coordinates/index0";
-  param_names[11] = "/coordinates/count0";
-  param_names[12] = "/coordinates/width";
-  param_names[13] = "/coordinates/height";
-  param_names[14] = NULL;
-
-  if (!hyscan_db_param_get (priv->db, priv->param_id, id, param_names, param_values))
+  if (!hyscan_db_param_get (priv->db, priv->param_id, id, priv->read_plist))
     return FALSE;
 
-  if ((g_variant_get_int64 (param_values[0]) != WATERFALL_MARK_SCHEMA_ID) ||
-      (g_variant_get_int64 (param_values[1]) != WATERFALL_MARK_SCHEMA_VERSION))
+  sid = hyscan_param_list_get_integer (priv->read_plist, "/schema/id");
+  sver = hyscan_param_list_get_integer (priv->read_plist, "/schema/version");
+
+  if (sid != WATERFALL_MARK_SCHEMA_ID || sver != WATERFALL_MARK_SCHEMA_VERSION)
+    return FALSE;
+
+  if (mark != NULL)
     {
-      goto exit;
+      hyscan_waterfall_mark_set_track  (mark,
+                                        hyscan_param_list_get_string (priv->read_plist,"/track"));
+      hyscan_waterfall_mark_set_text   (mark,
+                                        hyscan_param_list_get_string (priv->read_plist,"/name"),
+                                        hyscan_param_list_get_string (priv->read_plist,"/description"),
+                                        hyscan_param_list_get_string (priv->read_plist,"/operator"));
+      hyscan_waterfall_mark_set_labels (mark,
+                                        hyscan_param_list_get_integer (priv->read_plist,"/label"));
+      hyscan_waterfall_mark_set_ctime  (mark,
+                                        hyscan_param_list_get_integer (priv->read_plist,"/time/creation"));
+      hyscan_waterfall_mark_set_mtime  (mark,
+                                        hyscan_param_list_get_integer (priv->read_plist,"/time/modification"));
+      hyscan_waterfall_mark_set_center (mark,
+                                        hyscan_param_list_get_integer (priv->read_plist,"/coordinates/source0"),
+                                        hyscan_param_list_get_integer (priv->read_plist,"/coordinates/index0"),
+                                        hyscan_param_list_get_integer (priv->read_plist,"/coordinates/count0"));
+      hyscan_waterfall_mark_set_size   (mark,
+                                        hyscan_param_list_get_integer (priv->read_plist,"/coordinates/width"),
+                                        hyscan_param_list_get_integer (priv->read_plist,"/coordinates/height"));
     }
 
-  /* Метки считаны успешно. */
-  status = TRUE;
-
-  if (mark == NULL)
-    goto exit;
-
-  hyscan_waterfall_mark_set_track  (mark, g_variant_get_string (param_values[2], NULL));
-  hyscan_waterfall_mark_set_text   (mark, g_variant_get_string (param_values[3], NULL),
-                                          g_variant_get_string (param_values[4], NULL),
-                                          g_variant_get_string (param_values[6], NULL));
-  hyscan_waterfall_mark_set_labels (mark, g_variant_get_int64 (param_values[5]));
-  hyscan_waterfall_mark_set_ctime (mark, g_variant_get_int64 (param_values[7]));
-  hyscan_waterfall_mark_set_mtime (mark, g_variant_get_int64 (param_values[8]));
-  hyscan_waterfall_mark_set_center (mark, g_variant_get_int64 (param_values[9]),
-                                          g_variant_get_int64 (param_values[10]),
-                                          g_variant_get_int64 (param_values[11]));
-  hyscan_waterfall_mark_set_size   (mark, g_variant_get_int64 (param_values[12]),
-                                          g_variant_get_int64 (param_values[13]));
-
-exit:
-  for (i = 0; i < 14; i++)
-    g_variant_unref (param_values[i]);
-
-  return status;
+  return TRUE;
 }
 
 /* Функция записывает значения в существующий объект. */
@@ -248,44 +262,32 @@ hyscan_waterfall_mark_data_set_internal (HyScanWaterfallMarkDataPrivate *priv,
                                          const gchar                    *id,
                                          const HyScanWaterfallMark      *mark)
 {
-  const gchar *param_names[13];
-  GVariant *param_values[13];
-  gint i;
+  hyscan_param_list_set (priv->write_plist, "/track",
+                         g_variant_new_string (mark->track));
+  hyscan_param_list_set (priv->write_plist, "/name",
+                         g_variant_new_string (mark->name));
+  hyscan_param_list_set (priv->write_plist, "/description",
+                         g_variant_new_string (mark->description));
+  hyscan_param_list_set (priv->write_plist, "/label",
+                         g_variant_new_int64  (mark->labels));
+  hyscan_param_list_set (priv->write_plist, "/operator",
+                         g_variant_new_string (mark->operator_name));
+  hyscan_param_list_set (priv->write_plist, "/time/creation",
+                         g_variant_new_int64  (mark->creation_time));
+  hyscan_param_list_set (priv->write_plist, "/time/modification",
+                         g_variant_new_int64  (mark->modification_time));
+  hyscan_param_list_set (priv->write_plist, "/coordinates/source0",
+                         g_variant_new_int64  (mark->source0));
+  hyscan_param_list_set (priv->write_plist, "/coordinates/index0",
+                         g_variant_new_int64  (mark->index0));
+  hyscan_param_list_set (priv->write_plist, "/coordinates/count0",
+                         g_variant_new_int64  (mark->count0));
+  hyscan_param_list_set (priv->write_plist, "/coordinates/width",
+                         g_variant_new_int64  (mark->width));
+  hyscan_param_list_set (priv->write_plist, "/coordinates/height",
+                         g_variant_new_int64  (mark->height));
 
-  param_names[ 0] = "/track";
-  param_names[ 1] = "/name";
-  param_names[ 2] = "/description";
-  param_names[ 3] = "/label";
-  param_names[ 4] = "/operator";
-  param_names[ 5] = "/time/creation";
-  param_names[ 6] = "/time/modification";
-  param_names[ 7] = "/coordinates/source0";
-  param_names[ 8] = "/coordinates/index0";
-  param_names[ 9] = "/coordinates/count0";
-  param_names[10] = "/coordinates/width";
-  param_names[11] = "/coordinates/height";
-  param_names[12] = NULL;
-
-  param_values[ 0] = g_variant_new_string (mark->track);
-  param_values[ 1] = g_variant_new_string (mark->name);
-  param_values[ 2] = g_variant_new_string (mark->description);
-  param_values[ 3] = g_variant_new_int64  (mark->labels);
-  param_values[ 4] = g_variant_new_string (mark->operator_name);
-  param_values[ 5] = g_variant_new_int64  (mark->creation_time);
-  param_values[ 6] = g_variant_new_int64  (mark->modification_time);
-  param_values[ 7] = g_variant_new_int64  (mark->source0);
-  param_values[ 8] = g_variant_new_int64  (mark->index0);
-  param_values[ 9] = g_variant_new_int64  (mark->count0);
-  param_values[10] = g_variant_new_int64  (mark->width);
-  param_values[11] = g_variant_new_int64  (mark->height);
-
-  if (hyscan_db_param_set (priv->db, priv->param_id, id, param_names, param_values))
-    return TRUE;
-
-  for (i = 0; i < 12; i++)
-    g_variant_unref (param_values[i]);
-
-  return FALSE;
+  return hyscan_db_param_set (priv->db, priv->param_id, id, priv->write_plist);
 }
 
 /* Функция создает новый объект работы с метками. */

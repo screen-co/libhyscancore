@@ -1,29 +1,37 @@
-/**
- * \file hyscan-depthometer.h
+/* hyscan-depthometer.h
  *
- * \brief Заголовочный файл класса определения и аппроксимации глубины по времени.
+ * Copyright 2018 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
- * \defgroup HyScanDepthometer HyScanDepthometer - определение глубины в произвольный
- * момент времени.
+ * This file is part of HyScanCore library.
  *
- * HyScanDepthometer находится на более высоком уровне, чем \link HyScanDepth \endlink.
- * Если HyScanDepth работает непосредственно с каналами данных, то HyScanDepthometer ничего
- * не знает о конкретных источниках данных. Однако он занимается определением глубины не для
- * индекса, а для произвольного времени.
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Класс не является потокобезопасным. Для работы из разных потоков рекомендуется
- * создавать свою пару объектов HyScanDepthometer и HyScanDepth.
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Доступны следующие методы:
- * - #hyscan_depthometer_new - создает новый объект определения глубины;
- * - #hyscan_depthometer_set_cache - устанавливает кэш;
- * - #hyscan_depthometer_set_filter_size - устанавливает размер окна для аппроксимации.
- * - #hyscan_depthometer_set_validity_time - устанавливает время валидности данных;
- * - #hyscan_depthometer_get - возвращает глубину в момент времени.
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
  */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
+
 #ifndef __HYSCAN_DEPTHOMETER_H__
 #define __HYSCAN_DEPTHOMETER_H__
 
@@ -57,89 +65,24 @@ struct _HyScanDepthometerClass
 HYSCAN_API
 GType                   hyscan_depthometer_get_type             (void);
 
-/**
- * Функция создает новый объект получения глубины.
- *
- * \param depth интерфейс \link HyScanDepth \endlink.
- *
- * \return объект HyScanDepthometer.
- */
 HYSCAN_API
-HyScanDepthometer      *hyscan_depthometer_new                 (HyScanNavData            *depth);
+HyScanDepthometer      *hyscan_depthometer_new                 (HyScanNavData          *ndata);
 
-/**
- *
- * Функция устанавливает кэш.
- *
- * \param depthometer объект \link HyScanDepthometer \endlink;
- * \param cache интерфейс \link HyScanCache \endlink;
- *
- */
 HYSCAN_API
 void                    hyscan_depthometer_set_cache           (HyScanDepthometer      *depthometer,
                                                                 HyScanCache            *cache);
 
-/**
- *
- * Функция устанавливает число точек для аппроксимации.
- *
- * Число точек должно быть больше нуля. Так как классу требуется четное число
- * точек, то при передаче нечетного значения оно будет автоматически инкрементировано.
- *
- * \param depthometer объект \link HyScanDepthometer \endlink;
- * \param size число точек, используемых для определения глубины.
- *
- * \return TRUE, если удалось установить новое значение.
- */
 HYSCAN_API
 gboolean                hyscan_depthometer_set_filter_size     (HyScanDepthometer      *depthometer,
                                                                 guint                   size);
 
-/**
- *
- * Функция устанавливает окно валидности данных.
- *
- * Данные могут быть запрошены не для того момента, для которого они реально
- * есть, а чуть раньше или позже. В этом случае есть два варианта:
- * либо интерполировать данные, либо "нарезать" временную шкалу так,
- * так что на каждом отрезке глубина считается постоянной. Функция задает
- * длину этого отрезка в микросекундах.
- *
- * \param depthometer объект \link HyScanDepthometer \endlink;
- * \param microseconds время в микросекундах, в течение которого считается, что
- * глубина не изменяется.
- *
- */
 HYSCAN_API
 void                    hyscan_depthometer_set_validity_time     (HyScanDepthometer    *depthometer,
                                                                   gint64                microseconds);
 
-/**
- *
- * Функция возвращает глубину.
- * Если значение не найдено в кэше или кэш не установлен, функция
- * произведет все необходимые вычисления.
- *
- * \param depthometer объект \link HyScanDepthometer \endlink;
- * \param time время.
- *
- * \return глубина в запрошенный момент времени или -1.0 в случае ошибки.
- */
 HYSCAN_API
 gdouble                 hyscan_depthometer_get                 (HyScanDepthometer      *depthometer,
                                                                 gint64                  time);
-/**
- *
- * Функция возвращает глубину.
- * В отличие от #hyscan_depthometer_get эта функция только ищет
- * значение в кэше. Если кэш не задан или значение не присутствует в кэше,
- * будет возвращено значение -1.0.
- *
- * \param depthometer объект \link HyScanDepthometer \endlink;
- * \param time время.
- *
- * \return глубина в запрошенный момент времени или -1.0 в случае ошибки.
- */
 HYSCAN_API
 gdouble                 hyscan_depthometer_check               (HyScanDepthometer      *depthometer,
                                                                 gint64                  time);

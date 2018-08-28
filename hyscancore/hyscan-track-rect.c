@@ -155,13 +155,13 @@ hyscan_track_rect_open_projector (HyScanTrackRect *self)
   if (state->db == NULL || state->project == NULL || state->track == NULL)
     return NULL;
 
-  pj = hyscan_projector_new (state->db, state->project, state->track,
-                             state->source, state->raw);
+  pj = hyscan_projector_new (state->db, state->cache,
+                             state->project, state->track,
+                             state->source, 1, state->raw);
 
   if (pj == NULL)
     return NULL;
 
-  hyscan_projector_set_cache (pj, state->cache);
   hyscan_projector_set_ship_speed (pj, state->ship_speed);
   hyscan_projector_set_sound_velocity (pj, state->sound_velocity);
 
@@ -318,7 +318,7 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
   else if (state->cache_changed)
     {
       if (priv->pj != NULL)
-        hyscan_projector_set_cache (priv->pj, state->cache);
+        ;//hyscan_projector_set_cache (priv->pj, state->cache);
       if (priv->depth != NULL)
         hyscan_depthometer_set_cache (priv->depth, state->cache);
       if (priv->idepth != NULL)
@@ -437,7 +437,7 @@ hyscan_track_rect_watcher (gpointer data)
                 goto next;
 
               /* Узнаем количество точек в строке. */
-              hyscan_acoustic_data_get_values (dc, i, &nvals, &itime);
+              hyscan_acoustic_data_get_size_time (dc, i, &nvals, &itime);
 
               /* Определяем глубину. */
               if (priv->cur_state.flags & HYSCAN_TILE_GROUND && depth != NULL)
@@ -452,8 +452,8 @@ hyscan_track_rect_watcher (gpointer data)
             }
 
           /* Длина. */
-          hyscan_acoustic_data_get_values (dc, index0, &nvals, &time0);
-          hyscan_acoustic_data_get_values (dc, index1, &nvals, &time1);
+          hyscan_acoustic_data_get_size_time (dc, index0, NULL, &time0);
+          hyscan_acoustic_data_get_size_time (dc, index1, NULL, &time1);
 
           hyscan_projector_index_to_coord (pj, index0, &along0);
           hyscan_projector_index_to_coord (pj, index1, &along1);

@@ -38,9 +38,9 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshall
                     VERBATIM)
 
 add_library (${HYSCAN_CORE_LIBRARY} SHARED
-             hyscan-core-params.c
+             hyscan-core-common.c
              hyscan-data-writer.c
-             hyscan-raw-data.c
+             hyscan-amplitude.c
              hyscan-acoustic-data.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
@@ -49,19 +49,19 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nav-data.c
              hyscan-nmea-parser.c
              hyscan-depthometer.c
-             hyscan-mloc.c
+             hyscan-control.c
+             hyscan-projector.c
              hyscan-tile-common.c
              hyscan-tile-color.c
              hyscan-waterfall-tile.c
              hyscan-tile-queue.c
              hyscan-track-rect.c
-             hyscan-projector.c
-             hyscan-const-depth.c
              hyscan-waterfall-mark.c
              hyscan-waterfall-mark-data.c
              hyscan-mark-manager.c
-             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c
-             ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c)
+             hyscan-mloc.c
+             ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
+             ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
 target_link_libraries (${HYSCAN_CORE_LIBRARY} ${GLIB2_LIBRARIES} ${MATH_LIBRARIES} ${ZLIB_LIBRARIES} ${HYSCAN_LIBRARIES})
 
@@ -84,10 +84,8 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
          DESTINATION "lib/pkgconfig"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-install (FILES hyscan-core-types.h
-               hyscan-core-schemas.h
-               hyscan-data-writer.h
-               hyscan-raw-data.h
+install (FILES hyscan-data-writer.h
+               hyscan-amplitude.h
                hyscan-acoustic-data.h
                hyscan-forward-look-data.h
                hyscan-nmea-data.h
@@ -96,13 +94,7 @@ install (FILES hyscan-core-types.h
                hyscan-nav-data.c
                hyscan-nmea-parser.c
                hyscan-depthometer.c
-               hyscan-tile-common.c
-               hyscan-tile-color.c
-               hyscan-waterfall-tile.c
-               hyscan-tile-queue.c
-               hyscan-track-rect.c
-               hyscan-projector.c
-               hyscan-const-depth.c
+               hyscan-control.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

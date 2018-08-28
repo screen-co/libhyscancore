@@ -95,13 +95,13 @@ hyscan_mloc_object_constructed (GObject *object)
   guint32 first;
 
   plat = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
-                                 1, HYSCAN_SOURCE_NMEA_RMC,
+                                 HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_LAT);
   plon = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
-                                 1, HYSCAN_SOURCE_NMEA_RMC,
+                                 HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_LON);
   ptrk = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
-                                 1, HYSCAN_SOURCE_NMEA_RMC,
+                                 HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_TRACK);
 
   priv->lat = HYSCAN_NAV_DATA (plat);

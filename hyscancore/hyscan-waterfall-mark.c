@@ -19,7 +19,7 @@ hyscan_waterfall_mark_copy (HyScanWaterfallMark *mark)
 
   if (mark == NULL)
     return NULL;
-  
+
   copy = hyscan_waterfall_mark_new ();
 
   hyscan_waterfall_mark_set_track (copy, mark->track);
@@ -42,7 +42,7 @@ hyscan_waterfall_mark_free (HyScanWaterfallMark *mark)
 {
   if (mark == NULL)
     return;
-  
+
   g_free (mark->track);
   g_free (mark->name);
   g_free (mark->description);
@@ -54,7 +54,7 @@ hyscan_waterfall_mark_free (HyScanWaterfallMark *mark)
 
 void
 hyscan_waterfall_mark_set_track (HyScanWaterfallMark *mark,
-                                  const gchar          *track)
+                                 const gchar         *track)
 {
   g_free (mark->track);
   mark->track = g_strdup (track);
@@ -62,9 +62,9 @@ hyscan_waterfall_mark_set_track (HyScanWaterfallMark *mark,
 
 void
 hyscan_waterfall_mark_set_text (HyScanWaterfallMark *mark,
-                                 const gchar          *name,
-                                 const gchar          *description,
-                                 const gchar          *oper)
+                                const gchar         *name,
+                                const gchar         *description,
+                                const gchar         *oper)
 {
   g_free (mark->name);
   g_free (mark->description);
@@ -78,30 +78,30 @@ hyscan_waterfall_mark_set_text (HyScanWaterfallMark *mark,
 
 void
 hyscan_waterfall_mark_set_labels (HyScanWaterfallMark *mark,
-                                   guint64               labels)
+                                  guint64              labels)
 {
   mark->labels = labels;
 }
 
 void
 hyscan_waterfall_mark_set_ctime (HyScanWaterfallMark   *mark,
-                                         gint64                 creation)
+                                 gint64                 creation)
 {
   mark->creation_time = creation;
 }
 
 void
 hyscan_waterfall_mark_set_mtime (HyScanWaterfallMark   *mark,
-                                    gint64                 modification)
+                                 gint64                 modification)
 {
   mark->modification_time = modification;
 }
 
 void
 hyscan_waterfall_mark_set_center (HyScanWaterfallMark *mark,
-                                   HyScanSourceType      source,
-                                   guint32               index,
-                                   guint32               count)
+                                  HyScanSourceType     source,
+                                  guint32              index,
+                                  guint32              count)
 {
   mark->source0 = source;
   mark->index0 = index;
@@ -110,8 +110,8 @@ hyscan_waterfall_mark_set_center (HyScanWaterfallMark *mark,
 
 void
 hyscan_waterfall_mark_set_size (HyScanWaterfallMark *mark,
-                                 guint32               width,
-                                 guint32               height)
+                                guint32              width,
+                                guint32              height)
 {
   mark->width = width;
   mark->height = height;

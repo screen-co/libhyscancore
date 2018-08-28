@@ -14,21 +14,21 @@
 static gint full_callback_number = 0;
 static gint reduced_callback_number = 0;
 
-HyScanComplexFloat *make_acoustic_string (gint             size,
-                                          guint32         *bytes);
+gfloat     *make_acoustic_string (gint             size,
+                                  guint32         *bytes);
 
-void                tile_queue_image_cb  (HyScanTileQueue *queue,
-                                          HyScanTile      *tile,
-                                          gfloat          *image,
-                                          gint             size,
-                                          guint32          hash,
-                                          gpointer         user_data);
+void        tile_queue_image_cb  (HyScanTileQueue *queue,
+                                  HyScanTile      *tile,
+                                  gfloat          *image,
+                                  gint             size,
+                                  guint32          hash,
+                                  gpointer         user_data);
 
-void                tile_ready_callback  (HyScanTileQueue *queue,
-                                          gpointer         user_data);
-void                wait_for_generation  (void);
-HyScanTile          make_tile            (gint             seed);
-void                add_tiles            (HyScanTileQueue *tq);
+void        tile_ready_callback  (HyScanTileQueue *queue,
+                                  gpointer         user_data);
+void        wait_for_generation  (void);
+HyScanTile  make_tile            (gint             seed);
+void        add_tiles            (HyScanTileQueue *tq);
 
 int
 main (int argc, char **argv)
@@ -47,6 +47,7 @@ main (int argc, char **argv)
   gint i;                       /* Простой маленький счетчик.*/
 
   gboolean status = FALSE;
+  HyScanBuffer *buffer = NULL;
 
   /* Парсим аргументы. */
   {
@@ -87,33 +88,33 @@ main (int argc, char **argv)
   }
 
   /* Первая стадия. Наполняем канал данных. */
+  buffer = hyscan_buffer_new ();
   db = hyscan_db_new (db_uri);
-  writer = hyscan_data_writer_new (db);
+  writer = hyscan_data_writer_new ();
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
 
-  if (!hyscan_data_writer_set_project (writer, name))
-    FAIL ("Couldn't set data writer project.");
-  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
+  hyscan_data_writer_set_db (writer, db);
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
     FAIL ("Couldn't start data writer.");
 
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)
     {
-      HyScanAcousticDataInfo info = {.data.type = HYSCAN_DATA_COMPLEX_FLOAT, .data.rate = 1.0}; /* Информация о датчике. */
-      HyScanDataWriterData data; /* Записываемые данные. */
-      HyScanComplexFloat *vals;  /* Акустическая строка. */
+      gfloat *vals;  /* Акустическая строка. */
 
-      vals = make_acoustic_string (SIZE, &data.size);
-      data.time = time;
-      data.data = vals;
+      guint32 real_size;
+      HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
 
-      hyscan_data_writer_acoustic_add_data (writer, SSS, &info, &data);
-      hyscan_data_writer_acoustic_add_data (writer, SSP, &info, &data);
+      vals = make_acoustic_string (SIZE, &real_size);
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
+
+      hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time, &info, buffer);
+      hyscan_data_writer_acoustic_add_data (writer, SSP, 1, FALSE, time, &info, buffer);
 
       g_free (vals);
     }
 
   /* Теперь займемся генерацией тайлов. */
-  tq = hyscan_tile_queue_new (4);
+  tq = hyscan_tile_queue_new (1);
   hyscan_tile_queue_open (tq, db, name, name, FALSE);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);
   g_signal_connect (tq, "tile-queue-ready", G_CALLBACK (tile_ready_callback), &reduced_callback_number);
@@ -122,8 +123,6 @@ main (int argc, char **argv)
 
   /* Отдадим кучу тайлов и проверим, вернутся ли они все. Пока что проверяем без кэша. */
   /* Сначала сделаем структуры с тайлами. */
-
-
   add_tiles (tq);
   hyscan_tile_queue_add_finished (tq, 1);
 
@@ -178,32 +177,36 @@ main (int argc, char **argv)
     }
 
   status = TRUE;
-
   /* Третья стадия. Убираем за собой. */
 finish:
+
   hyscan_db_project_remove	(db, name);
 
+  g_clear_object (&buffer);
   g_clear_object (&writer);
   g_clear_object (&cache);
   g_clear_object (&db);
   g_clear_object (&tq);
 
   g_printf ("test %s\n", status ? "passed" : "falled");
+
+  // *((guint32*)(NULL)) = 1;
   return status ? 0 : 1;
 }
 
-HyScanComplexFloat*
+gfloat*
 make_acoustic_string (gint    size,
                       guint32 *bytes)
 {
   gint i;
-  guint32 malloc_size = size * sizeof (HyScanComplexFloat);
-  HyScanComplexFloat *str = g_malloc0 (malloc_size);
+  guint32 malloc_size = size * sizeof (gfloat);
+  gfloat *str = g_malloc0 (malloc_size);
 
   for (i = 0; i < size; i++)
     {
-      str[i].re = 1.0;
-      str[i].im = 0.0;
+      str[i] = 1.0;
+      // str[i].re = 1.0;
+      // str[i].im = 0.0;
     }
 
   if (bytes != NULL)
@@ -258,7 +261,7 @@ make_tile (gint seed)
 
   tile.across_start = 0;
   tile.along_start = 0;
-  tile.scale = 1000;
+  tile.scale = 100;
   tile.ppi = 25.4;
   tile.upsample = 1;
   tile.flags = 0;

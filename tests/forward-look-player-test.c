@@ -1,3 +1,36 @@
+/* forward-look-player-test.c
+ *
+ * Copyright 2017-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ */
 
 #include <hyscan-forward-look-player.h>
 #include <hyscan-cached.h>
@@ -68,7 +101,7 @@ control_test (gpointer user_data)
           if (!hyscan_fl_gen_set_track (generator, db, PROJECT_NAME, DYNAMIC_TRACK_NAME))
             g_error ("can't start track %s", DYNAMIC_TRACK_NAME);
 
-          hyscan_forward_look_player_open (player, db, PROJECT_NAME, DYNAMIC_TRACK_NAME, TRUE);
+          hyscan_forward_look_player_open (player, db, cache, PROJECT_NAME, DYNAMIC_TRACK_NAME);
           hyscan_forward_look_player_real_time (player);
         }
 
@@ -93,7 +126,7 @@ control_test (gpointer user_data)
 
           /* Открываем предварительно записанный галс и включаем его воспроизведение. */
           play_speed = 2.0;
-          hyscan_forward_look_player_open (player, db, PROJECT_NAME, STATIC_TRACK_NAME, TRUE);
+          hyscan_forward_look_player_open (player, db, cache, PROJECT_NAME, STATIC_TRACK_NAME);
           hyscan_forward_look_player_play (player, play_speed);
 
           /* Один раз необходимо проверить диапазон индексов данных. */
@@ -222,7 +255,7 @@ data_check (HyScanForwardLookPlayer     *player,
 
 int main( int argc, char **argv )
 {
-  HyScanRawDataInfo raw_info;
+  HyScanAcousticDataInfo info;
   guint i;
 
   {
@@ -268,16 +301,16 @@ int main( int argc, char **argv )
   }
 
   /* Параметры данных. */
-  raw_info.data.type = HYSCAN_DATA_COMPLEX_ADC_16LE;
-  raw_info.data.rate = 150000.0;
-  raw_info.antenna.offset.vertical = 0.0;
-  raw_info.antenna.offset.horizontal = 0.0;
-  raw_info.antenna.pattern.vertical = 10.0;
-  raw_info.antenna.pattern.horizontal = 50.0;
-  raw_info.antenna.frequency = 100000.0;
-  raw_info.antenna.bandwidth = 10000.0;
-  raw_info.adc.vref = 1.0;
-  raw_info.adc.offset = 0;
+  info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
+  info.data_rate = 150000.0;
+  info.antenna_voffset = 0.0;
+  info.antenna_hoffset = 0.0;
+  info.antenna_vpattern = 10.0;
+  info.antenna_hpattern = 50.0;
+  info.antenna_frequency = 100000.0;
+  info.antenna_bandwidth = 10000.0;
+  info.adc_vref = 1.0;
+  info.adc_offset = 0;
 
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
@@ -290,13 +323,12 @@ int main( int argc, char **argv )
 
   /* Объект управления просмотром данных врерёдсмотрящего локатора. */
   player = hyscan_forward_look_player_new ();
-  hyscan_forward_look_player_set_cache (player, cache, NULL);
   hyscan_forward_look_player_set_fps (player, n_fps);
   hyscan_forward_look_player_set_sv (player, 1000.0);
 
   /* Генератор данных. */
   generator = hyscan_fl_gen_new ();
-  hyscan_fl_gen_set_info (generator, &raw_info);
+  hyscan_fl_gen_set_info (generator, &info);
 
   /* Предварительная запись данных. */
   if (!hyscan_fl_gen_set_track (generator, db, PROJECT_NAME, STATIC_TRACK_NAME))

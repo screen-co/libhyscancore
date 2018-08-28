@@ -1,9 +1,8 @@
 #ifndef __HYSCAN_WATERFALL_MARK_H__
 #define __HYSCAN_WATERFALL_MARK_H__
 
-#include <hyscan-api.h>
-#include <hyscan-core-types.h>
-#include <glib-object.h>
+#include <hyscan-types.h>
+#include <hyscan-param-list.h>
 
 typedef struct _HyScanWaterfallMark HyScanWaterfallMark;
 
@@ -48,7 +47,7 @@ HYSCAN_API
 void                   hyscan_waterfall_mark_set_ctime              (HyScanWaterfallMark   *mark,
                                                                      gint64                 creation);
 HYSCAN_API
-void                   hyscan_waterfall_mark_set_mtime           (HyScanWaterfallMark   *mark,
+void                   hyscan_waterfall_mark_set_mtime              (HyScanWaterfallMark   *mark,
                                                                      gint64                 modification);
 HYSCAN_API
 void                   hyscan_waterfall_mark_set_center             (HyScanWaterfallMark   *mark,

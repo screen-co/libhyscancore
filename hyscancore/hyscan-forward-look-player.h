@@ -22,10 +22,6 @@
  *
  * Объект создаётся функцией #hyscan_forward_look_player_new.
  *
- * В своей работе класс HyScanForwardLookPlayer может использовать внешний кэш
- * для ускорения обработки данных. Для задания кэша предназанчена функция
- * #hyscan_forward_look_player_set_cache.
- *
  * При воспроизведении класс пытается отправлять обработанные данные со скоростью
  * их последующего отображения, определяемой частотой кадров в секунду. При этом возможны
  * пропуски некоторых строк, для поддержкания требуемой скорости воспроизведения. Целевой
@@ -136,23 +132,6 @@ HyScanForwardLookPlayer       *hyscan_forward_look_player_new          (void);
 
 /**
  *
- * Функция задаёт используемый кэш и префикс идентификаторов объектов для
- * хранения в нём.
- *
- * \param player указатель на объект \link HyScanForwardLookPlayer \endlink;
- * \param cache указатель на интерфейс \link HyScanCache \endlink или NULL;
- * \param prefix префикс ключа кэширования или NULL.
- *
- * \return Нет.
- *
- */
-HYSCAN_API
-void                           hyscan_forward_look_player_set_cache    (HyScanForwardLookPlayer       *player,
-                                                                        HyScanCache                   *cache,
-                                                                        const gchar                   *prefix);
-
-/**
- *
  * Функция устанавливает целевой уровень числа отображаемых кадров в секунду.
  *
  * \param player указатель на объект \link HyScanForwardLookPlayer \endlink;
@@ -187,8 +166,7 @@ void                           hyscan_forward_look_player_set_sv       (HyScanFo
  * \param player указатель на объект \link HyScanForwardLookPlayer \endlink;
  * \param db указатель на объект \link HyScanDB \endlink;
  * \param project_name название проекта;
- * \param track_name название галса;
- * \param raw использовать - TRUE или нет - FALSE сырые данные.
+ * \param track_name название галса.
  *
  * \return Нет.
  *
@@ -196,9 +174,9 @@ void                           hyscan_forward_look_player_set_sv       (HyScanFo
 HYSCAN_API
 void                           hyscan_forward_look_player_open         (HyScanForwardLookPlayer       *player,
                                                                         HyScanDB                      *db,
+                                                                        HyScanCache                   *cache,
                                                                         const gchar                   *project_name,
-                                                                        const gchar                   *track_name,
-                                                                        gboolean                       raw);
+                                                                        const gchar                   *track_name);
 
 /**
  *

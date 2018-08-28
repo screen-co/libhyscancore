@@ -186,39 +186,27 @@ gboolean
 make_track (HyScanDB *db,
             gchar    *name)
 {
-  HyScanDataWriter *writer = hyscan_data_writer_new (db);
-  gboolean st;
+  HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0};
+  HyScanDataWriter *writer = hyscan_data_writer_new ();
+  HyScanBuffer *buffer = hyscan_buffer_new ();
   gint i;
 
-  if (!hyscan_data_writer_set_project (writer, name) ||
-      !hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
-    {
-      g_warning ("Couldn't set data writer project or start data writer.");
-      st = FALSE;
-      goto exit;
-    }
+  hyscan_data_writer_set_db (writer, db);
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
+    g_error ("Couldn't start data writer.");
 
   /* Запишем что-то в галс. */
   for (i = 0; i < 2; i++)
     {
-      HyScanAcousticDataInfo info = {.data.type = HYSCAN_DATA_COMPLEX_FLOAT, .data.rate = 1.0};
-      HyScanDataWriterData data;
-      HyScanComplexFloat *vals = g_malloc0 (2 * sizeof (HyScanComplexFloat));
-
-      data.time = 1 + i * 10;
-      data.data = vals;
-      data.size = 2 * sizeof (HyScanComplexFloat);
-
-      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT, &info, &data);
-
-      g_free (vals);
+      gfloat vals = {0};
+      hyscan_buffer_wrap_float (buffer, &vals, 1);
+      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT,
+                                            1, FALSE, 1 + i, &info, buffer);
     }
 
-  st = TRUE;
-
-exit:
   g_object_unref (writer);
-  return st;
+  g_object_unref (buffer);
+  return TRUE;
 }
 
 guint

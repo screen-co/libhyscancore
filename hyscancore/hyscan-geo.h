@@ -77,7 +77,7 @@
 #define __HYSCAN_GEO_H__
 
 #include <glib-object.h>
-#include <hyscan-core-types.h>
+#include <hyscan-types.h>
 
 G_BEGIN_DECLS
 

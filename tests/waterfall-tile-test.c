@@ -32,6 +32,7 @@ main (int argc, char **argv)
   gfloat *image;
   guint32 image_size;
 
+  HyScanBuffer *buffer;
   gfloat *vals;
   gint64 time = 0;                    /* Время записи строки. */
   gint i;                                /* Простой маленький счетчик.*/
@@ -76,30 +77,30 @@ main (int argc, char **argv)
     g_strfreev (args);
   }
 
+  buffer = hyscan_buffer_new ();
   /* Первая стадия. Наполняем канал данных. */
   db = hyscan_db_new (db_uri);
-  writer = hyscan_data_writer_new (db);
-  if (!hyscan_data_writer_set_project (writer, name))
-    FAIL ("Couldn't set data writer project.");
-  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
+  writer = hyscan_data_writer_new ();
+  hyscan_data_writer_set_db (writer, db);
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
     FAIL ("Couldn't start data writer.");
 
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)
     {
-      HyScanAcousticDataInfo info = {.data.type = HYSCAN_DATA_FLOAT, .data.rate = 1.0}; /* Информация о датчике. */
-      HyScanDataWriterData data; /* Записываемые данные. */
+      guint32 real_size;
+      HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
 
-      vals = make_acoustic_string (SIZE, &data.size);
-      data.time = time;
-      data.data = vals;
+      vals = make_acoustic_string (SIZE, &real_size);
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
 
-      hyscan_data_writer_acoustic_add_data (writer, SSS, &info, &data);
+      hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time,
+                                            &info, buffer);
 
       g_free (vals);
     }
 
   /* Теперь займемся генерацией тайлов. */
-  dc = hyscan_acoustic_data_new (db, name, name, SSS, FALSE);
+  dc = hyscan_acoustic_data_new (db, NULL, name, name, SSS, 1, FALSE);
   wf = hyscan_waterfall_tile_new ();
 
   tile.across_start = START * 1000;

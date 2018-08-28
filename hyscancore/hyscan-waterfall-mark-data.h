@@ -22,7 +22,7 @@
 #define __HYSCAN_WATERFALL_MARK_DATA_H__
 
 #include <hyscan-db.h>
-#include <hyscan-core-types.h>
+#include <hyscan-types.h>
 #include <hyscan-waterfall-mark.h>
 
 G_BEGIN_DECLS

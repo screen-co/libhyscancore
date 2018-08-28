@@ -24,8 +24,8 @@ main (int argc, char **argv)
   HyScanCache *cache;
 
   /* Запись данных. */
+  HyScanBuffer          *buffer;
   HyScanDataWriter      *writer;
-  HyScanDataWriterData   dwdata;
   HyScanAntennaPosition  position;
 
   /* Тестируемые объекты.*/
@@ -72,10 +72,12 @@ main (int argc, char **argv)
     g_error ("can't open db <%s>", db_uri);
 
   /* Создаем объект записи данных. */
-  writer = hyscan_data_writer_new (db);
-  if (!hyscan_data_writer_set_project (writer, name))
-    g_error ("can't set project");
-  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
+  writer = hyscan_data_writer_new ();
+
+  /* Система хранения. */
+  hyscan_data_writer_set_db (writer, db);
+
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
     g_error ("can't start write");
 
   /* Местоположение приёмных антенн. */
@@ -88,15 +90,14 @@ main (int argc, char **argv)
   hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
 
   /* Наполняем данными. */
+  buffer = hyscan_buffer_new ();
 
   for (i = 0; i < SAMPLES; i++)
     {
       gchar *data = generate_string (i);
 
-      dwdata.data = data;
-      dwdata.size = strlen (dwdata.data);
-      dwdata.time = time_for_index (i);
-      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_DPT, CHANNEL, &dwdata);
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_DPT, CHANNEL, time_for_index (i), buffer);
 
       g_free (data);
     }
@@ -176,8 +177,8 @@ main (int argc, char **argv)
       }
   }
 
-  /* hyscan_nav_data_get с кэшем. */
-  hyscan_nav_data_set_cache (idepth, cache);
+  /* hyscan_depth_get с кэшем. */
+  hyscan_depth_set_cache (idepth, cache);
   {
     gdouble val;
     for (i = 0; i < SAMPLES; i++)
@@ -196,6 +197,7 @@ main (int argc, char **argv)
   g_clear_object (&db);
   g_clear_object (&cache);
   g_clear_object (&writer);
+  g_clear_object (&buffer);
   g_clear_object (&nmea);
 
   g_free (db_uri);

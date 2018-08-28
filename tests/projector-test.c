@@ -13,6 +13,7 @@ main (int argc, char **argv)
   gchar *db_uri = "file://./";           /* Путь к БД. */
   gchar *name = "test";                  /* Проект и галс. */
   HyScanDataWriter *writer = NULL;       /* Класс записи данных. */
+  HyScanBuffer *buffer = NULL;
   HyScanAntennaPosition position;
   HyScanProjector *projector = NULL;
   HyScanSoundVelocity elem;
@@ -62,7 +63,8 @@ main (int argc, char **argv)
 
   /* Первая стадия. Наполняем канал данных. */
   db = hyscan_db_new (db_uri);
-  writer = hyscan_data_writer_new (db);
+  writer = hyscan_data_writer_new ();
+  buffer = hyscan_buffer_new ();
 
   position.x = -10.0;
   position.y = 0.0;
@@ -73,30 +75,30 @@ main (int argc, char **argv)
 
   hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);
 
-  if (!hyscan_data_writer_set_project (writer, name))
-    FAIL ("Couldn't set data writer project.");
-  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
-    FAIL ("Couldn't start data writer.");
+  hyscan_data_writer_set_db (writer, db);
 
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
+    FAIL ("Couldn't start data writer.");
 
   for (i = 0, time = 100000000; i < SIZE; i++, time += DB_TIME_INC)
     {
-      HyScanAcousticDataInfo info = {.data.type = HYSCAN_DATA_FLOAT, .data.rate = 1000.0}; /* Информация о датчике. */
-      HyScanDataWriterData data;            /* Записываемые данные. */
-      HyScanComplexFloat vals[100] = {{0}};  /* Акустическая строка. */
+      guint32 data_size;
+      HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1000.0}; /* Информация о датчике. */
+      gfloat vals[100] = {0};  /* Акустическая строка. */
 
-      data.time = time;
-      data.data = vals;
-      data.size = 100 * sizeof (HyScanComplexFloat);
+      data_size = 100 * sizeof (HyScanComplexFloat);
 
-      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &info, &data);
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_FLOAT, vals, data_size);
 
-      data.time = time - DB_TIME_INC * 10;
-      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT, &info, &data);
+
+      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,
+                                            1, FALSE, time, &info, buffer);
+      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT,
+                                            1, FALSE, time - DB_TIME_INC * 10, &info, buffer);
     }
 
   sv = g_array_new (FALSE, FALSE, sizeof (HyScanSoundVelocity));
-  projector = hyscan_projector_new (db, name, name, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, FALSE);
+  projector = hyscan_projector_new (db, NULL, name, name, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, FALSE);
 
   /* Тестирование определения координат по индексу. */
   for (i = 0; i < SIZE; i++)
@@ -148,6 +150,7 @@ exit:
   g_clear_object (&projector);
   g_clear_object (&db);
   g_clear_object (&writer);
+  g_clear_object (&buffer);
   g_clear_pointer (&sv, g_array_unref);
 
   return 0;

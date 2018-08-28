@@ -1,101 +1,43 @@
-/**
- * \file hyscan-data-writer.h
+/* hyscan-data-writer.h
  *
- * \brief Заголовочный файл класса управления записью данных
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2016
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2016-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
- * \defgroup HyScanDataWriter HyScanDataWriter - класс управления записью данных
+ * This file is part of HyScanCore library.
  *
- * Класс предназначен для управления записью данных в систему хранения.
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Для установки параметров записи предназначены функции:
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * - #hyscan_data_writer_set_project - устанавливает название проекта, в который будет вестись запись;
- * - #hyscan_data_writer_set_operator_name - устанавливает имя оператора гидролокатора.
- * - #hyscan_data_writer_set_sonar_info - для задания информации о гидролокаторе;
- * - #hyscan_data_writer_set_mode - устанавливает режим записи данных \link HyScanDataWriterModeType \endlink;
- * - #hyscan_data_writer_set_chunk_size - устанавливает максимальный размер файлов в галсе;
- * - #hyscan_data_writer_set_save_time - интервал времени, для которого сохраняются записываемые данные;
- * - #hyscan_data_writer_set_save_size - задаёт объём сохраняемых данных в канале.
- * - #hyscan_data_writer_sensor_set_position - для установки местоположения приёмной антенны датчика;
- * - #hyscan_data_writer_sonar_set_position - для установки местоположения приёмной антенны гидролокатора.
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
- * Значения, установленные этими функциями, применяются к текущему записываемому галсу и ко всем последующим.
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - info@screen-co.ru
+ */
+
+/* HyScanCore имеет двойную лицензию.
  *
- * Для управления записью предназначены функции:
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
  *
- * - #hyscan_data_writer_start - включает запись данных;
- * - #hyscan_data_writer_stop - останавливает запись данных.
- *
- * При вызове функции #hyscan_data_writer_start создаётся новый галс, в который ничаниется запись
- * данных. Эту функцию можно вызывать если запись уже включена. В этом случае произойдёт переключение
- * записываемого галса.
- *
- * Для записи данных используются следующие функции:
- *
- * - #hyscan_data_writer_sensor_add_data - для записи данных от датчика;
- * - #hyscan_data_writer_raw_add_data - для записи "сырых" данных от гидролокатора;
- * - #hyscan_data_writer_raw_add_noise - для записи "сырых" данных от гидролокатора без излучения;
- * - #hyscan_data_writer_acoustic_add_data -для записи обработанных акустических данных.
- *
- * "Сырые" гидролокационные данные могут содержать вспомогательную информацию: образы сигналов для свёртки
- * и параметры системы ВАРУ. Для записи этой информации предназначены функции:
- *
- * - #hyscan_data_writer_raw_add_signal - для записи образа сигнала;
- * - #hyscan_data_writer_raw_add_tvg - для записи параметров ВАРУ.
- *
- * Класс HyScanDataWriter сохраняет во внутреннем буфере текущий образ сигнала и параметры ВАРУ
- * для каждого из источников данных. В дальнейшем эта информация записывается в новые галсы автоматически,
- * до тех пор пока не будут установлены новые значения.
- *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
  */
 
 #ifndef __HYSCAN_DATA_WRITER_H__
 #define __HYSCAN_DATA_WRITER_H__
 
 #include <hyscan-db.h>
-#include <hyscan-core-types.h>
 
 G_BEGIN_DECLS
-
-/** \brief Режимы записи данных. */
-typedef enum
-{
-  HYSCAN_DATA_WRITER_MODE_INVALID                      = 0,    /**< Недопустимый режим, ошибка. */
-
-  HYSCAN_DATA_WRITER_MODE_NONE                         = 101,  /**< Не записывать данные. */
-  HYSCAN_DATA_WRITER_MODE_RAW                          = 102,  /**< Записывать только "сырые" данные. */
-  HYSCAN_DATA_WRITER_MODE_COMPUTED                     = 103,  /**< Записывать только обработанные данные. */
-  HYSCAN_DATA_WRITER_MODE_BOTH                         = 104   /**< Записывать оба типа данных. */
-} HyScanDataWriterModeType;
-
-/** \brief Данные от гидролокатора и датчиков */
-typedef struct
-{
-  gint64                       time;                           /**< Время приёма данных. */
-  guint32                      size;                           /**< Размер данных. */
-  gconstpointer                data;                           /**< Данные. */
-} HyScanDataWriterData;
-
-/** \brief Образ излучаемого сигнала для свёртки */
-typedef struct
-{
-  gint64                       time;                           /**< Время начала действия сигнала. */
-  gfloat                       rate;                           /**< Частота дискретизации, Гц. */
-  guint32                      n_points;                       /**< Число точек образа. */
-  const HyScanComplexFloat    *points;                         /**< Образ сигнала для свёртки. */
-} HyScanDataWriterSignal;
-
-/** \brief Значения параметров усиления системы ВАРУ */
-typedef struct
-{
-  gint64                       time;                           /**< Время начала действия параметров системы ВАРУ. */
-  gfloat                       rate;                           /**< Частота дискретизации, Гц. */
-  guint32                      n_gains;                        /**< Число коэффициентов передачи. */
-  const gfloat                *gains;                          /**< Коэффициенты передачи приёмного тракта, дБ. */
-} HyScanDataWriterTVG;
 
 #define HYSCAN_TYPE_DATA_WRITER             (hyscan_data_writer_get_type ())
 #define HYSCAN_DATA_WRITER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DATA_WRITER, HyScanDataWriter))
@@ -121,308 +63,83 @@ struct _HyScanDataWriterClass
 };
 
 HYSCAN_API
-GType                  hyscan_data_writer_get_type                     (void);
+GType                  hyscan_data_writer_get_type             (void);
 
-/**
- *
- * Функция создаёт новый объект \link HyScanDataWriter \endlink.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink.
- *
- * \return Указатель на объект \link HyScanDataWriter \endlink.
- *
- */
 HYSCAN_API
-HyScanDataWriter      *hyscan_data_writer_new                          (HyScanDB                      *db);
+HyScanDataWriter      *hyscan_data_writer_new                  (void);
 
-/**
- *
- * Функция устанавливает название проекта, в который будет вестись запись галсов.
- * Функция автоматически создаёт проект, если он еще не был создан.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param project_name название проекта, в который записывать данные;
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_set_project                  (HyScanDataWriter              *writer,
-                                                                        const gchar                   *project_name);
+void                   hyscan_data_writer_set_db               (HyScanDataWriter              *writer,
+                                                                HyScanDB                      *db);
 
-/**
- *
- * Функция устанавливает имя оператора, которое будет записываться в каждый галс при
- * его создании.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param name имя оператора.
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_data_writer_set_operator_name            (HyScanDataWriter              *writer,
-                                                                        const gchar                   *name);
+void                   hyscan_data_writer_set_operator_name    (HyScanDataWriter              *writer,
+                                                                const gchar                   *name);
 
-/**
- *
- * Функция устанавливает информацию о гидролокаторе, которая будет записываться
- * в каждый галс при его создании. Информация о гидролокаторе задаётся в виде XML описания
- * схемы данных \link HyScanDataSchema \endlink.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param info информация о гидролокаторе.
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_data_writer_set_sonar_info               (HyScanDataWriter              *writer,
-                                                                        const gchar                   *info);
+void                   hyscan_data_writer_set_sonar_info       (HyScanDataWriter              *writer,
+                                                                const gchar                   *info);
 
-/**
- *
- * Функция устанавливает режим записи данных от гидролокатора.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param mode режим записи данных \link HyScanDataWriterModeType \endlink;
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_data_writer_set_mode                     (HyScanDataWriter              *writer,
-                                                                        HyScanDataWriterModeType       mode);
+void                   hyscan_data_writer_set_chunk_size       (HyScanDataWriter              *writer,
+                                                                gint32                         chunk_size);
 
-/**
- *
- * Функция устанавливает максимальный размер файлов в галсе. Подробнее
- * об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param chunk_size максимальный размер файлов в байтах или отрицательное число.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_set_chunk_size               (HyScanDataWriter              *writer,
-                                                                        gint32                         chunk_size);
+void                   hyscan_data_writer_sensor_set_position  (HyScanDataWriter              *writer,
+                                                                const gchar                   *sensor,
+                                                                const HyScanAntennaPosition   *position);
 
-/**
- *
- * Функция задаёт интервал времени, для которого сохраняются записываемые данные. Если данные
- * были записаны ранее "текущего времени" - "интервал хранения" они удаляются.
- *
- * Подробнее об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param save_time время хранения данных в микросекундах или отрицательное число.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_set_save_time                (HyScanDataWriter              *writer,
-                                                                        gint64                         save_time);
+void                   hyscan_data_writer_sonar_set_position   (HyScanDataWriter              *writer,
+                                                                HyScanSourceType               source,
+                                                                const HyScanAntennaPosition   *position);
 
-/**
- *
- * Функция задаёт объём сохраняемых данных в канале. Если объём данных превышает этот предел,
- * старые данные удаляются.
- *
- * Подробнее об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param save_size объём сохраняемых данных в байтах или отрицательное число.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_set_save_size                (HyScanDataWriter              *writer,
-                                                                        gint64                         save_size);
+gboolean               hyscan_data_writer_start                (HyScanDataWriter              *writer,
+                                                                const gchar                   *project_name,
+                                                                const gchar                   *track_name,
+                                                                HyScanTrackType                track_type);
 
-/**
- *
- * Функция устанавливает информацию о местоположении приёмной антенны датчика.
- * Эта информация будет записываться в канал базы данных для всех датчиков,
- * для которых, приём данных осуществляется через порт с указанным именем.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param sensor название порта датчика;
- * \param position информация о местоположении приёмной антенны - \link HyScanAntennaPosition \endlink.
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_data_writer_sensor_set_position          (HyScanDataWriter              *writer,
-                                                                        const gchar                   *sensor,
-                                                                        HyScanAntennaPosition         *position);
+void                   hyscan_data_writer_stop                 (HyScanDataWriter              *writer);
 
-/**
- *
- * Функция устанавливает информацию о местоположении приёмной антенны гидролокатора.
- * Эта информация записывается в базу данных для всех гидролокационных данных с указанным
- * типом источника данных и производных от него.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param source тип источника данных;
- * \param position информация о местоположении приёмной антенны - \link HyScanAntennaPosition \endlink.
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_data_writer_sonar_set_position           (HyScanDataWriter              *writer,
-                                                                        HyScanSourceType               source,
-                                                                        HyScanAntennaPosition         *position);
+gboolean               hyscan_data_writer_log_add_message      (HyScanDataWriter              *writer,
+                                                                const gchar                   *source,
+                                                                gint64                         time,
+                                                                HyScanLogLevel                 level,
+                                                                const gchar                   *message);
 
-/**
- *
- * Функция включает запись данных.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param track_name название галса, в который записывать данные;
- * \param track_type тип галса.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_start                        (HyScanDataWriter              *writer,
-                                                                        const gchar                   *track_name,
-                                                                        HyScanTrackType                track_type);
+gboolean               hyscan_data_writer_sensor_add_data      (HyScanDataWriter              *writer,
+                                                                const gchar                   *sensor,
+                                                                HyScanSourceType               source,
+                                                                guint                          channel,
+                                                                gint64                         time,
+                                                                HyScanBuffer                  *data);
 
-/**
- *
- * Функция отключает запись данных.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink.
- *
- * \return Нет.
- *
- */
 HYSCAN_API
-void                   hyscan_data_writer_stop                         (HyScanDataWriter              *writer);
+gboolean               hyscan_data_writer_acoustic_add_data    (HyScanDataWriter              *writer,
+                                                                HyScanSourceType               source,
+                                                                guint                          channel,
+                                                                gboolean                       noise,
+                                                                gint64                         time,
+                                                                HyScanAcousticDataInfo        *info,
+                                                                HyScanBuffer                  *data);
 
-/**
- *
- * Функция записывает данные от датчиков.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param sensor название порта датчика;
- * \param source тип источника данных;
- * \param channel индекс канала данных, начиная с 1;
- * \param data данные датчика.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_sensor_add_data              (HyScanDataWriter              *writer,
-                                                                        const gchar                   *sensor,
-                                                                        HyScanSourceType               source,
-                                                                        guint                          channel,
-                                                                        HyScanDataWriterData          *data);
+gboolean               hyscan_data_writer_acoustic_add_signal  (HyScanDataWriter              *writer,
+                                                                HyScanSourceType               source,
+                                                                guint                          channel,
+                                                                gint64                         time,
+                                                                HyScanBuffer                  *image);
 
-/**
- *
- * Функция записывает "сырые" гидролокационные данные.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param source тип источника данных;
- * \param channel индекс канала данных, начиная с 1;
- * \param info параметры гидролокационных данных - \link HyScanRawDataInfo \endlink;
- * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
 HYSCAN_API
-gboolean               hyscan_data_writer_raw_add_data                 (HyScanDataWriter              *writer,
-                                                                        HyScanSourceType               source,
-                                                                        guint                          channel,
-                                                                        HyScanRawDataInfo             *info,
-                                                                        HyScanDataWriterData          *data);
-
-/**
- *
- * Функция записывает "сырые" гидролокационные данные без излучения, шум среды.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param source тип источника данных;
- * \param channel индекс канала данных, начиная с 1;
- * \param info параметры гидролокационных данных - \link HyScanRawDataInfo \endlink;
- * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_data_writer_raw_add_noise                (HyScanDataWriter              *writer,
-                                                                        HyScanSourceType               source,
-                                                                        guint                          channel,
-                                                                        HyScanRawDataInfo             *info,
-                                                                        HyScanDataWriterData          *data);
-
-/**
- *
- * Функция устанавливает образ сигнала для свёртки для указанного источника данных.
- * Эта информация записывает в базу данных для "сырых" гидролокационных данных с указанным
- * типом источника данных
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param source тип источника данных;
- * \param signal образ сигнала.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_data_writer_raw_add_signal               (HyScanDataWriter              *writer,
-                                                                        HyScanSourceType               source,
-                                                                        HyScanDataWriterSignal        *signal);
-
-/**
- *
- * Функция устанавливает значения параметров усиления ВАРУ для указанного канала данных.
- * Эта информация записывает в базу данных для "сырых" гидролокационных данных с указанным
- * типом источника данных и индексом канала.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param source тип источника данных;
- * \param channel индекс канала данных, начиная с 1;
- * \param tvg параметры усиления ВАРУ.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_data_writer_raw_add_tvg                  (HyScanDataWriter              *writer,
-                                                                        HyScanSourceType               source,
-                                                                        guint                          channel,
-                                                                        HyScanDataWriterTVG           *tvg);
-
-/**
- *
- * Функция записывает акустические данные.
- *
- * \param writer указатель на объект \link HyScanDataWriter \endlink;
- * \param source тип источника данных;
- * \param info параметры акустических данных - \link HyScanAcousticDataInfo \endlink;
- * \param data гидролокационные данные \link HyScanDataWriterData \endlink.
- *
- * \return TRUE - если команда выполнена успешно, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_data_writer_acoustic_add_data            (HyScanDataWriter              *writer,
-                                                                        HyScanSourceType               source,
-                                                                        HyScanAcousticDataInfo        *info,
-                                                                        HyScanDataWriterData          *data);
+gboolean               hyscan_data_writer_acoustic_add_tvg     (HyScanDataWriter              *writer,
+                                                                HyScanSourceType               source,
+                                                                guint                          channel,
+                                                                gint64                         time,
+                                                                HyScanBuffer                  *gains);
 
 G_END_DECLS
 

@@ -27,12 +27,12 @@ main (int argc, char **argv)
   HyScanCache *cache;
 
   /* Запись данных. */
-  HyScanDataWriter      *writer;
-  HyScanDataWriterData   dwdata;
+  HyScanDataWriter *writer;
+  HyScanBuffer     *buffer;
 
   /* Тестируемые объекты.*/
   HyScanNMEAParser *nmea;
-  HyScanNavData     *idepth;
+  HyScanNavData    *ndata;
 
   gint i;
 
@@ -74,29 +74,32 @@ main (int argc, char **argv)
     g_error ("can't open db <%s>", db_uri);
 
   /* Создаем объект записи данных. */
-  writer = hyscan_data_writer_new (db);
-  if (!hyscan_data_writer_set_project (writer, name))
-    g_error ("can't set project");
-  if (!hyscan_data_writer_start (writer, name, HYSCAN_TRACK_SURVEY))
+  writer = hyscan_data_writer_new ();
+  hyscan_data_writer_set_db (writer, db);
+
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
     g_error ("can't start write");
+
+  buffer = hyscan_buffer_new ();
 
   /* Наполняем данными. */
   for (i = 0; i < SAMPLES; i++)
     {
+      gint64 time = time_for_index (i);
       gchar *data = generate_string (i * 50);
 
-      dwdata.data = data;
-      dwdata.size = strlen (dwdata.data);
-      dwdata.time = time_for_index (i);
-      hyscan_data_writer_sensor_add_data (writer, "sensor", SRC, CHANNEL, &dwdata);
+      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_STRING, data, strlen (data));
+
+      hyscan_data_writer_sensor_add_data (writer, "sensor", SRC, CHANNEL,
+                                          time, buffer);
 
       g_free (data);
     }
 
   /* Теперь потестируем объект. */
-  nmea = hyscan_nmea_parser_new (db, name, name, CHANNEL, SRC,
+  nmea = hyscan_nmea_parser_new (db, name, name, SRC, CHANNEL,
                                  HYSCAN_NMEA_FIELD_LAT);
-  idepth = HYSCAN_NAV_DATA (nmea);
+  ndata = HYSCAN_NAV_DATA (nmea);
 
   /* hyscan_nav_data_get */
   {
@@ -104,7 +107,7 @@ main (int argc, char **argv)
     for (i = 0; i < SAMPLES; i++)
       {
         expected = i * 0.5;
-        hyscan_nav_data_get (idepth, i, NULL, &val);
+        hyscan_nav_data_get (ndata, i, NULL, &val);
         if (ABS (val) - ABS (expected) > 1e-5)
           g_error ("Failed to get data at index %i (%f, %f)", i, val, expected);
       }
