@@ -31,21 +31,26 @@ struct _HyScanmLocClass
   GObjectClass parent_class;
 };
 
+HYSCAN_API
 GType                   hyscan_mloc_get_type         (void);
 
+HYSCAN_API
 HyScanmLoc             *hyscan_mloc_new              (HyScanDB       *db,
                                                       const gchar    *project,
                                                       const gchar    *track);
 
+HYSCAN_API
 void                    hyscan_mloc_set_cache        (HyScanmLoc            *mloc,
                                                       HyScanCache           *cache);
 
+HYSCAN_API
 gboolean                hyscan_mloc_get              (HyScanmLoc            *mloc,
                                                       gint64                 time,
                                                       HyScanAntennaPosition *antenna,
                                                       gdouble                shift,
                                                       HyScanGeoGeodetic     *position);
 
+HYSCAN_API
 gboolean                hyscan_mloc_get_fl           (HyScanmLoc            *mloc,
                                                       gint64                 time,
                                                       HyScanAntennaPosition *antenna,
