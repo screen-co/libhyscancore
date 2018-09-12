@@ -469,7 +469,7 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
       HyScanDataSchema *schema;
-      gchar **keys;
+      const gchar * const *keys;
       guint i;
 
       schema = hyscan_param_schema (HYSCAN_PARAM (value));
@@ -493,7 +493,6 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
         }
 
       g_object_unref (schema);
-      g_strfreev (keys);
     }
 
   /* Создаём схему. */
