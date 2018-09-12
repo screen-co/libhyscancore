@@ -98,7 +98,8 @@ HYSCAN_API
 gboolean               hyscan_data_writer_start                (HyScanDataWriter              *writer,
                                                                 const gchar                   *project_name,
                                                                 const gchar                   *track_name,
-                                                                HyScanTrackType                track_type);
+                                                                HyScanTrackType                track_type,
+                                                                gint64                         date_time);
 
 HYSCAN_API
 void                   hyscan_data_writer_stop                 (HyScanDataWriter              *writer);

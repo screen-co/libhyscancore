@@ -35,7 +35,9 @@
 #define TVG_CHANNEL_SCHEMA_ID                  8911020404930317035
 #define TVG_CHANNEL_SCHEMA_VERSION             20180100
 
-#define PROJECT_SCHEMA                         "project"
+#define PROJECT_INFO_SCHEMA                    "project-info"
+#define TRACK_INFO_SCHEMA                      "track-info"
+
 #define TRACK_SCHEMA                           "track"
 #define LOG_CHANNEL_SCHEMA                     "log"
 #define SENSOR_CHANNEL_SCHEMA                  "sensor"

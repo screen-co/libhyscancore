@@ -9,6 +9,8 @@
         <default>20180100</default>
       </key>
     </node>
+    <key id="ctime" name="Creation date and time" type="integer" view="datetime"/>
+    <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
     <key id="description" name="Project description" type="string"/>
   </schema>
 

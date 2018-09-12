@@ -1212,7 +1212,7 @@ hyscan_control_sonar_start (HyScanSonar     *sonar,
     }
 
   if (status)
-    status = hyscan_data_writer_start (priv->writer, project_name, track_name, track_type);
+    status = hyscan_data_writer_start (priv->writer, project_name, track_name, track_type, -1);
   if (!status)
     hyscan_control_sonar_stop (sonar);
 
