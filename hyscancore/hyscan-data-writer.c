@@ -154,9 +154,14 @@ static void      hyscan_data_writer_sonar_channel_free         (gpointer        
 static void      hyscan_data_writer_raw_signal_free            (gpointer                       data);
 static void      hyscan_data_writer_raw_gain_free              (gpointer                       data);
 
+static void      hyscan_data_writer_get_id                     (GRand                         *rand,
+                                                                gchar                         *buffer,
+                                                                guint                          size);
+
 static gboolean  hyscan_data_writer_create_project             (HyScanDB                      *db,
                                                                 const gchar                   *project_name,
-                                                                gint64                         date_time);
+                                                                gint64                         date_time,
+                                                                GRand                         *rand);
 
 static gint32    hyscan_data_writer_create_track               (HyScanDB                      *db,
                                                                 gint32                         project_id,
@@ -329,15 +334,37 @@ hyscan_data_writer_raw_gain_free (gpointer data)
   g_free (tvg);
 }
 
+/* Функция создаёт уникальный идентификатор. */
+static void
+hyscan_data_writer_get_id (GRand *rand,
+                           gchar *buffer,
+                           guint  size)
+{
+  guint i;
+
+  for (i = 0; i < (size - 1); i++)
+    {
+      gint rnd = g_rand_int_range (rand, 0, 62);
+      if (rnd < 10)
+        buffer[i] = '0' + rnd;
+      else if (rnd < 36)
+        buffer[i] = 'a' + rnd - 10;
+      else
+        buffer[i] = 'A' + rnd - 36;
+    }
+
+  buffer[i] = 0;
+}
+
 /* Функция создаёт новый проект в системе хранения. */
 static gboolean
 hyscan_data_writer_create_project (HyScanDB    *db,
                                    const gchar *project_name,
-                                   gint64       date_time)
+                                   gint64       date_time,
+                                   GRand       *rand)
 {
   gboolean status = FALSE;
   gboolean new_project = FALSE;
-  HyScanParamList *param_list;
   GBytes *project_schema;
   gint32 project_id = -1;
 
@@ -368,9 +395,17 @@ hyscan_data_writer_create_project (HyScanDB    *db,
 
       if (hyscan_db_param_object_create (db, param_id, PROJECT_INFO_OBJECT, PROJECT_INFO_SCHEMA))
         {
+          HyScanParamList *param_list;
+          gchar project_id[33] = {0};
+
           param_list = hyscan_param_list_new ();
+          hyscan_data_writer_get_id (rand, project_id, sizeof (project_id));
+
+          hyscan_param_list_set_string (param_list, "/id", project_id);
           hyscan_param_list_set_integer (param_list, "/ctime", date_time);
+
           status = hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list);
+
           g_object_unref (param_list);
         }
 
@@ -409,9 +444,6 @@ hyscan_data_writer_create_track (HyScanDB        *db,
   HyScanParamList *param_list;
   GBytes *track_schema;
 
-  gchar id[33] = {0};
-  guint i;
-
   /* Схема галса. */
   track_schema = g_resources_lookup_data ("/org/hyscan/schemas/track-schema.xml",
                                           G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
@@ -429,27 +461,17 @@ hyscan_data_writer_create_track (HyScanDB        *db,
 
   param_list = hyscan_param_list_new ();
 
-  /* Уникальный идентификатор галса. */
-  for (i = 0; i < sizeof (id) - 1; i++)
-    {
-      gint rnd = g_rand_int_range (rand, 0, 62);
-      if (rnd < 10)
-        id[i] = '0' + rnd;
-      else if (rnd < 36)
-        id[i] = 'a' + rnd - 10;
-      else
-        id[i] = 'A' + rnd - 36;
-    }
-
   /* Параметры галса. */
   param_id = hyscan_db_track_param_open (db, track_id);
   if (param_id > 0)
     {
       const gchar *track_type_name;
+      gchar track_id[33] = {0};
 
+      hyscan_data_writer_get_id (rand, track_id, sizeof (track_id));
       track_type_name = hyscan_track_get_name_by_type (track_type);
 
-      hyscan_param_list_set_string (param_list, "/id", id);
+      hyscan_param_list_set_string (param_list, "/id", track_id);
       hyscan_param_list_set_integer (param_list, "/ctime", date_time);
       if (track_type_name != NULL)
         hyscan_param_list_set_string (param_list, "/type", track_type_name);
@@ -995,7 +1017,7 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
     date_time = g_get_real_time ();
 
   /* Создаём проект, если он еще не создан. */
-  if (!hyscan_data_writer_create_project (priv->db, project_name, date_time))
+  if (!hyscan_data_writer_create_project (priv->db, project_name, date_time, priv->rand))
     goto exit;
 
   /* Открываем проект. */
