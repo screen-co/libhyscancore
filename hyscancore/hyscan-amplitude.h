@@ -48,6 +48,19 @@ G_BEGIN_DECLS
 typedef struct _HyScanAmplitude HyScanAmplitude;
 typedef struct _HyScanAmplitudeInterface HyScanAmplitudeInterface;
 
+/**
+ * HyScanSonarInterface:
+ * @g_iface: Базовый интерфейс.
+ * @get_token: Функция возвращает уникальный идентификатор.
+ * @get_position: Функция возвращает информацию о местоположении приёмной антенны.
+ * @get_info: Функция возвращает параметры канала гидроакустических данных.
+ * @is_writable: Функция определяет возможность изменения данных.
+ * @get_mod_count: Функция возвращает номер изменения в данных.
+ * @get_range: Функция возвращает диапазон значений индексов записанных данных.
+ * @find_data: Функция ищет индекс данных для указанного момента времени.
+ * @get_size_time: Функция возвращает число точек данных и метку времени.
+ * @get_amplitude: Функция возвращает массив значений амплитуды сигнала.
+ */
 struct _HyScanAmplitudeInterface
 {
   GTypeInterface         g_iface;
