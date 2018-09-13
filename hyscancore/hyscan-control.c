@@ -73,7 +73,15 @@
  * устройства можно узнать с помощью функции #hyscan_control_device_get_status.
  *
  * Список источников гидролокационных данных можно получить с помощью функции
- * #hyscan_control_get_sources, а список датчиков #hyscan_control_get_sensors.
+ * #hyscan_control_sources_list, а список датчиков #hyscan_control_sensors_list.
+ *
+ * Текущую таблицу профиля скорости звука можно получить с помощью функции
+ * #hyscan_control_get_sound_velocity. Таблица профиля скорости звука
+ * устанавливается одинаковой для датчиков и источников гидролокационных
+ * данных.
+ *
+ * Признак программного управления излучением можно получить с помощью
+ * функции #hyscan_control_get_software_ping.
  *
  * Информацию о датчиках и источниках данных можно получить с помощью функций
  * #hyscan_control_sensor_get_info и #hyscan_control_source_get_info.
@@ -89,6 +97,10 @@
  * метку к данным каждого из датчиков. Такой меткой является номер канала.
  * Для задания номера канала предназначена функция
  * #hyscan_control_sensor_set_channel.
+ *
+ * Текущий режим работы источника гидролокационных данных можно узнать с
+ * помощью функции #hyscan_control_source_get_mode. Признак приёма данных
+ * датчиком можно получить с помощью функции #hyscan_control_sensor_get_enable.
  *
  * Функция #hyscan_control_writer_set_db устанавливает систему хранения.
  *
@@ -112,6 +124,7 @@ typedef struct
   HyScanSensorInfoSensor      *info;                           /* Информация о датчике. */
   HyScanAntennaPosition       *position;                       /* Местоположение антенны. */
   guint                        channel;                        /* Номер приёмного канала. */
+  gboolean                     enable;                         /* Признак приёма данных датчиком. */
 } HyScanControlSensorInfo;
 
 typedef struct
@@ -119,6 +132,7 @@ typedef struct
   HyScanDevice                *device;                         /* Указатель на подключенное устройство. */
   HyScanSonarInfoSource       *info;                           /* Информация об источнике данных. */
   HyScanAntennaPosition       *position;                       /* Местоположение антенны. */
+  HyScanControlSourceMode     *mode;                           /* Режим работы. */
 } HyScanControlSourceInfo;
 
 struct _HyScanControlPrivate
@@ -142,6 +156,8 @@ struct _HyScanControlPrivate
 
   HyScanDataWriter            *writer;                         /* Объект записи данных. */
 
+  GList                       *svp;                            /* Таблица профиля скорости звука. */
+
   gint64                       log_time;                       /* Метка времени последней записи информационного сообщения. */
 
   GMutex                       lock;                           /* Блокировка доступа. */
@@ -158,6 +174,9 @@ static void        hyscan_control_free_sensor_info             (gpointer        
 static void        hyscan_control_free_source_info             (gpointer                        data);
 
 static void        hyscan_control_create_device_schema         (HyScanControlPrivate           *priv);
+
+static gboolean    hyscan_control_set_sound_velocity           (HyScanControlPrivate           *priv,
+                                                                GList                          *svp);
 
 static void        hyscan_control_sensor_data                  (HyScanDevice                   *device,
                                                                 const gchar                    *sensor,
@@ -360,6 +379,8 @@ hyscan_control_object_finalize (GObject *object)
   g_hash_table_unref (priv->sensors);
   g_hash_table_unref (priv->devices);
 
+  g_list_free_full (priv->svp, (GDestroyNotify)hyscan_sound_velocity_free);
+
   g_clear_object (&priv->schema);
   g_object_unref (priv->writer);
   g_object_unref (priv->list);
@@ -388,6 +409,8 @@ hyscan_control_free_source_info (gpointer data)
 
   hyscan_sonar_info_source_free (info->info);
   hyscan_antenna_position_free (info->position);
+  g_clear_pointer (&info->mode, g_free);
+  g_free (info->mode);
   g_free (info);
 }
 
@@ -514,6 +537,49 @@ exit:
   g_object_unref (sonar);
   g_object_unref (sensor);
   g_object_unref (builder);
+}
+
+
+/* Функция задаёт таблицу профиля скорости звука для всех устройств. */
+static gboolean
+hyscan_control_set_sound_velocity (HyScanControlPrivate *priv,
+                                   GList                *svp)
+{
+  GList *new_svp = NULL;
+  gboolean status = TRUE;
+
+  GHashTableIter iter;
+  gpointer device;
+
+  g_list_free_full (priv->svp, (GDestroyNotify)hyscan_sound_velocity_free);
+
+  g_hash_table_iter_init (&iter, priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &device))
+    {
+      if (HYSCAN_IS_SONAR (device))
+        {
+          if (!hyscan_sonar_set_sound_velocity (device, svp))
+            status = FALSE;
+        }
+      if (HYSCAN_IS_SENSOR (device))
+        {
+          if (!hyscan_sensor_set_sound_velocity (device, svp))
+            status = FALSE;
+        }
+    }
+
+  if (status)
+    {
+      while (svp != NULL)
+        {
+          new_svp = g_list_prepend (new_svp, hyscan_sound_velocity_copy (svp->data));
+          svp = g_list_next (svp);
+        }
+
+      priv->svp = g_list_reverse (new_svp);
+    }
+
+  return status;
 }
 
 /* Обработчик сигнала sensor-data. */
@@ -860,25 +926,10 @@ hyscan_control_sonar_set_sound_velocity (HyScanSonar *sonar,
   HyScanControl *control = HYSCAN_CONTROL (sonar);
   HyScanControlPrivate *priv = control->priv;
 
-  gboolean status = TRUE;
-
-  GHashTableIter iter;
-  gpointer device;
-
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
-  g_hash_table_iter_init (&iter, priv->devices);
-  while (g_hash_table_iter_next (&iter, NULL, &device))
-    {
-      if (!HYSCAN_IS_SONAR (device))
-        continue;
-
-      if (!hyscan_sonar_set_sound_velocity (device, svp))
-        status = FALSE;
-    }
-
-  return status;
+  return hyscan_control_set_sound_velocity (priv, svp);
 }
 
 /* Метод HyScanSonar->receiver_get_time. */
@@ -915,6 +966,8 @@ hyscan_control_sonar_receiver_set_time (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -923,8 +976,18 @@ hyscan_control_sonar_receiver_set_time (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_receiver_set_time (HYSCAN_SONAR (source_info->device),
-                                         source, receive_time, wait_time);
+  status =  hyscan_sonar_receiver_set_time (HYSCAN_SONAR (source_info->device),
+                                            source, receive_time, wait_time);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->receiver_mode = HYSCAN_SONAR_RECEIVER_MODE_MANUAL;
+      source_mode->receiver_time = receive_time;
+      source_mode->receiver_wait = wait_time;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->receiver_set_auto. */
@@ -936,6 +999,8 @@ hyscan_control_sonar_receiver_set_auto (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -944,8 +1009,18 @@ hyscan_control_sonar_receiver_set_auto (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_receiver_set_auto (HYSCAN_SONAR (source_info->device),
-                                         source);
+  status = hyscan_sonar_receiver_set_auto (HYSCAN_SONAR (source_info->device),
+                                           source);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->receiver_mode = HYSCAN_SONAR_RECEIVER_MODE_AUTO;
+      source_mode->receiver_time = 0.0;
+      source_mode->receiver_wait = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->generator_set_preset. */
@@ -958,6 +1033,8 @@ hyscan_control_sonar_generator_set_preset (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -966,8 +1043,20 @@ hyscan_control_sonar_generator_set_preset (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_generator_set_preset (HYSCAN_SONAR (source_info->device),
-                                            source, preset);
+  status = hyscan_sonar_generator_set_preset (HYSCAN_SONAR (source_info->device),
+                                              source, preset);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->generator_mode = HYSCAN_SONAR_GENERATOR_MODE_PRESET;
+      source_mode->generator_preset = preset;
+      source_mode->generator_signal = HYSCAN_SONAR_GENERATOR_SIGNAL_NONE;
+      source_mode->signal_duration = 0.0;
+      source_mode->signal_power = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->generator_set_auto. */
@@ -980,6 +1069,8 @@ hyscan_control_sonar_generator_set_auto (HyScanSonar                    *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -988,8 +1079,20 @@ hyscan_control_sonar_generator_set_auto (HyScanSonar                    *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_generator_set_auto (HYSCAN_SONAR (source_info->device),
-                                          source, signal);
+  status = hyscan_sonar_generator_set_auto (HYSCAN_SONAR (source_info->device),
+                                            source, signal);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->generator_mode = HYSCAN_SONAR_GENERATOR_MODE_AUTO;
+      source_mode->generator_preset = 0;
+      source_mode->generator_signal = signal;
+      source_mode->signal_duration = 0.0;
+      source_mode->signal_power = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->generator_set_simple. */
@@ -1003,6 +1106,8 @@ hyscan_control_sonar_generator_set_simple (HyScanSonar                    *sonar
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1011,8 +1116,20 @@ hyscan_control_sonar_generator_set_simple (HyScanSonar                    *sonar
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_generator_set_simple (HYSCAN_SONAR (source_info->device),
-                                            source, signal, power);
+  status =  hyscan_sonar_generator_set_simple (HYSCAN_SONAR (source_info->device),
+                                               source, signal, power);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->generator_mode = HYSCAN_SONAR_GENERATOR_MODE_SIMPLE;
+      source_mode->generator_preset = 0;
+      source_mode->generator_signal = signal;
+      source_mode->signal_duration = 0.0;
+      source_mode->signal_power = power;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->generator_set_extended. */
@@ -1027,6 +1144,8 @@ hyscan_control_sonar_generator_set_extended (HyScanSonar                    *son
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1035,8 +1154,20 @@ hyscan_control_sonar_generator_set_extended (HyScanSonar                    *son
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_generator_set_extended (HYSCAN_SONAR (source_info->device),
-                                              source, signal, duration, power);
+  status = hyscan_sonar_generator_set_extended (HYSCAN_SONAR (source_info->device),
+                                                source, signal, duration, power);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->generator_mode = HYSCAN_SONAR_GENERATOR_MODE_EXTENDED;
+      source_mode->generator_preset = 0;
+      source_mode->generator_signal = signal;
+      source_mode->signal_duration = duration;
+      source_mode->signal_power = power;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->tvg_set_auto. */
@@ -1050,6 +1181,8 @@ hyscan_control_sonar_tvg_set_auto (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1058,8 +1191,26 @@ hyscan_control_sonar_tvg_set_auto (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_tvg_set_auto (HYSCAN_SONAR (source_info->device),
-                                    source, level, sensitivity);
+  status = hyscan_sonar_tvg_set_auto (HYSCAN_SONAR (source_info->device),
+                                      source, level, sensitivity);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->tvg_mode = HYSCAN_SONAR_TVG_MODE_AUTO;
+      source_mode->tvg_auto_level = level;
+      source_mode->tvg_auto_sensitivity = sensitivity;
+      g_clear_pointer (&source_mode->tvg_gains, g_free);
+      source_mode->tvg_n_gains = 0;
+      source_mode->tvg_constant_gain = 0.0;
+      source_mode->tvg_linear_gain0 = 0.0;
+      source_mode->tvg_linear_step = 0.0;
+      source_mode->tvg_logarithmic_gain0 = 0.0;
+      source_mode->tvg_logarithmic_beta = 0.0;
+      source_mode->tvg_logarithmic_alpha = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->tvg_set_points. */
@@ -1074,6 +1225,8 @@ hyscan_control_sonar_tvg_set_points (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1082,8 +1235,27 @@ hyscan_control_sonar_tvg_set_points (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_tvg_set_points (HYSCAN_SONAR (source_info->device),
-                                      source, time_step, gains, n_gains);
+  status = hyscan_sonar_tvg_set_points (HYSCAN_SONAR (source_info->device),
+                                        source, time_step, gains, n_gains);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->tvg_mode = HYSCAN_SONAR_TVG_MODE_POINTS;
+      source_mode->tvg_auto_level = 0.0;
+      source_mode->tvg_auto_sensitivity = 0.0;
+      g_clear_pointer (&source_mode->tvg_gains, g_free);
+      source_mode->tvg_gains = g_memdup (gains, n_gains * sizeof (gdouble));
+      source_mode->tvg_n_gains = n_gains;
+      source_mode->tvg_constant_gain = 0.0;
+      source_mode->tvg_linear_gain0 = 0.0;
+      source_mode->tvg_linear_step = 0.0;
+      source_mode->tvg_logarithmic_gain0 = 0.0;
+      source_mode->tvg_logarithmic_beta = 0.0;
+      source_mode->tvg_logarithmic_alpha = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->tvg_set_constant. */
@@ -1096,6 +1268,8 @@ hyscan_control_sonar_tvg_set_constant (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1104,8 +1278,26 @@ hyscan_control_sonar_tvg_set_constant (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_tvg_set_constant (HYSCAN_SONAR (source_info->device),
-                                        source, gain);
+  status = hyscan_sonar_tvg_set_constant (HYSCAN_SONAR (source_info->device),
+                                          source, gain);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->tvg_mode = HYSCAN_SONAR_TVG_MODE_CONSTANT;
+      source_mode->tvg_auto_level = 0.0;
+      source_mode->tvg_auto_sensitivity = 0.0;
+      g_clear_pointer (&source_mode->tvg_gains, g_free);
+      source_mode->tvg_n_gains = 0;
+      source_mode->tvg_constant_gain = gain;
+      source_mode->tvg_linear_gain0 = 0.0;
+      source_mode->tvg_linear_step = 0.0;
+      source_mode->tvg_logarithmic_gain0 = 0.0;
+      source_mode->tvg_logarithmic_beta = 0.0;
+      source_mode->tvg_logarithmic_alpha = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->tvg_set_linear_db. */
@@ -1119,6 +1311,8 @@ hyscan_control_sonar_tvg_set_linear_db (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1127,8 +1321,26 @@ hyscan_control_sonar_tvg_set_linear_db (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_tvg_set_linear_db (HYSCAN_SONAR (source_info->device),
-                                         source, gain0, gain_step);
+  status = hyscan_sonar_tvg_set_linear_db (HYSCAN_SONAR (source_info->device),
+                                           source, gain0, gain_step);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->tvg_mode = HYSCAN_SONAR_TVG_MODE_LINEAR_DB;
+      source_mode->tvg_auto_level = 0.0;
+      source_mode->tvg_auto_sensitivity = 0.0;
+      g_clear_pointer (&source_mode->tvg_gains, g_free);
+      source_mode->tvg_n_gains = 0;
+      source_mode->tvg_constant_gain = 0.0;
+      source_mode->tvg_linear_gain0 = gain0;
+      source_mode->tvg_linear_step = gain_step;
+      source_mode->tvg_logarithmic_gain0 = 0.0;
+      source_mode->tvg_logarithmic_beta = 0.0;
+      source_mode->tvg_logarithmic_alpha = 0.0;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->tvg_set_logarithmic. */
@@ -1143,6 +1355,8 @@ hyscan_control_sonar_tvg_set_logarithmic (HyScanSonar      *sonar,
   HyScanControlPrivate *priv = control->priv;
 
   HyScanControlSourceInfo *source_info;
+  HyScanControlSourceMode *source_mode;
+  gboolean status;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
@@ -1151,8 +1365,26 @@ hyscan_control_sonar_tvg_set_logarithmic (HyScanSonar      *sonar,
   if (source_info == NULL)
     return FALSE;
 
-  return hyscan_sonar_tvg_set_logarithmic (HYSCAN_SONAR (source_info->device),
-                                           source, gain0, beta, alpha);
+  status = hyscan_sonar_tvg_set_logarithmic (HYSCAN_SONAR (source_info->device),
+                                             source, gain0, beta, alpha);
+
+  if (status)
+    {
+      source_mode = source_info->mode;
+      source_mode->tvg_mode = HYSCAN_SONAR_TVG_MODE_LOGARITHMIC;
+      source_mode->tvg_auto_level = 0.0;
+      source_mode->tvg_auto_sensitivity = 0.0;
+      g_clear_pointer (&source_mode->tvg_gains, g_free);
+      source_mode->tvg_n_gains = 0;
+      source_mode->tvg_constant_gain = 0.0;
+      source_mode->tvg_linear_gain0 = 0.0;
+      source_mode->tvg_linear_step = 0.0;
+      source_mode->tvg_logarithmic_gain0 = gain0;
+      source_mode->tvg_logarithmic_beta = beta;
+      source_mode->tvg_logarithmic_alpha = alpha;
+    }
+
+  return status;
 }
 
 /* Метод HyScanSonar->set_software_ping. */
@@ -1313,25 +1545,10 @@ hyscan_control_sensor_set_sound_velocity (HyScanSensor *sensor,
   HyScanControl *control = HYSCAN_CONTROL (sensor);
   HyScanControlPrivate *priv = control->priv;
 
-  gboolean status = TRUE;
-
-  GHashTableIter iter;
-  gpointer device;
-
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
-  g_hash_table_iter_init (&iter, priv->devices);
-  while (g_hash_table_iter_next (&iter, NULL, &device))
-    {
-      if (!HYSCAN_IS_SENSOR (device))
-        continue;
-
-      if (!hyscan_sensor_set_sound_velocity (device, svp))
-        status = FALSE;
-    }
-
-  return status;
+  return hyscan_control_set_sound_velocity (priv, svp);
 }
 
 /* Метод HyScanSensor->set_enable. */
@@ -1342,6 +1559,7 @@ hyscan_control_sensor_set_enable (HyScanSensor *sensor,
 {
   HyScanControl *control = HYSCAN_CONTROL (sensor);
   HyScanControlPrivate *priv = control->priv;
+  gboolean status;
 
   HyScanControlSensorInfo *sensor_info;
 
@@ -1352,8 +1570,13 @@ hyscan_control_sensor_set_enable (HyScanSensor *sensor,
   if (sensor_info == NULL)
     return FALSE;
 
-  return hyscan_sensor_set_enable (HYSCAN_SENSOR (sensor_info->device),
-                                   name, enable);
+  status = hyscan_sensor_set_enable (HYSCAN_SENSOR (sensor_info->device),
+                                     name, enable);
+
+  if (status)
+    sensor_info->enable = enable;
+
+  return status;
 }
 
 /**
@@ -1491,6 +1714,7 @@ hyscan_control_device_add (HyScanControl *control,
 
           info->device = device;
           info->info = hyscan_sonar_info_source_copy (hyscan_sonar_info_get_source (sonar_info, sources[i]));
+          info->mode = g_new0 (HyScanControlSourceMode, 1);
 
           g_hash_table_insert (priv->sources, GINT_TO_POINTER (sources[i]), info);
         }
@@ -1669,70 +1893,6 @@ hyscan_control_devices_list (HyScanControl *control)
 }
 
 /**
- * hyscan_control_sensors_list:
- * @control: указатель на #HyScanControl
- *
- * Функция возвращает список датчиков. Список возвращается в виде NULL
- * терминированного массива строк с названиями датчиков. Список принадлежит
- * объекту #HyScanControl и не должен изменяться пользователем.
- *
- * Returns: (transfer none): Список портов или NULL.
- */
-const gchar * const *
-hyscan_control_sensors_list (HyScanControl *control)
-{
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
-
-  if (!g_atomic_int_get (&control->priv->binded))
-    return NULL;
-
-  return (const gchar **)control->priv->sensors_list;
-}
-
-/**
- * hyscan_control_sources_list:
- * @control: указатель на #HyScanControl
- * @n_sources: (out): число источников данных
- *
- * Функция возвращает список источников гидролокационных данных. Список
- * возвращается в виде массива элементов типа HyScanSourceType. Массив
- * принадлежит объекту #HyScanControl и не должен изменяться пользователем.
- *
- * Returns: (transfer none): Список источников данных или NULL.
- */
-const HyScanSourceType *
-hyscan_control_sources_list (HyScanControl *control,
-                             guint32       *n_sources)
-{
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
-
-  if (!g_atomic_int_get (&control->priv->binded))
-    return NULL;
-
-  *n_sources = control->priv->n_sources;
-
-  return control->priv->sources_list;
-}
-
-/**
- * hyscan_control_get_software_ping:
- * @control: указатель на #HyScanControl
- *
- * Функция возвращает признак программного управления синхронизацией излучения.
- * Программное управление излучением возможно только если все зарегистрированные
- * гидролокаторы поддерживают такую возможность.
- *
- * Returns: %TRUE если программное управление излучением возможно, иначе %FALSE.
- */
-gboolean
-hyscan_control_get_software_ping (HyScanControl *control)
-{
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  return g_atomic_int_get (&control->priv->software_ping);
-}
-
-/**
  * hyscan_control_device_get_status:
  * @control: указатель на #HyScanControl
  * @dev_id: идентификатор устройства
@@ -1790,28 +1950,119 @@ hyscan_control_device_get_status (HyScanControl *control,
 }
 
 /**
+ * hyscan_control_sensors_list:
+ * @control: указатель на #HyScanControl
+ *
+ * Функция возвращает список датчиков. Список возвращается в виде NULL
+ * терминированного массива строк с названиями датчиков. Список принадлежит
+ * объекту #HyScanControl и не должен изменяться пользователем.
+ *
+ * Returns: (transfer none): Список портов или NULL.
+ */
+const gchar * const *
+hyscan_control_sensors_list (HyScanControl *control)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
+
+  if (!g_atomic_int_get (&control->priv->binded))
+    return NULL;
+
+  return (const gchar **)control->priv->sensors_list;
+}
+
+/**
+ * hyscan_control_sources_list:
+ * @control: указатель на #HyScanControl
+ * @n_sources: (out): число источников данных
+ *
+ * Функция возвращает список источников гидролокационных данных. Список
+ * возвращается в виде массива элементов типа HyScanSourceType. Массив
+ * принадлежит объекту #HyScanControl и не должен изменяться пользователем.
+ *
+ * Returns: (transfer none): Список источников данных или NULL.
+ */
+const HyScanSourceType *
+hyscan_control_sources_list (HyScanControl *control,
+                             guint32       *n_sources)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
+
+  if (!g_atomic_int_get (&control->priv->binded))
+    return NULL;
+
+  *n_sources = control->priv->n_sources;
+
+  return control->priv->sources_list;
+}
+
+/**
+ * hyscan_control_get_sound_velocity:
+ * @control: указатель на #HyScanControl
+ *
+ * Функция возвращает таблицу профиля скорости звука.
+ *
+ * Returns: (nullable) (element-type HyScanSoundVelocity) (transfer full):
+ *          Таблица профиля скорости звука или NULL.
+ */
+GList *
+hyscan_control_get_sound_velocity (HyScanControl *control)
+{
+  GList *new_svp = NULL;
+  GList *cur_svp = NULL;
+
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
+
+  cur_svp = control->priv->svp;
+  while (cur_svp != NULL)
+    {
+      new_svp = g_list_prepend (new_svp, hyscan_sound_velocity_copy (cur_svp->data));
+      cur_svp = g_list_next (cur_svp);
+    }
+
+  return g_list_reverse (new_svp);
+}
+
+/**
+ * hyscan_control_get_software_ping:
+ * @control: указатель на #HyScanControl
+ *
+ * Функция возвращает признак программного управления синхронизацией излучения.
+ * Программное управление излучением возможно только если все зарегистрированные
+ * гидролокаторы поддерживают такую возможность.
+ *
+ * Returns: %TRUE если программное управление излучением возможно, иначе %FALSE.
+ */
+gboolean
+hyscan_control_get_software_ping (HyScanControl *control)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+
+  return g_atomic_int_get (&control->priv->software_ping);
+}
+
+/**
  * hyscan_control_sensor_get_info:
  * @control: указатель на #HyScanControl
  * @sensor: название датчика
  *
  * Функция возвращает параметры датчика.
  *
- * Returns: (transfer none): Параметры датчика или NULL.
+ * Returns: (nullable) (transfer none): Параметры датчика или NULL.
  */
 const HyScanSensorInfoSensor *
 hyscan_control_sensor_get_info (HyScanControl *control,
                                 const gchar   *sensor)
 {
-  HyScanControlSensorInfo *info;
+  HyScanControlSensorInfo *sensor_info;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
 
   if (!g_atomic_int_get (&control->priv->binded))
     return NULL;
 
-  info = g_hash_table_lookup (control->priv->sensors, sensor);
+  sensor_info = g_hash_table_lookup (control->priv->sensors, sensor);
 
-  return (info != NULL) ? info->info : NULL;
+  return (sensor_info != NULL) ? sensor_info->info : NULL;
 }
 
 /**
@@ -1821,22 +2072,22 @@ hyscan_control_sensor_get_info (HyScanControl *control,
  *
  * Функция возвращает параметры источника гидролокационных данных.
  *
- * Returns: (transfer none): Параметры гидролокационного источника данных или NULL.
+ * Returns: (nullable) (transfer none): Параметры гидролокационного источника данных или NULL.
  */
 const HyScanSonarInfoSource *
 hyscan_control_source_get_info (HyScanControl    *control,
                                 HyScanSourceType  source)
 {
-  HyScanControlSourceInfo *info;
+  HyScanControlSourceInfo *source_info;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
 
   if (!g_atomic_int_get (&control->priv->binded))
     return NULL;
 
-  info = g_hash_table_lookup (control->priv->sources, GINT_TO_POINTER (source));
+  source_info = g_hash_table_lookup (control->priv->sources, GINT_TO_POINTER (source));
 
-  return (info != NULL) ? info->info : NULL;
+  return (source_info != NULL) ? source_info->info : NULL;
 }
 
 /**
@@ -1858,7 +2109,7 @@ hyscan_control_sensor_set_position (HyScanControl               *control,
                                     const HyScanAntennaPosition *position)
 {
   HyScanControlPrivate *priv;
-  HyScanControlSensorInfo *info;
+  HyScanControlSensorInfo *sensor_info;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
@@ -1868,13 +2119,13 @@ hyscan_control_sensor_set_position (HyScanControl               *control,
   g_mutex_lock (&priv->lock);
 
   /* Если нет датчика или задано местоположение по умолчанию - выходим. */
-  info = g_hash_table_lookup (priv->sensors, sensor);
-  if ((info == NULL) || (info->info->position != NULL))
+  sensor_info = g_hash_table_lookup (priv->sensors, sensor);
+  if ((sensor_info == NULL) || (sensor_info->info->position != NULL))
     goto exit;
 
   /* Запоминаем новое местоположение. */
-  hyscan_antenna_position_free (info->position);
-  info->position = hyscan_antenna_position_copy (position);
+  hyscan_antenna_position_free (sensor_info->position);
+  sensor_info->position = hyscan_antenna_position_copy (position);
   hyscan_data_writer_sensor_set_position (priv->writer, sensor, position);
 
   status = TRUE;
@@ -1904,7 +2155,7 @@ hyscan_control_source_set_position (HyScanControl               *control,
                                     const HyScanAntennaPosition *position)
 {
   HyScanControlPrivate *priv;
-  HyScanControlSourceInfo *info;
+  HyScanControlSourceInfo *source_info;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
@@ -1914,13 +2165,13 @@ hyscan_control_source_set_position (HyScanControl               *control,
   g_mutex_lock (&priv->lock);
 
   /* Если нет источника или задано местоположение по умолчанию - выходим. */
-  info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
-  if ((info == NULL) || (info->info->position != NULL))
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if ((source_info == NULL) || (source_info->info->position != NULL))
     goto exit;
 
   /* Запоминаем новое местоположение. */
-  hyscan_antenna_position_free (info->position);
-  info->position = hyscan_antenna_position_copy (position);
+  hyscan_antenna_position_free (source_info->position);
+  source_info->position = hyscan_antenna_position_copy (position);
   hyscan_data_writer_sonar_set_position (priv->writer, source, position);
 
   status = TRUE;
@@ -1947,7 +2198,7 @@ hyscan_control_sensor_set_channel (HyScanControl *control,
                                    guint          channel)
 {
   HyScanControlPrivate *priv;
-  HyScanControlSensorInfo *info;
+  HyScanControlSensorInfo *sensor_info;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
 
@@ -1956,13 +2207,71 @@ hyscan_control_sensor_set_channel (HyScanControl *control,
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
-  info = g_hash_table_lookup (priv->sensors, sensor);
-  if (info == NULL)
+  sensor_info = g_hash_table_lookup (priv->sensors, sensor);
+  if (sensor_info == NULL)
     return FALSE;
 
-  g_atomic_int_set (&info->channel, channel);
+  g_atomic_int_set (&sensor_info->channel, channel);
 
   return TRUE;
+}
+
+/**
+ * hyscan_control_source_get_mode:
+ * @control: указатель на #HyScanControl
+ * @source: источник гидролокационных данных
+ *
+ * Функция возвращает текущий режим работы источника гидролокационных данных.
+ * Данные в возвращаемой структуре действительны только до следующего вызова
+ * функций #HyScanControl.
+ *
+ * Returns: (nullable) (transfer none): Режим работы источника гидролокационных
+ *          данных или NULL.
+ */
+const HyScanControlSourceMode *
+hyscan_control_source_get_mode (HyScanControl    *control,
+                                HyScanSourceType  source)
+{
+  HyScanControlSourceInfo *source_info;
+
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
+
+  if (!g_atomic_int_get (&control->priv->binded))
+    return NULL;
+
+  source_info = g_hash_table_lookup (control->priv->sources, GINT_TO_POINTER (source));
+
+  return (source_info != NULL) ? source_info->mode : NULL;
+}
+
+/**
+ * hyscan_control_sensor_get_enable:
+ * @control: указатель на #HyScanControl
+ * @sensor: название датчика
+ *
+ * Функция возвращает признак приёма данных датчиком.
+ *
+ * Returns: %TRUE если приём данных датчиком включён, иначе %FALSE.
+ */
+gboolean
+hyscan_control_sensor_get_enable (HyScanControl *control,
+                                  const gchar   *sensor)
+{
+  HyScanControlPrivate *priv;
+  HyScanControlSensorInfo *sensor_info;
+
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+
+  priv = control->priv;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  sensor_info = g_hash_table_lookup (priv->sensors, sensor);
+  if (sensor_info == NULL)
+    return FALSE;
+
+  return sensor_info->enable;
 }
 
 /**
