@@ -530,7 +530,7 @@ sensor_check_data (HyScanDB    *db,
 
   buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_core_get_channel_name (HYSCAN_SOURCE_NMEA_ANY, n_channel, HYSCAN_CHANNEL_DATA);
+  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_ANY, HYSCAN_CHANNEL_DATA, n_channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 
@@ -612,10 +612,10 @@ sonar_check_data (HyScanDB    *db,
   signal_buffer = hyscan_buffer_new ();
 
   source = sonar_get_type (channel);
-  data_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_DATA);
-  noise_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_NOISE);
-  signal_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_SIGNAL);
-  tvg_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_TVG);
+  data_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
+  noise_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
+  signal_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
+  tvg_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_TVG, channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, data_channel_name);
 

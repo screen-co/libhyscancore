@@ -546,9 +546,9 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
   gint32 channel_id;
 
   /* Канал записи данных. */
-  channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_DATA);
+  channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
   channel_id = hyscan_db_channel_create (priv->db, priv->track_id,
-                                                channel_name, SENSOR_CHANNEL_SCHEMA);
+                                         channel_name, SENSOR_CHANNEL_SCHEMA);
   if (channel_id < 0)
     goto exit;
 
@@ -606,10 +606,10 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
   gint32 tvg_id = -1;
 
   /* Название канала для данных. */
-  data_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_DATA);
-  noise_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_NOISE);
-  signal_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_SIGNAL);
-  tvg_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_TVG);
+  data_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
+  noise_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
+  signal_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
+  tvg_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_TVG, channel);
 
   /* Каналы образов сигналов. */
   signal_id = hyscan_db_channel_create (priv->db, priv->track_id,

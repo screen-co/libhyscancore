@@ -336,12 +336,15 @@ hyscan_acoustic_data_object_constructed (GObject *object)
     }
 
   /* Открываем канал с данными. */
-  data_channel_name = hyscan_core_get_channel_name (priv->source, priv->channel,
-                        priv->noise ? HYSCAN_CHANNEL_NOISE : HYSCAN_CHANNEL_DATA);
-  signal_channel_name = hyscan_core_get_channel_name (priv->source, priv->channel,
-                                                      HYSCAN_CHANNEL_SIGNAL);
-  tvg_channel_name = hyscan_core_get_channel_name (priv->source, priv->channel,
-                                                   HYSCAN_CHANNEL_TVG);
+  data_channel_name = hyscan_channel_get_name_by_types (priv->source,
+                        priv->noise ? HYSCAN_CHANNEL_NOISE : HYSCAN_CHANNEL_DATA,
+                        priv->channel);
+  signal_channel_name = hyscan_channel_get_name_by_types (priv->source,
+                                                          HYSCAN_CHANNEL_SIGNAL,
+                                                          priv->channel);
+  tvg_channel_name = hyscan_channel_get_name_by_types (priv->source,
+                                                       HYSCAN_CHANNEL_TVG,
+                                                       priv->channel);
   if ((data_channel_name == NULL) ||
       (signal_channel_name == NULL) ||
       (tvg_channel_name == NULL))
