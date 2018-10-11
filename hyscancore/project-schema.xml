@@ -3,7 +3,7 @@
   <schema id="project-info">
     <node id="schema">
       <key id="id" name="Project info schema id" type="integer" access="readonly">
-        <default>14957522439000670309</default>
+        <default>1495752243900067309</default>
       </key>
       <key id="version" name="Project info schema version" type="integer" access="readonly">
         <default>20180100</default>
@@ -24,6 +24,7 @@
         <default>20180100</default>
       </key>
     </node>
+    <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
     <key id="description" name="Track description" type="string"/>
   </schema>
 </schemalist>

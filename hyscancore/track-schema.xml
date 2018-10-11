@@ -32,7 +32,7 @@
   <schema id="track">
     <node id="schema">
       <key id="id" name="Track schema id" type="integer" access="readonly">
-        <default>17150337095585290337</default>
+        <default>1715033709558529337</default>
       </key>
       <key id="version" name="Track schema version" type="integer" access="readonly">
         <default>20180100</default>
@@ -54,7 +54,6 @@
         <default>20180100</default>
       </key>
     </node>
-    <key id="ctime" name="Creation date and time" type="integer" view="datetime"/>
   </schema>
 
   <schema id="sensor">
@@ -67,7 +66,6 @@
       </key>
     </node>
     <node id="position" schema="position"/>
-    <key id="ctime" name="Creation date and time" type="integer" view="datetime"/>
   </schema>
 
   <schema id="acoustic">
@@ -79,7 +77,6 @@
         <default>20180100</default>
       </key>
     </node>
-    <key id="ctime" name="Creation date and time" type="integer" view="datetime"/>
     <node id="position" schema="position"/>
     <node id="data" schema="data"/>
     <node id="signal">
