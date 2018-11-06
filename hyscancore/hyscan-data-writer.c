@@ -364,9 +364,13 @@ hyscan_data_writer_create_project (HyScanDB    *db,
                                    GRand       *rand)
 {
   gboolean status = FALSE;
-  gboolean new_project = FALSE;
-  GBytes *project_schema;
+
+  gchar project_ids[33] = {0};
   gint32 project_id = -1;
+  gint32 param_id = -1;
+
+  HyScanParamList *param_list = NULL;
+  GBytes *project_schema;
 
   /* Схема проекта. */
   project_schema = g_resources_lookup_data ("/org/hyscan/schemas/project-schema.xml",
@@ -377,47 +381,44 @@ hyscan_data_writer_create_project (HyScanDB    *db,
       return FALSE;
     }
 
-  /* Создаём проект или открываем его если он уже существует. */
-  project_id = hyscan_db_project_create (db, project_name, g_bytes_get_data (project_schema, NULL));
+  /* Создаём проект или открываем если он уже существует. */
+  project_id = hyscan_db_project_create (db, project_name,
+                                         g_bytes_get_data (project_schema, NULL));
   if (project_id == 0)
-    project_id = hyscan_db_project_open (db, project_name);
-  else if (project_id > 0)
-    new_project = TRUE;
-  else
-    goto exit;
-
-  /* Устанавливаем дату и время создания проекта. */
-  if (new_project)
     {
-      gint32 param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
+      project_id = hyscan_db_project_open (db, project_name);
+    }
+  else if (project_id > 0)
+    {
+      param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
       if (param_id < 0)
         goto exit;
 
-      if (hyscan_db_param_object_create (db, param_id, PROJECT_INFO_OBJECT, PROJECT_INFO_SCHEMA))
-        {
-          HyScanParamList *param_list;
-          gchar project_id[33] = {0};
+      if (!hyscan_db_param_object_create (db, param_id, PROJECT_INFO_OBJECT, PROJECT_INFO_SCHEMA))
+        goto exit;
 
-          param_list = hyscan_param_list_new ();
-          hyscan_data_writer_get_id (rand, project_id, sizeof (project_id));
+      hyscan_data_writer_get_id (rand, project_ids, sizeof (project_ids));
+      param_list = hyscan_param_list_new ();
 
-          hyscan_param_list_set_string (param_list, "/id", project_id);
-          hyscan_param_list_set_integer (param_list, "/ctime", date_time);
+      hyscan_param_list_set_string (param_list, "/id", project_ids);
+      hyscan_param_list_set_integer (param_list, "/ctime", date_time);
+      hyscan_param_list_set_integer (param_list, "/mtime", date_time);
 
-          status = hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list);
-
-          g_object_unref (param_list);
-        }
-
-      hyscan_db_close (db, param_id);
+      status = hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list);
     }
   else
     {
-      status = TRUE;
+      goto exit;
     }
+
+  status = TRUE;
 
 exit:
   g_bytes_unref (project_schema);
+  g_clear_object (&param_list);
+
+  if (param_id > 0)
+    hyscan_db_close (db, param_id);
 
   if (project_id > 0)
     hyscan_db_close (db, project_id);
@@ -438,10 +439,12 @@ hyscan_data_writer_create_track (HyScanDB        *db,
 {
   gboolean status = FALSE;
 
+  gchar track_ids[33] = {0};
   gint32 track_id = -1;
   gint32 param_id = -1;
 
-  HyScanParamList *param_list;
+  HyScanParamList *param_list = NULL;
+  const gchar *track_type_name;
   GBytes *track_schema;
 
   /* Схема галса. */
@@ -453,57 +456,61 @@ hyscan_data_writer_create_track (HyScanDB        *db,
       return FALSE;
     }
 
+  track_type_name = hyscan_track_get_name_by_type (track_type);
+  if (track_type_name == NULL)
+    goto exit;
+
   /* Создаём галс. Галс не должен существовать. */
   track_id = hyscan_db_track_create (db, project_id, track_name,
                                      g_bytes_get_data (track_schema, NULL), TRACK_SCHEMA);
   if (track_id <= 0)
     goto exit;
 
-  param_list = hyscan_param_list_new ();
-
   /* Параметры галса. */
   param_id = hyscan_db_track_param_open (db, track_id);
-  if (param_id > 0)
-    {
-      const gchar *track_type_name;
-      gchar track_id[33] = {0};
+  if (param_id <= 0)
+    goto exit;
 
-      hyscan_data_writer_get_id (rand, track_id, sizeof (track_id));
-      track_type_name = hyscan_track_get_name_by_type (track_type);
+  hyscan_data_writer_get_id (rand, track_ids, sizeof (track_ids));
+  param_list = hyscan_param_list_new ();
 
-      hyscan_param_list_set_string (param_list, "/id", track_id);
-      hyscan_param_list_set_integer (param_list, "/ctime", date_time);
-      if (track_type_name != NULL)
-        hyscan_param_list_set_string (param_list, "/type", track_type_name);
-      if (operator != NULL)
-        hyscan_param_list_set_string (param_list, "/operator", operator);
-      if (sonar != NULL)
-        hyscan_param_list_set_string (param_list, "/sonar", sonar);
+  hyscan_param_list_set_string (param_list, "/id", track_ids);
+  hyscan_param_list_set_integer (param_list, "/ctime", date_time);
+  hyscan_param_list_set_string (param_list, "/type", track_type_name);
+  hyscan_param_list_set_string (param_list, "/operator", operator);
+  hyscan_param_list_set_string (param_list, "/sonar", sonar);
+  if (!hyscan_db_param_set (db, param_id, NULL, param_list))
+    goto exit;
 
-      status = hyscan_db_param_set (db, param_id, NULL, param_list);
+  /* Параметры проекта. */
+  hyscan_db_close (db, param_id);
+  param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
+  if (param_id <= 0)
+    goto exit;
 
-      hyscan_db_close (db, param_id);
-    }
+  /* Обновляем дату и время изменения проекта. */
+  hyscan_param_list_clear (param_list);
+  hyscan_param_list_set_integer (param_list, "/mtime", date_time);
+  if (!hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list))
+    goto exit;
 
-  if (!status)
+  /* Дополнительная информация о галсе. */
+  if (!hyscan_db_param_object_create (db, param_id, track_ids, TRACK_INFO_SCHEMA))
     goto exit;
 
   hyscan_param_list_clear (param_list);
-  status = FALSE;
+  hyscan_param_list_set_integer (param_list, "/mtime", date_time);
+  if (!hyscan_db_param_set (db, param_id, track_ids, param_list))
+    goto exit;
 
-  /* Обновляем дату и время изменения проекта. */
-  param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
-  if (param_id > 0)
-    {
-      hyscan_param_list_set_integer (param_list, "/mtime", date_time);
-      status = hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list);
-      hyscan_db_close (db, param_id);
-    }
-
-  g_object_unref (param_list);
+  status = TRUE;
 
 exit:
   g_bytes_unref (track_schema);
+  g_clear_object (&param_list);
+
+  if (param_id > 0)
+    hyscan_db_close (db, param_id);
 
   if ((!status) && (track_id > 0))
     {
