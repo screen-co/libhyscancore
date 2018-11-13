@@ -226,7 +226,6 @@ hyscan_dummy_device_object_constructed (GObject *object)
   HyScanDataSchemaBuilder *builder;
   HyScanSensorSchema *sensor_schema;
   HyScanSonarSchema *sonar_schema;
-  gchar *schema_data;
 
   gint32 uniq_value;
   gchar *key_id;
@@ -311,9 +310,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
   hyscan_data_schema_builder_key_string_create (builder, key_id, "id", NULL, NULL);
   g_hash_table_insert (priv->params, key_id, HYSCAN_DEVICE_SCHEMA_STATUS_ERROR);
 
-  schema_data = hyscan_data_schema_builder_get_data (builder);
-  priv->schema = hyscan_data_schema_new_from_string (schema_data, "device");
-  g_free (schema_data);
+  priv->schema = hyscan_data_schema_builder_get_schema (builder);
 
   g_object_unref (sensor_schema);
   g_object_unref (sonar_schema);

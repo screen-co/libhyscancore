@@ -519,12 +519,10 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
     }
 
   /* Создаём схему. */
-  data = hyscan_data_schema_builder_get_data (builder);
-  priv->schema = hyscan_data_schema_new_from_string (data, "control");
-  g_free (data);
+  priv->schema = hyscan_data_schema_builder_get_schema (builder);
+  g_object_unref (builder);
 
   /* Информация об устройствах для записи в галс. */
-  g_object_unref (builder);
   builder = hyscan_data_schema_builder_new ("info");
   hyscan_data_schema_builder_schema_join (builder, "/info", priv->schema, "/info");
   hyscan_data_schema_builder_schema_join (builder, "/sources", priv->schema, "/sources");
