@@ -598,6 +598,22 @@ check_sensor_set_enable (const gchar *sensor_name)
 }
 
 void
+check_sensor_disconnect (void)
+{
+  if (!hyscan_sensor_disconnect (sensor))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_disconnect (device1) ||
+      !hyscan_dummy_device_check_disconnect (device2))
+    {
+      g_error ("param failed");
+    }
+
+  hyscan_dummy_device_reconnect (device1);
+  hyscan_dummy_device_reconnect (device2);
+}
+
+void
 check_sonar_set_sound_velocity (void)
 {
   HyScanSoundVelocity orig_value[2];
@@ -974,6 +990,22 @@ check_sonar_ping (void)
 }
 
 void
+check_sonar_disconnect (void)
+{
+  if (!hyscan_sonar_disconnect (sonar))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_disconnect (device1) ||
+      !hyscan_dummy_device_check_disconnect (device2))
+    {
+      g_error ("param failed");
+    }
+
+  hyscan_dummy_device_reconnect (device1);
+  hyscan_dummy_device_reconnect (device2);
+}
+
+void
 check_sensor_data (const gchar *sensor)
 {
   guint channel;
@@ -1261,6 +1293,9 @@ main (int    argc,
   for (i = 0; sensors[i] != NULL; i++)
     check_sensor_set_enable (sensors[i]);
 
+  g_message ("Check hyscan_sensor_disconnect");
+  check_sensor_disconnect ();
+
   g_message ("Check hyscan_sonar_set_sound_velocity");
   check_sonar_set_sound_velocity ();
 
@@ -1328,6 +1363,9 @@ main (int    argc,
 
   g_message ("Check hyscan_sonar_ping");
   check_sonar_ping ();
+
+  g_message ("Check hyscan_sonar_disconnect");
+  check_sonar_disconnect ();
 
   g_message ("Check sensor data");
   for (i = 0; sensors[i] != NULL; i++)

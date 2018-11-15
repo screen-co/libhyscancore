@@ -42,7 +42,10 @@
  * и #HyScanSonar. Таким образом он сам является драйвером устройства и может
  * быть зарегистрирован в другом экземпляре класса управления HyScanControl.
  *
- * Создание объекта управления производится с помощью функции #hyscan_control_new.
+ * Создание объекта управления производится с помощью функции
+ * #hyscan_control_new. При удалении объекта производится автоматическое
+ * отключение от всех устройств с помощью функций #hyscan_sonar_disconnect
+ * и #hyscan_sensor_disconnect.
  *
  * Класс имеет возможность управлять несколькими датчиками и гидролокаторами
  * одновременно. Для этого необходимо загрузить драйвер (#HyScanDriver) и
@@ -178,6 +181,8 @@ static void        hyscan_control_create_device_schema         (HyScanControlPri
 static gboolean    hyscan_control_set_sound_velocity           (HyScanControlPrivate           *priv,
                                                                 GList                          *svp);
 
+static gboolean    hyscan_control_disconnect                   (HyScanControlPrivate           *priv);
+
 static void        hyscan_control_sensor_data                  (HyScanDevice                   *device,
                                                                 const gchar                    *sensor,
                                                                 HyScanSourceType                source,
@@ -304,12 +309,16 @@ static gboolean    hyscan_control_sonar_sync                   (HyScanSonar     
 
 static gboolean    hyscan_control_sonar_ping                   (HyScanSonar                    *sonar);
 
+static gboolean    hyscan_control_sonar_disconnect             (HyScanSonar                    *sonar);
+
 static gboolean    hyscan_control_sensor_set_sound_velocity    (HyScanSensor                   *sensor,
                                                                 GList                          *svp);
 
 static gboolean    hyscan_control_sensor_set_enable            (HyScanSensor                   *sensor,
                                                                 const gchar                    *name,
                                                                 gboolean                        enable);
+
+static gboolean    hyscan_control_sensor_disconnect            (HyScanSensor                   *sensor);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanControl, hyscan_control, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanControl)
@@ -369,6 +378,8 @@ hyscan_control_object_finalize (GObject *object)
   g_hash_table_iter_init (&iter, priv->devices);
   while (g_hash_table_iter_next (&iter, &key, &value))
     g_signal_handlers_disconnect_by_data (value, control);
+
+  hyscan_control_disconnect (priv);
 
   g_free (priv->devices_list);
   g_free (priv->sources_list);
@@ -537,7 +548,6 @@ exit:
   g_object_unref (builder);
 }
 
-
 /* Функция задаёт таблицу профиля скорости звука для всех устройств. */
 static gboolean
 hyscan_control_set_sound_velocity (HyScanControlPrivate *priv,
@@ -575,6 +585,33 @@ hyscan_control_set_sound_velocity (HyScanControlPrivate *priv,
         }
 
       priv->svp = g_list_reverse (new_svp);
+    }
+
+  return status;
+}
+
+/* Функция выполняет отключение от всех устройств. */
+static gboolean
+hyscan_control_disconnect (HyScanControlPrivate *priv)
+{
+  gboolean status = TRUE;
+
+  GHashTableIter iter;
+  gpointer device;
+
+  g_hash_table_iter_init (&iter, priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &device))
+    {
+      if (HYSCAN_IS_SONAR (device))
+        {
+          if (!hyscan_sonar_disconnect (device))
+            status = FALSE;
+        }
+      if (HYSCAN_IS_SENSOR (device))
+        {
+          if (!hyscan_sensor_disconnect (device))
+            status = FALSE;
+        }
     }
 
   return status;
@@ -1535,6 +1572,19 @@ hyscan_control_sonar_ping (HyScanSonar *sonar)
   return status;
 }
 
+/* Метод HyScanSonar->disconnect. */
+static gboolean
+hyscan_control_sonar_disconnect (HyScanSonar *sonar)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  return hyscan_control_disconnect (priv);
+}
+
 /* Метод HyScanSensor->set_sound_velocity. */
 static gboolean
 hyscan_control_sensor_set_sound_velocity (HyScanSensor *sensor,
@@ -1575,6 +1625,19 @@ hyscan_control_sensor_set_enable (HyScanSensor *sensor,
     sensor_info->enable = enable;
 
   return status;
+}
+
+/* Метод HyScanSensor->disconnect. */
+static gboolean
+hyscan_control_sensor_disconnect (HyScanSensor *sensor)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sensor);
+  HyScanControlPrivate *priv = control->priv;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  return hyscan_control_disconnect (priv);
 }
 
 /**
@@ -2353,6 +2416,7 @@ hyscan_control_sonar_interface_init (HyScanSonarInterface *iface)
   iface->stop = hyscan_control_sonar_stop;
   iface->sync = hyscan_control_sonar_sync;
   iface->ping = hyscan_control_sonar_ping;
+  iface->disconnect = hyscan_control_sonar_disconnect;
 }
 
 static void
@@ -2360,4 +2424,5 @@ hyscan_control_sensor_interface_init (HyScanSensorInterface *iface)
 {
   iface->set_sound_velocity = hyscan_control_sensor_set_sound_velocity;
   iface->set_enable = hyscan_control_sensor_set_enable;
+  iface->disconnect = hyscan_control_sensor_disconnect;
 }
