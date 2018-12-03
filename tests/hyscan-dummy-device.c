@@ -818,12 +818,12 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       info = hyscan_dummy_device_get_acoustic_info (source);
 
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_complex_float (data, cdata, n_points);
+      hyscan_buffer_wrap_data (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
       g_signal_emit_by_name (dummy, "sonar-signal", source, 1, time, data);
       g_signal_emit_by_name (dummy, "sonar-acoustic-data", source, 1, FALSE, time, info, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_float (data, fdata, n_points);
+      hyscan_buffer_wrap_data (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
       g_signal_emit_by_name (dummy, "sonar-tvg", source, 1, time, data);
 
       hyscan_acoustic_data_info_free (info);
@@ -1823,7 +1823,7 @@ hyscan_dummy_device_get_acoustic_info (HyScanSourceType source)
 {
   HyScanAcousticDataInfo info;
 
-  info.data_type = HYSCAN_DATA_COMPLEX_FLOAT;
+  info.data_type = HYSCAN_DATA_COMPLEX_FLOAT32LE;
   info.data_rate = 2.0 * source;
   info.signal_frequency = 3.0 * source;
   info.signal_bandwidth = 4.0 * source;

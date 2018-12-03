@@ -487,8 +487,6 @@ hyscan_acoustic_data_object_constructed (GObject *object)
 
   hyscan_buffer_set_data_type (priv->real_buffer, HYSCAN_DATA_FLOAT);
   hyscan_buffer_set_data_type (priv->complex_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
-  hyscan_buffer_set_data_type (priv->real_buffer, HYSCAN_DATA_FLOAT);
-  hyscan_buffer_set_data_type (priv->channel_buffer, priv->info.data_type);
 
   status = TRUE;
 
@@ -665,6 +663,10 @@ hyscan_acoustic_data_load_signals (HyScanAcousticDataPrivate *priv)
       if (!status)
         return;
 
+      hyscan_buffer_set_data_type (priv->channel_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE);
+      if (!hyscan_buffer_import_data (priv->complex_buffer, priv->channel_buffer))
+        return;
+
       image = hyscan_buffer_get_data (priv->channel_buffer, &size);
 
       /* Ищем индекс данных с которого начинает действовать сигнал. */
@@ -750,6 +752,7 @@ hyscan_acoustic_data_read_channel_data (HyScanAcousticDataPrivate *priv,
     return FALSE;
 
   /* Импорт данных. */
+  hyscan_buffer_set_data_type (priv->channel_buffer, priv->info.data_type);
   if (priv->discretization == HYSCAN_DISCRETIZATION_REAL)
     {
       if (!hyscan_buffer_import_data (priv->real_buffer, priv->channel_buffer))
@@ -1500,7 +1503,11 @@ hyscan_acoustic_data_get_tvg (HyScanAcousticData *data,
     return NULL;
 
   /* Если в кэше ничего нет, считываем данные из базы. */
-  if (!hyscan_db_channel_get_data (priv->db, priv->tvg_id, tvg_index, priv->real_buffer, &priv->data_time))
+  if (!hyscan_db_channel_get_data (priv->db, priv->tvg_id, tvg_index, priv->channel_buffer, &priv->data_time))
+    return NULL;
+
+  hyscan_buffer_set_data_type (priv->channel_buffer, HYSCAN_DATA_FLOAT32LE);
+  if (!hyscan_buffer_import_data (priv->real_buffer, priv->channel_buffer))
     return NULL;
 
   /* Сохраняем данные в кэше. */

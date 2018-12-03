@@ -301,7 +301,6 @@ int main( int argc, char **argv )
   }
 
   /* Параметры данных. */
-  info.data_type = HYSCAN_DATA_COMPLEX_ADC_16LE;
   info.data_rate = 150000.0;
   info.antenna_voffset = 0.0;
   info.antenna_hoffset = 0.0;

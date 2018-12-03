@@ -136,7 +136,7 @@ acoustic_get_info (guint n_channel)
 {
   HyScanAcousticDataInfo info;
 
-  info.data_type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
+  info.data_type = HYSCAN_DATA_ADC14LE + (n_channel % 2);
   info.data_rate = 1000.0 * n_channel;
 
   info.signal_frequency = 1.0 * n_channel;
@@ -409,15 +409,15 @@ sonar_add_data (HyScanDataWriter *writer,
   acoustic_info = acoustic_get_info (channel);
 
   data_values = g_new (guint16, DATA_SIZE);
-  hyscan_buffer_wrap_data (data_buffer, HYSCAN_DATA_BLOB,
+  hyscan_buffer_wrap_data (data_buffer, acoustic_info.data_type,
                            data_values, DATA_SIZE * sizeof (guint16));
 
   signal_points = g_new (HyScanComplexFloat, SIGNAL_SIZE);
-  hyscan_buffer_wrap_data (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT,
+  hyscan_buffer_wrap_data (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE,
                            signal_points, SIGNAL_SIZE * sizeof (HyScanComplexFloat));
 
   tvg_gains = g_new (gfloat, TVG_SIZE);
-  hyscan_buffer_wrap_data (tvg_buffer, HYSCAN_DATA_FLOAT,
+  hyscan_buffer_wrap_data (tvg_buffer, HYSCAN_DATA_FLOAT32LE,
                            tvg_gains, TVG_SIZE * sizeof (gfloat));
 
   source = sonar_get_type (channel);

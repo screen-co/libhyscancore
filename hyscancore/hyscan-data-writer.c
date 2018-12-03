@@ -291,7 +291,7 @@ hyscan_data_writer_sensor_channel_free (gpointer data)
 
   hyscan_db_close (info->db, info->data_id);
 
-  g_free (info);
+  g_slice_free (HyScanDataWriterSensorChannel, info);
 }
 
 /* Функция освобождает память занятую структурой HyScanDataWriterAcousticChannel. */
@@ -309,7 +309,7 @@ hyscan_data_writer_sonar_channel_free (gpointer data)
   if (info->tvg_id > 0)
     hyscan_db_close (info->db, info->tvg_id);
 
-  g_free (info);
+  g_slice_free (HyScanDataWriterSonarChannel, info);
 }
 
 /* Функция освобождает память занятую структурой HyScanDataWriterSignal. */
@@ -320,7 +320,7 @@ hyscan_data_writer_raw_signal_free (gpointer data)
 
   g_object_unref (signal->image);
 
-  g_free (signal);
+  g_slice_free (HyScanDataWriterSignal, signal);
 }
 
 /* Функция освобождает память занятую структурой HyScanDataWriterGain. */
@@ -331,7 +331,7 @@ hyscan_data_writer_raw_gain_free (gpointer data)
 
   g_object_unref (tvg->gains);
 
-  g_free (tvg);
+  g_slice_free (HyScanDataWriterTVG, tvg);
 }
 
 /* Функция создаёт уникальный идентификатор. */
@@ -571,7 +571,7 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
       g_info ("HyScanDataWriter: unspecified antenna position for sensor %s", sensor);
     }
 
-  channel_info = g_new0 (HyScanDataWriterSensorChannel, 1);
+  channel_info = g_slice_new0 (HyScanDataWriterSensorChannel);
   channel_info->db = priv->db;
   channel_info->source = source;
   channel_info->channel = channel;
@@ -733,7 +733,7 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
     }
 
   /* Информация о канале записи гидроакустических данных. */
-  channel_info = g_new0 (HyScanDataWriterSonarChannel, 1);
+  channel_info = g_slice_new0 (HyScanDataWriterSonarChannel);
   channel_info->db = priv->db;
   channel_info->source = source;
   channel_info->channel = channel;
@@ -1289,6 +1289,10 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
   if (!hyscan_source_is_sonar (source))
     return FALSE;
 
+  /* Проверяем совпадение типа данных. */
+  if (hyscan_buffer_get_data_type (data) != info->data_type)
+    return FALSE;
+
   g_mutex_lock (&priv->lock);
 
   /* Работа без системы хранения. */
@@ -1356,7 +1360,7 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
 {
   HyScanDataWriterPrivate *priv;
   HyScanDataWriterSonarChannel *channel_info;
-  HyScanDataWriterSignal *cur_signal;
+  HyScanDataWriterSignal *signal;
   gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
@@ -1364,7 +1368,7 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
   priv = writer->priv;
 
   /* Проверяем тип данных в буфере. */
-  if (hyscan_buffer_get_data_type (image) != HYSCAN_DATA_COMPLEX_FLOAT)
+  if ((image != NULL) && (hyscan_buffer_get_data_type (image) != HYSCAN_DATA_COMPLEX_FLOAT32LE))
     return FALSE;
 
   /* Проверяем тип данных на соответствие гидролокационным данным. */
@@ -1385,29 +1389,29 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
     goto exit;
 
   /* Ищем текущий образ или создаём новую запись. */
-  cur_signal = g_hash_table_lookup (priv->signals,
+  signal = g_hash_table_lookup (priv->signals,
                                     hyscan_data_writer_uniq_channel (source, channel));
-  if (cur_signal == NULL)
+  if (signal == NULL)
     {
-      cur_signal = g_new0 (HyScanDataWriterSignal, 1);
-      cur_signal->image = hyscan_buffer_new ();
+      signal = g_slice_new0 (HyScanDataWriterSignal);
+      signal->image = hyscan_buffer_new ();
 
       g_hash_table_insert (priv->signals,
                            hyscan_data_writer_uniq_channel (source, channel),
-                           cur_signal);
+                           signal);
     }
 
   /* Запоминаем текущий образ сигнала. */
   if (image != NULL)
     {
-      hyscan_buffer_import_data (cur_signal->image, image);
+      hyscan_buffer_copy_data (signal->image, image);
     }
   else
     {
-      HyScanComplexFloat zero = {0.0, 0.0};
-      hyscan_buffer_set_complex_float (cur_signal->image, &zero, 1);
+      guint32 zero[2] = {0, 0};
+      hyscan_buffer_set_data (signal->image, HYSCAN_DATA_COMPLEX_FLOAT32LE, &zero, sizeof (zero));
     }
-  cur_signal->time = time;
+  signal->time = time;
 
   /* Записываем образ сигнала. */
   channel_info = g_hash_table_lookup (priv->sonar_channels,
@@ -1415,7 +1419,7 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
   if (channel_info != NULL)
     {
       status = hyscan_db_channel_add_data (priv->db, channel_info->signal_id,
-                                           cur_signal->time, cur_signal->image, NULL);
+                                           signal->time, signal->image, NULL);
       if (!status)
         {
           g_warning ("HyScanDataWriter: %s.%s.%s: can't add signal",
@@ -1464,7 +1468,7 @@ hyscan_data_writer_acoustic_add_tvg (HyScanDataWriter *writer,
   priv = writer->priv;
 
   /* Проверяем тип данных в буфере. */
-  if (hyscan_buffer_get_data_type (gains) != HYSCAN_DATA_FLOAT)
+  if (hyscan_buffer_get_data_type (gains) != HYSCAN_DATA_FLOAT32LE)
     return FALSE;
 
   /* Проверяем тип данных на соответствие гидролокационным данным. */
@@ -1489,7 +1493,7 @@ hyscan_data_writer_acoustic_add_tvg (HyScanDataWriter *writer,
                                  hyscan_data_writer_uniq_channel (source, channel));
   if (cur_tvg == NULL)
     {
-      cur_tvg = g_new0 (HyScanDataWriterTVG, 1);
+      cur_tvg = g_slice_new0 (HyScanDataWriterTVG);
       cur_tvg->gains = hyscan_buffer_new ();
 
       g_hash_table_insert (priv->tvg,
@@ -1498,7 +1502,7 @@ hyscan_data_writer_acoustic_add_tvg (HyScanDataWriter *writer,
     }
 
   /* Запоминаем текущие параметры ВАРУ. */
-  hyscan_buffer_import_data (cur_tvg->gains, gains);
+  hyscan_buffer_copy_data (cur_tvg->gains, gains);
   cur_tvg->time = time;
 
   /* Записываем параметры ВАРУ. */
