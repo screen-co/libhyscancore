@@ -478,6 +478,7 @@ hyscan_nmea_parser_get_token (HyScanNavData *navdata)
 
 /* Функция возвращает значение счётчика изменений. */
 static guint32
+
 hyscan_nmea_parser_get_mod_count (HyScanNavData *navdata)
 {
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);

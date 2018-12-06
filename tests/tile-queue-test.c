@@ -94,7 +94,7 @@ main (int argc, char **argv)
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
 
   hyscan_data_writer_set_db (writer, db);
-  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
     FAIL ("Couldn't start data writer.");
 
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)

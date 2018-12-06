@@ -42,6 +42,8 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-data-writer.c
              hyscan-amplitude.c
              hyscan-acoustic-data.c
+             hyscan-amplitude-simple.c
+             hyscan-amplitude-factory.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
              hyscan-forward-look-player.c
@@ -87,6 +89,8 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
 install (FILES hyscan-data-writer.h
                hyscan-amplitude.h
                hyscan-acoustic-data.h
+               hyscan-amplitude-simple.h
+               hyscan-amplitude-factory.h
                hyscan-forward-look-data.h
                hyscan-nmea-data.h
                hyscan-forward-look-player.h
