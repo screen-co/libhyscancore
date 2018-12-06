@@ -33,9 +33,10 @@ struct _HyScanmLocClass
 
 GType                   hyscan_mloc_get_type         (void);
 
-HyScanmLoc             *hyscan_mloc_new              (HyScanDB       *db,
-                                                      const gchar    *project,
-                                                      const gchar    *track);
+HyScanmLoc             *hyscan_mloc_new              (HyScanDB              *db,
+                                                      HyScanCache           *cache,
+                                                      const gchar           *project,
+                                                      const gchar           *track);
 
 gboolean                hyscan_mloc_get              (HyScanmLoc            *mloc,
                                                       gint64                 time,

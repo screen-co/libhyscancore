@@ -36,6 +36,7 @@
 #define __HYSCAN_NMEA_PARSER_H__
 
 #include <hyscan-nav-data.h>
+#include <hyscan-nmea-data.h>
 
 G_BEGIN_DECLS
 
@@ -52,7 +53,7 @@ typedef struct _HyScanNMEAParserClass HyScanNMEAParserClass;
 
 struct _HyScanNMEAParser
 {
-  GObject parent_instance;
+  GObject                  parent_instance;
 
   HyScanNMEAParserPrivate *priv;
 };
@@ -102,6 +103,7 @@ GType                   hyscan_nmea_parser_get_type      (void);
 
 HYSCAN_API
 HyScanNMEAParser*       hyscan_nmea_parser_new           (HyScanDB         *db,
+                                                          HyScanCache      *cache,
                                                           const gchar      *project,
                                                           const gchar      *track,
                                                           HyScanSourceType  source_type,

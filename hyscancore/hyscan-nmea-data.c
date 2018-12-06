@@ -59,6 +59,7 @@
 enum
 {
   PROP_O,
+  PROP_CACHE,
   PROP_DB,
   PROP_PROJECT_NAME,
   PROP_TRACK_NAME,
@@ -101,6 +102,10 @@ static void      hyscan_nmea_data_set_property          (GObject               *
                                                          guint                  prop_id,
                                                          const GValue          *value,
                                                          GParamSpec            *pspec);
+static void      hyscan_nmea_data_get_property          (GObject               *object,
+                                                         guint                  property_id,
+                                                         GValue                *value,
+                                                         GParamSpec            *pspec);
 static void      hyscan_nmea_data_object_constructed    (GObject               *object);
 static void      hyscan_nmea_data_object_finalize       (GObject               *object);
 
@@ -118,29 +123,33 @@ hyscan_nmea_data_class_init (HyScanNMEADataClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->set_property = hyscan_nmea_data_set_property;
+  object_class->get_property = hyscan_nmea_data_get_property;
 
   object_class->constructed = hyscan_nmea_data_object_constructed;
   object_class->finalize = hyscan_nmea_data_object_finalize;
 
+  g_object_class_install_property (object_class, PROP_CACHE,
+    g_param_spec_object ("cache", "Cache", "HyScanCache interface", HYSCAN_TYPE_CACHE,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_PROJECT_NAME,
     g_param_spec_string ("project-name", "ProjectName", "Project name", NULL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_TRACK_NAME,
     g_param_spec_string ("track-name", "TrackName", "Track name", NULL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_SOURCE_TYPE,
     g_param_spec_int ("source-type", "SourceType", "Source type", 0, G_MAXINT, 0,
-                      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_SOURCE_CHANNEL,
     g_param_spec_uint ("source-channel", "SourceChannel", "Source channel", 1, G_MAXUINT, 1,
-                       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -160,6 +169,10 @@ hyscan_nmea_data_set_property (GObject      *object,
 
   switch (prop_id)
     {
+    case PROP_CACHE:
+      priv->cache = g_value_dup_object (value);
+      break;
+
     case PROP_DB:
       priv->db = g_value_dup_object (value);
       break;
@@ -178,6 +191,47 @@ hyscan_nmea_data_set_property (GObject      *object,
 
     case PROP_SOURCE_CHANNEL:
       priv->source_channel = g_value_get_uint (value);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+    }
+}
+
+static void
+hyscan_nmea_data_get_property (GObject    *object,
+                               guint       prop_id,
+                               GValue     *value,
+                               GParamSpec *pspec)
+{
+  HyScanNMEAData *data = HYSCAN_NMEA_DATA (object);
+  HyScanNMEADataPrivate *priv = data->priv;
+
+  switch (prop_id)
+    {
+    case PROP_CACHE:
+      g_value_set_object (value, priv->cache);
+      break;
+
+    case PROP_DB:
+      g_value_set_object (value, priv->db);
+      break;
+
+    case PROP_PROJECT_NAME:
+      g_value_set_string (value, priv->project);
+      break;
+
+    case PROP_TRACK_NAME:
+      g_value_set_string (value, priv->track);
+      break;
+
+    case PROP_SOURCE_TYPE:
+      g_value_set_int (value, priv->source_type);
+      break;
+
+    case PROP_SOURCE_CHANNEL:
+      g_value_set_uint (value, priv->source_channel);
       break;
 
     default:
@@ -379,6 +433,7 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
 /**
  * hyscan_nmea_data_new:
  * @db указатель на #HyScanDB
+ * @cache указатель #HyScanCache
  * @project_name название проекта
  * @track_name название галса
  * @source_type тип источника данных
@@ -392,6 +447,7 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
  */
 HyScanNMEAData*
 hyscan_nmea_data_new (HyScanDB         *db,
+                      HyScanCache      *cache,
                       const gchar      *project_name,
                       const gchar      *track_name,
                       HyScanSourceType  source_type,
@@ -401,6 +457,7 @@ hyscan_nmea_data_new (HyScanDB         *db,
 
   data = g_object_new (HYSCAN_TYPE_NMEA_DATA,
                        "db", db,
+                       "cache", cache,
                        "project-name", project_name,
                        "track-name", track_name,
                        "source-type", source_type,
@@ -411,24 +468,6 @@ hyscan_nmea_data_new (HyScanDB         *db,
     g_clear_object (&data);
 
   return data;
-}
-
-/**
- * hyscan_nmea_data_set_cache:
- * @data указатель #HyScanNMEAData
- * @cache указатель #HyScanCache
- *
- * Функция задаёт используемый кэш.
- */
-void
-hyscan_nmea_data_set_cache (HyScanNMEAData *data,
-                            HyScanCache    *cache)
-{
-  g_return_if_fail (HYSCAN_IS_NMEA_DATA (data));
-
-  g_clear_object (&data->priv->cache);
-  if (cache != NULL)
-    data->priv->cache = g_object_ref (cache);
 }
 
 /**

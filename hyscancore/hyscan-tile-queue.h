@@ -115,23 +115,14 @@ GType                  hyscan_tile_queue_get_type              (void);
  * Функция создает новый объект \link HyScanTileQueue \endlink.
  *
  * \param max_generators - число потоков генерации.
+ * \param cache - указатель на систему кэширования;
  *
  * \return Указатель на объект очереди.
  */
 HYSCAN_API
-HyScanTileQueue        *hyscan_tile_queue_new                  (gint                    max_generators);
-
-/**
- *
- * Функция устанавливает кэш.
- *
- * \param tilequeue - указатель на \link HyScanTileQueue \endlink;
- * \param cache - указатель на систему кэширования;
- *
- */
-HYSCAN_API
-void                    hyscan_tile_queue_set_cache            (HyScanTileQueue        *tilequeue,
+HyScanTileQueue        *hyscan_tile_queue_new                  (gint                    max_generators,
                                                                 HyScanCache            *cache);
+
 /**
  *
  * Функция настройки объекта измерения глубины.

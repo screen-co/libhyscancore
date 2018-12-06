@@ -40,7 +40,7 @@ main (int argc, char **argv)
   gboolean passed = FALSE;
 
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
-  color = hyscan_tile_color_new ();
+  color = hyscan_tile_color_new (cache);
 
   /* Сначала потестируем вспомогательные функции. */
   if (!conversion_test ())
@@ -116,19 +116,6 @@ main (int argc, char **argv)
         }
     }
 
-  /* Сейчас тайла в кэше быть не должно. */
-  status = hyscan_tile_color_check (color, &tile1, &tile2);
-
-  if (status)
-    {
-      g_print ("Tile found in cache, whereas it shouldn't be there. \n");
-      goto exit;
-    }
-
-  /* Добавляем кэш. */
-  hyscan_tile_color_close (color);
-  hyscan_tile_color_set_cache (color, cache);
-  hyscan_tile_color_open (color, "db", "project", "track");
   hyscan_tile_color_add (color, &tile1, data, size, &surface);
 
   status = hyscan_tile_color_check (color, &tile1, &tile2);

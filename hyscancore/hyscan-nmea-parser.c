@@ -62,6 +62,7 @@ struct HyScanFieldFunc
 enum
 {
   PROP_O,
+  PROP_CACHE,
   PROP_DB,
   PROP_PROJECT,
   PROP_TRACK,
@@ -74,6 +75,7 @@ struct _HyScanNMEAParserPrivate
 {
   /* Переменные, передающиеся на этапе создания объекта. */
   HyScanDB              *db;            /* База данных. */
+  HyScanCache           *cache;         /* Кэш. */
   gchar                 *project;       /* Имя проекта. */
   gchar                 *track;         /* Имя галса. */
   HyScanSourceType       source_type;   /* Тип данных. */
@@ -130,6 +132,10 @@ hyscan_nmea_parser_class_init (HyScanNMEAParserClass *klass)
       g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
                            G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
+  g_object_class_install_property (object_class, PROP_CACHE,
+      g_param_spec_object ("cache", "Cache", "HyScanCache interface", HYSCAN_TYPE_CACHE,
+                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+
   g_object_class_install_property (object_class, PROP_PROJECT,
       g_param_spec_string ("project", "ProjectName", "project name", NULL,
                            G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
@@ -168,6 +174,8 @@ hyscan_nmea_parser_set_property (GObject      *object,
 
   if (prop_id == PROP_DB)
     priv->db = g_value_dup_object (value);
+  else if (prop_id == PROP_CACHE)
+    priv->cache = g_value_dup_object (value);
   else if (prop_id == PROP_PROJECT)
     priv->project = g_value_dup_string (value);
   else if (prop_id == PROP_TRACK)
@@ -190,7 +198,7 @@ hyscan_nmea_parser_object_constructed (GObject *object)
   HyScanNMEAParserPrivate *priv = parser->priv;
 
   /* Открываем КД. */
-  priv->dc = hyscan_nmea_data_new (priv->db, priv->project, priv->track,
+  priv->dc = hyscan_nmea_data_new (priv->db, priv->cache, priv->project, priv->track,
                                    priv->source_type, priv->channel_n);
 
   if (priv->dc == NULL)
@@ -356,8 +364,7 @@ hyscan_nmea_parser_parse_latlon (const gchar *sentence,
 
   /* Переводим в градусы десятичные. */
                              /* Пусть на входе 5530.671 */
-  //val /= 100.0;            /* 55.30671 */
-  deg = floor (val / 100.0); /* 55 */
+  deg = floor (val / 100.0); /* 55.30671, потом 55 */
   min = val - deg * 100;     /* 30.671 */
   min /= 60.0;               /* 30.671 -> 0.5111 */
   val = deg + min;           /* 55.511 */
@@ -391,15 +398,6 @@ hyscan_nmea_parser_parse_meters (const gchar *sentence,
 
   *_val = val;
   return TRUE;
-}
-
-/* Функция установки кэша. */
-static void
-hyscan_nmea_parser_set_cache (HyScanNavData *navdata,
-                              HyScanCache   *cache)
-{
-  HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
-  hyscan_nmea_data_set_cache (parser->priv->dc, cache);
 }
 
 /* Функция получения глубины. */
@@ -489,6 +487,7 @@ hyscan_nmea_parser_get_mod_count (HyScanNavData *navdata)
 /**
  * hyscan_nmea_parser_new:
  * @db: указатель на интерфейс HyScanDB
+ * @cache: указатель на интерфейс HyScanCache
  * @project: название проекта
  * @track: название галса
  * @source_channel: номер канала
@@ -500,6 +499,7 @@ hyscan_nmea_parser_get_mod_count (HyScanNavData *navdata)
  */
 HyScanNMEAParser*
 hyscan_nmea_parser_new (HyScanDB        *db,
+                        HyScanCache     *cache,
                         const gchar     *project,
                         const gchar     *track,
                         HyScanSourceType source_type,
@@ -510,6 +510,7 @@ hyscan_nmea_parser_new (HyScanDB        *db,
 
   parser = g_object_new (HYSCAN_TYPE_NMEA_PARSER,
                          "db", db,
+                         "cache", cache,
                          "project", project,
                          "track", track,
                          "source-type", source_type,
@@ -526,7 +527,6 @@ hyscan_nmea_parser_new (HyScanDB        *db,
 static void
 hyscan_nmea_parser_interface_init (HyScanNavDataInterface *iface)
 {
-  iface->set_cache     = hyscan_nmea_parser_set_cache;
   iface->get           = hyscan_nmea_parser_get;
   iface->find_data     = hyscan_nmea_parser_find_data;
   iface->get_range     = hyscan_nmea_parser_get_range;

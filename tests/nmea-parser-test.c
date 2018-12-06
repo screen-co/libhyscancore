@@ -97,7 +97,7 @@ main (int argc, char **argv)
     }
 
   /* Теперь потестируем объект. */
-  nmea = hyscan_nmea_parser_new (db, name, name, SRC, CHANNEL,
+  nmea = hyscan_nmea_parser_new (db, cache, name, name, SRC, CHANNEL,
                                  HYSCAN_NMEA_FIELD_LAT);
   ndata = HYSCAN_NAV_DATA (nmea);
 

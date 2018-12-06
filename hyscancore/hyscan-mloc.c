@@ -7,6 +7,7 @@ enum
 {
   PROP_O,
   PROP_DB,
+  PROP_CACHE,
   PROP_PROJECT_NAME,
   PROP_TRACK_NAME,
 };
@@ -15,6 +16,7 @@ enum
 struct _HyScanmLocPrivate
 {
   HyScanDB              *db;
+  HyScanCache           *cache;
   gchar                 *project;
   gchar                 *track;
 
@@ -48,6 +50,10 @@ hyscan_mloc_class_init (HyScanmLocClass *klass)
 
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (object_class, PROP_CACHE,
+    g_param_spec_object ("Cache", "CACHE", "HyScanCache interface", HYSCAN_TYPE_CACHE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_PROJECT_NAME,
@@ -94,13 +100,16 @@ hyscan_mloc_object_constructed (GObject *object)
   HyScanGeoGeodetic origin;
   guint32 first;
 
-  plat = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
+  plat = hyscan_nmea_parser_new (priv->db, priv->cache,
+                                 priv->project, priv->track,
                                  HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_LAT);
-  plon = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
+  plon = hyscan_nmea_parser_new (priv->db, priv->cache,
+                                 priv->project, priv->track,
                                  HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_LON);
-  ptrk = hyscan_nmea_parser_new (priv->db, priv->project, priv->track,
+  ptrk = hyscan_nmea_parser_new (priv->db, priv->cache,
+                                 priv->project, priv->track,
                                  HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_TRACK);
 
@@ -138,11 +147,13 @@ hyscan_mloc_object_finalize (GObject *object)
 
 HyScanmLoc *
 hyscan_mloc_new (HyScanDB    *db,
+                 HyScanCache *cache,
                  const gchar *project,
                  const gchar *track)
 {
   return g_object_new (HYSCAN_TYPE_MLOC,
                        "db", db,
+                       "cache", cache,
                        "project", project,
                        "track", track,
                        NULL);

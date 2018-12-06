@@ -105,7 +105,7 @@ main (int argc, char **argv)
     }
 
   /* Тестируем определение глубины по NMEA. */
-  parser = hyscan_nmea_parser_new (db, name, name, HYSCAN_SOURCE_NMEA_DPT,
+  parser = hyscan_nmea_parser_new (db, cache, name, name, HYSCAN_SOURCE_NMEA_DPT,
                                    NMEA_DPT_CHANNEL, HYSCAN_NMEA_FIELD_DEPTH);
   test ("nmea", HYSCAN_NAV_DATA (parser), cache);
   g_clear_object (&parser);
@@ -168,7 +168,7 @@ void test (gchar         *log_prefix,
            HyScanNavData *ndata,
            HyScanCache   *cache)
 {
-  HyScanDepthometer *meter = hyscan_depthometer_new (ndata);
+  HyScanDepthometer *meter = hyscan_depthometer_new (ndata, cache);
   gint64 t;
 
   t = DB_TIME_START - 50 * DB_TIME_INC;
@@ -182,8 +182,6 @@ void test (gchar         *log_prefix,
   set_get_check (log_prefix, meter, 2, t, (MORE + LESS) / 2.0);
   set_get_check (log_prefix, meter, 4, t, (MORE + 3 * LESS) / 4.0);
 
-  hyscan_nav_data_set_cache (ndata, cache);
-  hyscan_depthometer_set_cache (meter, cache);
   hyscan_depthometer_set_validity_time (meter, DB_TIME_INC);
 
   t = DB_TIME_START + 50 * DB_TIME_INC;

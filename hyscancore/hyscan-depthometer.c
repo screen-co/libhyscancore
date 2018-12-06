@@ -54,17 +54,18 @@
 enum
 {
   PROP_O,
-  PROP_SOURCE
+  PROP_SOURCE,
+  PROP_CACHE
 };
 
 struct _HyScanDepthometerPrivate
 {
-  HyScanNavData  *source;           /* Источник. */
+  HyScanNavData *source;           /* Источник. */
 
-  HyScanCache  *cache;            /* Кэш. */
-  gchar        *key;              /* Ключ кэширования. */
-  gint          key_length;       /* Длина ключа. */
-  HyScanBuffer *cache_buffer;     /* Буфер данных кэша. */
+  HyScanCache   *cache;            /* Кэш. */
+  gchar         *key;              /* Ключ кэширования. */
+  gint           key_length;       /* Длина ключа. */
+  HyScanBuffer  *cache_buffer;     /* Буфер данных кэша. */
 
   guint32       *indexes;          /* Массив индексов. */
   gint           real_size;        /* Размер массива. */
@@ -101,6 +102,9 @@ hyscan_depthometer_class_init (HyScanDepthometerClass *klass)
   g_object_class_install_property (object_class, PROP_SOURCE,
     g_param_spec_object ("source", "DepthSource", "Depth interface", HYSCAN_TYPE_NAV_DATA,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class, PROP_CACHE,
+    g_param_spec_object ("cache", "Cache", "HyScanCache interface", HYSCAN_TYPE_CACHE,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -122,6 +126,10 @@ hyscan_depthometer_set_property (GObject      *object,
     {
     case PROP_SOURCE:
       priv->source = g_value_dup_object (value);
+      break;
+
+    case PROP_CACHE:
+      priv->cache = g_value_dup_object (value);
       break;
 
     default:
@@ -206,41 +214,22 @@ hyscan_depthometer_time_round (gint64 time,
 /**
  * hyscan_depthometer_new:
  * @ndata: интерфейс #HyScanNavData
+ * @cache: (nullable): интерфейс #HyScanCache
  *
  * Функция создает новый объект получения глубины.
  *
  * Returns: объект HyScanDepthometer.
  */
 HyScanDepthometer*
-hyscan_depthometer_new (HyScanNavData *ndata)
+hyscan_depthometer_new (HyScanNavData *ndata,
+                        HyScanCache   *cache)
 {
   if (!HYSCAN_IS_NAV_DATA (ndata))
     return NULL;
 
   return g_object_new (HYSCAN_TYPE_DEPTHOMETER,
-                       "source", ndata, NULL);
-}
-
-/**
- * hyscan_depthometer_set_cache:
- * @depthometer: #HyScanDepthometer
- * @cache: (nullable): интерфейс #HyScanCache
- *
- * Функция устанавливает кэш.
- */
-void
-hyscan_depthometer_set_cache (HyScanDepthometer *meter,
-                              HyScanCache       *cache)
-{
-  HyScanDepthometerPrivate *priv;
-
-  g_return_if_fail (HYSCAN_IS_DEPTHOMETER (meter));
-  priv = meter->priv;
-
-  g_clear_object (&priv->cache);
-
-  if (cache != NULL)
-    priv->cache = g_object_ref (cache);
+                       "source", ndata,
+                       "cache", cache, NULL);
 }
 
 /**

@@ -66,10 +66,7 @@ HYSCAN_API
 GType                   hyscan_depthometer_get_type             (void);
 
 HYSCAN_API
-HyScanDepthometer      *hyscan_depthometer_new                 (HyScanNavData          *ndata);
-
-HYSCAN_API
-void                    hyscan_depthometer_set_cache           (HyScanDepthometer      *depthometer,
+HyScanDepthometer *     hyscan_depthometer_new                 (HyScanNavData          *ndata,
                                                                 HyScanCache            *cache);
 
 HYSCAN_API

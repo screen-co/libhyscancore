@@ -70,14 +70,11 @@ GType                   hyscan_nmea_data_get_type              (void);
 
 HYSCAN_API
 HyScanNMEAData         *hyscan_nmea_data_new                   (HyScanDB         *db,
+                                                                HyScanCache      *cache,
                                                                 const gchar      *project_name,
                                                                 const gchar      *track_name,
                                                                 HyScanSourceType  source_type,
                                                                 guint             source_channel);
-
-HYSCAN_API
-void                    hyscan_nmea_data_set_cache             (HyScanNMEAData   *data,
-                                                                HyScanCache      *cache);
 
 HYSCAN_API
 HyScanAntennaPosition   hyscan_nmea_data_get_position          (HyScanNMEAData   *data);

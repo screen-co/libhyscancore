@@ -35,7 +35,7 @@ main (int argc, char **argv)
   gint samples = 100;
   gint readouts = 100;
   GTimer *timer = g_timer_new ();
-  gdouble time_with_cache, time_without_cache;
+  gdouble time_with_cache;
 
   /* Парсим аргументы. */
   {
@@ -113,18 +113,18 @@ main (int argc, char **argv)
 
   /* Теперь потестируем объект. */
   g_printf ("\nTrying to open an unsupported channel. The following warning is OK. \n");
-  nmea = hyscan_nmea_data_new (db, name, name, HYSCAN_SOURCE_SIDE_SCAN_PORT, 1);
+  nmea = hyscan_nmea_data_new (db, cache, name, name, HYSCAN_SOURCE_SIDE_SCAN_PORT, 1);
 
   if (nmea != NULL)
     g_error ("Object creation failure");
 
   g_printf ("\nTrying to open an absent channel. The following warning is OK.\n");
 
-  nmea = hyscan_nmea_data_new (db, name, name, DPT, 1);
+  nmea = hyscan_nmea_data_new (db, cache, name, name, DPT, 1);
   if (nmea != NULL)
     g_error ("Object creation failure");
 
-  nmea = hyscan_nmea_data_new (db, name, name, DPT, DPT_CHANNEL);
+  nmea = hyscan_nmea_data_new (db, cache, name, name, DPT, DPT_CHANNEL);
   if (nmea == NULL)
     g_error ("Object creation failure");
 
@@ -133,34 +133,6 @@ main (int argc, char **argv)
 
   if (DPT_CHANNEL != hyscan_nmea_data_get_channel (nmea))
     g_error ("Source channel mismatch");
-
-  /* Анализируем данные без кэша. */
-  g_timer_start (timer);
-
-  for (j = 0; j < readouts; j++)
-    {
-      for (i = 0; i < samples; i++)
-        {
-          const gchar *acquired;
-          gchar *expected;
-
-          acquired = hyscan_nmea_data_get_sentence (nmea, i, NULL);
-          expected = nmea_generator ("DPT", i);
-
-          if (0 != g_strcmp0 (acquired, expected))
-            {
-              g_error ("Read failure at %i: expected <%s>, acquired <%s>",
-                        i, expected, acquired);
-            }
-
-          g_free (expected);
-        }
-    }
-
-  time_without_cache = g_timer_elapsed (timer, NULL);
-
-  /* Анализируем данные с кэшем. */
-  hyscan_nmea_data_set_cache (nmea, cache);
 
   g_timer_start (timer);
   for (j = 0; j < readouts; j++)
@@ -256,8 +228,6 @@ main (int argc, char **argv)
   g_timer_destroy (timer);
 
   g_printf ("%i samples of data were read %i times each.\n", samples, readouts);
-  g_printf ("%f seconds (%f per sample) without cache\n",
-            time_without_cache, time_without_cache / (readouts * samples));
   g_printf ("%f seconds (%f per sample) with cache\n",
             time_with_cache, time_with_cache / (readouts * samples));
 

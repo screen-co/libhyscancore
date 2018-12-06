@@ -372,12 +372,13 @@ hyscan_projector_set_cache (HyScanProjector *self,
 gboolean
 hyscan_projector_check_source (HyScanProjector   *self,
                                HyScanSourceType   source,
+                               guint              channel,
                                gboolean           raw,
-                               gboolean          *changed)
+                               gboolean          *_changed)
 {
   HyScanProjectorPrivate *priv;
   HyScanAcousticData *dc;
-  gboolean _changed, status;
+  gboolean changed, status;
   guint32 index0;
   gint64 new_time;
 
@@ -385,7 +386,7 @@ hyscan_projector_check_source (HyScanProjector   *self,
   priv = self->priv;
 
   dc = hyscan_acoustic_data_new (priv->db, priv->cache, priv->project,
-                                 priv->track, source, 1, FALSE);
+                                 priv->track, source, channel, FALSE);
 
   if (dc == NULL || !hyscan_acoustic_data_get_range (dc, &index0, NULL))
     {
@@ -403,17 +404,17 @@ hyscan_projector_check_source (HyScanProjector   *self,
   if (new_time < priv->zero_time)
     {
       priv->zero_time = new_time;
-      _changed = TRUE;
+      changed = TRUE;
     }
   else
     {
-      _changed = FALSE;
+      changed = FALSE;
     }
 
   status = TRUE;
 
-  if (changed != NULL)
-    *changed = _changed;
+  if (_changed != NULL)
+    *_changed = changed;
 
 exit:
   g_clear_object (&dc);

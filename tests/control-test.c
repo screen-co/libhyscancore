@@ -839,7 +839,7 @@ check_sensor_data (const gchar *sensor)
   orig_position = hyscan_dummy_device_get_sensor_position (sensor);
 
   /* открываем канал данных. */
-  nmea = hyscan_nmea_data_new (db, project_name, track_name, HYSCAN_SOURCE_NMEA_ANY, channel);
+  nmea = hyscan_nmea_data_new (db, NULL, project_name, track_name, HYSCAN_SOURCE_NMEA_ANY, channel);
   if (nmea == NULL)
     g_error ("can't open nmea channel %u", channel);
 

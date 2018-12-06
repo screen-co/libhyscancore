@@ -90,23 +90,12 @@ GType                   hyscan_tile_color_get_type             (void);
 /**
  *
  * Функция создает новый объект \link HyScanTileColor \endlink
+ * \param cache указатель на \link HyScanCache \endlink;
  *
  * \return указатель на \link HyScanTileColor \endlink.
  */
 HYSCAN_API
-HyScanTileColor        *hyscan_tile_color_new                  (void);
-/**
- *
- * Функция устанавливает кэш и префикс.
- *
- * \param color указатель на \link HyScanTileColor \endlink;
- * \param cache указатель на \link HyScanCache \endlink;
- * \param cache_prefix префикс системы кэширования.
- *
- */
-HYSCAN_API
-void                    hyscan_tile_color_set_cache            (HyScanTileColor        *color,
-                                                                HyScanCache            *cache);
+HyScanTileColor        *hyscan_tile_color_new                  (HyScanCache            *cache);
 /**
  *
  * Функция "открывает" БД, проект и галс.

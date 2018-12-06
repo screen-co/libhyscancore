@@ -64,27 +64,6 @@ hyscan_nav_data_default_init (HyScanNavDataInterface *iface)
 }
 
 /**
- * hyscan_nav_data_set_cache:
- * @ndata: указатель на объект #HyScanNavData
- * @cache: (nullable): указатель на интерфейс #HyScanCache
- *
- * Функция задаёт используемый кэш и префикс идентификаторов объектов для
- * хранения в нём.
- */
-void
-hyscan_nav_data_set_cache (HyScanNavData *navdata,
-                           HyScanCache   *cache)
-{
-  HyScanNavDataInterface *iface;
-
-  g_return_if_fail (HYSCAN_IS_NAV_DATA (navdata));
-  iface = HYSCAN_NAV_DATA_GET_IFACE (navdata);
-
-  if (iface->set_cache != NULL)
-    (*iface->set_cache) (navdata, cache);
-}
-
-/**
  * hyscan_nav_data_get:
  * @ndata: указатель на интерфейс #HyScanNavData
  * @index: индекс записи в канале данных

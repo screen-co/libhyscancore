@@ -114,42 +114,12 @@ main (int argc, char **argv)
     }
 
   /* Теперь займемся генерацией тайлов. */
-  tq = hyscan_tile_queue_new (1);
+  tq = hyscan_tile_queue_new (1, cache);
   hyscan_tile_queue_open (tq, db, name, name, FALSE);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);
   g_signal_connect (tq, "tile-queue-ready", G_CALLBACK (tile_ready_callback), &reduced_callback_number);
 
   hyscan_tile_queue_set_sound_velocity (tq, NULL);
-
-  /* Отдадим кучу тайлов и проверим, вернутся ли они все. Пока что проверяем без кэша. */
-  /* Сначала сделаем структуры с тайлами. */
-  add_tiles (tq);
-  hyscan_tile_queue_add_finished (tq, 1);
-
-  wait_for_generation ();
-
-  g_message ("Generation without cache ok.");
-
-  for (i = 0; i < SIZE; i++)
-    {
-      gboolean regen, found;
-      tile = make_tile (i);
-
-      hyscan_tile_queue_add (tq, &tile);
-
-      found = hyscan_tile_queue_check (tq, &tile, &cached_tile, &regen);
-      if (found)
-        FAIL ("Found tile. That is strange as we have not set cache yet");
-    }
-
-  g_message ("Checking absence of cache ok.");
-
-
-  hyscan_tile_queue_close (tq);
-  hyscan_tile_queue_set_cache (tq, cache);
-  hyscan_tile_queue_open (tq, db, name, name, FALSE);
-
-  g_message ("Generating with cache.");
 
   add_tiles (tq);
   hyscan_tile_queue_add_finished (tq, 1);
@@ -190,7 +160,6 @@ finish:
 
   g_printf ("test %s\n", status ? "passed" : "falled");
 
-  // *((guint32*)(NULL)) = 1;
   return status ? 0 : 1;
 }
 

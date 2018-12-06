@@ -52,7 +52,6 @@ typedef struct _HyScanNavDataInterface HyScanNavDataInterface;
 /**
  * HyScanNavDataInterface:
  * @g_iface: Базовый интерфейс.
- * @set_cache: Задает кэш.
  * @get: Возвращает значение.
  * @find_data: Ищет данные.
  * @get_range: Определяет диапазон.
@@ -65,8 +64,6 @@ struct _HyScanNavDataInterface
 {
   GTypeInterface            g_iface;
 
-  void                    (*set_cache)                    (HyScanNavData       *ndata,
-                                                           HyScanCache         *cache);
   gboolean                (*get)                          (HyScanNavData       *ndata,
                                                            guint32              index,
                                                            gint64              *time,
@@ -89,9 +86,6 @@ struct _HyScanNavDataInterface
 HYSCAN_API
 GType                   hyscan_nav_data_get_type        (void);
 
-HYSCAN_API
-void                    hyscan_nav_data_set_cache       (HyScanNavData          *ndata,
-                                                         HyScanCache            *cache);
 HYSCAN_API
 gboolean                hyscan_nav_data_get             (HyScanNavData         *ndata,
                                                          guint32                index,

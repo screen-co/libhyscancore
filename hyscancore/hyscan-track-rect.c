@@ -23,8 +23,6 @@ typedef struct
   gboolean                raw;                   /* Использовать сырые данные. */
 
   HyScanTileFlags         flags;                 /* Флаги генерации. */
-  /* Кэш. */
-  HyScanCache            *cache;                 /* Интерфейс системы кэширования. */
 
   /* Определение глубины. */
   HyScanSourceType        depth_source;          /* Источник данных. */
@@ -39,7 +37,6 @@ typedef struct
 
   gboolean                track_changed;         /* Флаг на смену галса. */
   gboolean                flags_changed;         /* Флаг на смену, хм, флагов. */
-  gboolean                cache_changed;         /* Флаг на смену кэша. */
   gboolean                depth_source_changed;  /* Флаг на смену источника данных глубины. */
   gboolean                depth_time_changed;    /* Флаг на смену временного окна данных глубины. */
   gboolean                depth_size_changed;    /* Флаг на смену размера фильтра. */
@@ -49,6 +46,9 @@ typedef struct
 
 struct _HyScanTrackRectPrivate
 {
+  /* Кэш. */
+  HyScanCache            *cache;         /* Интерфейс системы кэширования. */
+
   GThread                *watcher;       /* Поток слежения за КД. */
   gint                    stop;          /* Флаг остановки. */
   gint                    have_data;     /* Флаг наличия данных. */
@@ -73,9 +73,10 @@ struct _HyScanTrackRectPrivate
 static void      hyscan_track_rect_object_constructed  (GObject    *object);
 static void      hyscan_track_rect_object_finalize     (GObject    *object);
 
-static HyScanProjector    *hyscan_track_rect_open_projector   (HyScanTrackRect *self);
-static HyScanNavData        *hyscan_track_rect_open_depth       (HyScanTrackRect *self);
-static HyScanDepthometer  *hyscan_track_rect_open_depthometer (HyScanTrackRect *self);
+static HyScanProjector   *hyscan_track_rect_open_projector   (HyScanTrackRectState *state,
+                                                              HyScanCache          *cache);
+static HyScanNavData     *hyscan_track_rect_open_depth       (HyScanTrackRect *self);
+static HyScanDepthometer *hyscan_track_rect_open_depthometer (HyScanTrackRect *self);
 static gboolean  hyscan_track_rect_sync_states         (HyScanTrackRect *self);
 static gboolean  hyscan_track_rect_apply_updates       (HyScanTrackRect *self);
 static gpointer  hyscan_track_rect_watcher             (gpointer    data);
@@ -133,13 +134,11 @@ hyscan_track_rect_object_finalize (GObject *object)
 
   g_array_unref (priv->cur_state.sound_velocity);
   g_clear_object (&priv->cur_state.db);
-  g_clear_object (&priv->cur_state.cache);
   g_free (priv->cur_state.project);
   g_free (priv->cur_state.track);
 
   g_array_unref (priv->new_state.sound_velocity);
   g_clear_object (&priv->new_state.db);
-  g_clear_object (&priv->new_state.cache);
   g_free (priv->new_state.project);
   g_free (priv->new_state.track);
 
@@ -147,15 +146,15 @@ hyscan_track_rect_object_finalize (GObject *object)
 }
 
 static HyScanProjector*
-hyscan_track_rect_open_projector (HyScanTrackRect *self)
+hyscan_track_rect_open_projector (HyScanTrackRectState *state,
+                                  HyScanCache          *cache)
 {
-  HyScanTrackRectState *state = &self->priv->cur_state;
   HyScanProjector *pj;
 
   if (state->db == NULL || state->project == NULL || state->track == NULL)
     return NULL;
 
-  pj = hyscan_projector_new (state->db, state->cache,
+  pj = hyscan_projector_new (state->db, cache,
                              state->project, state->track,
                              state->source, 1, state->raw);
 
@@ -178,6 +177,7 @@ hyscan_track_rect_open_depth (HyScanTrackRect *self)
     {
       HyScanNMEAParser *dnmea;
       dnmea = hyscan_nmea_parser_new (priv->cur_state.db,
+                                      priv->cache,
                                       priv->cur_state.project,
                                       priv->cur_state.track,
                                       priv->cur_state.depth_channel,
@@ -186,7 +186,6 @@ hyscan_track_rect_open_depth (HyScanTrackRect *self)
       idepth = HYSCAN_NAV_DATA (dnmea);
     }
 
-  hyscan_nav_data_set_cache (idepth, priv->cur_state.cache);
   return idepth;
 }
 
@@ -196,11 +195,10 @@ hyscan_track_rect_open_depthometer (HyScanTrackRect *self)
   HyScanTrackRectPrivate *priv = self->priv;
   HyScanDepthometer *depth = NULL;
 
-  depth = hyscan_depthometer_new (priv->idepth);
+  depth = hyscan_depthometer_new (priv->idepth, priv->cache);
   if (depth == NULL)
     return NULL;
 
-  hyscan_depthometer_set_cache (depth, priv->cur_state.cache);
   hyscan_depthometer_set_filter_size (depth, priv->cur_state.depth_size);
   hyscan_depthometer_set_validity_time (depth, priv->cur_state.depth_time);
 
@@ -230,15 +228,6 @@ hyscan_track_rect_sync_states (HyScanTrackRect *self)
       /* Выставляем флаги. */
       new_st->track_changed = FALSE;
       cur_st->track_changed = TRUE;
-    }
-  if (new_st->cache_changed)
-    {
-      g_clear_object (&cur_st->cache);
-
-      cur_st->cache = g_object_ref (new_st->cache);
-
-      new_st->cache_changed = FALSE;
-      cur_st->cache_changed = TRUE;
     }
   if (new_st->depth_source_changed)
     {
@@ -315,19 +304,6 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
       state->depth_time_changed = FALSE;
       state->depth_size_changed = FALSE;
     }
-  else if (state->cache_changed)
-    {
-      if (priv->pj != NULL)
-        ;//hyscan_projector_set_cache (priv->pj, state->cache);
-      if (priv->depth != NULL)
-        hyscan_depthometer_set_cache (priv->depth, state->cache);
-      if (priv->idepth != NULL)
-        hyscan_nav_data_set_cache (priv->idepth, state->cache);
-
-      state->cache_changed = FALSE;
-      if (!state->speed_changed && !state->velocity_changed && !state->flags_changed)
-        return FALSE;
-    }
 
   if (state->velocity_changed)
     {
@@ -352,7 +328,6 @@ hyscan_track_rect_watcher (gpointer data)
 {
   HyScanTrackRect *self = data;
   HyScanTrackRectPrivate *priv = self->priv;
-
 
   guint32  nvals     = 0;
   guint32  index0    = 0;
@@ -399,7 +374,7 @@ hyscan_track_rect_watcher (gpointer data)
       if (priv->pj == NULL)
         {
           const HyScanAcousticData *cdc;
-          priv->pj = pj = hyscan_track_rect_open_projector (self);
+          priv->pj = pj = hyscan_track_rect_open_projector (&priv->cur_state, priv->cache);
           if (pj == NULL)
             {
               g_usleep (1);
@@ -496,9 +471,10 @@ next:
 
 /* Фукнция создает новый объект HyScanTrackRect. */
 HyScanTrackRect*
-hyscan_track_rect_new (void)
+hyscan_track_rect_new (HyScanCache *cache)
 {
-  return g_object_new (HYSCAN_TYPE_TRACK_RECT, NULL);
+  return g_object_new (HYSCAN_TYPE_TRACK_RECT,
+                       "cache", cache, NULL);
 }
 
 /* Функция устанавливает скорость. */
@@ -559,30 +535,7 @@ hyscan_track_rect_set_sound_velocity (HyScanTrackRect *self,
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция устанавливает кэш.*/
-void
-hyscan_track_rect_set_cache (HyScanTrackRect *self,
-                            HyScanCache     *cache)
-{
-  HyScanTrackRectPrivate *priv;
-
-  g_return_if_fail (HYSCAN_IS_TRACK_RECT (self));
-  priv = self->priv;
-
-  g_mutex_lock (&priv->state_lock);
-
-  g_clear_object (&priv->new_state.cache);
-
-  priv->new_state.cache = (cache != NULL) ? g_object_ref (cache) : NULL;
-  priv->new_state.cache_changed = TRUE;
-
-  g_atomic_int_set (&priv->abort, TRUE);
-  g_cond_signal (&priv->cond);
-
-  g_mutex_unlock (&priv->state_lock);
-}
 /* Функция настраивает объект измерения глубины. */
-
 void
 hyscan_track_rect_set_depth_source (HyScanTrackRect   *self,
                                     HyScanSourceType   source,

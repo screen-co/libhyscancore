@@ -51,7 +51,7 @@ main (int argc, char **argv)
   if (db == NULL)
     g_error ("can't open db <%s>", db_name);
 
-  mloc = hyscan_mloc_new (db, project_name, track_name);
+  mloc = hyscan_mloc_new (db, cache, project_name, track_name);
 
   {
     HyScanAntennaPosition pos;

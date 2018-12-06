@@ -87,6 +87,7 @@ GType                   hyscan_projector_get_type               (void);
  * \param project название проекта;
  * \param track название галса;
  * \param source тип источника данных;
+ * \param channel номер канала;
  * \param raw использовать (TRUE) или нет (FALSE) сырые данные.
  *
  * \return указатель на объект HyScanProjector.
@@ -106,6 +107,7 @@ HyScanProjector        *hyscan_projector_new                    (HyScanDB       
  *
  * \param projector указатель на объект \link HyScanProjector \endlink;
  * \param source тип источника данных;
+ * \param channel номер канала;
  * \param raw использовать ли сырые данные;
  * \param changed флаг показывает, изменилось ли начальное время галса (или NULL).
  *
@@ -114,6 +116,7 @@ HyScanProjector        *hyscan_projector_new                    (HyScanDB       
 HYSCAN_API
 gboolean                hyscan_projector_check_source           (HyScanProjector   *projector,
                                                                  HyScanSourceType   source,
+                                                                 guint              channel,
                                                                  gboolean           raw,
                                                                  gboolean          *changed);
 /**

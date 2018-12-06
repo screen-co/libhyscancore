@@ -63,11 +63,12 @@ GType                   hyscan_track_rect_get_type              (void);
 
 /**
  * Функция создает новый объект \link HyScanTrackRect \endlink.
+ * \param cache указатель на интерфейс HyScanCache;
  *
  * \return указатель на объект \link HyScanTrackRect \endlink.
  */
 HYSCAN_API
-HyScanTrackRect        *hyscan_track_rect_new                   (void);
+HyScanTrackRect        *hyscan_track_rect_new                   (HyScanCache            *cache);
 
 /**
  *
@@ -91,18 +92,6 @@ void                    hyscan_track_rect_set_ship_speed       (HyScanTrackRect 
 HYSCAN_API
 void                    hyscan_track_rect_set_sound_velocity   (HyScanTrackRect        *track_rect,
                                                                 GArray                 *velocity);
-
-/**
- *
- * Функция устанавливает кэш.
- *
- * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param cache указатель на интерфейс HyScanCache;
- *
- */
-HYSCAN_API
-void                    hyscan_track_rect_set_cache            (HyScanTrackRect        *track_rect,
-                                                                HyScanCache            *cache);
 
 /**
  *
