@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #include <hyscan-data-writer.h>
@@ -40,6 +40,7 @@
 #include <string.h>
 #include <math.h>
 
+#define CTIME                  123456
 #define OPERATOR_NAME          "tester"
 #define SONAR_INFO             "This is sonar info"
 #define PROJECT_NAME           "test"
@@ -135,7 +136,7 @@ acoustic_get_info (guint n_channel)
 {
   HyScanAcousticDataInfo info;
 
-  info.data_type = HYSCAN_DATA_ADC_14LE + (n_channel % 2);
+  info.data_type = HYSCAN_DATA_ADC14LE + (n_channel % 2);
   info.data_rate = 1000.0 * n_channel;
 
   info.signal_frequency = 1.0 * n_channel;
@@ -154,13 +155,52 @@ acoustic_get_info (guint n_channel)
   return info;
 }
 
-/* Функция проверяет параметры галса. */
-void track_check_info (HyScanDB *db,
-                       gint32    track_id)
+
+/* Функция проверяет параметры проекта. */
+void project_check_info (HyScanDB *db,
+                         gint32    project_id,
+                         guint32  n_tracks)
 {
   HyScanParamList *param_list = NULL;
   gint32 param_id;
 
+  gint64 ctime;
+  gint64 mtime;
+
+  param_list = hyscan_param_list_new ();
+
+  param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
+  if (param_id < 0)
+    g_error ("can't open project parameters");
+
+  hyscan_param_list_add (param_list, "/ctime");
+  hyscan_param_list_add (param_list, "/mtime");
+
+  if (!hyscan_db_param_get (db, param_id, PROJECT_INFO_OBJECT, param_list))
+    g_error ("can't read project parameters");
+
+  ctime = hyscan_param_list_get_integer (param_list, "/ctime");
+  mtime = hyscan_param_list_get_integer (param_list, "/mtime");
+
+  if (ctime != CTIME)
+    g_error ("project ctime error");
+
+  if (mtime != CTIME + n_tracks)
+    g_error ("project mtime error");
+
+  hyscan_db_close (db, param_id);
+  g_object_unref (param_list);
+}
+
+/* Функция проверяет параметры галса. */
+void track_check_info (HyScanDB *db,
+                       gint32    track_id,
+                       guint     n_track)
+{
+  HyScanParamList *param_list = NULL;
+  gint32 param_id;
+
+  gint64 ctime;
   const gchar *track_type;
   const gchar *operator_name;
   const gchar *sonar_info;
@@ -171,16 +211,21 @@ void track_check_info (HyScanDB *db,
   if (param_id < 0)
     g_error ("can't open track parameters");
 
+  hyscan_param_list_add (param_list, "/ctime");
   hyscan_param_list_add (param_list, "/type");
   hyscan_param_list_add (param_list, "/operator");
   hyscan_param_list_add (param_list, "/sonar");
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
-    g_error ("can't read parameters");
+    g_error ("can't read track parameters");
 
+  ctime = hyscan_param_list_get_integer (param_list, "/ctime");
   track_type = hyscan_param_list_get_string (param_list, "/type");
   operator_name = hyscan_param_list_get_string (param_list, "/operator");
   sonar_info = hyscan_param_list_get_string (param_list, "/sonar");
+
+  if (ctime != (CTIME + n_track))
+    g_error ("track ctime error");
 
   if (g_strcmp0 (track_type, hyscan_track_get_name_by_type (HYSCAN_TRACK_SURVEY)) != 0)
     g_error ("track type error");
@@ -364,15 +409,15 @@ sonar_add_data (HyScanDataWriter *writer,
   acoustic_info = acoustic_get_info (channel);
 
   data_values = g_new (guint16, DATA_SIZE);
-  hyscan_buffer_wrap_data (data_buffer, HYSCAN_DATA_BLOB,
+  hyscan_buffer_wrap_data (data_buffer, acoustic_info.data_type,
                            data_values, DATA_SIZE * sizeof (guint16));
 
   signal_points = g_new (HyScanComplexFloat, SIGNAL_SIZE);
-  hyscan_buffer_wrap_data (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT,
+  hyscan_buffer_wrap_data (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE,
                            signal_points, SIGNAL_SIZE * sizeof (HyScanComplexFloat));
 
   tvg_gains = g_new (gfloat, TVG_SIZE);
-  hyscan_buffer_wrap_data (tvg_buffer, HYSCAN_DATA_FLOAT,
+  hyscan_buffer_wrap_data (tvg_buffer, HYSCAN_DATA_FLOAT32LE,
                            tvg_gains, TVG_SIZE * sizeof (gfloat));
 
   source = sonar_get_type (channel);
@@ -485,7 +530,7 @@ sensor_check_data (HyScanDB    *db,
 
   buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_core_get_channel_name (HYSCAN_SOURCE_NMEA_ANY, n_channel, HYSCAN_CHANNEL_DATA);
+  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_ANY, HYSCAN_CHANNEL_DATA, n_channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 
@@ -559,6 +604,7 @@ sonar_check_data (HyScanDB    *db,
   HyScanBuffer *signal_buffer;
   HyScanBuffer *tvg_buffer;
 
+  guint n_track;
   guint i, j, k;
 
   data_buffer = hyscan_buffer_new ();
@@ -566,10 +612,10 @@ sonar_check_data (HyScanDB    *db,
   signal_buffer = hyscan_buffer_new ();
 
   source = sonar_get_type (channel);
-  data_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_DATA);
-  noise_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_NOISE);
-  signal_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_SIGNAL);
-  tvg_channel_name = hyscan_core_get_channel_name (source, channel, HYSCAN_CHANNEL_TVG);
+  data_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
+  noise_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
+  signal_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
+  tvg_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_TVG, channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, data_channel_name);
 
@@ -582,7 +628,8 @@ sonar_check_data (HyScanDB    *db,
     g_error ("can't open track");
 
   /* Проверка параметров галса. */
-  track_check_info (db, track_id);
+  n_track = g_ascii_strtoull (track_name + sizeof ("track-") - 1, NULL, 10);
+  track_check_info (db, track_id, n_track);
 
   /* Проверка канала данных. */
   data_channel_id = hyscan_db_channel_open (db, track_id, data_channel_name);
@@ -771,6 +818,9 @@ main (int    argc,
   HyScanDB *db;
   HyScanDataWriter *writer;
 
+  gint64 date_time = 0;
+  guint n_tracks = 0;
+
   gint32 project_id;
   gint32 track_id;
   guint i;
@@ -827,13 +877,15 @@ main (int    argc,
     }
   log_add_data (writer, FALSE);
 
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
+  date_time = CTIME + n_tracks++;
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, date_time))
     g_error ("can't start writer");
   hyscan_data_writer_stop (writer);
 
   /* Галс с данными. */
   g_message ("creating data track-1");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY))
+  date_time = CTIME + n_tracks++;
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY, date_time))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -848,7 +900,8 @@ main (int    argc,
 
   /* Галс с данными. */
   g_message ("creating data track-2");
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY))
+  date_time = CTIME + n_tracks++;
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY, date_time))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -863,7 +916,7 @@ main (int    argc,
 
   /* Дублирование галса. */
   g_message ("duplicate track-0");
-  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY))
+  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, -1))
     g_error ("can duplicate track");
 
   /* Отключаем запись. */
@@ -873,6 +926,8 @@ main (int    argc,
   project_id = hyscan_db_project_open (db, PROJECT_NAME);
   if (project_id < 0)
     g_error ("can't open project '%s'", PROJECT_NAME);
+
+  project_check_info (db, project_id, n_tracks - 1);
 
   /* Пустой галс. */
   track_id = hyscan_db_track_open (db, project_id, "track-0");

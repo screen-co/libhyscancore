@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 /**
@@ -260,9 +260,9 @@ hyscan_nmea_data_object_constructed (GObject *object)
   priv->cache_buffer = hyscan_buffer_new ();
   priv->nmea_buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_core_get_channel_name (priv->source_type,
-                                               priv->source_channel,
-                                               HYSCAN_CHANNEL_DATA);
+  channel_name = hyscan_channel_get_name_by_types (priv->source_type,
+                                                   HYSCAN_CHANNEL_DATA,
+                                                   priv->source_channel);
 
   /* Проверяем БД, проект, галс и название канала. */
   if ((priv->db == NULL) || (priv->project == NULL) ||

@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #ifndef __HYSCAN_DATA_WRITER_H__
@@ -98,7 +98,8 @@ HYSCAN_API
 gboolean               hyscan_data_writer_start                (HyScanDataWriter              *writer,
                                                                 const gchar                   *project_name,
                                                                 const gchar                   *track_name,
-                                                                HyScanTrackType                track_type);
+                                                                HyScanTrackType                track_type,
+                                                                gint64                         date_time);
 
 HYSCAN_API
 void                   hyscan_data_writer_stop                 (HyScanDataWriter              *writer);

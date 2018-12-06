@@ -88,7 +88,7 @@ main (int argc, char **argv)
   /* Система хранения. */
   hyscan_data_writer_set_db (writer, db);
 
-  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
     g_error ("can't start write");
 
   /* Местоположение приёмных антенн. */

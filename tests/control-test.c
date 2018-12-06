@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #include <hyscan-control.h>
@@ -539,18 +539,44 @@ check_state_signal (void)
 void
 check_sensor_set_sound_velocity (void)
 {
-  GList *svp = g_list_append (NULL, NULL);
+  HyScanSoundVelocity orig_value[2];
+  HyScanSoundVelocity value[2];
+  GList *orig_svp = NULL;
+  GList *svp = NULL;
 
-  if (!hyscan_sensor_set_sound_velocity (sensor, svp))
+  orig_value[0].depth = 1.0;
+  orig_value[0].velocity = 1.0;
+  orig_value[1].depth = 2.0;
+  orig_value[1].velocity = 2.0;
+  orig_svp = g_list_append (orig_svp, &orig_value[0]);
+  orig_svp = g_list_append (orig_svp, &orig_value[1]);
+
+  if (!hyscan_sensor_set_sound_velocity (sensor, orig_svp))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_sound_velocity (device1, svp) ||
-      !hyscan_dummy_device_check_sound_velocity (device2, svp))
+  if (!hyscan_dummy_device_check_sound_velocity (device1, orig_svp) ||
+      !hyscan_dummy_device_check_sound_velocity (device2, orig_svp))
     {
       g_error ("param failed");
     }
 
-  g_list_free (svp);
+  svp = hyscan_control_get_sound_velocity (control2);
+  if (svp == NULL)
+    g_error ("control call failed");
+
+  value[0] = *(HyScanSoundVelocity*)svp->data;
+  value[1] = *(HyScanSoundVelocity*)svp->next->data;
+
+  if ((orig_value[0].depth != value[0].depth) ||
+      (orig_value[0].velocity != value[0].velocity) ||
+      (orig_value[1].depth != value[1].depth) ||
+      (orig_value[1].velocity != value[1].velocity))
+    {
+      g_error ("control param failed");
+    }
+
+  g_list_free_full (svp, (GDestroyNotify)hyscan_sound_velocity_free);
+  g_list_free (orig_svp);
 }
 
 void
@@ -558,28 +584,76 @@ check_sensor_set_enable (const gchar *sensor_name)
 {
   HyScanDummyDevice *device = get_sensor_device (sensor_name);
 
+  if (hyscan_control_sensor_get_enable (control2, sensor_name))
+    g_error ("control param failed");
+
   if (!hyscan_sensor_set_enable (sensor, sensor_name, TRUE))
     g_error ("call failed");
 
   if (!hyscan_dummy_device_check_sensor_enable (device, sensor_name))
     g_error ("param failed");
+
+  if (!hyscan_control_sensor_get_enable (control2, sensor_name))
+    g_error ("control param failed");
+}
+
+void
+check_sensor_disconnect (void)
+{
+  if (!hyscan_sensor_disconnect (sensor))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_disconnect (device1) ||
+      !hyscan_dummy_device_check_disconnect (device2))
+    {
+      g_error ("param failed");
+    }
+
+  hyscan_dummy_device_reconnect (device1);
+  hyscan_dummy_device_reconnect (device2);
 }
 
 void
 check_sonar_set_sound_velocity (void)
 {
-  GList *svp = g_list_append (NULL, NULL);
+  HyScanSoundVelocity orig_value[2];
+  HyScanSoundVelocity value[2];
+  GList *orig_svp = NULL;
+  GList *svp = NULL;
 
-  if (!hyscan_sonar_set_sound_velocity (sonar, svp))
+  orig_value[0].depth = 1.0;
+  orig_value[0].velocity = 1.0;
+  orig_value[1].depth = 2.0;
+  orig_value[1].velocity = 2.0;
+  orig_svp = g_list_append (orig_svp, &orig_value[0]);
+  orig_svp = g_list_append (orig_svp, &orig_value[1]);
+
+  if (!hyscan_sonar_set_sound_velocity (sonar, orig_svp))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_sound_velocity (device1, svp) ||
-      !hyscan_dummy_device_check_sound_velocity (device2, svp))
+  if (!hyscan_dummy_device_check_sound_velocity (device1, orig_svp) ||
+      !hyscan_dummy_device_check_sound_velocity (device2, orig_svp))
     {
       g_error ("param failed");
     }
 
-  g_list_free (svp);
+  svp = hyscan_control_get_sound_velocity (control2);
+  if (svp == NULL)
+    g_error ("control call failed");
+
+  value[0] = *(HyScanSoundVelocity*)svp->data;
+  value[1] = *(HyScanSoundVelocity*)svp->next->data;
+
+  if ((orig_value[0].depth != value[0].depth) ||
+      (orig_value[0].velocity != value[0].velocity) ||
+      (orig_value[1].depth != value[1].depth) ||
+      (orig_value[1].velocity != value[1].velocity))
+    {
+      g_error ("control param failed");
+    }
+
+  g_list_free_full (svp, (GDestroyNotify)hyscan_sound_velocity_free);
+  g_list_free (orig_svp);
 }
 
 void
@@ -603,6 +677,7 @@ check_sonar_receiver_get_time (HyScanSourceType source)
 void
 check_sonar_receiver_set_time (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble receive_time = g_random_double ();
   gdouble wait_time = g_random_double ();
@@ -612,11 +687,19 @@ check_sonar_receiver_set_time (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_receiver_time (device, receive_time, wait_time))
     g_error ("param failed");
+
+  if ((mode->receiver_mode != HYSCAN_SONAR_RECEIVER_MODE_MANUAL) ||
+      (mode->receiver_time != receive_time) ||
+      (mode->receiver_wait != wait_time))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_receiver_set_auto (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
 
   if (!hyscan_sonar_receiver_set_auto (sonar, source))
@@ -624,11 +707,15 @@ check_sonar_receiver_set_auto (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_receiver_auto (device))
     g_error ("param failed");
+
+  if (mode->receiver_mode != HYSCAN_SONAR_RECEIVER_MODE_AUTO)
+    g_error ("control param failed");
 }
 
 void
 check_sonar_generator_set_preset (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint preset = g_random_int ();
 
@@ -637,11 +724,18 @@ check_sonar_generator_set_preset (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_generator_preset (device, preset))
     g_error ("param failed");
+
+  if ((mode->generator_mode != HYSCAN_SONAR_GENERATOR_MODE_PRESET) ||
+      (mode->generator_preset != preset))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_generator_set_auto (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint signal = g_random_int ();
 
@@ -650,11 +744,18 @@ check_sonar_generator_set_auto (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_generator_auto (device, signal))
     g_error ("param failed");
+
+  if ((mode->generator_mode != HYSCAN_SONAR_GENERATOR_MODE_AUTO) ||
+      (mode->generator_signal != signal))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_generator_set_simple (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint signal = g_random_int ();
   gdouble power = g_random_double ();
@@ -664,11 +765,19 @@ check_sonar_generator_set_simple (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_generator_simple (device, signal, power))
     g_error ("param failed");
+
+  if ((mode->generator_mode != HYSCAN_SONAR_GENERATOR_MODE_SIMPLE) ||
+      (mode->generator_signal != signal) ||
+      (mode->signal_power != power))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_generator_set_extended (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint signal = g_random_int ();
   gdouble duration = g_random_double ();
@@ -679,11 +788,20 @@ check_sonar_generator_set_extended (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_generator_extended (device, signal, duration, power))
     g_error ("param failed");
+
+  if ((mode->generator_mode != HYSCAN_SONAR_GENERATOR_MODE_EXTENDED) ||
+      (mode->generator_signal != signal) ||
+      (mode->signal_duration != duration) ||
+      (mode->signal_power != power))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_tvg_set_auto (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble level = g_random_double ();
   gdouble sensitivity = g_random_double ();
@@ -693,15 +811,29 @@ check_sonar_tvg_set_auto (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_tvg_auto (device, level, sensitivity))
     g_error ("param failed");
+
+  if ((mode->tvg_mode != HYSCAN_SONAR_TVG_MODE_AUTO) ||
+      (mode->tvg_auto_level != level) ||
+      (mode->tvg_auto_sensitivity != sensitivity))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_tvg_set_points (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble time_step = g_random_double ();
-  gdouble *gains = g_new0 (gdouble, 32);
-  guint32 n_gains = g_random_int ();
+  gdouble *gains;
+  guint32 n_gains;
+  guint32 i;
+
+  n_gains = 32;
+  gains = g_new0 (gdouble, n_gains);
+  for (i = 0; i < n_gains; i++)
+    gains[i] = i;
 
   if (!hyscan_sonar_tvg_set_points (sonar, source, time_step, gains, n_gains))
     g_error ("call failed");
@@ -709,12 +841,25 @@ check_sonar_tvg_set_points (HyScanSourceType source)
   if (!hyscan_dummy_device_check_tvg_points (device, time_step, gains, n_gains))
     g_error ("param failed");
 
+  if ((mode->tvg_mode != HYSCAN_SONAR_TVG_MODE_POINTS) ||
+      (mode->tvg_n_gains != n_gains))
+    {
+      g_error ("control param failed");
+    }
+
+  for (i = 0; i < n_gains; i++)
+    {
+      if (mode->tvg_gains[i] != gains[i])
+        g_error ("control param failed");
+    }
+
   g_free (gains);
 }
 
 void
 check_sonar_tvg_set_constant (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble gain = g_random_double ();
 
@@ -723,10 +868,18 @@ check_sonar_tvg_set_constant (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_tvg_constant (device, gain))
     g_error ("param failed");
+
+  if ((mode->tvg_mode != HYSCAN_SONAR_TVG_MODE_CONSTANT) ||
+      (mode->tvg_constant_gain != gain))
+    {
+      g_error ("control param failed");
+    }
 }
+
 void
 check_sonar_tvg_set_linear_db (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble gain0 = g_random_double ();
   gdouble gain_step = g_random_double ();
@@ -736,11 +889,19 @@ check_sonar_tvg_set_linear_db (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_tvg_linear_db (device, gain0, gain_step))
     g_error ("param failed");
+
+  if ((mode->tvg_mode != HYSCAN_SONAR_TVG_MODE_LINEAR_DB) ||
+      (mode->tvg_linear_gain0 != gain0) ||
+      (mode->tvg_linear_step != gain_step))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
 check_sonar_tvg_set_logarithmic (HyScanSourceType source)
 {
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble gain0 = g_random_double ();
   gdouble beta = g_random_double ();
@@ -751,6 +912,14 @@ check_sonar_tvg_set_logarithmic (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_tvg_logarithmic (device, gain0, beta, alpha))
     g_error ("param failed");
+
+  if ((mode->tvg_mode != HYSCAN_SONAR_TVG_MODE_LOGARITHMIC) ||
+      (mode->tvg_logarithmic_gain0 != gain0) ||
+      (mode->tvg_logarithmic_beta != beta) ||
+      (mode->tvg_logarithmic_alpha != alpha))
+    {
+      g_error ("control param failed");
+    }
 }
 
 void
@@ -818,6 +987,22 @@ check_sonar_ping (void)
     {
       g_error ("param failed");
     }
+}
+
+void
+check_sonar_disconnect (void)
+{
+  if (!hyscan_sonar_disconnect (sonar))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_disconnect (device1) ||
+      !hyscan_dummy_device_check_disconnect (device2))
+    {
+      g_error ("param failed");
+    }
+
+  hyscan_dummy_device_reconnect (device1);
+  hyscan_dummy_device_reconnect (device2);
 }
 
 void
@@ -1108,6 +1293,9 @@ main (int    argc,
   for (i = 0; sensors[i] != NULL; i++)
     check_sensor_set_enable (sensors[i]);
 
+  g_message ("Check hyscan_sensor_disconnect");
+  check_sensor_disconnect ();
+
   g_message ("Check hyscan_sonar_set_sound_velocity");
   check_sonar_set_sound_velocity ();
 
@@ -1175,6 +1363,9 @@ main (int    argc,
 
   g_message ("Check hyscan_sonar_ping");
   check_sonar_ping ();
+
+  g_message ("Check hyscan_sonar_disconnect");
+  check_sonar_disconnect ();
 
   g_message ("Check sensor data");
   for (i = 0; sensors[i] != NULL; i++)

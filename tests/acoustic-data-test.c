@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #include <hyscan-acoustic-data.h>
@@ -41,8 +41,8 @@
 #include <string.h>
 #include <math.h>
 
-#define PROJECT_NAME           "test"
-#define TRACK_NAME             "test"
+#define PROJECT_NAME   "test"
+#define TRACK_NAME     "test"
 
 typedef struct _test_info test_info;
 struct _test_info
@@ -54,29 +54,30 @@ struct _test_info
 
 test_info real_test_types [] =
 {
-  { "adc-14le", HYSCAN_DATA_ADC_14LE,          1e-4 },
-  { "adc-16le", HYSCAN_DATA_ADC_16LE,          1e-4 },
-  { "adc-24le", HYSCAN_DATA_ADC_24LE,          1e-5 },
-  { "float",    HYSCAN_DATA_FLOAT,             1e-5 },
+  { "adc14",   HYSCAN_DATA_ADC14LE,             1e-4 },
+  { "adc16",   HYSCAN_DATA_ADC16LE,             1e-4 },
+  { "adc24",   HYSCAN_DATA_ADC24LE,             1e-4 },
+  { "float16", HYSCAN_DATA_FLOAT16LE,           1e-4 },
+  { "float32", HYSCAN_DATA_FLOAT32LE,           1e-4 }
 };
 
 test_info complex_test_types [] =
 {
-  { "adc-14le", HYSCAN_DATA_COMPLEX_ADC_14LE,  1e-6 },
-  { "adc-16le", HYSCAN_DATA_COMPLEX_ADC_16LE,  1e-6 },
-  { "adc-24le", HYSCAN_DATA_COMPLEX_ADC_24LE,  1e-8 },
-  { "float",    HYSCAN_DATA_COMPLEX_FLOAT,     1e-8 },
+  { "adc14",   HYSCAN_DATA_COMPLEX_ADC14LE,     1e-6 },
+  { "adc16",   HYSCAN_DATA_COMPLEX_ADC16LE,     1e-6 },
+  { "adc24",   HYSCAN_DATA_COMPLEX_ADC24LE,     1e-8 },
+  { "float16", HYSCAN_DATA_COMPLEX_FLOAT16LE,   1e-5 },
+  { "float32", HYSCAN_DATA_COMPLEX_FLOAT32LE,   1e-8 }
 };
 
 test_info amplitude_test_types [] =
 {
-  { "float",    HYSCAN_DATA_FLOAT,             1e-9 },
-  { "amp-i8",   HYSCAN_DATA_AMPLITUDE_INT8,    1e-4 },
-  { "amp-i16",  HYSCAN_DATA_AMPLITUDE_INT16,   1e-6 },
-  { "amp-i32",  HYSCAN_DATA_AMPLITUDE_INT32,   1e-9 },
-  { "amp-f8",   HYSCAN_DATA_AMPLITUDE_FLOAT8,  1e-4 },
-  { "amp-f16",  HYSCAN_DATA_AMPLITUDE_FLOAT16, 1e-6 },
-  { "amp-f32",  HYSCAN_DATA_AMPLITUDE_FLOAT32, 1e-8 }
+  { "int8",    HYSCAN_DATA_AMPLITUDE_INT8,      1e-4 },
+  { "int16",   HYSCAN_DATA_AMPLITUDE_INT16LE,   1e-6 },
+  { "int24",   HYSCAN_DATA_AMPLITUDE_INT24LE,   1e-8 },
+  { "int32",   HYSCAN_DATA_AMPLITUDE_INT32LE,   1e-9 },
+  { "float16", HYSCAN_DATA_AMPLITUDE_FLOAT16LE, 1e-5 },
+  { "float32", HYSCAN_DATA_AMPLITUDE_FLOAT32LE, 1e-9 }
 };
 
 /* Функция записывает тестовые гидроакустические данные. Записывается
@@ -173,8 +174,11 @@ create_complex_data (HyScanDataWriter *writer,
               data[j].im = sin (phase);
             }
 
+          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE))
+            g_error ("can't export channel data");
+
           status = hyscan_data_writer_acoustic_add_signal (writer, source, channel,
-                                                           data_time, data_buffer);
+                                                           data_time, channel_buffer);
           if (!status)
             g_error ("can't add signal image");
         }
@@ -192,8 +196,11 @@ create_complex_data (HyScanDataWriter *writer,
           for (j = 0; j < n_data_points; j++)
             data[j] = tvg0 + j;
 
+          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, HYSCAN_DATA_FLOAT32LE))
+            g_error ("can't export channel data");
+
           status = hyscan_data_writer_acoustic_add_tvg (writer, source, channel,
-                                                        data_time, data_buffer);
+                                                        data_time, channel_buffer);
           if (!status)
             g_error ("can't add tvg");
         }
@@ -640,9 +647,9 @@ main (int    argc,
       char **argv)
 {
   gchar *db_uri = NULL;
-  gchar *real_type_name = g_strdup ("adc-16le");
-  gchar *complex_type_name = g_strdup ("adc-16le");
-  gchar *amplitude_type_name = g_strdup ("amp-i16");
+  gchar *real_type_name = g_strdup ("adc16");
+  gchar *complex_type_name = g_strdup ("adc16");
+  gchar *amplitude_type_name = g_strdup ("int16");
   gdouble frequency = 100000.0;
   gdouble duration = 0.001;
   gdouble discretization = 1000000.0;
@@ -672,9 +679,9 @@ main (int    argc,
     GOptionContext *context;
     GOptionEntry entries[] =
       {
-        { "real-type", 'r', 0, G_OPTION_ARG_STRING, &real_type_name, "Real data type (adc-14le, adc-16le, adc-24le, float)", NULL },
-        { "complex-type", 'q', 0, G_OPTION_ARG_STRING, &complex_type_name, "Complex data type (adc-14le, adc-16le, adc-24le, float)", NULL },
-        { "amplitude-type", 'a', 0, G_OPTION_ARG_STRING, &amplitude_type_name, "Amplitude data type (float, amp-i8, amp-i16, amp-i32, amp-f8, amp-f16)", NULL },
+        { "real-type", 'r', 0, G_OPTION_ARG_STRING, &real_type_name, "Real data type (adc14, adc16, adc24, float16, float32)", NULL },
+        { "complex-type", 'q', 0, G_OPTION_ARG_STRING, &complex_type_name, "Complex data type (adc14, adc16, adc24, float16, float32)", NULL },
+        { "amplitude-type", 'a', 0, G_OPTION_ARG_STRING, &amplitude_type_name, "Amplitude data type (int8, int16, int24, int32, float16, float32)", NULL },
         { "discretization", 'd', 0, G_OPTION_ARG_DOUBLE, &discretization, "Signal discretization, Hz", NULL },
         { "frequency", 'f', 0, G_OPTION_ARG_DOUBLE, &frequency, "Signal frequency, Hz", NULL },
         { "duration", 't', 0, G_OPTION_ARG_DOUBLE, &duration, "Signal duration, s", NULL },
@@ -777,7 +784,7 @@ main (int    argc,
   hyscan_data_writer_set_db (writer, db);
 
   /* Создаём галс. */
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY, -1))
     g_error( "can't start write");
 
   timer = g_timer_new ();
@@ -914,6 +921,8 @@ main (int    argc,
                         discretization, frequency, duration,
                         n_lines, amplitude_error);
   g_print ("%.04fs elapsed\n", g_timer_elapsed (timer, NULL));
+
+  g_print ("All done.\n");
 
   hyscan_db_project_remove (db, PROJECT_NAME);
 

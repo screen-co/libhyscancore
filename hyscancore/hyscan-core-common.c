@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #include "hyscan-core-common.h"
@@ -120,7 +120,7 @@ hyscan_core_params_set_signal_info (HyScanDB *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_COMPLEX_FLOAT));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_COMPLEX_FLOAT32LE));
   hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
@@ -147,7 +147,7 @@ hyscan_core_params_set_tvg_info (HyScanDB *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_FLOAT));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_FLOAT32LE));
   hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
@@ -314,8 +314,8 @@ hyscan_core_params_check_signal_info (HyScanDB *db,
 
   if ((hyscan_param_list_get_integer (param_list, "/schema/id") != SIGNAL_CHANNEL_SCHEMA_ID) ||
       (hyscan_param_list_get_integer (param_list, "/schema/version") != SIGNAL_CHANNEL_SCHEMA_VERSION) ||
-      (data_type != HYSCAN_DATA_COMPLEX_FLOAT) ||
-      (fabs (hyscan_param_list_get_double (param_list, "/data/rate") - data_rate) > 1.0))
+      (fabs (hyscan_param_list_get_double (param_list, "/data/rate") - data_rate) > 0.001) ||
+      (data_type != HYSCAN_DATA_COMPLEX_FLOAT32LE))
     {
       goto exit;
     }
@@ -335,6 +335,7 @@ hyscan_core_params_check_tvg_info (HyScanDB *db,
                                    gdouble   data_rate)
 {
   HyScanParamList *param_list;
+  HyScanDataType data_type = HYSCAN_DATA_INVALID;
   gboolean status = FALSE;
 
   param_list = hyscan_param_list_new ();
@@ -347,10 +348,12 @@ hyscan_core_params_check_tvg_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     goto exit;
 
+  data_type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+
   if ((hyscan_param_list_get_integer (param_list, "/schema/id") != TVG_CHANNEL_SCHEMA_ID) ||
       (hyscan_param_list_get_integer (param_list, "/schema/version") != TVG_CHANNEL_SCHEMA_VERSION) ||
-      (fabs (hyscan_param_list_get_double (param_list, "/data/rate") - data_rate) > 1.0) ||
-      (hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type")) != HYSCAN_DATA_FLOAT))
+      (fabs (hyscan_param_list_get_double (param_list, "/data/rate") - data_rate) > 0.001) ||
+      (data_type != HYSCAN_DATA_FLOAT32LE))
     {
       goto exit;
     }
@@ -361,63 +364,4 @@ exit:
   g_object_unref (param_list);
 
   return status;
-}
-
-/* Функция возвращает название канала данных. */
-const gchar *
-hyscan_core_get_channel_name (HyScanSourceType  source,
-                              guint             channel,
-                              HyScanChannelType type)
-{
-  const gchar *source_name;
-  const gchar *channel_type;
-  gchar channel_name[256];
-  GQuark id;
-
-  if (channel == 0)
-    return NULL;
-
-  source_name = hyscan_source_get_name_by_type (source);
-  if (source_name == NULL)
-    return NULL;
-
-  if (source == HYSCAN_SOURCE_LOG)
-    return source_name;
-
-  switch (type)
-    {
-    case HYSCAN_CHANNEL_DATA:
-      channel_type = "";
-      break;
-
-    case HYSCAN_CHANNEL_NOISE:
-      channel_type = "-noise";
-      break;
-
-    case HYSCAN_CHANNEL_SIGNAL:
-      channel_type = "-signal";
-      break;
-
-    case HYSCAN_CHANNEL_TVG:
-      channel_type = "-tvg";
-      break;
-
-    default:
-      return NULL;
-    }
-
-  if (channel == 1)
-    {
-      g_snprintf (channel_name, sizeof (channel_name),
-                  "%s%s", source_name, channel_type);
-    }
-  else
-    {
-      g_snprintf (channel_name, sizeof (channel_name),
-                  "%s%s-%d", source_name, channel_type, channel);
-    }
-
-  id = g_quark_from_string (channel_name);
-
-  return g_quark_to_string (id);
 }

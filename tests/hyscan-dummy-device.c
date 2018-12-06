@@ -18,7 +18,7 @@
  * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
  * Alternatively, you can license this code under a commercial license.
- * Contact the Screen LLC in this case - info@screen-co.ru
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
 /* HyScanCore имеет двойную лицензию.
@@ -29,7 +29,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
- * лицензии. Для этого свяжитесь с ООО Экран - info@screen-co.ru.
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 /**
@@ -98,6 +98,7 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_STOP,
   HYSCAN_DUMMY_DEVICE_COMMAND_SYNC,
   HYSCAN_DUMMY_DEVICE_COMMAND_PING,
+  HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT,
   HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE
 } HyScanDummyDeviceCommand;
 
@@ -106,6 +107,8 @@ struct _HyScanDummyDevicePrivate
   HyScanDummyDeviceType            type;
   HyScanDataSchema                *schema;
   const gchar                     *device_id;
+
+  gboolean                         connected;
 
   GHashTable                      *params;
 
@@ -226,7 +229,6 @@ hyscan_dummy_device_object_constructed (GObject *object)
   HyScanDataSchemaBuilder *builder;
   HyScanSensorSchema *sensor_schema;
   HyScanSonarSchema *sonar_schema;
-  gchar *schema_data;
 
   gint32 uniq_value;
   gchar *key_id;
@@ -311,9 +313,9 @@ hyscan_dummy_device_object_constructed (GObject *object)
   hyscan_data_schema_builder_key_string_create (builder, key_id, "id", NULL, NULL);
   g_hash_table_insert (priv->params, key_id, HYSCAN_DEVICE_SCHEMA_STATUS_ERROR);
 
-  schema_data = hyscan_data_schema_builder_get_data (builder);
-  priv->schema = hyscan_data_schema_new_from_string (schema_data, "device");
-  g_free (schema_data);
+  priv->schema = hyscan_data_schema_builder_get_schema (builder);
+
+  priv->connected = TRUE;
 
   g_object_unref (sensor_schema);
   g_object_unref (sonar_schema);
@@ -325,6 +327,9 @@ hyscan_dummy_device_object_finalize (GObject *object)
 {
   HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (object);
   HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  if (priv->connected)
+    g_error ("device %s still connected", priv->device_id);
 
   g_hash_table_unref (priv->params);
   g_object_unref (priv->schema);
@@ -625,7 +630,6 @@ hyscan_dummy_device_sonar_start (HyScanSonar     *sonar,
   priv->project_name = project_name;
   priv->track_name = track_name;
   priv->track_type = track_type;
-
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_START;
 
   return TRUE;
@@ -665,6 +669,18 @@ hyscan_dummy_device_sonar_ping (HyScanSonar *sonar)
 }
 
 static gboolean
+hyscan_dummy_device_sonar_disconnect (HyScanSonar *sonar)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->connected = FALSE;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT;
+
+  return TRUE;
+}
+
+static gboolean
 hyscan_dummy_device_sensor_set_sound_velocity (HyScanSensor *sensor,
                                                GList        *svp)
 {
@@ -690,6 +706,18 @@ hyscan_dummy_device_sensor_set_enable (HyScanSensor *sensor,
 
   priv->sensor_name = sensor_name;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_sensor_disconnect (HyScanSensor *sensor)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sensor);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->connected = FALSE;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT;
 
   return TRUE;
 }
@@ -790,12 +818,12 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       info = hyscan_dummy_device_get_acoustic_info (source);
 
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_complex_float (data, cdata, n_points);
+      hyscan_buffer_wrap_data (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
       g_signal_emit_by_name (dummy, "sonar-signal", source, 1, time, data);
       g_signal_emit_by_name (dummy, "sonar-acoustic-data", source, 1, FALSE, time, info, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_float (data, fdata, n_points);
+      hyscan_buffer_wrap_data (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
       g_signal_emit_by_name (dummy, "sonar-tvg", source, 1, time, data);
 
       hyscan_acoustic_data_info_free (info);
@@ -819,6 +847,20 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   dummy->priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
 
   g_object_unref (data);
+}
+
+/**
+ * hyscan_dummy_device_reconnect:
+ * @dummy: указатель на #HyScanDummyDevice
+ *
+ * Функция устанавливает состояние подключения к устройству.
+ */
+void
+hyscan_dummy_device_reconnect (HyScanDummyDevice *dummy)
+{
+  g_return_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy));
+
+  dummy->priv->connected = TRUE;
 }
 
 /**
@@ -1346,6 +1388,32 @@ hyscan_dummy_device_check_ping (HyScanDummyDevice *dummy)
 }
 
 /**
+ * hyscan_dummy_device_check_disconnect:
+ * @dummy: указатель на #HyScanDummyDevice
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_disconnect.
+ */
+gboolean
+hyscan_dummy_device_check_disconnect (HyScanDummyDevice *dummy)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT)
+    return FALSE;
+
+  if (priv->connected)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+
+  return TRUE;
+}
+
+/**
  * hyscan_dummy_device_check_sensor_enable:
  * @dummy: указатель на #HyScanDummyDevice
  * @sensor: название датчика
@@ -1755,7 +1823,7 @@ hyscan_dummy_device_get_acoustic_info (HyScanSourceType source)
 {
   HyScanAcousticDataInfo info;
 
-  info.data_type = HYSCAN_DATA_COMPLEX_FLOAT;
+  info.data_type = HYSCAN_DATA_COMPLEX_FLOAT32LE;
   info.data_rate = 2.0 * source;
   info.signal_frequency = 3.0 * source;
   info.signal_bandwidth = 4.0 * source;
@@ -1874,6 +1942,7 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
   iface->stop = hyscan_dummy_device_sonar_stop;
   iface->sync = hyscan_dummy_device_sonar_sync;
   iface->ping = hyscan_dummy_device_sonar_ping;
+  iface->disconnect = hyscan_dummy_device_sonar_disconnect;
 }
 
 static void
@@ -1881,4 +1950,5 @@ hyscan_dummy_device_sensor_interface_init (HyScanSensorInterface *iface)
 {
   iface->set_sound_velocity = hyscan_dummy_device_sensor_set_sound_velocity;
   iface->set_enable = hyscan_dummy_device_sensor_set_enable;
+  iface->disconnect = hyscan_dummy_device_sensor_disconnect;
 }
