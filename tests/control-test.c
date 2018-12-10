@@ -45,7 +45,7 @@
 #define TRACK_NAME     "test"
 
 #define LUCKY_SENSOR   "nmea-1"
-#define LUCKY_SOURCE   HYSCAN_SOURCE_SIDE_SCAN_PORT
+#define LUCKY_SOURCE   HYSCAN_SOURCE_PROFILER
 
 #define OPERATOR_NAME  "Operator name"
 
@@ -59,6 +59,7 @@ HyScanDummyDevice *device1;
 HyScanDummyDevice *device2;
 HyScanControl *control1;
 HyScanControl *control2;
+HyScanControl *control;
 HyScanSensor *sensor;
 HyScanSonar *sonar;
 HyScanParam *param;
@@ -390,15 +391,10 @@ check_sensors (void)
   guint32 i, j;
 
   /* Число датчиков. */
-  sensors = hyscan_control_sensors_list (control1);
+  sensors = hyscan_control_sensors_list (control);
   n_sensors = g_strv_length ((gchar**)sensors);
   if (n_sensors != ((sizeof (orig_sensors) / sizeof (gchar*)) - 1))
-    g_error ("control1 n_sensors mismatch");
-
-  sensors = hyscan_control_sensors_list (control2);
-  n_sensors = g_strv_length ((gchar**)sensors);
-  if (n_sensors != ((sizeof (orig_sensors) / sizeof (gchar*)) - 1))
-    g_error ("control2 n_sensors mismatch");
+    g_error ("n_sensors mismatch");
 
   for (i = 0; i < n_sensors; i++)
     {
@@ -408,28 +404,16 @@ check_sensors (void)
       orig_info = hyscan_dummy_device_get_sensor_info (orig_sensors[i]);
 
       /* Проверяем список датчиков. */
-      sensors = hyscan_control_sensors_list (control1);
+      sensors = hyscan_control_sensors_list (control);
       for (j = 0; j < n_sensors; j++)
         if (g_strcmp0 (orig_sensors[i], sensors[j]) == 0)
           break;
       if (j == n_sensors)
-        g_error ("control1 list failed");
+        g_error ("sensors list failed");
 
-      sensors = hyscan_control_sensors_list (control2);
-      for (j = 0; j < n_sensors; j++)
-        if (g_strcmp0 (orig_sensors[i], sensors[j]) == 0)
-          break;
-      if (j == n_sensors)
-        g_error ("control2 list failed");
-
-      /* Проверяем параметры датчика. */
-      g_message ("Check control1 sensor %s", sensors[i]);
-      info = hyscan_control_sensor_get_info (control1, orig_sensors[i]);
-      verify_sensor (orig_info, info);
-
-      /* В control2 для LUCKY_SENSOR задано местоположение антенны по умолчанию. */
-      g_message ("Check control2 sensor %s", sensors[i]);
-      info = hyscan_control_sensor_get_info (control2, orig_sensors[i]);
+      /* Для LUCKY_SENSOR задано местоположение антенны по умолчанию. */
+      g_message ("Check sensor %s", sensors[i]);
+      info = hyscan_control_sensor_get_info (control, orig_sensors[i]);
       if (g_strcmp0 (orig_sensors[i], LUCKY_SENSOR) == 0)
         orig_info->position = hyscan_dummy_device_get_sensor_position (orig_sensors[i]);
       verify_sensor (orig_info, info);
@@ -454,13 +438,9 @@ check_sources (void)
   guint32 i, j;
 
   /* Число источников данных. */
-  sources = hyscan_control_sources_list (control1, &n_sources);
+  sources = hyscan_control_sources_list (control, &n_sources);
   if (n_sources != (sizeof (orig_sources) / sizeof (HyScanSourceType)))
-    g_error ("control1 n_sources mismatch");
-
-  sources = hyscan_control_sources_list (control2, &n_sources);
-  if (n_sources != (sizeof (orig_sources) / sizeof (HyScanSourceType)))
-    g_error ("control1 n_sources mismatch");
+    g_error ("n_sources mismatch");
 
   for (i = 0; i < n_sources; i++)
     {
@@ -470,28 +450,16 @@ check_sources (void)
       orig_info = hyscan_dummy_device_get_source_info (orig_sources[i]);
 
       /* Проверяем список источников данных. */
-      sources = hyscan_control_sources_list (control1, &n_sources);
+      sources = hyscan_control_sources_list (control, &n_sources);
       for (j = 0; j < n_sources; j++)
         if (orig_sources[i] == sources[j])
           break;
       if (j == n_sources)
-        g_error ("control list failed");
+        g_error ("sources list failed");
 
-      sources = hyscan_control_sources_list (control2, &n_sources);
-      for (j = 0; j < n_sources; j++)
-        if (orig_sources[i] == sources[j])
-          break;
-      if (j == n_sources)
-        g_error ("control list failed");
-
-      /* Проверяем параметры источников данных. */
-      g_message ("Check control1 source %s", hyscan_source_get_name_by_type (orig_sources[i]));
-      info = hyscan_control_source_get_info (control1, orig_sources[i]);
-      verify_source (orig_info, info);
-
-      /* В control2 Для LUCKY_SOURCE добавлено местоположение антенны. */
-      g_message ("Check control2 source %s", hyscan_source_get_name_by_type (orig_sources[i]));
-      info = hyscan_control_source_get_info (control2, orig_sources[i]);
+      /* Для LUCKY_SOURCE добавлено местоположение антенны. */
+      g_message ("Check source %s", hyscan_source_get_name_by_type (orig_sources[i]));
+      info = hyscan_control_source_get_info (control, orig_sources[i]);
       if (orig_sources[i] == LUCKY_SOURCE)
         orig_info->position = hyscan_dummy_device_get_source_position (orig_sources[i]);
       verify_source (orig_info, info);
@@ -507,13 +475,13 @@ check_state_signal (void)
   guint32 n_devices;
   guint i;
 
-  devices = hyscan_control_devices_list (control2);
+  devices = hyscan_control_devices_list (control);
   n_devices = g_strv_length ((gchar**)devices);
 
   /* Проверяем что устройства находятся в отключенном состоянии. */
   for (i = 0; i < n_devices; i++)
     {
-      if (hyscan_control_device_get_status (control2, devices[i]) != HYSCAN_DEVICE_STATUS_ERROR)
+      if (hyscan_control_device_get_status (control, devices[i]) != HYSCAN_DEVICE_STATUS_ERROR)
         g_error ("%s activated", devices[i]);
     }
 
@@ -531,7 +499,7 @@ check_state_signal (void)
   /* Проверяем что устройства находятся в активном состоянии. */
   for (i = 0; i < n_devices; i++)
     {
-      if (hyscan_control_device_get_status (control2, devices[i]) != HYSCAN_DEVICE_STATUS_OK)
+      if (hyscan_control_device_get_status (control, devices[i]) != HYSCAN_DEVICE_STATUS_OK)
         g_error ("%s activated", devices[i]);
     }
 }
@@ -560,7 +528,7 @@ check_sensor_set_sound_velocity (void)
       g_error ("param failed");
     }
 
-  svp = hyscan_control_get_sound_velocity (control2);
+  svp = hyscan_control_get_sound_velocity (control);
   if (svp == NULL)
     g_error ("control call failed");
 
@@ -584,7 +552,7 @@ check_sensor_set_enable (const gchar *sensor_name)
 {
   HyScanDummyDevice *device = get_sensor_device (sensor_name);
 
-  if (hyscan_control_sensor_get_enable (control2, sensor_name))
+  if (hyscan_control_sensor_get_enable (control, sensor_name))
     g_error ("control param failed");
 
   if (!hyscan_sensor_set_enable (sensor, sensor_name, TRUE))
@@ -593,24 +561,18 @@ check_sensor_set_enable (const gchar *sensor_name)
   if (!hyscan_dummy_device_check_sensor_enable (device, sensor_name))
     g_error ("param failed");
 
-  if (!hyscan_control_sensor_get_enable (control2, sensor_name))
+  if (!hyscan_control_sensor_get_enable (control, sensor_name))
     g_error ("control param failed");
 }
 
 void
 check_sensor_disconnect (void)
 {
-  if (!hyscan_sensor_disconnect (sensor))
+  if (!hyscan_sensor_disconnect (HYSCAN_SENSOR (control1)))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_disconnect (device1) ||
-      !hyscan_dummy_device_check_disconnect (device2))
-    {
-      g_error ("param failed");
-    }
-
-  hyscan_dummy_device_reconnect (device1);
-  hyscan_dummy_device_reconnect (device2);
+  if (!hyscan_dummy_device_check_disconnect (device1))
+    g_error ("param failed");
 }
 
 void
@@ -637,7 +599,7 @@ check_sonar_set_sound_velocity (void)
       g_error ("param failed");
     }
 
-  svp = hyscan_control_get_sound_velocity (control2);
+  svp = hyscan_control_get_sound_velocity (control);
   if (svp == NULL)
     g_error ("control call failed");
 
@@ -659,7 +621,7 @@ check_sonar_set_sound_velocity (void)
 void
 check_sonar_receiver_set_time (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble receive_time = g_random_double ();
   gdouble wait_time = g_random_double ();
@@ -681,7 +643,7 @@ check_sonar_receiver_set_time (HyScanSourceType source)
 void
 check_sonar_receiver_set_auto (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
 
   if (!hyscan_sonar_receiver_set_auto (sonar, source))
@@ -697,7 +659,7 @@ check_sonar_receiver_set_auto (HyScanSourceType source)
 void
 check_sonar_generator_set_preset (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint preset = g_random_int ();
 
@@ -717,7 +679,7 @@ check_sonar_generator_set_preset (HyScanSourceType source)
 void
 check_sonar_generator_set_auto (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint signal = g_random_int ();
 
@@ -737,7 +699,7 @@ check_sonar_generator_set_auto (HyScanSourceType source)
 void
 check_sonar_generator_set_simple (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint signal = g_random_int ();
   gdouble power = g_random_double ();
@@ -759,7 +721,7 @@ check_sonar_generator_set_simple (HyScanSourceType source)
 void
 check_sonar_generator_set_extended (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   guint signal = g_random_int ();
   gdouble duration = g_random_double ();
@@ -783,7 +745,7 @@ check_sonar_generator_set_extended (HyScanSourceType source)
 void
 check_sonar_tvg_set_auto (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble level = g_random_double ();
   gdouble sensitivity = g_random_double ();
@@ -805,7 +767,7 @@ check_sonar_tvg_set_auto (HyScanSourceType source)
 void
 check_sonar_tvg_set_points (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble time_step = g_random_double ();
   gdouble *gains;
@@ -841,7 +803,7 @@ check_sonar_tvg_set_points (HyScanSourceType source)
 void
 check_sonar_tvg_set_constant (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble gain = g_random_double ();
 
@@ -861,7 +823,7 @@ check_sonar_tvg_set_constant (HyScanSourceType source)
 void
 check_sonar_tvg_set_linear_db (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble gain0 = g_random_double ();
   gdouble gain_step = g_random_double ();
@@ -883,7 +845,7 @@ check_sonar_tvg_set_linear_db (HyScanSourceType source)
 void
 check_sonar_tvg_set_logarithmic (HyScanSourceType source)
 {
-  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control2, source);
+  const HyScanControlSourceMode *mode = hyscan_control_source_get_mode (control, source);
   HyScanDummyDevice *device = get_sonar_device (source);
   gdouble gain0 = g_random_double ();
   gdouble beta = g_random_double ();
@@ -974,17 +936,11 @@ check_sonar_ping (void)
 void
 check_sonar_disconnect (void)
 {
-  if (!hyscan_sonar_disconnect (sonar))
+  if (!hyscan_sonar_disconnect (HYSCAN_SONAR (control2)))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_disconnect (device1) ||
-      !hyscan_dummy_device_check_disconnect (device2))
-    {
-      g_error ("param failed");
-    }
-
-  hyscan_dummy_device_reconnect (device1);
-  hyscan_dummy_device_reconnect (device2);
+  if (!hyscan_dummy_device_check_disconnect (device2))
+    g_error ("param failed");
 }
 
 void
@@ -1175,30 +1131,33 @@ main (int    argc,
   /* Объект управления. */
   control1 = hyscan_control_new ();
   control2 = hyscan_control_new ();
-  sensor = HYSCAN_SENSOR (control2);
-  sonar = HYSCAN_SONAR (control2);
-  param = HYSCAN_PARAM (control2);
+  control = hyscan_control_new ();
+  sensor = HYSCAN_SENSOR (control);
+  sonar = HYSCAN_SONAR (control);
+  param = HYSCAN_PARAM (control);
 
   /* Обработчик сигнала device-state. */
-  g_signal_connect (control2, "device-state", G_CALLBACK (device_state_cb), NULL);
+  g_signal_connect (control, "device-state", G_CALLBACK (device_state_cb), NULL);
 
   /* Добавляем устройства в объект управления. */
   hyscan_control_device_add (control1, HYSCAN_DEVICE (device1));
-  hyscan_control_device_add (control1, HYSCAN_DEVICE (device2));
+  hyscan_control_device_add (control2, HYSCAN_DEVICE (device2));
 
   /* Местоположение антенн по умолчанию. */
-  position = hyscan_dummy_device_get_source_position (LUCKY_SOURCE);
-  hyscan_control_source_set_position (control1, LUCKY_SOURCE, position);
-  hyscan_antenna_position_free (position);
-
   position = hyscan_dummy_device_get_sensor_position (LUCKY_SENSOR);
   hyscan_control_sensor_set_position (control1, LUCKY_SENSOR, position);
   hyscan_antenna_position_free (position);
 
+  position = hyscan_dummy_device_get_source_position (LUCKY_SOURCE);
+  hyscan_control_source_set_position (control2, LUCKY_SOURCE, position);
+  hyscan_antenna_position_free (position);
+
   /* Запуск составного устройства. */
   hyscan_control_device_bind (control1);
-  hyscan_control_device_add (control2, HYSCAN_DEVICE (control1));
   hyscan_control_device_bind (control2);
+  hyscan_control_device_add (control, HYSCAN_DEVICE (control1));
+  hyscan_control_device_add (control, HYSCAN_DEVICE (control2));
+  hyscan_control_device_bind (control);
 
   /* Схема устройства. */
   if (schema_file != NULL)
@@ -1211,20 +1170,20 @@ main (int    argc,
     }
 
   /* Список датчиков и источников данных. */
-  sensors = hyscan_control_sensors_list (control2);
-  sources = hyscan_control_sources_list (control2, &n_sources);
+  sensors = hyscan_control_sensors_list (control);
+  sources = hyscan_control_sources_list (control, &n_sources);
 
   /* Местоположение антенн датчиков. */
   for (i = 0; sensors[i] != NULL; i++)
     {
       const HyScanSensorInfoSensor *info;
 
-      info = hyscan_control_sensor_get_info (control2, sensors[i]);
+      info = hyscan_control_sensor_get_info (control, sensors[i]);
       if (info->position != NULL)
         continue;
 
       position = hyscan_dummy_device_get_sensor_position (sensors[i]);
-      hyscan_control_sensor_set_position (control2, sensors[i], position);
+      hyscan_control_sensor_set_position (control, sensors[i], position);
       hyscan_antenna_position_free (position);
     }
 
@@ -1233,22 +1192,22 @@ main (int    argc,
     {
       const HyScanSonarInfoSource *info;
 
-      info = hyscan_control_source_get_info (control2, sources[i]);
+      info = hyscan_control_source_get_info (control, sources[i]);
       if (info->position != NULL)
         continue;
 
       position = hyscan_dummy_device_get_source_position (sources[i]);
-      hyscan_control_source_set_position (control2, sources[i], position);
+      hyscan_control_source_set_position (control, sources[i], position);
       hyscan_antenna_position_free (position);
     }
 
   /* Параметры записи данных. */
-  hyscan_control_writer_set_db (control2, db);
-  hyscan_control_writer_set_operator_name (control2, OPERATOR_NAME);
+  hyscan_control_writer_set_db (control, db);
+  hyscan_control_writer_set_operator_name (control, OPERATOR_NAME);
 
   /* Настройка датчиков. */
   for (i = 0; sensors[i] != NULL; i++)
-    hyscan_control_sensor_set_channel (control2, sensors[i], i + 1);
+    hyscan_control_sensor_set_channel (control, sensors[i], i + 1);
 
   /* Проверка информации о датчиках. */
   g_message ("Check sensors info");
@@ -1274,9 +1233,6 @@ main (int    argc,
   g_message ("Check hyscan_sensor_set_enable");
   for (i = 0; sensors[i] != NULL; i++)
     check_sensor_set_enable (sensors[i]);
-
-  g_message ("Check hyscan_sensor_disconnect");
-  check_sensor_disconnect ();
 
   g_message ("Check hyscan_sonar_set_sound_velocity");
   check_sonar_set_sound_velocity ();
@@ -1342,9 +1298,6 @@ main (int    argc,
   g_message ("Check hyscan_sonar_ping");
   check_sonar_ping ();
 
-  g_message ("Check hyscan_sonar_disconnect");
-  check_sonar_disconnect ();
-
   g_message ("Check sensor data");
   for (i = 0; sensors[i] != NULL; i++)
     check_sensor_data (sensors[i]);
@@ -1353,8 +1306,15 @@ main (int    argc,
   for (i = 0; i < n_sources; i++)
     check_sonar_data (sources[i]);
 
+  g_message ("Check hyscan_sensor_disconnect");
+  check_sensor_disconnect ();
+
+  g_message ("Check hyscan_sonar_disconnect");
+  check_sonar_disconnect ();
+
   hyscan_db_project_remove (db, project_name);
 
+  g_object_unref (control);
   g_object_unref (control1);
   g_object_unref (control2);
   g_object_unref (device1);

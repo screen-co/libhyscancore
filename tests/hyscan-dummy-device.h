@@ -89,8 +89,6 @@ void                     hyscan_dummy_device_change_state             (HyScanDum
 
 void                     hyscan_dummy_device_send_data                (HyScanDummyDevice              *dummy);
 
-void                     hyscan_dummy_device_reconnect                (HyScanDummyDevice              *dummy);
-
 gboolean                 hyscan_dummy_device_check_sound_velocity     (HyScanDummyDevice              *dummy,
                                                                        GList                          *svp);
 

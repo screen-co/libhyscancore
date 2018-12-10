@@ -432,7 +432,7 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
   GHashTableIter iter;
   gpointer key, value;
 
-  if (priv->binded)
+  if ((priv->schema != NULL) || priv->binded)
     return;
 
   builder = hyscan_data_schema_builder_new ("control");
@@ -1551,10 +1551,10 @@ hyscan_control_sonar_disconnect (HyScanSonar *sonar)
   HyScanControl *control = HYSCAN_CONTROL (sonar);
   HyScanControlPrivate *priv = control->priv;
 
-  if (!g_atomic_int_get (&priv->binded))
-    return FALSE;
+  if (g_atomic_int_compare_and_exchange (&priv->binded, TRUE, FALSE))
+    return hyscan_control_disconnect (priv);
 
-  return hyscan_control_disconnect (priv);
+  return TRUE;
 }
 
 /* Метод HyScanSensor->set_sound_velocity. */
@@ -1606,10 +1606,10 @@ hyscan_control_sensor_disconnect (HyScanSensor *sensor)
   HyScanControl *control = HYSCAN_CONTROL (sensor);
   HyScanControlPrivate *priv = control->priv;
 
-  if (!g_atomic_int_get (&priv->binded))
-    return FALSE;
+  if (g_atomic_int_compare_and_exchange (&priv->binded, TRUE, FALSE))
+    return hyscan_control_disconnect (priv);
 
-  return hyscan_control_disconnect (priv);
+  return TRUE;
 }
 
 /**
@@ -1816,10 +1816,10 @@ hyscan_control_device_bind (HyScanControl *control)
 
   priv = control->priv;
 
-  if (g_atomic_int_get (&priv->binded))
-    return FALSE;
-
   g_mutex_lock (&priv->lock);
+
+  if ((priv->schema != NULL) || priv->binded)
+    goto exit;
 
   /* Создаём новую схему конфигурации устройств. */
   hyscan_control_create_device_schema (priv);
@@ -1901,6 +1901,7 @@ hyscan_control_device_bind (HyScanControl *control)
       status = TRUE;
     }
 
+exit:
   g_mutex_unlock (&priv->lock);
 
   return status;

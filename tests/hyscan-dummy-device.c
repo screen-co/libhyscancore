@@ -833,20 +833,6 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
 }
 
 /**
- * hyscan_dummy_device_reconnect:
- * @dummy: указатель на #HyScanDummyDevice
- *
- * Функция устанавливает состояние подключения к устройству.
- */
-void
-hyscan_dummy_device_reconnect (HyScanDummyDevice *dummy)
-{
-  g_return_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy));
-
-  dummy->priv->connected = TRUE;
-}
-
-/**
  * hyscan_dummy_device_check_sound_velocity:
  * @dummy: указатель на #HyScanDummyDevice
  * @svp: профиль скорости звука
@@ -1619,7 +1605,7 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
 {
   const gchar *source_name;
 
-  HyScanSonarInfoSource *pinfo;
+  HyScanSonarInfoSource *pinfo = NULL;
   HyScanSonarInfoSource info;
 
   HyScanDummyDeviceType dev_type;
@@ -1760,8 +1746,6 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
       tvg.min_gain = -30.0;
       tvg.max_gain = 30.0;
       tvg.decrease = TRUE;
-
-      info.position = hyscan_dummy_device_get_source_position (source);
     }
   else if (source == HYSCAN_SOURCE_ECHOPROFILER)
     {
@@ -1779,12 +1763,10 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
     }
   else
     {
-      pinfo = NULL;
       goto exit;
     }
 
   pinfo = hyscan_sonar_info_source_copy (&info);
-  hyscan_antenna_position_free (info.position);
 
 exit:
   g_list_free_full (presets, (GDestroyNotify)hyscan_data_schema_enum_value_free);
