@@ -81,7 +81,6 @@ typedef enum
 {
   HYSCAN_DUMMY_DEVICE_COMMAND_INVALID,
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY,
-  HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_GET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_PRESET,
@@ -415,22 +414,6 @@ hyscan_dummy_device_sonar_set_sound_velocity (HyScanSonar *sonar,
 
   priv->svp = svp;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_receiver_get_time (HyScanSonar      *sonar,
-                                             HyScanSourceType  source,
-                                             gdouble          *receive_time,
-                                             gdouble          *wait_time)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  *receive_time *= 2.0;
-  *wait_time *= 2.0;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_GET_TIME;
 
   return TRUE;
 }
@@ -1925,7 +1908,6 @@ static void
 hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 {
   iface->set_sound_velocity = hyscan_dummy_device_sonar_set_sound_velocity;
-  iface->receiver_get_time = hyscan_dummy_device_sonar_receiver_get_time;
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
   iface->generator_set_preset = hyscan_dummy_device_sonar_generator_set_preset;
