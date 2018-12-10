@@ -1,7 +1,8 @@
 #ifndef __HYSCAN_AMPLITUDE_FACTORY_H__
 #define __HYSCAN_AMPLITUDE_FACTORY_H__
 
-#include <hyscan-amplitude-simple.h>
+#include <hyscan-types.h>
+#include <hyscan-amplitude.h>
 
 G_BEGIN_DECLS
 
@@ -32,10 +33,16 @@ GType                    hyscan_amplitude_factory_get_type        (void);
 
 HyScanAmplitudeFactory * hyscan_amplitude_factory_new             (HyScanCache            *cache);
 
-HyScanAmplitude *        hyscan_amplitude_factory_produce         (HyScanAmplitudeFactory *factory,
+gchar *                  hyscan_amplitude_factory_get_token       (HyScanAmplitudeFactory *factory);
+
+guint32                  hyscan_amplitude_factory_get_hash        (HyScanAmplitudeFactory *factory);
+
+void                     hyscan_amplitude_factory_set_track       (HyScanAmplitudeFactory *factory,
                                                                    HyScanDB               *db,
                                                                    const gchar            *project_name,
-                                                                   const gchar            *track_name,
+                                                                   const gchar            *track_name);
+
+HyScanAmplitude *        hyscan_amplitude_factory_produce         (HyScanAmplitudeFactory *factory,
                                                                    HyScanSourceType        source);
 
 G_END_DECLS

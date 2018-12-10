@@ -107,7 +107,7 @@ typedef struct
 
 struct _HyScanWaterfallTilePrivate
 {
-  HyScanAcousticData       *dc;                 /* Канал данных. */
+  HyScanAmplitude          *dc;                 /* Канал данных. */
   HyScanDepthometer        *depth;              /* Объект обработки навигационных данных. */
   gfloat                    ship_speed;         /* Скорость движения. */
   gfloat                    sound_speed;        /* Скорость звука. */
@@ -240,7 +240,7 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
                                gboolean                   *regenerate)
 {
   HyScanWaterfallTileParams *params = &priv->params;
-  HyScanAcousticData *dc;
+  HyScanAmplitude    *dc;
   HyScanDBFindStatus  dc_find;
   gboolean            dc_status, dc_writeable;
   guint32             dc_lindex = 0, dc_rindex = 0;
@@ -278,7 +278,7 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
     }
 
   /* Проверяем диапазон данных и отказываемся генерировать кадр, если есть только одна строка. */
-  dc_status = hyscan_acoustic_data_get_range (dc, &dc_lindex, &dc_rindex);
+  dc_status = hyscan_amplitude_get_range (dc, &dc_lindex, &dc_rindex);
   if (dc_rindex == dc_lindex)
     {
       have_data = FALSE; /* Сейчас кадр пустой, */
@@ -287,8 +287,8 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
     }
 
   /* Получаем параметры КД. */
-  dc_writeable = hyscan_acoustic_data_is_writable (dc);
-  hyscan_acoustic_data_get_amplitude (dc, dc_lindex, &n_vals, &dc_ltime);
+  dc_writeable = hyscan_amplitude_is_writable (dc);
+  hyscan_amplitude_get_amplitude (dc, dc_lindex, &n_vals, &dc_ltime, NULL);
 
   /* Горизонтальные координаты могут быть отрицательными, но генератор понимает только положительные. */
   h_start = ABS (h_start);
@@ -312,7 +312,7 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
   /* Ищем диапазон строк, которые гарантированно лежат внутри кадра. */
   dc_status = TRUE;
   t = dc_ltime + (gint64)((v_start / priv->ship_speed) * 1e6);
-  dc_find = hyscan_acoustic_data_find_data (dc, t, NULL, &lindex, NULL, NULL);
+  dc_find = hyscan_amplitude_find_data (dc, t, NULL, &lindex, NULL, NULL);
   if (G_LIKELY (dc_find == HYSCAN_DB_FIND_OK)); /* Тут ошибки нет. */
   else if (dc_find == HYSCAN_DB_FIND_LESS)
     lindex = dc_lindex;
@@ -320,7 +320,7 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
     dc_status = FALSE;
 
   t = dc_ltime + (gint64)((v_end / priv->ship_speed) * 1e6);
-  dc_find = hyscan_acoustic_data_find_data (dc, t, &rindex, NULL, NULL, NULL);
+  dc_find = hyscan_amplitude_find_data (dc, t, &rindex, NULL, NULL, NULL);
   if (G_LIKELY (dc_find == HYSCAN_DB_FIND_OK)); /* Тут ошибки нет. */
   else if (dc_find == HYSCAN_DB_FIND_GREATER)
     rindex = dc_rindex;
@@ -339,12 +339,12 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
   if (lindex > dc_lindex)
     {
       lindex_next = lindex - 1;
-      hyscan_acoustic_data_get_amplitude (dc, lindex_next, &n_vals, &lindex_next_time);
+      hyscan_amplitude_get_amplitude (dc, lindex_next, &n_vals, &lindex_next_time, NULL);
     }
   if (rindex < dc_rindex)
     {
       rindex_next = rindex + 1;
-      hyscan_acoustic_data_get_amplitude (dc, rindex_next, &n_vals, &rindex_next_time);
+      hyscan_amplitude_get_amplitude (dc, rindex_next, &n_vals, &rindex_next_time, NULL);
     }
 
   /* Если доп. строка есть только справа или слева, а внутри ничего, то пустой тайл. */
@@ -430,8 +430,8 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
                             gboolean                   *have_data)
 {
   HyScanWaterfallTileParams *params = &priv->params;
-  HyScanAcousticData *dc = priv->dc;
-  HyScanAcousticDataInfo dc_info = hyscan_acoustic_data_get_info (dc);
+  HyScanAmplitude *dc = priv->dc;
+  HyScanAcousticDataInfo dc_info = hyscan_amplitude_get_info (dc);
 
   gfloat depth = 0;
 
@@ -465,8 +465,8 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   jsum          = jtot = jprev = 0;
 
   /* Узнаем время первой записи в КД. */
-  if (hyscan_acoustic_data_get_range (dc, &i, NULL))
-    hyscan_acoustic_data_get_amplitude (dc, i, &n_vals, &dc_ltime);
+  if (hyscan_amplitude_get_range (dc, &i, NULL))
+    hyscan_amplitude_get_amplitude (dc, i, &n_vals, &dc_ltime, NULL);
 
   for (i = lindex; i <= rindex; i++)
     {
@@ -475,7 +475,7 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
         goto exit;
 
       /* Забираем строку из БД. */
-      vals = hyscan_acoustic_data_get_amplitude (dc, i, &n_vals, &time);
+      vals = hyscan_amplitude_get_amplitude (dc, i, &n_vals, &time, NULL);
       if (vals == NULL)
         continue;
 
@@ -518,7 +518,7 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
       /* Если строка найдена, забираем из неё данные. */
       if (i != G_MAXUINT32)
         {
-          vals = hyscan_acoustic_data_get_amplitude (dc, i, &n_vals, &time);
+          vals = hyscan_amplitude_get_amplitude (dc, i, &n_vals, &time, NULL);
           if (vals != NULL)
             {
               if (priv->tile.flags & HYSCAN_TILE_GROUND)
@@ -1094,7 +1094,7 @@ hyscan_waterfall_tile_set_speeds (HyScanWaterfallTile *wfall,
 /* Установка КД и параметров тайла. */
 gboolean
 hyscan_waterfall_tile_set_tile (HyScanWaterfallTile *wfall,
-                                HyScanAcousticData  *dc,
+                                HyScanAmplitude     *dc,
                                 HyScanTile           tile)
 {
   HyScanWaterfallTilePrivate *priv;
@@ -1104,7 +1104,7 @@ hyscan_waterfall_tile_set_tile (HyScanWaterfallTile *wfall,
   if (tile.along_start == tile.along_end || tile.across_start == tile.across_end)
     return FALSE;
 
-  if (!HYSCAN_IS_ACOUSTIC_DATA (dc))
+  if (!HYSCAN_IS_AMPLITUDE (dc))
     return FALSE;
 
   /* Проверяем, не идет ли сейчас генерация тайла. */

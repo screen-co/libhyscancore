@@ -114,7 +114,7 @@ main (int argc, char **argv)
   tile.rotate       = FALSE;
   hyscan_waterfall_tile_set_depth (wf, NULL);
   hyscan_waterfall_tile_set_speeds (wf, 1.0, 2.0);
-  hyscan_waterfall_tile_set_tile (wf, dc, tile);
+  hyscan_waterfall_tile_set_tile (wf, HYSCAN_AMPLITUDE (dc), tile);
 
   image = hyscan_waterfall_tile_generate (wf, &tile, &image_size);
 

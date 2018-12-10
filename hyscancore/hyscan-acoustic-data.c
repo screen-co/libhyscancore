@@ -161,6 +161,7 @@ struct _HyScanAcousticDataPrivate
   gdouble                      conv_scale;             /* Коэффициент дополнительного масштабирования свёртки. */
 };
 
+static void            hyscan_acoustic_data_interface_init     (HyScanAmplitudeInterface      *iface);
 static void            hyscan_acoustic_data_set_property       (GObject                       *object,
                                                                 guint                          prop_id,
                                                                 const GValue                  *value,
@@ -196,7 +197,9 @@ static gboolean        hyscan_acoustic_data_check_meta_cache   (HyScanAcousticDa
                                                                 guint32                       *n_points,
                                                                 gint64                        *time);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanAcousticData, hyscan_acoustic_data, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_CODE (HyScanAcousticData, hyscan_acoustic_data, G_TYPE_OBJECT,
+                         G_ADD_PRIVATE (HyScanAcousticData)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_AMPLITUDE, hyscan_acoustic_data_interface_init))
 
 static void
 hyscan_acoustic_data_class_init (HyScanAcousticDataClass *klass)
@@ -1755,4 +1758,106 @@ hyscan_acoustic_data_get_amplitude (HyScanAcousticData *data,
   (time != NULL) ? *time = priv->data_time : 0;
 
   return hyscan_buffer_get_float (priv->real_buffer, n_points);
+}
+
+static const gchar *
+hyscan_acoustic_data_amplitude_get_token (HyScanAmplitude *amplitude)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return data->priv->cache_token;
+}
+
+static HyScanAntennaPosition
+hyscan_acoustic_data_amplitude_get_position (HyScanAmplitude *amplitude)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_get_position (data);
+}
+
+static HyScanAcousticDataInfo
+hyscan_acoustic_data_amplitude_get_info (HyScanAmplitude *amplitude)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_get_info (data);
+}
+
+static gboolean
+hyscan_acoustic_data_amplitude_is_writable (HyScanAmplitude *amplitude)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_is_writable (data);
+}
+
+static guint32
+hyscan_acoustic_data_amplitude_get_mod_count (HyScanAmplitude *amplitude)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_get_mod_count (data);
+}
+
+static gboolean
+hyscan_acoustic_data_amplitude_get_range (HyScanAmplitude *amplitude,
+                                          guint32         *first_index,
+                                          guint32         *last_index)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_get_range (data, first_index, last_index);
+}
+
+static HyScanDBFindStatus
+hyscan_acoustic_data_amplitude_find_data (HyScanAmplitude *amplitude,
+                                          gint64           time,
+                                          guint32         *lindex,
+                                          guint32         *rindex,
+                                          gint64          *ltime,
+                                          gint64          *rtime)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_find_data (data, time, lindex, rindex, ltime, rtime);
+}
+
+static gboolean
+hyscan_acoustic_data_amplitude_get_size_time (HyScanAmplitude *amplitude,
+                                              guint32          index,
+                                              guint32         *n_points,
+                                              gint64          *time)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  return hyscan_acoustic_data_get_size_time (data, index, n_points, time);
+}
+
+static const gfloat *
+hyscan_acoustic_data_amplitude_get_amplitude (HyScanAmplitude *amplitude,
+                                              guint32          index,
+                                              guint32         *n_points,
+                                              gint64          *time,
+                                              gboolean        *noise)
+{
+  HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
+
+  (noise != NULL) ? *noise = data->priv->noise : 0;
+
+  return hyscan_acoustic_data_get_amplitude (data, index, n_points, time);
+}
+
+static void
+hyscan_acoustic_data_interface_init (HyScanAmplitudeInterface *iface)
+{
+  iface->get_token = hyscan_acoustic_data_amplitude_get_token;
+  iface->get_position = hyscan_acoustic_data_amplitude_get_position;
+  iface->get_info = hyscan_acoustic_data_amplitude_get_info;
+  iface->is_writable = hyscan_acoustic_data_amplitude_is_writable;
+  iface->get_mod_count = hyscan_acoustic_data_amplitude_get_mod_count;
+  iface->get_range = hyscan_acoustic_data_amplitude_get_range;
+  iface->find_data = hyscan_acoustic_data_amplitude_find_data;
+  iface->get_size_time = hyscan_acoustic_data_amplitude_get_size_time;
+  iface->get_amplitude = hyscan_acoustic_data_amplitude_get_amplitude;
 }

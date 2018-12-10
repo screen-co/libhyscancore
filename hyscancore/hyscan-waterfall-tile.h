@@ -53,7 +53,7 @@
 #define __HYSCAN_WATERFALL_TILE_H__
 
 #include <hyscan-depthometer.h>
-#include <hyscan-acoustic-data.h>
+#include <hyscan-amplitude.h>
 #include <hyscan-tile-common.h>
 
 G_BEGIN_DECLS
@@ -169,7 +169,7 @@ gboolean                hyscan_waterfall_tile_set_speeds        (HyScanWaterfall
  */
 HYSCAN_API
 gboolean                hyscan_waterfall_tile_set_tile          (HyScanWaterfallTile *wfall,
-                                                                 HyScanAcousticData  *dc,
+                                                                 HyScanAmplitude     *dc,
                                                                  HyScanTile           tile);
 /**
  *

@@ -80,7 +80,8 @@
 #define __HYSCAN_TILE_QUEUE_H__
 
 #include <hyscan-tile-common.h>
-#include <hyscan-depthometer.h>
+#include <hyscan-amplitude-factory.h>
+#include <hyscan-depth-factory.h>
 
 G_BEGIN_DECLS
 
@@ -121,7 +122,9 @@ GType                  hyscan_tile_queue_get_type              (void);
  */
 HYSCAN_API
 HyScanTileQueue        *hyscan_tile_queue_new                  (gint                    max_generators,
-                                                                HyScanCache            *cache);
+                                                                HyScanCache            *cache,
+                                                                HyScanAmplitudeFactory *amp_factory,
+                                                                HyScanDepthFactory     *dpt_factory);
 
 /**
  *
@@ -184,31 +187,23 @@ void                    hyscan_tile_queue_set_sound_velocity   (HyScanTileQueue 
 
 /**
  *
- * Функция открывает галс.
+ * Функция уведомляет объект, что изменились параметры каналов данных
+ * и их требуется переоткрыть.
  *
  * \param tilequeue - указатель на \link HyScanTileQueue \endlink;
- * \param db - указатель на базу данных;
- * \param project - имя проекта;
- * \param track - имя галса;
- * \param raw - использовать ли сырые данные.
- *
  */
 HYSCAN_API
-void                    hyscan_tile_queue_open                 (HyScanTileQueue        *tilequeue,
-                                                                HyScanDB               *db,
-                                                                const gchar            *project,
-                                                                const gchar            *track,
-                                                                gboolean                raw);
+void                    hyscan_tile_queue_amp_changed          (HyScanTileQueue        *tilequeue);
+
 /**
  *
- * Функция закрывает галс.
+ * Функция уведомляет объект, что изменились параметры измерения глубины и такие
+ * объекты требуется переоткрыть.
  *
  * \param tilequeue - указатель на \link HyScanTileQueue \endlink;
- *
  */
 HYSCAN_API
-void                    hyscan_tile_queue_close                (HyScanTileQueue        *tilequeue);
-
+void                    hyscan_tile_queue_dpt_changed          (HyScanTileQueue        *tilequeue);
 /**
  *
  * Функция ищет тайл в кэше, сравнивает его параметры генерации с запрошенными и

@@ -42,7 +42,6 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-data-writer.c
              hyscan-amplitude.c
              hyscan-acoustic-data.c
-             hyscan-amplitude-simple.c
              hyscan-amplitude-factory.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
@@ -51,6 +50,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nav-data.c
              hyscan-nmea-parser.c
              hyscan-depthometer.c
+             hyscan-depth-factory.c
              hyscan-control.c
              hyscan-projector.c
              hyscan-tile-common.c
@@ -89,15 +89,15 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
 install (FILES hyscan-data-writer.h
                hyscan-amplitude.h
                hyscan-acoustic-data.h
-               hyscan-amplitude-simple.h
                hyscan-amplitude-factory.h
                hyscan-forward-look-data.h
                hyscan-nmea-data.h
                hyscan-forward-look-player.h
                hyscan-geo.h
-               hyscan-nav-data.c
-               hyscan-nmea-parser.c
-               hyscan-depthometer.c
+               hyscan-nav-data.h
+               hyscan-nmea-parser.h
+               hyscan-depthometer.h
+               hyscan-depth-factory.h
                hyscan-control.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"

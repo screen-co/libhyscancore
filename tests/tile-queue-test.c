@@ -5,7 +5,6 @@
 
 #define SSS HYSCAN_SOURCE_SIDE_SCAN_STARBOARD
 #define SSP HYSCAN_SOURCE_SIDE_SCAN_PORT
-#define SRC_RAW TRUE
 #define SIZE 200
 #define DB_TIME_INC 1000000
 
@@ -39,6 +38,8 @@ main (int argc, char **argv)
 
   HyScanDataWriter *writer;     /* Класс записи данных. */
   HyScanCache *cache;           /* Система кэширования. */
+  HyScanAmplitudeFactory *af;   /* Фабрика акустических данных. */
+  HyScanAmplitudeFactory *df;   /* Фабрика данных глубины. */
 
   HyScanTileQueue *tq = NULL;   /* Очередь тайлов. */
   HyScanTile tile, cached_tile; /* Тайлы. */
@@ -92,6 +93,7 @@ main (int argc, char **argv)
   db = hyscan_db_new (db_uri);
   writer = hyscan_data_writer_new ();
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
+  af = hyscan_amplitude_factory_new (cache);
 
   hyscan_data_writer_set_db (writer, db);
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
@@ -114,8 +116,9 @@ main (int argc, char **argv)
     }
 
   /* Теперь займемся генерацией тайлов. */
-  tq = hyscan_tile_queue_new (1, cache);
-  hyscan_tile_queue_open (tq, db, name, name, FALSE);
+  tq = hyscan_tile_queue_new (1, cache, af, NULL);
+  hyscan_amplitude_factory_set_track (af, db, name, name);
+  hyscan_tile_queue_amp_changed (tq);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);
   g_signal_connect (tq, "tile-queue-ready", G_CALLBACK (tile_ready_callback), &reduced_callback_number);
 
@@ -155,6 +158,7 @@ finish:
   g_clear_object (&buffer);
   g_clear_object (&writer);
   g_clear_object (&cache);
+  g_clear_object (&af);
   g_clear_object (&db);
   g_clear_object (&tq);
 
