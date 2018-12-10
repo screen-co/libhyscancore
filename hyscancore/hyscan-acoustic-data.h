@@ -35,8 +35,7 @@
 #ifndef __HYSCAN_ACOUSTIC_DATA_H__
 #define __HYSCAN_ACOUSTIC_DATA_H__
 
-#include <hyscan-db.h>
-#include <hyscan-cache.h>
+#include <hyscan-amplitude.h>
 
 G_BEGIN_DECLS
 

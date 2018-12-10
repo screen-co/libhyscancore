@@ -374,6 +374,7 @@ check_complex_data (HyScanDB         *db,
                     guint             n_lines,
                     gdouble           error)
 {
+  HyScanAmplitude *amplitude;
   HyScanAcousticData *reader;
   HyScanAcousticDataInfo info;
   guint n_signal_points;
@@ -382,7 +383,8 @@ check_complex_data (HyScanDB         *db,
 
   reader = hyscan_acoustic_data_new (db, cache, PROJECT_NAME, TRACK_NAME,
                                      source, channel, noise);
-  info = hyscan_acoustic_data_get_info (reader);
+  amplitude = HYSCAN_AMPLITUDE (reader);
+  info = hyscan_amplitude_get_info (amplitude);
 
   if (info.signal_frequency != frequency)
     g_error ("data frequency mismatch");
@@ -542,10 +544,11 @@ check_complex_data (HyScanDB         *db,
         gint64 data_time;
         guint data_size;
         gdouble data_diff;
+        gboolean is_noise;
 
         data_time0 = 1000 * (i + 1);
 
-        data = hyscan_acoustic_data_get_amplitude (reader, i, &data_size, &data_time);
+        data = hyscan_amplitude_get_amplitude (amplitude, i, &data_size, &data_time, &is_noise);
         if (data == NULL)
           g_error ("can't get amplitude data");
 
@@ -554,6 +557,9 @@ check_complex_data (HyScanDB         *db,
 
         if (data_time0 != data_time)
           g_error ("amplitude data time error");
+
+        if (is_noise != noise)
+          g_error ("amplitude noise error");
 
         data_diff = 0.0;
         for (j = 0; j < n_data_points; j++)
@@ -591,6 +597,7 @@ check_amplitude_data (HyScanDB         *db,
                       guint             n_lines,
                       gdouble           error)
 {
+  HyScanAmplitude *amplitude;
   HyScanAcousticData *reader;
   guint n_signal_points;
   guint n_data_points;
@@ -598,6 +605,7 @@ check_amplitude_data (HyScanDB         *db,
 
   reader = hyscan_acoustic_data_new (db, cache, PROJECT_NAME, TRACK_NAME,
                                      source, channel, noise);
+  amplitude = HYSCAN_AMPLITUDE (reader);
 
   n_signal_points = discretization * duration;
   n_data_points = 100 * n_signal_points;
@@ -609,10 +617,11 @@ check_amplitude_data (HyScanDB         *db,
       gint64 data_time;
       guint data_size;
       gdouble data_diff;
+      gboolean is_noise;
 
       data_time0 = 1000 * (i + 1);
 
-      data = hyscan_acoustic_data_get_amplitude (reader, i, &data_size, &data_time);
+      data = hyscan_amplitude_get_amplitude (amplitude, i, &data_size, &data_time, &is_noise);
       if (data == NULL)
         g_error ("can't get amplitude data");
 
@@ -621,6 +630,9 @@ check_amplitude_data (HyScanDB         *db,
 
       if (data_time0 != data_time)
         g_error ("amplitude data time error");
+
+      if (is_noise != noise)
+        g_error ("amplitude noise error");
 
       data_diff = 0.0;
       for (j = 0; j < n_data_points; j++)
