@@ -13,27 +13,12 @@
 
 enum
 {
-  PROP_O,
-  PROP_DB,
-  PROP_CACHE,
-  PROP_PROJECT_NAME,
-  PROP_TRACK_NAME,
-  PROP_SOURCE_TYPE,
-  PROP_CHANNEL,
-  PROP_NOISE
+  PROP_AMPLITUDE = 1,
 };
 
 struct _HyScanProjectorPrivate
 {
-  HyScanDB             *db;              /* БД. */
-  HyScanCache          *cache;           /* Кэш. */
-  gchar                *project;         /* Проект. */
-  gchar                *track;           /* Галс. */
-  HyScanSourceType      source;          /* Тип источника. */
-  guint                 channel;         /* Канал. */
-  gboolean              noise;           /* Использовать шумовые данные. */
-
-  HyScanAcousticData   *dc;              /* Основной КД. */
+  HyScanAmplitude      *dc;              /* Основной КД. */
   HyScanAntennaPosition position;        /* Местоположение антенны. */
 
   HyScanAcousticData  **addon_dc;        /* Дополнительные КД. */
@@ -77,34 +62,10 @@ hyscan_projector_class_init (HyScanProjectorClass *klass)
   object_class->constructed = hyscan_projector_object_constructed;
   object_class->finalize = hyscan_projector_object_finalize;
 
-  g_object_class_install_property (object_class, PROP_DB,
-    g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
+  g_object_class_install_property (object_class, PROP_AMPLITUDE,
+    g_param_spec_object ("amplitude", "Amplitude", "HyScanAmplitude interface",
+                         HYSCAN_TYPE_AMPLITUDE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-  g_object_class_install_property (object_class, PROP_CACHE,
-    g_param_spec_object ("cache", "Cache", "HyScanCache interface", HYSCAN_TYPE_CACHE,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-  g_object_class_install_property (object_class, PROP_PROJECT_NAME,
-    g_param_spec_string ("project-name", "ProjectName", "Project name", NULL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-  g_object_class_install_property (object_class, PROP_TRACK_NAME,
-    g_param_spec_string ("track-name", "TrackName", "Track name", NULL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-  g_object_class_install_property (object_class, PROP_SOURCE_TYPE,
-    g_param_spec_int ("source-type", "SourceType", "Source type", 0, G_MAXINT, 0,
-                      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-  g_object_class_install_property (object_class, PROP_CHANNEL,
-    g_param_spec_uint ("channel", "Channel", "Source channel", 1, G_MAXUINT, 1,
-                       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
-
-  g_object_class_install_property (object_class, PROP_NOISE,
-    g_param_spec_boolean ("noise", "Noise", "Use noise channel", FALSE,
-                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -122,20 +83,8 @@ hyscan_projector_set_property (GObject      *object,
   HyScanProjector *data = HYSCAN_PROJECTOR (object);
   HyScanProjectorPrivate *priv = data->priv;
 
-  if (prop_id == PROP_DB)
-    priv->db = g_value_dup_object (value);
-  else if (prop_id == PROP_CACHE)
-    priv->cache = g_value_dup_object (value);
-  else if (prop_id == PROP_PROJECT_NAME)
-    priv->project = g_value_dup_string (value);
-  else if (prop_id == PROP_TRACK_NAME)
-    priv->track = g_value_dup_string (value);
-  else if (prop_id == PROP_SOURCE_TYPE)
-    priv->source = g_value_get_int (value);
-  else if (prop_id == PROP_CHANNEL)
-    priv->channel = g_value_get_uint (value);
-  else if (prop_id == PROP_NOISE)
-    priv->noise = g_value_get_boolean (value);
+  if (prop_id == PROP_AMPLITUDE)
+    priv->dc = g_value_dup_object (value);
   else
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 }
@@ -151,29 +100,22 @@ hyscan_projector_object_constructed (GObject *object)
   hyscan_projector_set_ship_speed (self, 1.0);
   hyscan_projector_set_sound_velocity (self, NULL);
 
-  if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
+  if (!HYSCAN_IS_AMPLITUDE (priv->dc))
     return;
 
-  priv->dc = hyscan_acoustic_data_new (priv->db, priv->cache,
-                                       priv->project, priv->track,
-                                       priv->source, priv->channel,
-                                       FALSE);
-  if (priv->dc == NULL)
-    return;
-
-  info = hyscan_acoustic_data_get_info (priv->dc);
+  info = hyscan_amplitude_get_info (priv->dc);
   priv->dfreq = info.data_rate;
 
-  if (!hyscan_acoustic_data_get_range (priv->dc, &index0, NULL))
+  if (!hyscan_amplitude_get_range (priv->dc, &index0, NULL))
     {
       g_clear_object (&priv->dc);
       return;
     }
 
-  priv->position = hyscan_acoustic_data_get_position (priv->dc);
+  priv->position = hyscan_amplitude_get_position (priv->dc);
 
   /* Инициализируем самое ранее время галса. */
-  hyscan_acoustic_data_get_size_time (priv->dc, index0, NULL, &priv->zero_time);
+  hyscan_amplitude_get_size_time (priv->dc, index0, NULL, &priv->zero_time);
 }
 
 static void
@@ -182,9 +124,6 @@ hyscan_projector_object_finalize (GObject *object)
   HyScanProjector *self = HYSCAN_PROJECTOR (object);
   HyScanProjectorPrivate *priv = self->priv;
 
-  g_clear_object (&priv->db);
-  g_free (priv->project);
-  g_free (priv->track);
   g_clear_object (&priv->dc);
 
   g_array_unref (priv->sound_velocity);
@@ -335,23 +274,12 @@ hyscan_projector_coord_to_count_internal (HyScanProjector   *self,
 }
 
 HyScanProjector*
-hyscan_projector_new (HyScanDB         *db,
-                      HyScanCache      *cache,
-                      const gchar      *project,
-                      const gchar      *track,
-                      HyScanSourceType  source,
-                      guint             channel,
-                      gboolean          noise)
+hyscan_projector_new (HyScanAmplitude *amplitude)
 {
   HyScanProjector *self;
   self = g_object_new (HYSCAN_TYPE_PROJECTOR,
-                            "db", db,
-                            "cache", cache,
-                            "project-name", project,
-                            "track-name", track,
-                            "source-type", source,
-                            "channel", channel,
-                            NULL);
+                       "amplitude", amplitude,
+                       NULL);
 
   if (self->priv->dc == NULL)
     g_clear_object (&self);
@@ -371,13 +299,10 @@ hyscan_projector_set_cache (HyScanProjector *self,
 
 gboolean
 hyscan_projector_check_source (HyScanProjector   *self,
-                               HyScanSourceType   source,
-                               guint              channel,
-                               gboolean           raw,
+                               HyScanAmplitude   *additional,
                                gboolean          *_changed)
 {
   HyScanProjectorPrivate *priv;
-  HyScanAcousticData *dc;
   gboolean changed, status;
   guint32 index0;
   gint64 new_time;
@@ -385,16 +310,13 @@ hyscan_projector_check_source (HyScanProjector   *self,
   g_return_val_if_fail (HYSCAN_IS_PROJECTOR (self), FALSE);
   priv = self->priv;
 
-  dc = hyscan_acoustic_data_new (priv->db, priv->cache, priv->project,
-                                 priv->track, source, channel, FALSE);
-
-  if (dc == NULL || !hyscan_acoustic_data_get_range (dc, &index0, NULL))
+  if (additional == NULL || !hyscan_amplitude_get_range (additional, &index0, NULL))
     {
       status = FALSE;
       goto exit;
     }
 
-  hyscan_acoustic_data_get_size_time (dc, index0, NULL, &new_time);
+  hyscan_amplitude_get_size_time (additional, index0, NULL, &new_time);
   if (new_time == -1)
     {
       status = FALSE;
@@ -417,7 +339,6 @@ hyscan_projector_check_source (HyScanProjector   *self,
     *_changed = changed;
 
 exit:
-  g_clear_object (&dc);
   return status;
 }
 
@@ -432,8 +353,8 @@ hyscan_projector_set_ship_speed (HyScanProjector *self,
 }
 
 void
-hyscan_projector_set_sound_velocity (HyScanProjector   *self,
-                                     GArray            *velocity)
+hyscan_projector_set_sound_velocity (HyScanProjector *self,
+                                     GArray          *velocity)
 {
   HyScanProjectorPrivate *priv;
 
@@ -481,14 +402,6 @@ hyscan_projector_set_precalc_points (HyScanProjector   *self,
   hyscan_projector_precalculate_points (self);
 }
 
-const HyScanAcousticData*
-hyscan_projector_get_acoustic_data (HyScanProjector *self)
-{
-  g_return_val_if_fail (HYSCAN_IS_PROJECTOR (self), NULL);
-  return self->priv->dc;
-}
-
-
 HyScanDBFindStatus
 hyscan_projector_find_index_by_coord (HyScanProjector   *self,
                                       gdouble            coord,
@@ -511,7 +424,7 @@ hyscan_projector_find_index_by_coord (HyScanProjector   *self,
   time += priv->zero_time;
 
   _time = time;
-  return hyscan_acoustic_data_find_data (priv->dc, _time, lindex, rindex, NULL, NULL);
+  return hyscan_amplitude_find_data (priv->dc, _time, lindex, rindex, NULL, NULL);
 }
 
 gboolean
@@ -527,7 +440,7 @@ hyscan_projector_index_to_coord (HyScanProjector   *self,
   priv = self->priv;
 
   /* Время приема данных. */
-  hyscan_acoustic_data_get_size_time (priv->dc, index, NULL, &time);
+  hyscan_amplitude_get_size_time (priv->dc, index, NULL, &time);
 
   if (time < 0)
     return FALSE;
@@ -564,7 +477,7 @@ hyscan_projector_coord_to_index (HyScanProjector   *self,
   along *= G_TIME_SPAN_SECOND;
   time = along / priv->ship_speed + priv->zero_time;
 
-  found = hyscan_acoustic_data_find_data (priv->dc, time, &lindex, &rindex, &ltime, &rtime);
+  found = hyscan_amplitude_find_data (priv->dc, time, &lindex, &rindex, &ltime, &rtime);
 
   if (found != HYSCAN_DB_FIND_OK)
     return FALSE;

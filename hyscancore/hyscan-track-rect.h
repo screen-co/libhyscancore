@@ -30,8 +30,8 @@
 #define __HYSCAN_TRACK_RECT_H__
 
 #include <hyscan-tile-common.h>
-#include <hyscan-db.h>
-#include <hyscan-cache.h>
+#include <hyscan-depth-factory.h>
+#include <hyscan-amplitude-factory.h>
 
 G_BEGIN_DECLS
 
@@ -68,8 +68,40 @@ GType                   hyscan_track_rect_get_type              (void);
  * \return указатель на объект \link HyScanTrackRect \endlink.
  */
 HYSCAN_API
-HyScanTrackRect        *hyscan_track_rect_new                   (HyScanCache            *cache);
+HyScanTrackRect        *hyscan_track_rect_new                   (HyScanCache            *cache,
+                                                                 HyScanAmplitudeFactory *amp_factory,
+                                                                 HyScanDepthFactory     *dpt_factory);
 
+HYSCAN_API
+void                    hyscan_track_rect_amp_changed           (HyScanTrackRect        *track_rect);
+HYSCAN_API
+void                    hyscan_track_rect_dpt_changed           (HyScanTrackRect        *track_rect);
+
+/**
+ *
+ * Функция задает источник.
+ *
+ * \param source - тип источника данных;
+ * \param raw - использовать ли сырые данные.
+ *
+ */
+HYSCAN_API
+void                    hyscan_track_rect_set_source           (HyScanTrackRect        *track_rect,
+                                                                HyScanSourceType        source);
+
+/**
+ *
+ * Функция устанавливает флаги генерации.
+ * От них может зависеть ширина одного и того же галса.
+ *
+ * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
+ * \param flags - флаги отображения (см \link HyScanTileFlags\endlink).
+ *
+ * \return TRUE, если хотя бы один из каналов открыт в режиме записи.
+ */
+HYSCAN_API
+void                    hyscan_track_rect_set_type             (HyScanTrackRect        *track_rect,
+                                                                HyScanTileFlags         flags);
 /**
  *
  * Функция устанавливает скорости звука и судна.
@@ -92,76 +124,6 @@ void                    hyscan_track_rect_set_ship_speed       (HyScanTrackRect 
 HYSCAN_API
 void                    hyscan_track_rect_set_sound_velocity   (HyScanTrackRect        *track_rect,
                                                                 GArray                 *velocity);
-
-/**
- *
- * Функция настраивает объект измерения глубины.
- *
- * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param source источник данных глубины;
- * \param channel номер канала данных.
- *
- */
-HYSCAN_API
-void                    hyscan_track_rect_set_depth_source     (HyScanTrackRect        *track_rect,
-                                                                HyScanSourceType        source,
-                                                                guint                   channel);
-/**
- *
- * Функция настраивает объект измерения глубины.
- *
- * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param size размер фильтра для сглаживания данных.
- *
- */
-HYSCAN_API
-void                    hyscan_track_rect_set_depth_filter_size(HyScanTrackRect        *track_rect,
-                                                                gint                    size);
-/**
- *
- * Функция настраивает объект измерения глубины.
- *
- * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param usecs окно валидности данных.
- *
- */
-HYSCAN_API
-void                    hyscan_track_rect_set_depth_time       (HyScanTrackRect        *track_rect,
-                                                                gulong                  usecs);
-
-/**
- *
- * Функция устанавливает флаги генерации.
- * От них может зависеть ширина одного и того же галса.
- *
- * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param flags - флаги отображения (см \link HyScanTileFlags\endlink).
- *
- * \return TRUE, если хотя бы один из каналов открыт в режиме записи.
- */
-HYSCAN_API
-void                    hyscan_track_rect_set_type             (HyScanTrackRect        *track_rect,
-                                                                HyScanTileFlags         flags);
-
-/**
- *
- * Функция открывает галс.
- *
- * \param track_rect указатель на объект \link HyScanTrackRect \endlink;
- * \param db указатель на \link HyScanDB \endlink;
- * \param project - имя проекта;
- * \param track - имя галса;
- * \param source - тип источника данных;
- * \param raw - использовать ли сырые данные.
- *
- */
-HYSCAN_API
-void                    hyscan_track_rect_open                 (HyScanTrackRect        *track_rect,
-                                                                HyScanDB               *db,
-                                                                const gchar            *project,
-                                                                const gchar            *track,
-                                                                HyScanSourceType        source,
-                                                                gboolean                raw);
 
 /**
  *

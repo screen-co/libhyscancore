@@ -62,13 +62,10 @@
  *
  * - #hyscan_tile_queue_new - создает объект очереди;
  * - #hyscan_tile_queue_set_cache - установка кэша;
- * - #hyscan_tile_queue_set_depth_source - установка параметров определения глубины;
- * - #hyscan_tile_queue_set_depth_filter_size - установка параметров определения глубины;
- * - #hyscan_tile_queue_set_depth_time - установка параметров определения глубины;
+ * - #hyscan_tile_queue_amp_changed - уведомление об изменении параметров фабрики акустики;
+ * - #hyscan_tile_queue_dpt_changed - уведомление об изменении параметров фабрики глубиномеров;
  * - #hyscan_tile_queue_set_ship_speed - установка скорости судна;
  * - #hyscan_tile_queue_set_sound_velocity - установка скорости звука;
- * - #hyscan_tile_queue_open - открытие галса;
- * - #hyscan_tile_queue_close - закрытие галса;
  * - #hyscan_tile_queue_check - поиск тайла в кэше;
  * - #hyscan_tile_queue_get - получение тайла из кэша;
  * - #hyscan_tile_queue_add - добавление тайла во временную очередь;

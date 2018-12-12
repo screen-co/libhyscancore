@@ -13,7 +13,6 @@
 #include <string.h>
 
 #define MARK_ID_LEN 20
-#define GROUP_NAME "waterfall-marks"
 
 enum
 {
@@ -140,11 +139,11 @@ hyscan_waterfall_mark_data_object_constructed (GObject *object)
     }
 
   /* Открываем (или создаем) группу параметров. */
-  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, GROUP_NAME);
+  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, WATERFALL_MARK_SCHEMA);
   if (priv->param_id <= 0)
     {
       g_warning ("HyScanWaterfallMarkData: can't open group %s (project '%s')",
-                 GROUP_NAME, priv->project);
+                 WATERFALL_MARK_SCHEMA, priv->project);
       goto exit;
     }
 
@@ -158,6 +157,7 @@ hyscan_waterfall_mark_data_object_constructed (GObject *object)
       hyscan_param_list_add (priv->write_plist, param_names[i]);
     }
 
+  /* В список на чтение дополнительно запихиваем version и id. */
   hyscan_param_list_add (priv->read_plist, "/schema/id");
   hyscan_param_list_add (priv->read_plist, "/schema/version");
 

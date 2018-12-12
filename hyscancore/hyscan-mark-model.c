@@ -1,5 +1,5 @@
 /*
- * \file hyscan-mark-manager.c
+ * \file hyscan-mark-model.c
  *
  * \brief Исходный файл класса асинхронной работы с метками водопада
  * \author Dmitriev Alexander (m1n7@yandex.ru)
@@ -8,7 +8,7 @@
  *
  */
 
-#include "hyscan-mark-manager.h"
+#include "hyscan-mark-model.h"
 
 #define DELAY (1 * G_TIME_SPAN_SECOND)
 
@@ -31,7 +31,7 @@ typedef struct
   gchar               *id;        /* Идентификатор метки. */
   HyScanWaterfallMark *mark;      /* Метка. */
   gint                 action;    /* Требуемое действие. */
-} HyScanMarkManagerTask;
+} HyScanMarkModelTask;
 
 /* Состояние объекта. */
 typedef struct
@@ -39,12 +39,12 @@ typedef struct
   HyScanDB                *db;               /* БД. */
   gchar                   *project;          /* Проект. */
   gboolean                 project_changed;  /* Флаг смены БД/проекта. */
-} HyScanMarkManagerState;
+} HyScanMarkModelState;
 
-struct _HyScanMarkManagerPrivate
+struct _HyScanMarkModelPrivate
 {
-  HyScanMarkManagerState   cur_state;        /* Текущее состояние. */
-  HyScanMarkManagerState   new_state;        /* Желаемое состояние. */
+  HyScanMarkModelState     cur_state;        /* Текущее состояние. */
+  HyScanMarkModelState     new_state;        /* Желаемое состояние. */
   GMutex                   state_lock;       /* Блокировка состояния. */
 
   GThread                 *processing;       /* Поток обработки. */
@@ -62,54 +62,55 @@ struct _HyScanMarkManagerPrivate
   GMutex                   marks_lock;       /* Блокировка списка меток. */
 };
 
-static void     hyscan_mark_manager_object_constructed       (GObject                   *object);
-static void     hyscan_mark_manager_object_finalize          (GObject                   *object);
+static void     hyscan_mark_model_object_constructed       (GObject                   *object);
+static void     hyscan_mark_model_object_finalize          (GObject                   *object);
 
-static void     hyscan_mark_manager_clear_state              (HyScanMarkManagerState    *state);
-static gboolean hyscan_mark_manager_track_sync               (HyScanMarkManagerPrivate  *priv);
+static void     hyscan_mark_model_clear_state              (HyScanMarkModelState      *state);
+static gboolean hyscan_mark_model_track_sync               (HyScanMarkModelPrivate    *priv);
 
-static void     hyscan_mark_manager_add_task                 (HyScanMarkManagerPrivate  *priv,
-                                                              const gchar               *id,
-                                                              const HyScanWaterfallMark *mark,
-                                                              gint                       action);
-static void     hyscan_mark_manager_free_task                (gpointer                   data);
-static void     hyscan_mark_manager_do_task                  (gpointer                   data,
-                                                              gpointer                   user_data);
-static void     hyscan_mark_manager_do_all_tasks             (HyScanMarkManagerPrivate  *priv,
-                                                              HyScanWaterfallMarkData   *data);
-static gpointer hyscan_mark_manager_processing               (gpointer                   data);
-static gboolean hyscan_mark_manager_signaller                (gpointer                   data);
+static GHashTable * hyscan_mark_model_make_ht              (void);
+static void     hyscan_mark_model_add_task                 (HyScanMarkModelPrivate    *priv,
+                                                            const gchar               *id,
+                                                            const HyScanWaterfallMark *mark,
+                                                            gint                       action);
+static void     hyscan_mark_model_free_task                (gpointer                   data);
+static void     hyscan_mark_model_do_task                  (gpointer                   data,
+                                                            gpointer                   user_data);
+static void     hyscan_mark_model_do_all_tasks             (HyScanMarkModelPrivate    *priv,
+                                                            HyScanWaterfallMarkData   *data);
+static gpointer hyscan_mark_model_processing               (gpointer                   data);
+static gboolean hyscan_mark_model_signaller                (gpointer                   data);
 
-static guint    hyscan_mark_manager_signals[SIGNAL_LAST] = {0};
+static guint    hyscan_mark_model_signals[SIGNAL_LAST] = {0};
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkManager, hyscan_mark_manager, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkModel, hyscan_mark_model, G_TYPE_OBJECT);
 
 static void
-hyscan_mark_manager_class_init (HyScanMarkManagerClass *klass)
+hyscan_mark_model_class_init (HyScanMarkModelClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->constructed = hyscan_mark_manager_object_constructed;
-  object_class->finalize = hyscan_mark_manager_object_finalize;
+  object_class->constructed = hyscan_mark_model_object_constructed;
+  object_class->finalize = hyscan_mark_model_object_finalize;
 
-  hyscan_mark_manager_signals[SIGNAL_CHANGED] =
-    g_signal_new ("changed", HYSCAN_TYPE_MARK_MANAGER,
+  hyscan_mark_model_signals[SIGNAL_CHANGED] =
+    g_signal_new ("changed", HYSCAN_TYPE_MARK_MODEL,
                   G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 }
 
 static void
-hyscan_mark_manager_init (HyScanMarkManager *manager)
+hyscan_mark_model_init (HyScanMarkModel *model)
 {
-  manager->priv = hyscan_mark_manager_get_instance_private (manager);
+  model->priv = hyscan_mark_model_get_instance_private (model);
 }
 
 static void
-hyscan_mark_manager_object_constructed (GObject *object)
+hyscan_mark_model_object_constructed (GObject *object)
 {
-  HyScanMarkManager *manager = HYSCAN_MARK_MANAGER (object);
-  HyScanMarkManagerPrivate *priv = manager->priv;
+  HyScanMarkModel *model = HYSCAN_MARK_MODEL (object);
+  HyScanMarkModelPrivate *priv = model->priv;
 
   g_mutex_init (&priv->tasks_lock);
   g_mutex_init (&priv->marks_lock);
@@ -117,18 +118,17 @@ hyscan_mark_manager_object_constructed (GObject *object)
   g_cond_init (&priv->im_cond);
 
   priv->stop = FALSE;
-  priv->processing = g_thread_new ("wf-mark-process", hyscan_mark_manager_processing, priv);
-  priv->alerter = g_timeout_add (1000, hyscan_mark_manager_signaller, manager);
+  priv->processing = g_thread_new ("wf-mark-process", hyscan_mark_model_processing, priv);
+  priv->alerter = g_timeout_add (1000, hyscan_mark_model_signaller, model);
 
-  priv->marks = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                       (GDestroyNotify)hyscan_waterfall_mark_free);
+  priv->marks = hyscan_mark_model_make_ht ();
 }
 
 static void
-hyscan_mark_manager_object_finalize (GObject *object)
+hyscan_mark_model_object_finalize (GObject *object)
 {
-  HyScanMarkManager *manager = HYSCAN_MARK_MANAGER (object);
-  HyScanMarkManagerPrivate *priv = manager->priv;
+  HyScanMarkModel *model = HYSCAN_MARK_MODEL (object);
+  HyScanMarkModelPrivate *priv = model->priv;
 
   if (priv->alerter > 0)
     g_source_remove (priv->alerter);
@@ -141,16 +141,16 @@ hyscan_mark_manager_object_finalize (GObject *object)
   g_mutex_clear (&priv->state_lock);
   g_cond_clear (&priv->im_cond);
 
-  hyscan_mark_manager_clear_state (&priv->new_state);
-  hyscan_mark_manager_clear_state (&priv->cur_state);
+  hyscan_mark_model_clear_state (&priv->new_state);
+  hyscan_mark_model_clear_state (&priv->cur_state);
   g_hash_table_unref (priv->marks);
 
-  G_OBJECT_CLASS (hyscan_mark_manager_parent_class)->finalize (object);
+  G_OBJECT_CLASS (hyscan_mark_model_parent_class)->finalize (object);
 }
 
 /* Функция очищает состояние. */
 static void
-hyscan_mark_manager_clear_state (HyScanMarkManagerState   *state)
+hyscan_mark_model_clear_state (HyScanMarkModelState *state)
 {
   g_clear_pointer (&state->project, g_free);
   g_clear_object (&state->db);
@@ -158,7 +158,7 @@ hyscan_mark_manager_clear_state (HyScanMarkManagerState   *state)
 
 /* Функция синхронизирует состояния. */
 static gboolean
-hyscan_mark_manager_track_sync (HyScanMarkManagerPrivate *priv)
+hyscan_mark_model_track_sync (HyScanMarkModelPrivate *priv)
 {
   g_mutex_lock (&priv->state_lock);
 
@@ -180,17 +180,24 @@ hyscan_mark_manager_track_sync (HyScanMarkManagerPrivate *priv)
   return TRUE;
 }
 
+static GHashTable *
+hyscan_mark_model_make_ht (void)
+{
+  return g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                (GDestroyNotify)hyscan_waterfall_mark_free);
+}
+
 /* Функция создает новое задание. */
 static void
-hyscan_mark_manager_add_task (HyScanMarkManagerPrivate    *priv,
-                              const gchar                 *id,
-                              const HyScanWaterfallMark   *mark,
-                              gint                         action)
+hyscan_mark_model_add_task (HyScanMarkModelPrivate    *priv,
+                            const gchar               *id,
+                            const HyScanWaterfallMark *mark,
+                            gint                       action)
 {
   /* Создаем задание. */
-  HyScanMarkManagerTask *task;
+  HyScanMarkModelTask *task;
 
-  task = g_new (HyScanMarkManagerTask, 1);
+  task = g_new (HyScanMarkModelTask, 1);
   task->action = action;
   task->id = (id != NULL) ? g_strdup (id) : NULL;
   task->mark = hyscan_waterfall_mark_copy ((HyScanWaterfallMark*)mark);
@@ -201,28 +208,27 @@ hyscan_mark_manager_add_task (HyScanMarkManagerPrivate    *priv,
   g_mutex_unlock (&priv->tasks_lock);
 
   /* Сигнализируем об изменениях.
-   * Документация гласит, что блокировать мьютекс хорошо,
-   * но не обязательно. */
+   * Документация гласит, что блокировать мьютекс хорошо, но не обязательно. */
   g_atomic_int_set (&priv->im_flag, 1);
   g_cond_signal (&priv->im_cond);
 }
 
 /* Функция освобождает задание. */
 static void
-hyscan_mark_manager_free_task (gpointer data)
+hyscan_mark_model_free_task (gpointer data)
 {
-  HyScanMarkManagerTask *task = data;
-  g_free (task->id);
+  HyScanMarkModelTask *task = data;
   hyscan_waterfall_mark_free (task->mark);
+  g_free (task->id);
   g_free (task);
 }
 
 /* Функция выполняет задание. */
 static void
-hyscan_mark_manager_do_task (gpointer _task,
-                             gpointer _mdata)
+hyscan_mark_model_do_task (gpointer _task,
+                           gpointer _mdata)
 {
-  HyScanMarkManagerTask *task = _task;
+  HyScanMarkModelTask *task = _task;
   HyScanWaterfallMarkData *mdata = _mdata;
 
   switch (task->action)
@@ -246,8 +252,8 @@ hyscan_mark_manager_do_task (gpointer _task,
 
 /* Функция выполняет все задания. */
 static void
-hyscan_mark_manager_do_all_tasks (HyScanMarkManagerPrivate  *priv,
-                                  HyScanWaterfallMarkData *data)
+hyscan_mark_model_do_all_tasks (HyScanMarkModelPrivate  *priv,
+                                HyScanWaterfallMarkData *data)
 {
   GSList *tasks;
 
@@ -259,15 +265,15 @@ hyscan_mark_manager_do_all_tasks (HyScanMarkManagerPrivate  *priv,
   g_mutex_unlock (&priv->tasks_lock);
 
   /* Все задания отправляем в БД и очищаем наш временный список. */
-  g_slist_foreach (tasks, hyscan_mark_manager_do_task, data);
-  g_slist_free_full (tasks, hyscan_mark_manager_free_task);
+  g_slist_foreach (tasks, hyscan_mark_model_do_task, data);
+  g_slist_free_full (tasks, hyscan_mark_model_free_task);
 }
 
 /* Поток асинхронной работы с БД. */
 static gpointer
-hyscan_mark_manager_processing (gpointer data)
+hyscan_mark_model_processing (gpointer data)
 {
-  HyScanMarkManagerPrivate *priv = data;
+  HyScanMarkModelPrivate *priv = data;
   HyScanWaterfallMarkData *mdata = NULL; /* Объект работы с метками. */
   gchar **id_list;                       /* Идентификаторы меток. */
   GHashTable *mark_list;                 /* Метки из БД. */
@@ -302,12 +308,12 @@ hyscan_mark_manager_processing (gpointer data)
 
       /* Если проект поменялся, надо выполнить все
        * текущие задачи и пересоздать объект. */
-      if (hyscan_mark_manager_track_sync (priv))
+      if (hyscan_mark_model_track_sync (priv))
         {
           /* TODO: сигнал, сообщающий о том, что сейчас поменяется mdata?
            * и что это последняя возможность запушить актуальные задачи */
           if (mdata != NULL)
-            hyscan_mark_manager_do_all_tasks (priv, mdata);
+            hyscan_mark_model_do_all_tasks (priv, mdata);
           g_clear_object (&mdata);
         }
 
@@ -318,7 +324,7 @@ hyscan_mark_manager_processing (gpointer data)
            * повторим через некоторое время. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
             mdata = hyscan_waterfall_mark_data_new (priv->cur_state.db, priv->cur_state.project);
-          
+
           if (mdata == NULL)
             {
               g_atomic_int_set (&priv->im_flag, 1);
@@ -332,11 +338,10 @@ hyscan_mark_manager_processing (gpointer data)
       oldmc = mc;
 
       /* Выполняем все задания. */
-      hyscan_mark_manager_do_all_tasks (priv, mdata);
+      hyscan_mark_model_do_all_tasks (priv, mdata);
 
       /* Забираем метки из БД во временную хэш-таблицу. */
-      mark_list = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                         (GDestroyNotify)hyscan_waterfall_mark_free);
+      mark_list = hyscan_mark_model_make_ht ();
 
       id_list = hyscan_waterfall_mark_data_get_ids (mdata, &len);
       for (i = 0; i < len; i++)
@@ -362,10 +367,10 @@ hyscan_mark_manager_processing (gpointer data)
 
 /* Функция выполняется в MainLoop и сигнализирует об изменениях. */
 static gboolean
-hyscan_mark_manager_signaller (gpointer data)
+hyscan_mark_model_signaller (gpointer data)
 {
-  HyScanMarkManager *manager = data;
-  HyScanMarkManagerPrivate *priv = manager->priv;
+  HyScanMarkModel *model = data;
+  HyScanMarkModelPrivate *priv = model->priv;
   gboolean marks_changed;
 
   /* Если есть изменения, сигнализируем. */
@@ -375,35 +380,35 @@ hyscan_mark_manager_signaller (gpointer data)
   g_mutex_unlock (&priv->marks_lock);
 
   if (marks_changed)
-    g_signal_emit (manager, hyscan_mark_manager_signals[SIGNAL_CHANGED], 0, NULL);
+    g_signal_emit (model, hyscan_mark_model_signals[SIGNAL_CHANGED], 0, NULL);
 
   return G_SOURCE_CONTINUE;
 }
 
-/* Функция создает новый объект HyScanMarkManager. */
-HyScanMarkManager*
-hyscan_mark_manager_new (void)
+/* Функция создает новый объект HyScanMarkModel. */
+HyScanMarkModel*
+hyscan_mark_model_new (void)
 {
-  return g_object_new (HYSCAN_TYPE_MARK_MANAGER, NULL);
+  return g_object_new (HYSCAN_TYPE_MARK_MODEL, NULL);
 }
 
 /* Функция устанавливает проект. */
 void
-hyscan_mark_manager_set_project (HyScanMarkManager *manager,
-                                 HyScanDB          *db,
-                                 const gchar       *project)
+hyscan_mark_model_set_project (HyScanMarkModel *model,
+                               HyScanDB          *db,
+                               const gchar       *project)
 {
-  HyScanMarkManagerPrivate *priv;
+  HyScanMarkModelPrivate *priv;
 
-  g_return_if_fail (HYSCAN_IS_MARK_MANAGER (manager));
-  priv = manager->priv;
+  g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
+  priv = model->priv;
 
   if (project == NULL || db == NULL)
     return;
 
   g_mutex_lock (&priv->state_lock);
 
-  hyscan_mark_manager_clear_state (&priv->new_state);
+  hyscan_mark_model_clear_state (&priv->new_state);
 
   priv->new_state.db = g_object_ref (db);
   priv->new_state.project = g_strdup (project);
@@ -418,56 +423,54 @@ hyscan_mark_manager_set_project (HyScanMarkManager *manager,
 
 /* Функция инициирует принудительное обновление списка меток. */
 void
-hyscan_mark_manager_refresh (HyScanMarkManager  *manager)
+hyscan_mark_model_refresh (HyScanMarkModel *model)
 {
-  g_return_if_fail (HYSCAN_IS_MARK_MANAGER (manager));
+  g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  g_atomic_int_set (&manager->priv->im_flag, 1);
-  g_cond_signal (&manager->priv->im_cond);
+  g_atomic_int_set (&model->priv->im_flag, 1);
+  g_cond_signal (&model->priv->im_cond);
 }
 
 /* Функция создает метку в базе данных. */
 void
-hyscan_mark_manager_add_mark (HyScanMarkManager         *manager,
-                              const HyScanWaterfallMark *mark)
+hyscan_mark_model_add_mark (HyScanMarkModel           *model,
+                            const HyScanWaterfallMark *mark)
 {
-  g_return_if_fail (HYSCAN_IS_MARK_MANAGER (manager));
+  g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  hyscan_mark_manager_add_task (manager->priv, NULL, mark, MARK_ADD);
+  hyscan_mark_model_add_task (model->priv, NULL, mark, MARK_ADD);
 }
 
 /* Функция изменяет метку в базе данных. */
 void
-hyscan_mark_manager_modify_mark (HyScanMarkManager         *manager,
-                                 const gchar               *id,
-                                 const HyScanWaterfallMark *mark)
+hyscan_mark_model_modify_mark (HyScanMarkModel           *model,
+                               const gchar               *id,
+                               const HyScanWaterfallMark *mark)
 {
-  g_return_if_fail (HYSCAN_IS_MARK_MANAGER (manager));
+  g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  hyscan_mark_manager_add_task (manager->priv, id, mark, MARK_MODIFY);
+  hyscan_mark_model_add_task (model->priv, id, mark, MARK_MODIFY);
 }
 
 /* Функция удаляет метку из базы данных. */
 void
-hyscan_mark_manager_remove_mark (HyScanMarkManager *manager,
-                                 const gchar       *id)
+hyscan_mark_model_remove_mark (HyScanMarkModel *model,
+                               const gchar     *id)
 {
-  g_return_if_fail (HYSCAN_IS_MARK_MANAGER (manager));
+  g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  hyscan_mark_manager_add_task (manager->priv, id, NULL, MARK_REMOVE);
+  hyscan_mark_model_add_task (model->priv, id, NULL, MARK_REMOVE);
 }
 
 /* Функция возвращает список меток из внутреннего буфера. */
 GHashTable*
-hyscan_mark_manager_get (HyScanMarkManager *manager)
+hyscan_mark_model_get (HyScanMarkModel *model)
 {
-  HyScanMarkManagerPrivate *priv;
+  HyScanMarkModelPrivate *priv;
   GHashTable *marks;
-  GHashTableIter iter;
-  gpointer key, value;
 
-  g_return_val_if_fail (HYSCAN_IS_MARK_MANAGER (manager), NULL);
-  priv = manager->priv;
+  g_return_val_if_fail (HYSCAN_IS_MARK_MODEL (model), NULL);
+  priv = model->priv;
 
   g_mutex_lock (&priv->marks_lock);
 
@@ -478,14 +481,26 @@ hyscan_mark_manager_get (HyScanMarkManager *manager)
       return NULL;
     }
 
-  marks = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                 (GDestroyNotify)hyscan_waterfall_mark_free);
-  /* Переписываем метки. */
-  g_hash_table_iter_init (&iter, priv->marks);
-  while (g_hash_table_iter_next (&iter, &key, &value))
-    g_hash_table_insert (marks, g_strdup (key), hyscan_waterfall_mark_copy (value));
-
+  /* Копируем метки. */
+  marks = hyscan_mark_model_copy (priv->marks);
   g_mutex_unlock (&priv->marks_lock);
 
   return marks;
+}
+
+GHashTable *
+hyscan_mark_model_copy (GHashTable *src)
+{
+  GHashTable *dst;
+  GHashTableIter iter;
+  gpointer k, v;
+
+  dst = hyscan_mark_model_make_ht ();
+
+  /* Переписываем метки. */
+  g_hash_table_iter_init (&iter, src);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    g_hash_table_insert (dst, g_strdup (k), hyscan_waterfall_mark_copy (v));
+
+  return dst;
 }

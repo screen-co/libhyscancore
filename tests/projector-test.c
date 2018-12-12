@@ -1,4 +1,5 @@
 #include <hyscan-projector.h>
+#include <hyscan-acoustic-data.h>
 #include <glib/gprintf.h>
 #include <hyscan-data-writer.h>
 
@@ -16,6 +17,7 @@ main (int argc, char **argv)
   HyScanBuffer *buffer = NULL;
   HyScanAntennaPosition position;
   HyScanProjector *projector = NULL;
+  HyScanAcousticData *adata;
   HyScanSoundVelocity elem;
 
   gint64 time = 0;                    /* Время записи строки. */
@@ -98,7 +100,9 @@ main (int argc, char **argv)
     }
 
   sv = g_array_new (FALSE, FALSE, sizeof (HyScanSoundVelocity));
-  projector = hyscan_projector_new (db, NULL, name, name, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, FALSE);
+
+  adata = hyscan_acoustic_data_new (db, NULL, name, name, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, FALSE);
+  projector = hyscan_projector_new (HYSCAN_AMPLITUDE (adata));
 
   /* Тестирование определения координат по индексу. */
   for (i = 0; i < SIZE; i++)

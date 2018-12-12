@@ -60,7 +60,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-track-rect.c
              hyscan-waterfall-mark.c
              hyscan-waterfall-mark-data.c
-             hyscan-mark-manager.c
+             hyscan-mark-model.c
              hyscan-mloc.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)

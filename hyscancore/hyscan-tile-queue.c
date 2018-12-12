@@ -818,21 +818,20 @@ hyscan_tile_queue_state_hash (HyScanAmplitudeFactory *af,
   if (df_token == NULL)
     df_token = g_strdup ("none");
 
-  str = g_strdup_printf ("%s.%s.%f",
-                         af_token,
-                         df_token,
-                         state->ship_speed);
+  str = g_strdup_printf ("%s.%s.%f", af_token, df_token, state->ship_speed);
+  hash = crc32 (0L, (guchar*)(str), strlen (str));
 
-  hash = crc32 (0L, (gpointer)(str), strlen (str));
-  g_message ("   %s", str);
+  if (state->sound_velocity != NULL)
+    {
+      hash = crc32 (hash,
+                    (guchar*)(state->sound_velocity->data),
+                    state->sound_velocity->len * sizeof (HyScanSoundVelocity));
+    }
+
+  state->hash = hash;
   g_free (str);
   g_free (af_token);
   g_free (df_token);
-
-  if (state->sound_velocity != NULL)
-    hash = crc32 (hash, (gpointer)(state->sound_velocity->data), state->sound_velocity->len * sizeof (HyScanSoundVelocity));
-
-  state->hash = hash;
 }
 
 /* Функция генерирует ключ для системы кэширования. */

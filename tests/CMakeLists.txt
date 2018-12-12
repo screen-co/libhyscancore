@@ -18,7 +18,7 @@ add_executable (tile-color-test tile-color-test.c)
 add_executable (waterfall-tile-test waterfall-tile-test.c)
 add_executable (tile-queue-test tile-queue-test.c)
 add_executable (waterfall-mark-data-test waterfall-mark-data-test.c)
-add_executable (mark-manager-test mark-manager-test.c)
+add_executable (mark-model-test mark-model-test.c)
 add_executable (mloc-test mloc-test.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
@@ -35,7 +35,7 @@ target_link_libraries (tile-color-test ${TEST_LIBRARIES})
 target_link_libraries (waterfall-tile-test ${TEST_LIBRARIES})
 target_link_libraries (tile-queue-test ${TEST_LIBRARIES})
 target_link_libraries (waterfall-mark-data-test ${TEST_LIBRARIES})
-target_link_libraries (mark-manager-test ${TEST_LIBRARIES})
+target_link_libraries (mark-model-test ${TEST_LIBRARIES})
 target_link_libraries (mloc-test ${TEST_LIBRARIES})
 
 install (TARGETS data-writer-test
@@ -52,7 +52,7 @@ install (TARGETS data-writer-test
                  waterfall-tile-test
                  tile-queue-test
                  waterfall-mark-data-test
-                 mark-manager-test
+                 mark-model-test
                  mloc-test
          COMPONENT test
          RUNTIME DESTINATION bin

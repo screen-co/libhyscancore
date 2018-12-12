@@ -1,5 +1,5 @@
 #include <hyscan-data-writer.h>
-#include <hyscan-mark-manager.h>
+#include <hyscan-mark-model.h>
 #include <libxml/parser.h>
 
 #define if_verbose(...) if (verbose) g_print (__VA_ARGS__);
@@ -14,7 +14,7 @@ typedef enum
   LAST
 } Actions;
 
-void                 changed_cb        (HyScanMarkManager   *model,
+void                 changed_cb        (HyScanMarkModel     *model,
                                         gpointer             data);
 
 gboolean             make_track        (HyScanDB            *db,
@@ -23,7 +23,7 @@ gboolean             make_track        (HyScanDB            *db,
 guint                hash_table_len    (GHashTable          *ht);
 HyScanWaterfallMark *make_mark         (gint                 seed,
                                         gint                 seed2);
-gboolean             mark_manager_test (gpointer             data);
+gboolean             mark_model_test   (gpointer             data);
 
 gboolean             final_check       (GSList              *expect,
                                         GHashTable          *real);
@@ -38,7 +38,7 @@ static gboolean    verbose = FALSE;
 static GHashTable *final_marks = NULL;
 static GSList     *performed = NULL;
 
-HyScanMarkManager   *model = NULL;
+HyScanMarkModel   *model = NULL;
 
 int
 main (int argc, char **argv)
@@ -107,10 +107,10 @@ main (int argc, char **argv)
     }
 
   loop = g_main_loop_new (NULL, TRUE);
-  g_timeout_add (interval, mark_manager_test, loop);
+  g_timeout_add (interval, mark_model_test, loop);
 
-  model = hyscan_mark_manager_new ();
-  hyscan_mark_manager_set_project (model, db, name);
+  model = hyscan_mark_model_new ();
+  hyscan_mark_model_set_project (model, db, name);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
 
   g_main_loop_run (loop);
@@ -142,7 +142,7 @@ exit:
 }
 
 void
-changed_cb (HyScanMarkManager *model,
+changed_cb (HyScanMarkModel *model,
             gpointer         data)
 {
   GMainLoop *loop = data;
@@ -153,13 +153,13 @@ changed_cb (HyScanMarkManager *model,
   if (count)
     {
       g_print ("%i iterations left...\n", count);
-      ht = hyscan_mark_manager_get (model);
+      ht = hyscan_mark_model_get (model);
     }
   else
     {
       g_print ("Performing final checks...\n");
       g_main_loop_quit (loop);
-      final_marks = hyscan_mark_manager_get (model);
+      final_marks = hyscan_mark_model_get (model);
       ht = g_hash_table_ref (final_marks);
     }
 
@@ -244,7 +244,7 @@ make_mark (gint   seed,
 }
 
 gboolean
-mark_manager_test (gpointer data)
+mark_model_test (gpointer data)
 {
   GRand *grand = g_rand_new ();
   gint action;
@@ -260,7 +260,7 @@ mark_manager_test (gpointer data)
       return G_SOURCE_REMOVE;
     }
 
-  ht = hyscan_mark_manager_get (model);
+  ht = hyscan_mark_model_get (model);
   len = hash_table_len (ht);
 
   action = (len < 5) ? ADD : g_rand_int_range (grand, 0, LAST);
@@ -270,7 +270,7 @@ mark_manager_test (gpointer data)
   if (action == ADD)
     {
       if_verbose ("Add <%s>\n", mark->name);
-      hyscan_mark_manager_add_mark (model, mark);
+      hyscan_mark_model_add_mark (model, mark);
     }
   else
     {
@@ -286,12 +286,12 @@ mark_manager_test (gpointer data)
           if (action == REMOVE)
             {
               if_verbose ("Remove <%s>\n", ((HyScanWaterfallMark*)value)->name);
-              hyscan_mark_manager_remove_mark (model, key);
+              hyscan_mark_model_remove_mark (model, key);
             }
           else if (action == MODIFY)
             {
               if_verbose ("Modify <%s> to <%s>\n", ((HyScanWaterfallMark*)value)->name, mark->name);
-              hyscan_mark_manager_modify_mark (model, key, mark);
+              hyscan_mark_model_modify_mark (model, key, mark);
             }
           break;
         }

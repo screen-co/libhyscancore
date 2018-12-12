@@ -49,7 +49,7 @@
 #ifndef __HYSCAN_PROJECTOR_H__
 #define __HYSCAN_PROJECTOR_H__
 
-#include <hyscan-acoustic-data.h>
+#include <hyscan-amplitude.h>
 
 G_BEGIN_DECLS
 
@@ -93,13 +93,7 @@ GType                   hyscan_projector_get_type               (void);
  * \return указатель на объект HyScanProjector.
  */
 HYSCAN_API
-HyScanProjector        *hyscan_projector_new                    (HyScanDB          *db,
-                                                                 HyScanCache       *cache,
-                                                                 const gchar       *project,
-                                                                 const gchar       *track,
-                                                                 HyScanSourceType   source,
-                                                                 guint              channel,
-                                                                 gboolean           noise);
+HyScanProjector        *hyscan_projector_new                    (HyScanAmplitude   *dc);
 
 /**
  *
@@ -115,9 +109,7 @@ HyScanProjector        *hyscan_projector_new                    (HyScanDB       
  */
 HYSCAN_API
 gboolean                hyscan_projector_check_source           (HyScanProjector   *projector,
-                                                                 HyScanSourceType   source,
-                                                                 guint              channel,
-                                                                 gboolean           raw,
+                                                                 HyScanAmplitude   *additional,
                                                                  gboolean          *changed);
 /**
  *
@@ -152,18 +144,6 @@ HYSCAN_API
 void                    hyscan_projector_set_precalc_points     (HyScanProjector   *projector,
                                                                  guint32            points);
 
-/**
- *
- * Функция возвращает объект работы с акустическими данными.
- * // TODO: унаследоваться от HyScanAcousticData?
- *
- * \param projector указатель на объект \link HyScanAcousticData \endlink;
- *
- * \return указатель на HyScanAcousticData.
- *
- */
-HYSCAN_API
-const HyScanAcousticData *hyscan_projector_get_acoustic_data    (HyScanProjector   *projector);
 /**
  *
  * Функция ищет индекс по координате.

@@ -145,7 +145,8 @@ hyscan_depth_factory_get_token (HyScanDepthFactory *self)
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
-  token = g_strdup (priv->token);
+  if (priv->token != NULL)
+    token = g_strdup (priv->token);
   g_mutex_unlock (&priv->lock);
 
   return token;
@@ -200,9 +201,24 @@ hyscan_depth_factory_produce (HyScanDepthFactory *self)
   HyScanNMEAParser *parser = NULL;
   HyScanDepthometer *depth = NULL;
   HyScanDepthFactoryPrivate *priv;
+  HyScanDB * db;
+  gchar * project;
+  gchar * track;
 
   g_return_val_if_fail (HYSCAN_IS_DEPTH_FACTORY (self), NULL);
   priv = self->priv;
+
+  g_mutex_lock (&priv->lock);
+  db = (priv->db != NULL) ? g_object_ref (priv->db) : NULL;
+  project = (priv->project != NULL) ? g_strdup (priv->project) : NULL;
+  track = (priv->track != NULL) ? g_strdup (priv->track) : NULL;
+  g_mutex_unlock (&priv->lock);
+
+  if (db == NULL || project == NULL || track == NULL)
+    {
+      depth = NULL;
+      goto fail;
+    }
 
   parser = hyscan_nmea_parser_new (priv->db, priv->cache,
                                    priv->project, priv->track, 1,
@@ -210,14 +226,18 @@ hyscan_depth_factory_produce (HyScanDepthFactory *self)
                                    HYSCAN_NMEA_FIELD_DEPTH);
 
   if (parser == NULL)
-    return NULL;
+    {
+      depth = NULL;
+      goto fail;
+    }
 
   depth = hyscan_depthometer_new (HYSCAN_NAV_DATA (parser), priv->cache);
 
-  g_object_unref (parser);
-
-  if (depth == NULL)
-    return NULL;
+fail:
+  g_clear_object (&db);
+  g_clear_object (&parser);
+  g_clear_pointer (&project, g_free);
+  g_clear_pointer (&track, g_free);
 
   return depth;
 }

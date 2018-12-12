@@ -9,37 +9,28 @@
  */
 
 #include "hyscan-track-rect.h"
-#include <hyscan-depthometer.h>
-#include <hyscan-nmea-parser.h>
 #include <hyscan-projector.h>
+
+enum
+{
+  PROP_CACHE = 1,
+  PROP_AMPLITUDE_FACTORY,
+  PROP_DEPTH_FACTORY
+};
 
 typedef struct
 {
   /* БД, проект, галс. */
-  HyScanDB               *db;                    /* Интерфейс базы данных. */
-  gchar                  *project;               /* Название проекта. */
-  gchar                  *track;                 /* Название галса. */
-  HyScanSourceType        source;                /* Источник данных. */
-  gboolean                raw;                   /* Использовать сырые данные. */
-
   HyScanTileFlags         flags;                 /* Флаги генерации. */
-
-  /* Определение глубины. */
-  HyScanSourceType        depth_source;          /* Источник данных. */
-  guint                   depth_channel;         /* Номер канала. */
-  gulong                  depth_time;            /* Время округления. */
-  gint                    depth_size;            /* Размер фильтра. */
+  HyScanSourceType        source;                /* Источник данных. */
 
   gfloat                  ship_speed;            /* Скорость движения. */
-
   GArray                 *sound_velocity;        /* Скорость звука. */
   gfloat                  sound_velocity1;       /* Скорость звука для тех, кто не умеет в профиль скорости звука. */
 
-  gboolean                track_changed;         /* Флаг на смену галса. */
+  gboolean                amp_changed;           /* Флаг на смену AmplitudeFactory. */
+  gboolean                dpt_changed;           /* Флаг на смену DepthFactory. */
   gboolean                flags_changed;         /* Флаг на смену, хм, флагов. */
-  gboolean                depth_source_changed;  /* Флаг на смену источника данных глубины. */
-  gboolean                depth_time_changed;    /* Флаг на смену временного окна данных глубины. */
-  gboolean                depth_size_changed;    /* Флаг на смену размера фильтра. */
   gboolean                speed_changed;         /* Флаг на смену скорости движения. */
   gboolean                velocity_changed;      /* Флаг на смену скорости звука. */
 } HyScanTrackRectState;
@@ -48,6 +39,8 @@ struct _HyScanTrackRectPrivate
 {
   /* Кэш. */
   HyScanCache            *cache;         /* Интерфейс системы кэширования. */
+  HyScanAmplitudeFactory *af;
+  HyScanDepthFactory     *df;
 
   GThread                *watcher;       /* Поток слежения за КД. */
   gint                    stop;          /* Флаг остановки. */
@@ -65,18 +58,21 @@ struct _HyScanTrackRectPrivate
   gboolean                state_changed;
   GMutex                  state_lock;
 
+  HyScanAmplitude        *dc;
   HyScanProjector        *pj;
   HyScanDepthometer      *depth;
-  HyScanNavData          *idepth;
 };
+
+static void      hyscan_track_rect_set_property       (GObject                    *object,
+                                                       guint                       prop_id,
+                                                       const GValue               *value,
+                                                       GParamSpec                 *pspec);
 
 static void      hyscan_track_rect_object_constructed  (GObject    *object);
 static void      hyscan_track_rect_object_finalize     (GObject    *object);
 
 static HyScanProjector   *hyscan_track_rect_open_projector   (HyScanTrackRectState *state,
-                                                              HyScanCache          *cache);
-static HyScanNavData     *hyscan_track_rect_open_depth       (HyScanTrackRect *self);
-static HyScanDepthometer *hyscan_track_rect_open_depthometer (HyScanTrackRect *self);
+                                                              HyScanAmplitude      *dc);
 static gboolean  hyscan_track_rect_sync_states         (HyScanTrackRect *self);
 static gboolean  hyscan_track_rect_apply_updates       (HyScanTrackRect *self);
 static gpointer  hyscan_track_rect_watcher             (gpointer    data);
@@ -88,14 +84,50 @@ hyscan_track_rect_class_init (HyScanTrackRectClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+  object_class->set_property = hyscan_track_rect_set_property;
   object_class->constructed = hyscan_track_rect_object_constructed;
   object_class->finalize = hyscan_track_rect_object_finalize;
+
+  g_object_class_install_property (object_class, PROP_CACHE,
+    g_param_spec_object ("cache", "Cache", "HyScanCache interface",
+                         HYSCAN_TYPE_CACHE,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (object_class, PROP_AMPLITUDE_FACTORY,
+    g_param_spec_object ("amp-factory", "AmplitudeFactory",
+                         "HyScanAmplitudeFactory",
+                         HYSCAN_TYPE_AMPLITUDE_FACTORY,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class, PROP_DEPTH_FACTORY,
+    g_param_spec_object ("dpt-factory", "DepthFactory",
+                         "HyScanDepthFactory",
+                         HYSCAN_TYPE_DEPTH_FACTORY,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
 hyscan_track_rect_init (HyScanTrackRect *self)
 {
   self->priv = hyscan_track_rect_get_instance_private (self);
+}
+
+static void
+hyscan_track_rect_set_property (GObject      *object,
+                                guint         prop_id,
+                                const GValue *value,
+                                GParamSpec   *pspec)
+{
+  HyScanTrackRect *self = HYSCAN_TRACK_RECT (object);
+  HyScanTrackRectPrivate *priv = self->priv;
+
+  if (prop_id == PROP_CACHE)
+    priv->cache = g_value_dup_object (value);
+  else if (prop_id == PROP_AMPLITUDE_FACTORY)
+    priv->af = g_value_dup_object (value);
+  else if (prop_id == PROP_DEPTH_FACTORY)
+    priv->df = g_value_dup_object (value);
+  else
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (self, prop_id, pspec);
 }
 
 static void
@@ -133,31 +165,21 @@ hyscan_track_rect_object_finalize (GObject *object)
   g_cond_clear (&priv->cond);
 
   g_array_unref (priv->cur_state.sound_velocity);
-  g_clear_object (&priv->cur_state.db);
-  g_free (priv->cur_state.project);
-  g_free (priv->cur_state.track);
-
   g_array_unref (priv->new_state.sound_velocity);
-  g_clear_object (&priv->new_state.db);
-  g_free (priv->new_state.project);
-  g_free (priv->new_state.track);
 
   G_OBJECT_CLASS (hyscan_track_rect_parent_class)->finalize (object);
 }
 
 static HyScanProjector*
 hyscan_track_rect_open_projector (HyScanTrackRectState *state,
-                                  HyScanCache          *cache)
+                                  HyScanAmplitude      *dc)
 {
-  HyScanProjector *pj;
+  HyScanProjector *pj = NULL;
 
-  if (state->db == NULL || state->project == NULL || state->track == NULL)
+  if (dc == NULL)
     return NULL;
 
-  pj = hyscan_projector_new (state->db, cache,
-                             state->project, state->track,
-                             state->source, 1, state->raw);
-
+  pj = hyscan_projector_new (dc);
   if (pj == NULL)
     return NULL;
 
@@ -167,43 +189,6 @@ hyscan_track_rect_open_projector (HyScanTrackRectState *state,
   return pj;
 }
 
-static HyScanNavData*
-hyscan_track_rect_open_depth (HyScanTrackRect *self)
-{
-  HyScanTrackRectPrivate *priv = self->priv;
-  HyScanNavData *idepth = NULL;
-
-  if (HYSCAN_SOURCE_NMEA_DPT == priv->cur_state.depth_source)
-    {
-      HyScanNMEAParser *dnmea;
-      dnmea = hyscan_nmea_parser_new (priv->cur_state.db,
-                                      priv->cache,
-                                      priv->cur_state.project,
-                                      priv->cur_state.track,
-                                      priv->cur_state.depth_channel,
-                                      HYSCAN_SOURCE_NMEA_DPT,
-                                      HYSCAN_NMEA_FIELD_DEPTH);
-      idepth = HYSCAN_NAV_DATA (dnmea);
-    }
-
-  return idepth;
-}
-
-static HyScanDepthometer*
-hyscan_track_rect_open_depthometer (HyScanTrackRect *self)
-{
-  HyScanTrackRectPrivate *priv = self->priv;
-  HyScanDepthometer *depth = NULL;
-
-  depth = hyscan_depthometer_new (priv->idepth, priv->cache);
-  if (depth == NULL)
-    return NULL;
-
-  hyscan_depthometer_set_filter_size (depth, priv->cur_state.depth_size);
-  hyscan_depthometer_set_validity_time (depth, priv->cur_state.depth_time);
-
-  return depth;
-}
 
 static gboolean
 hyscan_track_rect_sync_states (HyScanTrackRect *self)
@@ -211,47 +196,15 @@ hyscan_track_rect_sync_states (HyScanTrackRect *self)
   HyScanTrackRectState *new_st = &self->priv->new_state;
   HyScanTrackRectState *cur_st = &self->priv->cur_state;
 
-  if (new_st->track_changed)
+  if (new_st->amp_changed)
     {
-      /* Очищаем текущее. */
-      g_clear_object (&cur_st->db);
-      g_clear_pointer (&cur_st->project, g_free);
-      g_clear_pointer (&cur_st->track, g_free);
-
-      /* Копируем из нового. */
-      cur_st->db = g_object_ref (new_st->db);
-      cur_st->project = g_strdup (new_st->project);
-      cur_st->track = g_strdup (new_st->track);
-      cur_st->source = new_st->source;
-      cur_st->raw = new_st->raw;
-
-      /* Выставляем флаги. */
-      new_st->track_changed = FALSE;
-      cur_st->track_changed = TRUE;
+      new_st->amp_changed = FALSE;
+      cur_st->amp_changed = TRUE;
     }
-  if (new_st->depth_source_changed)
+  if (new_st->dpt_changed)
     {
-      cur_st->depth_source = new_st->depth_source;
-      cur_st->depth_channel = new_st->depth_channel;
-
-      new_st->depth_source_changed = FALSE;
-      cur_st->depth_source_changed = TRUE;
-    }
-  if (new_st->depth_time_changed)
-    {
-      cur_st->depth_time = new_st->depth_time;
-      cur_st->depth_size = new_st->depth_size;
-
-      new_st->depth_time_changed = FALSE;
-      cur_st->depth_time_changed = TRUE;
-    }
-  if (new_st->depth_size_changed)
-    {
-      cur_st->depth_time = new_st->depth_time;
-      cur_st->depth_size = new_st->depth_size;
-
-      new_st->depth_size_changed = FALSE;
-      cur_st->depth_size_changed = TRUE;
+      new_st->dpt_changed = FALSE;
+      cur_st->dpt_changed = TRUE;
     }
   if (new_st->speed_changed)
     {
@@ -281,28 +234,17 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
   HyScanTrackRectPrivate *priv = self->priv;
   HyScanTrackRectState *state = &priv->cur_state;
 
-  if (state->track_changed || state->flags_changed)
+  if (state->amp_changed || state->flags_changed)
     {
+      g_clear_object (&priv->dc);
       g_clear_object (&priv->pj);
-      g_clear_object (&priv->depth);
-      g_clear_object (&priv->idepth);
-      state->track_changed = FALSE;
+      state->amp_changed = FALSE;
       state->flags_changed = FALSE;
     }
-  else if (state->depth_source_changed)
+  else if (state->dpt_changed)
     {
       g_clear_object (&priv->depth);
-      state->depth_source_changed = FALSE;
-    }
-  else if (state->depth_time_changed || state->depth_size_changed)
-    {
-      if (priv->depth != NULL)
-        {
-          hyscan_depthometer_set_validity_time (priv->depth, state->depth_time);
-          hyscan_depthometer_set_filter_size (priv->depth, state->depth_size);
-        }
-      state->depth_time_changed = FALSE;
-      state->depth_size_changed = FALSE;
+      state->dpt_changed = FALSE;
     }
 
   if (state->velocity_changed)
@@ -347,7 +289,7 @@ hyscan_track_rect_watcher (gpointer data)
   gdouble across;
 
   HyScanProjector *pj = NULL;
-  HyScanAcousticData *dc = NULL;
+  HyScanAmplitude *dc = NULL;
   HyScanDepthometer *depth = NULL;
   GMutex cond_lock;
   g_mutex_init (&cond_lock);
@@ -355,7 +297,7 @@ hyscan_track_rect_watcher (gpointer data)
   /* Параметры каналов данных. */
   while (g_atomic_int_get(&priv->stop) == 0)
     {
-      if (g_atomic_int_get(&priv->state_changed))
+      if (g_atomic_int_get (&priv->state_changed))
         {
           g_mutex_lock (&priv->state_lock);
           hyscan_track_rect_sync_states (self);
@@ -373,37 +315,34 @@ hyscan_track_rect_watcher (gpointer data)
       /* Открываем КД. */
       if (priv->pj == NULL)
         {
-          const HyScanAcousticData *cdc;
-          priv->pj = pj = hyscan_track_rect_open_projector (&priv->cur_state, priv->cache);
+          if (priv->dc == NULL)
+            priv->dc = dc = hyscan_amplitude_factory_produce (priv->af, priv->cur_state.source);
+          priv->pj = pj = hyscan_track_rect_open_projector (&priv->cur_state, dc);
+
           if (pj == NULL)
             {
-              g_usleep (1);
+              g_usleep (10);
               continue;
             }
-          cdc = hyscan_projector_get_acoustic_data (pj);
-          dc = (HyScanAcousticData*)cdc;
         }
 
       /* И ещё надо открыть глубину. */
       if (priv->cur_state.flags & HYSCAN_TILE_GROUND && priv->depth == NULL)
         {
-          if (priv->idepth == NULL)
-            priv->idepth = hyscan_track_rect_open_depth (self);
-
-          priv->depth = depth = hyscan_track_rect_open_depthometer (self);
+          priv->depth = depth = hyscan_depth_factory_produce (priv->df);
         }
 
       /* После открытия КД нужно дождаться, пока в них хоть что-то появится. */
       if (!init)
         {
-          if (hyscan_acoustic_data_get_range (dc, &i, &index1))
+          if (hyscan_amplitude_get_range (dc, &i, &index1))
             init = TRUE;
           else
             goto next;
         }
 
       /* Проходим по всем строкам и найти максимальную ширину и общую длину. */
-      if (hyscan_acoustic_data_get_range (dc, &index0, &index1))
+      if (hyscan_amplitude_get_range (dc, &index0, &index1))
         {
           /* Ширина. */
           for (; i <= index1; i++)
@@ -412,7 +351,7 @@ hyscan_track_rect_watcher (gpointer data)
                 goto next;
 
               /* Узнаем количество точек в строке. */
-              hyscan_acoustic_data_get_size_time (dc, i, &nvals, &itime);
+              hyscan_amplitude_get_size_time (dc, i, &nvals, &itime);
 
               /* Определяем глубину. */
               if (priv->cur_state.flags & HYSCAN_TILE_GROUND && depth != NULL)
@@ -427,8 +366,8 @@ hyscan_track_rect_watcher (gpointer data)
             }
 
           /* Длина. */
-          hyscan_acoustic_data_get_size_time (dc, index0, NULL, &time0);
-          hyscan_acoustic_data_get_size_time (dc, index1, NULL, &time1);
+          hyscan_amplitude_get_size_time (dc, index0, NULL, &time0);
+          hyscan_amplitude_get_size_time (dc, index1, NULL, &time1);
 
           hyscan_projector_index_to_coord (pj, index0, &along0);
           hyscan_projector_index_to_coord (pj, index1, &along1);
@@ -436,7 +375,7 @@ hyscan_track_rect_watcher (gpointer data)
         }
 
       /* Проверяем режим доступа к КД. */
-      writeable = (init) ? hyscan_acoustic_data_is_writable (dc) : TRUE;
+      writeable = (init) ? hyscan_amplitude_is_writable (dc) : TRUE;
 
       /* Записываем параметры галса. */
       g_mutex_lock (&priv->lock);
@@ -462,7 +401,6 @@ next:
 
   g_clear_object (&priv->pj);
   g_clear_object (&priv->depth);
-  g_clear_object (&priv->idepth);
 
   g_mutex_clear (&cond_lock);
 
@@ -471,10 +409,47 @@ next:
 
 /* Фукнция создает новый объект HyScanTrackRect. */
 HyScanTrackRect*
-hyscan_track_rect_new (HyScanCache *cache)
+hyscan_track_rect_new (HyScanCache            *cache,
+                       HyScanAmplitudeFactory *amp_factory,
+                       HyScanDepthFactory     *dpt_factory)
 {
   return g_object_new (HYSCAN_TYPE_TRACK_RECT,
-                       "cache", cache, NULL);
+                       "cache", cache,
+                       "amp-factory", amp_factory,
+                       "dpt-factory", dpt_factory,
+                       NULL);
+}
+
+void
+hyscan_track_rect_amp_changed (HyScanTrackRect *self)
+{
+  HyScanTrackRectPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_TRACK_RECT (self));
+  priv = self->priv;
+
+  g_mutex_lock (&priv->state_lock);
+
+  priv->new_state.amp_changed = TRUE;
+  priv->state_changed = TRUE;
+
+  g_mutex_unlock (&priv->state_lock);
+}
+
+void
+hyscan_track_rect_dpt_changed (HyScanTrackRect *self)
+{
+  HyScanTrackRectPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_TRACK_RECT (self));
+  priv = self->priv;
+
+  g_mutex_lock (&priv->state_lock);
+
+  priv->new_state.dpt_changed = TRUE;
+  priv->state_changed = TRUE;
+
+  g_mutex_unlock (&priv->state_lock);
 }
 
 /* Функция устанавливает скорость. */
@@ -535,72 +510,6 @@ hyscan_track_rect_set_sound_velocity (HyScanTrackRect *self,
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция настраивает объект измерения глубины. */
-void
-hyscan_track_rect_set_depth_source (HyScanTrackRect   *self,
-                                    HyScanSourceType   source,
-                                    guint              channel)
-{
-  HyScanTrackRectPrivate *priv;
-
-  g_return_if_fail (HYSCAN_IS_TRACK_RECT (self));
-  priv = self->priv;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->new_state.depth_source = source;
-  priv->new_state.depth_channel = channel;
-  priv->new_state.depth_source_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  g_atomic_int_set (&priv->abort, TRUE);
-  g_cond_signal (&priv->cond);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
-void
-hyscan_track_rect_set_depth_filter_size (HyScanTrackRect   *self,
-                                        gint               size)
-{
-  HyScanTrackRectPrivate *priv;
-
-  g_return_if_fail (HYSCAN_IS_TRACK_RECT (self));
-  priv = self->priv;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->new_state.depth_size = size;
-  priv->new_state.depth_size_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  g_atomic_int_set (&priv->abort, TRUE);
-  g_cond_signal (&priv->cond);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
-void
-hyscan_track_rect_set_depth_time (HyScanTrackRect   *self,
-                                  gulong             usecs)
-{
-  HyScanTrackRectPrivate *priv;
-
-  g_return_if_fail (HYSCAN_IS_TRACK_RECT (self));
-  priv = self->priv;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->new_state.depth_time = usecs;
-  priv->new_state.depth_time_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  g_atomic_int_set (&priv->abort, TRUE);
-  g_cond_signal (&priv->cond);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
 /* Функция выбора наклонной или горизонтальной дальности. */
 void
 hyscan_track_rect_set_type (HyScanTrackRect *self,
@@ -623,14 +532,9 @@ hyscan_track_rect_set_type (HyScanTrackRect *self,
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция открывает галс. */
 void
-hyscan_track_rect_open (HyScanTrackRect *self,
-                        HyScanDB        *db,
-                        const gchar     *project,
-                        const gchar     *track,
-                        HyScanSourceType source,
-                        gboolean         raw)
+hyscan_track_rect_set_source (HyScanTrackRect  *self,
+                              HyScanSourceType  source)
 {
   HyScanTrackRectPrivate *priv;
 
@@ -638,28 +542,15 @@ hyscan_track_rect_open (HyScanTrackRect *self,
   priv = self->priv;
 
   g_mutex_lock (&priv->state_lock);
-  g_clear_object (&priv->new_state.db);
-  g_clear_pointer (&priv->new_state.project, g_free);
-  g_clear_pointer (&priv->new_state.track, g_free);
-
-  priv->new_state.db = g_object_ref (db);
-  priv->new_state.project = g_strdup (project);
-  priv->new_state.track = g_strdup (track);
   priv->new_state.source = source;
-  priv->new_state.raw = raw;
-
   priv->have_data = FALSE;
-
-  //  priv->width = priv->length = 0.0;
-
-  priv->new_state.track_changed = TRUE;
   priv->state_changed = TRUE;
-
   g_atomic_int_set (&priv->abort, TRUE);
   g_cond_signal (&priv->cond);
 
   g_mutex_unlock (&priv->state_lock);
 }
+
 
 /* Функция отдает параметры галса. */
 gboolean

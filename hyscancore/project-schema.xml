@@ -34,7 +34,7 @@
         <default>3822111782476410098</default>
       </key>
       <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
-        <default>20170100</default>
+        <default>20180100</default>
       </key>
     </node>
     <key id="track" name="Track id" type="string"/>
@@ -63,7 +63,7 @@
         <default>3822111782476410098</default>
       </key>
       <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
-        <default>20170100</default>
+        <default>20180100</default>
       </key>
     </node>
     <key id="description" name="Detailed description" type="string"/>

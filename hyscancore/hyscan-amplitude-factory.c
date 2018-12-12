@@ -145,7 +145,8 @@ hyscan_amplitude_factory_get_token (HyScanAmplitudeFactory *self)
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
-  token = g_strdup (priv->token);
+  if (priv->token != NULL)
+    token = g_strdup (priv->token);
   g_mutex_unlock (&priv->lock);
 
   return token;
@@ -198,28 +199,35 @@ hyscan_amplitude_factory_produce (HyScanAmplitudeFactory *self,
                                   HyScanSourceType        source)
 {
   HyScanAmplitudeFactoryPrivate *priv;
-  HyScanAmplitude * out;
-  HyScanDB * db = NULL;
-  gchar * project = NULL;
-  gchar * track = NULL;
+  HyScanAmplitude * out = NULL;
+  HyScanDB * db;
+  gchar * project;
+  gchar * track;
 
   g_return_val_if_fail (HYSCAN_IS_AMPLITUDE_FACTORY (self), NULL);
   priv = self->priv;
 
   /* Запоминаем актуальные значения. */
   g_mutex_lock (&priv->lock);
-  db = g_object_ref (priv->db);
-  project = g_strdup (priv->project);
-  track = g_strdup (priv->track);
+  db = (priv->db != NULL) ? g_object_ref (priv->db) : NULL;
+  project = (priv->project != NULL) ? g_strdup (priv->project) : NULL;
+  track = (priv->track != NULL) ? g_strdup (priv->track) : NULL;
   g_mutex_unlock (&priv->lock);
+
+  if (db == NULL || project == NULL || track == NULL)
+    {
+      out = NULL;
+      goto fail;
+    }
 
   out = HYSCAN_AMPLITUDE (hyscan_acoustic_data_new (db, self->priv->cache,
                                                     project, track, source,
                                                     1, FALSE));
 
-  g_object_unref (db);
-  g_free (project);
-  g_free (track);
+fail:
+  g_clear_object (&db);
+  g_clear_pointer (&project, g_free);
+  g_clear_pointer (&track, g_free);
 
   return out;
 }
