@@ -18,7 +18,7 @@ struct _HyScanAmplitudeFactoryPrivate
 
   GMutex        lock;
   guint32       hash;
-  gchar        *token; // TODO: а нужен ли он ваще?
+  gchar        *token;
 };
 
 static void    hyscan_amplitude_factory_set_property             (GObject                *object,

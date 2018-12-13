@@ -81,7 +81,6 @@ typedef enum
 {
   HYSCAN_DUMMY_DEVICE_COMMAND_INVALID,
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY,
-  HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_GET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_PRESET,
@@ -415,22 +414,6 @@ hyscan_dummy_device_sonar_set_sound_velocity (HyScanSonar *sonar,
 
   priv->svp = svp;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_receiver_get_time (HyScanSonar      *sonar,
-                                             HyScanSourceType  source,
-                                             gdouble          *receive_time,
-                                             gdouble          *wait_time)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  *receive_time *= 2.0;
-  *wait_time *= 2.0;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_GET_TIME;
 
   return TRUE;
 }
@@ -847,20 +830,6 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   dummy->priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
 
   g_object_unref (data);
-}
-
-/**
- * hyscan_dummy_device_reconnect:
- * @dummy: указатель на #HyScanDummyDevice
- *
- * Функция устанавливает состояние подключения к устройству.
- */
-void
-hyscan_dummy_device_reconnect (HyScanDummyDevice *dummy)
-{
-  g_return_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy));
-
-  dummy->priv->connected = TRUE;
 }
 
 /**
@@ -1636,7 +1605,7 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
 {
   const gchar *source_name;
 
-  HyScanSonarInfoSource *pinfo;
+  HyScanSonarInfoSource *pinfo = NULL;
   HyScanSonarInfoSource info;
 
   HyScanDummyDeviceType dev_type;
@@ -1777,8 +1746,6 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
       tvg.min_gain = -30.0;
       tvg.max_gain = 30.0;
       tvg.decrease = TRUE;
-
-      info.position = hyscan_dummy_device_get_source_position (source);
     }
   else if (source == HYSCAN_SOURCE_ECHOPROFILER)
     {
@@ -1796,12 +1763,10 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
     }
   else
     {
-      pinfo = NULL;
       goto exit;
     }
 
   pinfo = hyscan_sonar_info_source_copy (&info);
-  hyscan_antenna_position_free (info.position);
 
 exit:
   g_list_free_full (presets, (GDestroyNotify)hyscan_data_schema_enum_value_free);
@@ -1925,7 +1890,6 @@ static void
 hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 {
   iface->set_sound_velocity = hyscan_dummy_device_sonar_set_sound_velocity;
-  iface->receiver_get_time = hyscan_dummy_device_sonar_receiver_get_time;
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
   iface->generator_set_preset = hyscan_dummy_device_sonar_generator_set_preset;

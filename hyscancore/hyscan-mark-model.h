@@ -65,7 +65,7 @@ GType                   hyscan_mark_model_get_type        (void);
  * \return объект HyScanMarkModel.
  */
 HYSCAN_API
-HyScanMarkModel*      hyscan_mark_model_new               (void);
+HyScanMarkModel*        hyscan_mark_model_new               (void);
 
 /**
  * Функция устанавливает проект.
