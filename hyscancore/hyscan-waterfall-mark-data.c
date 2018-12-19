@@ -27,8 +27,6 @@ struct _HyScanWaterfallMarkDataPrivate
   gchar             *project;  /* Проект. */
   gint32             param_id; /* Идентификатор группы параметров. */
 
-  GRand             *rand;     /* Генератор случайных чисел. */
-
   HyScanParamList   *read_plist;
   HyScanParamList   *write_plist;
 };
@@ -40,7 +38,7 @@ static void    hyscan_waterfall_mark_data_set_property            (GObject      
 static void    hyscan_waterfall_mark_data_object_constructed      (GObject                         *object);
 static void    hyscan_waterfall_mark_data_object_finalize         (GObject                         *object);
 
-static gchar  *hyscan_waterfall_mark_data_generate_id             (GRand                           *rand);
+static gchar  *hyscan_waterfall_mark_data_generate_id             (void);
 
 static gboolean hyscan_waterfall_mark_data_get_internal           (HyScanWaterfallMarkDataPrivate  *priv,
                                                                    const gchar                     *id,
@@ -161,8 +159,6 @@ hyscan_waterfall_mark_data_object_constructed (GObject *object)
   hyscan_param_list_add (priv->read_plist, "/schema/id");
   hyscan_param_list_add (priv->read_plist, "/schema/version");
 
-  priv->rand = g_rand_new ();
-
 exit:
   if (project_id > 0)
     hyscan_db_close (priv->db, project_id);
@@ -173,9 +169,6 @@ hyscan_waterfall_mark_data_object_finalize (GObject *object)
 {
   HyScanWaterfallMarkData *data = HYSCAN_WATERFALL_MARK_DATA (object);
   HyScanWaterfallMarkDataPrivate *priv = data->priv;
-
-  if (priv->rand != NULL)
-    g_rand_free (priv->rand);
 
   g_free (priv->project);
 
@@ -192,22 +185,19 @@ hyscan_waterfall_mark_data_object_finalize (GObject *object)
 
 /* Функция генерирует идентификатор. */
 static gchar*
-hyscan_waterfall_mark_data_generate_id (GRand *rand)
+hyscan_waterfall_mark_data_generate_id (void)
 {
+  static gchar dict[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   guint i;
   gchar *id;
-  id = g_malloc (MARK_ID_LEN + 1);
 
+  id = g_malloc (MARK_ID_LEN + 1);
   id[MARK_ID_LEN] = '\0';
+
   for (i = 0; i < MARK_ID_LEN; i++)
     {
-      gint rnd = g_rand_int_range (rand, 0, 62);
-      if (rnd < 10)
-        id[i] = '0' + rnd;
-      else if (rnd < 36)
-        id[i] = 'a' + rnd - 10;
-      else
-        id[i] = 'A' + rnd - 36;
+      gint rnd = g_random_int_range (0, sizeof dict - 1);
+      id[i] = dict[rnd];
     }
 
   return id;
@@ -319,7 +309,7 @@ hyscan_waterfall_mark_data_add (HyScanWaterfallMarkData *data,
   g_return_val_if_fail (HYSCAN_IS_WATERFALL_MARK_DATA (data), FALSE);
   priv = data->priv;
 
-  id = hyscan_waterfall_mark_data_generate_id (priv->rand);
+  id = hyscan_waterfall_mark_data_generate_id ();
 
   status = hyscan_db_param_object_create (priv->db, priv->param_id,
                                           id, WATERFALL_MARK_SCHEMA);
