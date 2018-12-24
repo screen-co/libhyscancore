@@ -949,7 +949,5 @@ main (int    argc,
   g_free (amplitude_type_name);
   g_free (db_uri);
 
-  xmlCleanupParser ();
-
   return 0;
 }

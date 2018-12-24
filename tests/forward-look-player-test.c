@@ -361,7 +361,5 @@ int main( int argc, char **argv )
 
   g_free (db_uri);
 
-  xmlCleanupParser ();
-
   return 0;
 }

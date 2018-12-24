@@ -1326,8 +1326,6 @@ main (int    argc,
   g_free (db_uri);
   g_free (schema_file);
 
-  xmlCleanupParser ();
-
   g_message ("All done");
 
   return 0;
