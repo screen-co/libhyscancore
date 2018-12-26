@@ -163,7 +163,9 @@ gboolean
 hyscan_mloc_get (HyScanmLoc            *self,
                  gint64                 time,
                  HyScanAntennaPosition *antenna,
-                 gdouble                shift,
+                 gdouble                shiftx,
+                 gdouble                shifty,
+                 gdouble                shiftz,
                  HyScanGeoGeodetic     *position)
 {
   HyScanmLocPrivate *priv;
@@ -195,9 +197,9 @@ hyscan_mloc_get (HyScanmLoc            *self,
   /* Сдвигаю куда следует. Тут небольшой костыль, т.к. система координат в гео
    * и в остальном хайскане не совпадает. В хайскане Y+ - это на правый борт,
    * а в гео - левее. */
-  topo.x = -priv->position.x + antenna->x;
-  topo.y = priv->position.y - antenna->y - shift;
-  topo.z = -priv->position.z + antenna->z;
+  topo.x = -priv->position.x + antenna->x + shiftx;
+  topo.y = priv->position.y - antenna->y - shifty;
+  topo.z = -priv->position.z + antenna->z + shiftz;
 
   /* Перевожу обратно в геодезичесие. */
   hyscan_geo_topo2geo (priv->geo, position, topo);

@@ -62,7 +62,7 @@ main (int argc, char **argv)
     pos.y = 10;
     pos.z = 15;
 
-    found = hyscan_mloc_get (mloc, 138920512, &pos, 50, &result);
+    found = hyscan_mloc_get (mloc, 138920512, &pos, 50, 0, 0, &result);
     g_message ("%i", found);
   }
 

@@ -41,7 +41,9 @@ HyScanmLoc             *hyscan_mloc_new              (HyScanDB              *db,
 gboolean                hyscan_mloc_get              (HyScanmLoc            *mloc,
                                                       gint64                 time,
                                                       HyScanAntennaPosition *antenna,
-                                                      gdouble                shift,
+                                                      gdouble                shiftx,
+                                                      gdouble                shifty,
+                                                      gdouble                shiftz,
                                                       HyScanGeoGeodetic     *position);
 G_END_DECLS
 
