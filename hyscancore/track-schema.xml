@@ -31,10 +31,10 @@
 
   <schema id="track">
     <node id="schema">
-      <key id="id" name="Track schema id" type="integer" access="readonly">
+      <key id="id" name="Track schema id" type="integer" access="r">
         <default>1715033709558529337</default>
       </key>
-      <key id="version" name="Track schema version" type="integer" access="readonly">
+      <key id="version" name="Track schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
@@ -47,10 +47,10 @@
 
   <schema id="log">
     <node id="schema">
-      <key id="id" name="Log channel schema id" type="integer" access="readonly">
+      <key id="id" name="Log channel schema id" type="integer" access="r">
         <default>3957463010395734756</default>
       </key>
-      <key id="version" name="Log channel schema version" type="integer" access="readonly">
+      <key id="version" name="Log channel schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
@@ -58,10 +58,10 @@
 
   <schema id="sensor">
     <node id="schema">
-      <key id="id" name="Sensor channel schema id" type="integer" access="readonly">
+      <key id="id" name="Sensor channel schema id" type="integer" access="r">
         <default>5474665919775311270</default>
       </key>
-      <key id="version" name="Sensor channel schema version" type="integer" access="readonly">
+      <key id="version" name="Sensor channel schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
@@ -70,10 +70,10 @@
 
   <schema id="acoustic">
     <node id="schema">
-      <key id="id" name="Acoustic channel schema id" type="integer" access="readonly">
+      <key id="id" name="Acoustic channel schema id" type="integer" access="r">
         <default>3533456721320349085</default>
       </key>
-      <key id="version" name="Acoustic channel schema version" type="integer" access="readonly">
+      <key id="version" name="Acoustic channel schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
@@ -94,10 +94,10 @@
 
   <schema id="signal">
     <node id="schema">
-      <key id="id" name="Signal channel schema id" type="integer" access="readonly">
+      <key id="id" name="Signal channel schema id" type="integer" access="r">
         <default>4522835908161425227</default>
       </key>
-      <key id="version" name="Signal schema version" type="integer" access="readonly">
+      <key id="version" name="Signal schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
@@ -106,10 +106,10 @@
 
   <schema id="tvg">
     <node id="schema">
-      <key id="id" name="TVG channel schema id" type="integer" access="readonly">
+      <key id="id" name="TVG channel schema id" type="integer" access="r">
         <default>8911020404930317035</default>
       </key>
-      <key id="version" name="TVG schema version" type="integer" access="readonly">
+      <key id="version" name="TVG schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
