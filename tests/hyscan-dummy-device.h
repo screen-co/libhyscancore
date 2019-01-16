@@ -35,7 +35,6 @@
 #ifndef __HYSCAN_DUMMY_DEVICE_H__
 #define __HYSCAN_DUMMY_DEVICE_H__
 
-#include <hyscan-param.h>
 #include <hyscan-sonar-schema.h>
 #include <hyscan-sensor-schema.h>
 
@@ -155,8 +154,7 @@ gboolean                 hyscan_dummy_device_check_sensor_enable      (HyScanDum
 gboolean                 hyscan_dummy_device_check_params             (HyScanDummyDevice              *dummy,
                                                                        gint32                          info_id,
                                                                        gint32                          param_id,
-                                                                       gint32                          system_id,
-                                                                       gint32                          state_id);
+                                                                       gint32                          system_id);
 
 HyScanDummyDeviceType    hyscan_dummy_device_get_type_by_sensor       (const gchar                    *sensor);
 
@@ -175,7 +173,7 @@ HyScanAcousticDataInfo * hyscan_dummy_device_get_acoustic_info        (HyScanSou
 gchar *                  hyscan_dummy_device_get_sensor_data          (const gchar                    *sensor,
                                                                        gint64                         *time);
 
-HyScanComplexFloat *     hyscan_dummy_device_get_complex_float_data (HyScanSourceType                source,
+HyScanComplexFloat *     hyscan_dummy_device_get_complex_float_data   (HyScanSourceType                source,
                                                                        guint32                        *n_points,
                                                                        gint64                         *time);
 

@@ -65,6 +65,8 @@
 
 #include "hyscan-dummy-device.h"
 
+#include <hyscan-param.h>
+#include <hyscan-device.h>
 #include <hyscan-buffer.h>
 #include <string.h>
 
@@ -141,6 +143,7 @@ struct _HyScanDummyDevicePrivate
 };
 
 static void        hyscan_dummy_device_param_interface_init     (HyScanParamInterface  *iface);
+static void        hyscan_dummy_device_device_interface_init    (HyScanDeviceInterface *iface);
 static void        hyscan_dummy_device_sonar_interface_init     (HyScanSonarInterface  *iface);
 static void        hyscan_dummy_device_sensor_interface_init    (HyScanSensorInterface *iface);
 
@@ -170,8 +173,9 @@ static HyScanSourceType hyscan_dummy_device_sources[] =
 
 G_DEFINE_TYPE_WITH_CODE (HyScanDummyDevice, hyscan_dummy_device, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanDummyDevice)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_PARAM, hyscan_dummy_device_param_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SONAR, hyscan_dummy_device_sonar_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_PARAM,  hyscan_dummy_device_param_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_DEVICE, hyscan_dummy_device_device_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SONAR,  hyscan_dummy_device_sonar_interface_init)
                          G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SENSOR, hyscan_dummy_device_sensor_interface_init))
 
 static void
@@ -225,16 +229,18 @@ hyscan_dummy_device_object_constructed (GObject *object)
   HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (object);
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
-  HyScanDataSchemaBuilder *builder;
+  HyScanDeviceSchema *device_schema;
   HyScanSensorSchema *sensor_schema;
   HyScanSonarSchema *sonar_schema;
+  HyScanDataSchemaBuilder *builder;
 
   gint32 uniq_value;
   gchar *key_id;
 
-  builder = hyscan_data_schema_builder_new ("device");
-  sensor_schema = hyscan_sensor_schema_new (builder);
-  sonar_schema = hyscan_sonar_schema_new (builder);
+  device_schema = hyscan_device_schema_new (HYSCAN_DEVICE_SCHEMA_VERSION);
+  sensor_schema = hyscan_sensor_schema_new (device_schema);
+  sonar_schema = hyscan_sonar_schema_new (device_schema);
+  builder = HYSCAN_DATA_SCHEMA_BUILDER (device_schema);
 
   hyscan_sonar_schema_set_software_ping (sonar_schema);
 
@@ -303,22 +309,18 @@ hyscan_dummy_device_object_constructed (GObject *object)
   hyscan_data_schema_builder_key_integer_create (builder, key_id, "id", NULL, 0);
   g_hash_table_insert (priv->params, key_id, NULL);
 
-  uniq_value = g_random_int_range (0, 1024);
-  key_id = g_strdup_printf ("/state/%s/id", priv->device_id);
-  hyscan_data_schema_builder_key_integer_create (builder, key_id, "id", NULL, 0);
-  g_hash_table_insert (priv->params, key_id, GINT_TO_POINTER (uniq_value));
-
   key_id = g_strdup_printf ("/state/%s/status", priv->device_id);
-  hyscan_data_schema_builder_key_string_create (builder, key_id, "id", NULL, NULL);
-  g_hash_table_insert (priv->params, key_id, HYSCAN_DEVICE_SCHEMA_STATUS_ERROR);
+  hyscan_data_schema_builder_key_enum_create (builder, key_id, "status", NULL,
+                                              HYSCAN_DEVICE_STATUS_ENUM, HYSCAN_DEVICE_STATUS_ERROR);
+  g_hash_table_insert (priv->params, key_id, GINT_TO_POINTER (HYSCAN_DEVICE_STATUS_ERROR));
 
   priv->schema = hyscan_data_schema_builder_get_schema (builder);
 
   priv->connected = TRUE;
 
+  g_object_unref (device_schema);
   g_object_unref (sensor_schema);
   g_object_unref (sonar_schema);
-  g_object_unref (builder);
 }
 
 static void
@@ -396,24 +398,33 @@ hyscan_dummy_device_param_get (HyScanParam     *param,
       else
         return FALSE;
 
-      if (g_str_has_suffix (keys[i], "/status"))
-        hyscan_param_list_set_string (list, keys[i], value);
-      else
-        hyscan_param_list_set_integer (list, keys[i], GPOINTER_TO_INT (value));
+      hyscan_param_list_set_integer (list, keys[i], GPOINTER_TO_INT (value));
     }
 
   return TRUE;
 }
 
 static gboolean
-hyscan_dummy_device_sonar_set_sound_velocity (HyScanSonar *sonar,
-                                              GList       *svp)
+hyscan_dummy_device_set_sound_velocity (HyScanDevice *device,
+                                        GList        *svp)
 {
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (device);
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
   priv->svp = svp;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_disconnect (HyScanDevice *device)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (device);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->connected = FALSE;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT;
 
   return TRUE;
 }
@@ -652,31 +663,6 @@ hyscan_dummy_device_sonar_ping (HyScanSonar *sonar)
 }
 
 static gboolean
-hyscan_dummy_device_sonar_disconnect (HyScanSonar *sonar)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->connected = FALSE;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sensor_set_sound_velocity (HyScanSensor *sensor,
-                                               GList        *svp)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sensor);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->svp = svp;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY;
-
-  return TRUE;
-}
-
-static gboolean
 hyscan_dummy_device_sensor_set_enable (HyScanSensor *sensor,
                                        const gchar  *sensor_name,
                                        gboolean      enable)
@@ -689,18 +675,6 @@ hyscan_dummy_device_sensor_set_enable (HyScanSensor *sensor,
 
   priv->sensor_name = sensor_name;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sensor_disconnect (HyScanSensor *sensor)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sensor);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->connected = FALSE;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT;
 
   return TRUE;
 }
@@ -750,7 +724,7 @@ hyscan_dummy_device_change_state (HyScanDummyDevice *dummy)
   priv = dummy->priv;
 
   g_snprintf (key_id, sizeof (key_id), "/state/%s/status", priv->device_id);
-  g_hash_table_replace (priv->params, g_strdup (key_id), (gpointer)HYSCAN_DEVICE_SCHEMA_STATUS_OK);
+  g_hash_table_replace (priv->params, g_strdup (key_id), GINT_TO_POINTER (HYSCAN_DEVICE_STATUS_OK));
 
   g_signal_emit_by_name (dummy, "device-state", priv->device_id);
 }
@@ -817,14 +791,14 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   if (dummy->priv->type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
     {
       gint64 time = 0;
-      g_signal_emit_by_name (dummy, "sonar-log", "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
-      g_signal_emit_by_name (dummy, "sensor-log", "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
+      g_signal_emit_by_name (dummy, "device-log", "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
+      g_signal_emit_by_name (dummy, "device-log", "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
     }
   else if (dummy->priv->type == HYSCAN_DUMMY_DEVICE_PROFILER)
     {
       gint64 time = 0;
-      g_signal_emit_by_name (dummy, "sonar-log", "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
-      g_signal_emit_by_name (dummy, "sensor-log", "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
+      g_signal_emit_by_name (dummy, "device-log", "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
+      g_signal_emit_by_name (dummy, "device-log", "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
     }
 
   dummy->priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
@@ -1416,7 +1390,6 @@ hyscan_dummy_device_check_sensor_enable (HyScanDummyDevice *dummy,
  * @info_id: параметр ветки /info
  * @param_id: параметр ветки /param
  * @system_id: параметр ветки /system
- * @state_id: параметр ветки /state
  *
  * Функция проверяет значения параметров драйвера, изменяемые через
  * интерфейс #HyScanParam.
@@ -1427,8 +1400,7 @@ gboolean
 hyscan_dummy_device_check_params (HyScanDummyDevice *dummy,
                                   gint32             info_id,
                                   gint32             param_id,
-                                  gint32             system_id,
-                                  gint32             state_id)
+                                  gint32             system_id)
 {
   HyScanDummyDevicePrivate *priv;
   gchar *key_id;
@@ -1449,11 +1421,6 @@ hyscan_dummy_device_check_params (HyScanDummyDevice *dummy,
 
   key_id = g_strdup_printf ("/system/%s/id", priv->device_id);
   if (g_hash_table_lookup (priv->params, key_id) != GINT_TO_POINTER (system_id))
-    return FALSE;
-  g_free (key_id);
-
-  key_id = g_strdup_printf ("/state/%s/id", priv->device_id);
-  if (g_hash_table_lookup (priv->params, key_id) != GINT_TO_POINTER (state_id))
     return FALSE;
   g_free (key_id);
 
@@ -1887,9 +1854,15 @@ hyscan_dummy_device_param_interface_init (HyScanParamInterface *iface)
 }
 
 static void
+hyscan_dummy_device_device_interface_init (HyScanDeviceInterface *iface)
+{
+  iface->set_sound_velocity = hyscan_dummy_device_set_sound_velocity;
+  iface->disconnect = hyscan_dummy_device_disconnect;
+}
+
+static void
 hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 {
-  iface->set_sound_velocity = hyscan_dummy_device_sonar_set_sound_velocity;
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
   iface->generator_set_preset = hyscan_dummy_device_sonar_generator_set_preset;
@@ -1906,13 +1879,10 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
   iface->stop = hyscan_dummy_device_sonar_stop;
   iface->sync = hyscan_dummy_device_sonar_sync;
   iface->ping = hyscan_dummy_device_sonar_ping;
-  iface->disconnect = hyscan_dummy_device_sonar_disconnect;
 }
 
 static void
 hyscan_dummy_device_sensor_interface_init (HyScanSensorInterface *iface)
 {
-  iface->set_sound_velocity = hyscan_dummy_device_sensor_set_sound_velocity;
   iface->set_enable = hyscan_dummy_device_sensor_set_enable;
-  iface->disconnect = hyscan_dummy_device_sensor_disconnect;
 }
