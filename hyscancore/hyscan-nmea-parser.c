@@ -114,6 +114,9 @@ static gboolean hyscan_nmea_parser_parse_latlon         (const gchar            
                                                          gdouble                 *val);
 static gboolean hyscan_nmea_parser_parse_meters         (const gchar             *sentence,
                                                          gdouble                 *val);
+static gboolean hyscan_nmea_parser_parse_helper         (HyScanNMEAParserPrivate *priv,
+                                                         const gchar             *sentence,
+                                                         gdouble                 *value);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanNMEAParser, hyscan_nmea_parser, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanNMEAParser)
@@ -197,8 +200,13 @@ hyscan_nmea_parser_object_constructed (GObject *object)
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (object);
   HyScanNMEAParserPrivate *priv = parser->priv;
 
+  /* Настраиваем функции парсинга. */
+  if (!hyscan_nmea_parser_setup (priv))
+    return;
+
   /* Открываем КД. */
-  priv->dc = hyscan_nmea_data_new (priv->db, priv->cache, priv->project, priv->track,
+  priv->dc = hyscan_nmea_data_new (priv->db, priv->cache,
+                                   priv->project, priv->track,
                                    priv->source_type, priv->channel_n);
 
   if (priv->dc == NULL)
@@ -210,9 +218,6 @@ hyscan_nmea_parser_object_constructed (GObject *object)
                                  db_uri, priv->project, priv->track,
                                  priv->source_type,
                                  priv->channel_n);
-
-  if (!hyscan_nmea_parser_setup (priv))
-    g_clear_object (&priv->dc);
 
   g_free (db_uri);
 }
@@ -280,7 +285,7 @@ hyscan_nmea_parser_shift (const gchar *sentence,
   return sentence;
 }
 
-/* Функция парсит. */
+/* Функция парсит просто вещественное значение. */
 static gboolean
 hyscan_nmea_parser_parse_value (const gchar *sentence,
                                 gdouble     *_val)
@@ -297,7 +302,7 @@ hyscan_nmea_parser_parse_value (const gchar *sentence,
   return TRUE;
 }
 
-/* Функция парсит. */
+/* Функция парсит дату. */
 static gboolean
 hyscan_nmea_parser_parse_date (const gchar *sentence,
                                gdouble     *_val)
@@ -323,7 +328,7 @@ hyscan_nmea_parser_parse_date (const gchar *sentence,
   return TRUE;
 }
 
-/* Функция парсит. */
+/* Функция парсит время. */
 static gboolean
 hyscan_nmea_parser_parse_time (const gchar *sentence,
                                gdouble     *_val)
@@ -349,7 +354,7 @@ hyscan_nmea_parser_parse_time (const gchar *sentence,
   return TRUE;
 }
 
-/* Функция парсит. */
+/* Функция парсит координаты. */
 static gboolean
 hyscan_nmea_parser_parse_latlon (const gchar *sentence,
                                  gdouble     *_val)
@@ -379,7 +384,7 @@ hyscan_nmea_parser_parse_latlon (const gchar *sentence,
   return TRUE;
 }
 
-/* Функция парсит. */
+/* Функция парсит метры. */
 static gboolean
 hyscan_nmea_parser_parse_meters (const gchar *sentence,
                                  gdouble     *_val)
@@ -400,6 +405,25 @@ hyscan_nmea_parser_parse_meters (const gchar *sentence,
   return TRUE;
 }
 
+/* Обертка над парсером. */
+static gboolean
+hyscan_nmea_parser_parse_helper (HyScanNMEAParserPrivate *priv,
+                                 const gchar             *sentence,
+                                 gdouble                 *value)
+{
+  /* Если строки нет, просто выходим. */
+  if (sentence == NULL)
+    return FALSE;
+
+  /* Ищем нужное поле. Если вернулся NULL, выходим. */
+  sentence = hyscan_nmea_parser_shift (sentence, priv->field_n);
+  if (sentence == NULL)
+    return FALSE;
+
+  /* Теперь парсим строчку и возвращаем результат. */
+  return (priv->parse_func)(sentence, value);
+}
+
 /* Функция получения глубины. */
 static gboolean
 hyscan_nmea_parser_get (HyScanNavData *navdata,
@@ -410,15 +434,14 @@ hyscan_nmea_parser_get (HyScanNavData *navdata,
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   HyScanNMEAParserPrivate *priv = parser->priv;
 
-  const gchar *nmea_sentence;
+  const gchar *sentence;
   gdouble nmea_value;
   gint64 nmea_time;
 
   /* Забираем строку из БД (или кэша, как повезет) и парсим её. */
-  nmea_sentence = hyscan_nmea_data_get_sentence (priv->dc, index, &nmea_time);
+  sentence = hyscan_nmea_data_get_sentence (priv->dc, index, &nmea_time);
 
-  nmea_sentence = hyscan_nmea_parser_shift (nmea_sentence, priv->field_n);
-  if (!(priv->parse_func) (nmea_sentence, &nmea_value))
+  if (!hyscan_nmea_parser_parse_helper (priv, sentence, &nmea_value))
     return FALSE;
 
   if (time != NULL)
@@ -523,6 +546,42 @@ hyscan_nmea_parser_new (HyScanDB        *db,
     g_clear_object (&parser);
 
   return parser;
+}
+
+HyScanNMEAParser*
+hyscan_nmea_parser_new_empty (HyScanSourceType  source_type,
+                              guint             field_type)
+{
+  return g_object_new (HYSCAN_TYPE_NMEA_PARSER,
+                       "source-type", source_type,
+                       "field-type", field_type,
+                       NULL);
+}
+
+gboolean
+hyscan_nmea_parser_parse_string (HyScanNMEAParser *parser,
+                                 const gchar      *string,
+                                 gdouble          *value)
+{
+  gdouble nmea_value;
+  HyScanNMEAParserPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_NMEA_PARSER (parser), FALSE);
+  priv = parser->priv;
+
+  if (HYSCAN_SOURCE_INVALID == hyscan_nmea_data_check_sentence (string))
+    {
+      g_message ("Broken string <%s>", string);
+      return FALSE;
+    }
+
+  if (!hyscan_nmea_parser_parse_helper (priv, string, &nmea_value))
+    return FALSE;
+
+  if (value != NULL)
+    *value = nmea_value;
+
+  return TRUE;
 }
 
 static void

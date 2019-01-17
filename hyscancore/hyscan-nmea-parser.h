@@ -109,6 +109,17 @@ HyScanNMEAParser*       hyscan_nmea_parser_new           (HyScanDB         *db,
                                                           HyScanSourceType  source_type,
                                                           guint             source_channel,
                                                           guint             field_type);
+
+HYSCAN_API
+HyScanNMEAParser*       hyscan_nmea_parser_new_empty     (HyScanSourceType  source_type,
+                                                          guint             field_type);
+
+HYSCAN_API
+gboolean                hyscan_nmea_parser_parse_string  (HyScanNMEAParser *parser,
+                                                          const gchar      *string,
+                                                          gdouble          *value);
+
+
 G_END_DECLS
 
 #endif /* __HYSCAN_NMEA_PARSER_H__ */

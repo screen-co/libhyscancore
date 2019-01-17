@@ -287,16 +287,6 @@ hyscan_projector_new (HyScanAmplitude *amplitude)
   return self;
 }
 
-void
-hyscan_projector_set_cache (HyScanProjector *self,
-                            HyScanCache     *cache)
-{
-  g_return_if_fail (HYSCAN_IS_PROJECTOR (self));
-
-  if (self->priv->dc == NULL)
-    return;
-}
-
 gboolean
 hyscan_projector_check_source (HyScanProjector   *self,
                                HyScanAmplitude   *additional,

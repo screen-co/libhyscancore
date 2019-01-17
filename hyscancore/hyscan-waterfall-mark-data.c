@@ -175,10 +175,10 @@ hyscan_waterfall_mark_data_object_finalize (GObject *object)
   if (priv->param_id > 0)
     hyscan_db_close (priv->db, priv->param_id);
 
-  g_object_unref (priv->db);
+  g_clear_object (&priv->db);
 
-  g_object_unref (priv->read_plist);
-  g_object_unref (priv->write_plist);
+  g_clear_object (&priv->read_plist);
+  g_clear_object (&priv->write_plist);
 
   G_OBJECT_CLASS (hyscan_waterfall_mark_data_parent_class)->finalize (object);
 }
