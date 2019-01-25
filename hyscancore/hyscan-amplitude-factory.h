@@ -29,19 +29,25 @@ struct _HyScanAmplitudeFactoryClass
   GObjectClass parent_class;
 };
 
+HYSCAN_API
 GType                    hyscan_amplitude_factory_get_type        (void);
 
+HYSCAN_API
 HyScanAmplitudeFactory * hyscan_amplitude_factory_new             (HyScanCache            *cache);
 
+HYSCAN_API
 gchar *                  hyscan_amplitude_factory_get_token       (HyScanAmplitudeFactory *factory);
 
+HYSCAN_API
 guint32                  hyscan_amplitude_factory_get_hash        (HyScanAmplitudeFactory *factory);
 
+HYSCAN_API
 void                     hyscan_amplitude_factory_set_track       (HyScanAmplitudeFactory *factory,
                                                                    HyScanDB               *db,
                                                                    const gchar            *project_name,
                                                                    const gchar            *track_name);
 
+HYSCAN_API
 HyScanAmplitude *        hyscan_amplitude_factory_produce         (HyScanAmplitudeFactory *factory,
                                                                    HyScanSourceType        source);
 

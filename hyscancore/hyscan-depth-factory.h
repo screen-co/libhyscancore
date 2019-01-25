@@ -28,18 +28,24 @@ struct _HyScanDepthFactoryClass
   GObjectClass parent_class;
 };
 
+HYSCAN_API
 GType                  hyscan_depth_factory_get_type         (void);
 
+HYSCAN_API
 HyScanDepthFactory *   hyscan_depth_factory_new              (HyScanCache            *cache);
 
+HYSCAN_API
 gchar *                hyscan_depth_factory_get_token        (HyScanDepthFactory     *factory);
 
+HYSCAN_API
 guint32                hyscan_depth_factory_get_hash         (HyScanDepthFactory     *factory);
 
+HYSCAN_API
 void                   hyscan_depth_factory_set_track        (HyScanDepthFactory     *factory,
                                                               HyScanDB               *db,
                                                               const gchar            *project_name,
                                                               const gchar            *track_name);
+HYSCAN_API
 HyScanDepthometer *    hyscan_depth_factory_produce          (HyScanDepthFactory     *factory);
 
 G_END_DECLS
