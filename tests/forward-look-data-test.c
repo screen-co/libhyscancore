@@ -214,7 +214,5 @@ int main( int argc, char **argv )
   g_free (raw_values1);
   g_free (raw_values2);
 
-  xmlCleanupParser ();
-
   return 0;
 }

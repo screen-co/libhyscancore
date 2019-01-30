@@ -962,7 +962,5 @@ main (int    argc,
   g_object_unref (writer);
   g_object_unref (db);
 
-  xmlCleanupParser ();
-
   return 0;
 }

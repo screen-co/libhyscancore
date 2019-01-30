@@ -2,10 +2,10 @@
 <schemalist>
   <schema id="project-info">
     <node id="schema">
-      <key id="id" name="Project info schema id" type="integer" access="readonly">
+      <key id="id" name="Project info schema id" type="integer" access="r">
         <default>1495752243900067309</default>
       </key>
-      <key id="version" name="Project info schema version" type="integer" access="readonly">
+      <key id="version" name="Project info schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
@@ -17,10 +17,10 @@
 
   <schema id="track-info">
     <node id="schema">
-      <key id="id" name="Track info schema id" type="integer" access="readonly">
+      <key id="id" name="Track info schema id" type="integer" access="r">
         <default>3829672927190415735</default>
       </key>
-      <key id="version" name="Track info schema version" type="integer" access="readonly">
+      <key id="version" name="Track info schema version" type="integer" access="r">
         <default>20180100</default>
       </key>
     </node>
