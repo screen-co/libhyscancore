@@ -39,7 +39,6 @@ main (int argc, char **argv)
   HyScanDataWriter *writer;     /* Класс записи данных. */
   HyScanCache *cache;           /* Система кэширования. */
   HyScanAmplitudeFactory *af;   /* Фабрика акустических данных. */
-  HyScanAmplitudeFactory *df;   /* Фабрика данных глубины. */
 
   HyScanTileQueue *tq = NULL;   /* Очередь тайлов. */
   HyScanTile tile, cached_tile; /* Тайлы. */

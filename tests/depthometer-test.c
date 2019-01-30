@@ -159,7 +159,7 @@ set_get_check (gchar             *log_prefix,
   if (val == expected)
     return;
 
-  g_error ("%s: Time: %li Filter: %i. Expected %f, got %f",
+  g_error ("%s: Time: %"G_GINT64_FORMAT" Filter: %i. Expected %f, got %f",
            log_prefix, time, filter, expected, val);
 }
 

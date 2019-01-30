@@ -50,24 +50,8 @@
       <key id="source0" name="Source type (center)" type="integer"/>
       <key id="index0" name="Index number (center)" type="integer"/>
       <key id="count0" name="Count number (center)" type="integer"/>
-
       <key id="width" name="Mark width" type="integer"/>
       <key id="height" name="Mark height" type="integer"/>
-
     </node>
-  </schema>
-
-  <schema id="waterfall-mark-label">
-    <node id="schema">
-      <key id="id" name="Waterfall mark schema id" type="integer" access="readonly">
-        <default>3822111782476410098</default>
-      </key>
-      <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
-        <default>20180100</default>
-      </key>
-    </node>
-    <key id="description" name="Detailed description" type="string"/>
-    <key id="color" name="Associated color" type="integer"/>
-
   </schema>
 </schemalist>
