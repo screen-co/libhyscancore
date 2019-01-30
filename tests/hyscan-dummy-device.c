@@ -86,19 +86,13 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_PRESET,
-  HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_AUTO,
-  HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_SIMPLE,
-  HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_EXTENDED,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_AUTO,
-  HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_POINTS,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_CONSTANT,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LINEAR_DB,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LOGARITHMIC,
-  HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOFTWARE_PING,
   HYSCAN_DUMMY_DEVICE_COMMAND_START,
   HYSCAN_DUMMY_DEVICE_COMMAND_STOP,
   HYSCAN_DUMMY_DEVICE_COMMAND_SYNC,
-  HYSCAN_DUMMY_DEVICE_COMMAND_PING,
   HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT,
   HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE
 } HyScanDummyDeviceCommand;
@@ -121,9 +115,6 @@ struct _HyScanDummyDevicePrivate
   gdouble                          wait_time;
 
   gint64                           generator_preset;
-  HyScanSonarGeneratorSignalType   generator_signal;
-  gdouble                          generator_power;
-  gdouble                          generator_duration;
 
   gdouble                          tvg_level;
   gdouble                          tvg_sensitivity;
@@ -132,8 +123,6 @@ struct _HyScanDummyDevicePrivate
   gdouble                          tvg_alpha;
   gdouble                          tvg_beta;
   gdouble                          tvg_time_step;
-  const gdouble                   *tvg_gains;
-  guint32                          tvg_n_gains;
 
   const gchar                     *project_name;
   const gchar                     *track_name;
@@ -167,7 +156,7 @@ static HyScanSourceType hyscan_dummy_device_sources[] =
   HYSCAN_SOURCE_SIDE_SCAN_PORT,
   HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,
   HYSCAN_SOURCE_PROFILER,
-  HYSCAN_SOURCE_ECHOPROFILER,
+  HYSCAN_SOURCE_PROFILER_ECHO,
   HYSCAN_SOURCE_INVALID
 };
 
@@ -242,8 +231,6 @@ hyscan_dummy_device_object_constructed (GObject *object)
   sonar_schema = hyscan_sonar_schema_new (device_schema);
   builder = HYSCAN_DATA_SCHEMA_BUILDER (device_schema);
 
-  hyscan_sonar_schema_set_software_ping (sonar_schema);
-
   /* ГБО. */
   if (priv->type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
     {
@@ -287,7 +274,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
       hyscan_sonar_schema_source_add_full (sonar_schema, source_info);
       hyscan_sonar_info_source_free (source_info);
 
-      source_info = hyscan_dummy_device_get_source_info (HYSCAN_SOURCE_ECHOPROFILER);
+      source_info = hyscan_dummy_device_get_source_info (HYSCAN_SOURCE_PROFILER_ECHO);
       hyscan_sonar_schema_source_add_full (sonar_schema, source_info);
       hyscan_sonar_info_source_free (source_info);
 
@@ -472,54 +459,6 @@ hyscan_dummy_device_sonar_generator_set_preset (HyScanSonar      *sonar,
 }
 
 static gboolean
-hyscan_dummy_device_sonar_generator_set_auto (HyScanSonar                    *sonar,
-                                              HyScanSourceType                source,
-                                              HyScanSonarGeneratorSignalType  signal)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->generator_signal = signal;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_AUTO;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_generator_set_simple (HyScanSonar                    *sonar,
-                                                HyScanSourceType                source,
-                                                HyScanSonarGeneratorSignalType  signal,
-                                                gdouble                         power)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->generator_signal = signal;
-  priv->generator_power = power;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_SIMPLE;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_generator_set_extended (HyScanSonar                    *sonar,
-                                                  HyScanSourceType                source,
-                                                  HyScanSonarGeneratorSignalType  signal,
-                                                  gdouble                         duration,
-                                                  gdouble                         power)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->generator_signal = signal;
-  priv->generator_power = power;
-  priv->generator_duration = duration;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_EXTENDED;
-
-  return TRUE;
-}
-
-static gboolean
 hyscan_dummy_device_sonar_tvg_set_auto (HyScanSonar      *sonar,
                                         HyScanSourceType  source,
                                         gdouble           level,
@@ -531,24 +470,6 @@ hyscan_dummy_device_sonar_tvg_set_auto (HyScanSonar      *sonar,
   priv->tvg_level = level;
   priv->tvg_sensitivity = sensitivity;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_AUTO;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_tvg_set_points (HyScanSonar      *sonar,
-                                          HyScanSourceType  source,
-                                          gdouble           time_step,
-                                          const gdouble    *gains,
-                                          guint32           n_gains)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->tvg_time_step = time_step;
-  priv->tvg_gains = gains;
-  priv->tvg_n_gains = n_gains;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_POINTS;
 
   return TRUE;
 }
@@ -602,17 +523,6 @@ hyscan_dummy_device_sonar_tvg_set_logarithmic (HyScanSonar      *sonar,
 }
 
 static gboolean
-hyscan_dummy_device_sonar_set_software_ping (HyScanSonar *sonar)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOFTWARE_PING;
-
-  return TRUE;
-}
-
-static gboolean
 hyscan_dummy_device_sonar_start (HyScanSonar     *sonar,
                                  const gchar     *project_name,
                                  const gchar     *track_name,
@@ -647,17 +557,6 @@ hyscan_dummy_device_sonar_sync (HyScanSonar *sonar)
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SYNC;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_ping (HyScanSonar *sonar)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_PING;
 
   return TRUE;
 }
@@ -921,109 +820,6 @@ hyscan_dummy_device_check_generator_preset (HyScanDummyDevice *dummy,
 }
 
 /**
- * hyscan_dummy_device_check_generator_auto:
- * @dummy: указатель на #HyScanDummyDevice
- * @signal: тип сигнала
- *
- * Функция проверяет параметры функций #hyscan_sonar_generator_set_auto.
- */
-gboolean
-hyscan_dummy_device_check_generator_auto (HyScanDummyDevice              *dummy,
-                                          HyScanSonarGeneratorSignalType  signal)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_AUTO)
-    return FALSE;
-
-  if (priv->generator_signal != signal)
-    return FALSE;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-  priv->generator_signal = 0;
-
-  return TRUE;
-}
-
-/**
- * hyscan_dummy_device_check_generator_simple:
- * @dummy: указатель на #HyScanDummyDevice
- * @signal: тип сигнала
- * @power: энергия сигнала
- *
- * Функция проверяет параметры функций #hyscan_sonar_generator_set_simple.
- */
-gboolean
-hyscan_dummy_device_check_generator_simple (HyScanDummyDevice              *dummy,
-                                            HyScanSonarGeneratorSignalType  signal,
-                                            gdouble                         power)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_SIMPLE)
-    return FALSE;
-
-  if ((priv->generator_signal != signal) ||
-      (priv->generator_power != power))
-    {
-      return FALSE;
-    }
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-  priv->generator_signal = 0;
-  priv->generator_power = 0.0;
-
-  return TRUE;
-}
-
-/**
- * hyscan_dummy_device_check_generator_extended:
- * @dummy: указатель на #HyScanDummyDevice
- * @signal: тип сигнала
- * @duration: длительность сигнала
- * @power: энергия сигнала
- *
- * Функция проверяет параметры функций #hyscan_sonar_generator_set_extended.
- */
-gboolean
-hyscan_dummy_device_check_generator_extended (HyScanDummyDevice              *dummy,
-                                              HyScanSonarGeneratorSignalType  signal,
-                                              gdouble                         duration,
-                                              gdouble                         power)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_EXTENDED)
-    return FALSE;
-
-  if ((priv->generator_signal != signal) ||
-      (priv->generator_duration != duration) ||
-      (priv->generator_power != power))
-    {
-      return FALSE;
-    }
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-  priv->generator_signal = 0;
-  priv->generator_duration = 0.0;
-  priv->generator_power = 0.0;
-
-  return TRUE;
-}
-
-/**
  * hyscan_dummy_device_check_tvg_auto:
  * @dummy: указатель на #HyScanDummyDevice
  * @level: целевой уровень сигнала
@@ -1054,45 +850,6 @@ hyscan_dummy_device_check_tvg_auto (HyScanDummyDevice *dummy,
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
   priv->tvg_level = 0.0;
   priv->tvg_sensitivity = 0.0;
-
-  return TRUE;
-}
-
-/**
- * hyscan_dummy_device_check_tvg_auto:
- * @dummy: указатель на #HyScanDummyDevice
- * @time_step: интервал времени между точками
- * @gains: массив коэффициентов усиления
- * @n_gains: число коэффициентов усиления
- *
- * Функция проверяет параметры функций #hyscan_sonar_tvg_set_points.
- */
-gboolean
-hyscan_dummy_device_check_tvg_points (HyScanDummyDevice *dummy,
-                                      gdouble            time_step,
-                                      const gdouble     *gains,
-                                      guint32            n_gains)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_POINTS)
-    return FALSE;
-
-  if ((priv->tvg_time_step != time_step) ||
-      (priv->tvg_gains != gains) ||
-      (priv->tvg_n_gains != n_gains))
-    {
-      return FALSE;
-    }
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-  priv->tvg_time_step = 0.0;
-  priv->tvg_gains = NULL;
-  priv->tvg_n_gains = 0;
 
   return TRUE;
 }
@@ -1201,29 +958,6 @@ hyscan_dummy_device_check_tvg_logarithmic (HyScanDummyDevice *dummy,
 }
 
 /**
- * hyscan_dummy_device_check_software_ping:
- * @dummy: указатель на #HyScanDummyDevice
- *
- * Функция проверяет параметры функций #hyscan_sonar_set_software_ping.
- */
-gboolean
-hyscan_dummy_device_check_software_ping (HyScanDummyDevice *dummy)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOFTWARE_PING)
-    return FALSE;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-
-  return TRUE;
-}
-
-/**
  * hyscan_dummy_device_check_start:
  * @dummy: указатель на #HyScanDummyDevice
  * @project_name: название проекта, в который записывать данные
@@ -1300,29 +1034,6 @@ hyscan_dummy_device_check_sync (HyScanDummyDevice *dummy)
   priv = dummy->priv;
 
   if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_SYNC)
-    return FALSE;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-
-  return TRUE;
-}
-
-/**
- * hyscan_dummy_device_check_ping:
- * @dummy: указатель на #HyScanDummyDevice
- *
- * Функция проверяет параметры функций #hyscan_sonar_ping.
- */
-gboolean
-hyscan_dummy_device_check_ping (HyScanDummyDevice *dummy)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_PING)
     return FALSE;
 
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
@@ -1455,7 +1166,7 @@ hyscan_dummy_device_get_type_by_source (HyScanSourceType source)
     }
 
   if ((source == HYSCAN_SOURCE_PROFILER) ||
-      (source == HYSCAN_SOURCE_ECHOPROFILER))
+      (source == HYSCAN_SOURCE_PROFILER_ECHO))
     {
       return HYSCAN_DUMMY_DEVICE_PROFILER;
     }
@@ -1578,14 +1289,9 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
   HyScanDummyDeviceType dev_type;
   const gchar *dev_id;
 
-  HyScanSonarInfoCapabilities capabilities;
   HyScanSonarInfoReceiver receiver;
-  HyScanSonarInfoGenerator generator;
-  HyScanSonarInfoTVG tvg;
-
-  HyScanSonarInfoSignal tone;
-  HyScanSonarInfoSignal lfm;
   GList *presets = NULL;
+  HyScanSonarInfoTVG tvg;
 
   guint i;
 
@@ -1602,16 +1308,10 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
     return NULL;
 
   /* Возможности источника данных. */
-  capabilities.receiver = HYSCAN_SONAR_RECEIVER_MODE_MANUAL |
+  receiver.capabilities = HYSCAN_SONAR_RECEIVER_MODE_MANUAL |
                           HYSCAN_SONAR_RECEIVER_MODE_AUTO;
 
-  capabilities.generator = HYSCAN_SONAR_GENERATOR_MODE_PRESET |
-                           HYSCAN_SONAR_GENERATOR_MODE_AUTO |
-                           HYSCAN_SONAR_GENERATOR_MODE_SIMPLE |
-                           HYSCAN_SONAR_GENERATOR_MODE_EXTENDED;
-
-  capabilities.tvg = HYSCAN_SONAR_TVG_MODE_AUTO |
-                     HYSCAN_SONAR_TVG_MODE_POINTS |
+  tvg.capabilities = HYSCAN_SONAR_TVG_MODE_AUTO |
                      HYSCAN_SONAR_TVG_MODE_CONSTANT |
                      HYSCAN_SONAR_TVG_MODE_LINEAR_DB |
                      HYSCAN_SONAR_TVG_MODE_LOGARITHMIC;
@@ -1630,24 +1330,13 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
       g_free (name);
     }
 
-  /* Параметры генератора. */
-  generator.signals = HYSCAN_SONAR_GENERATOR_SIGNAL_AUTO |
-                      HYSCAN_SONAR_GENERATOR_SIGNAL_TONE |
-                      HYSCAN_SONAR_GENERATOR_SIGNAL_LFM;
-  generator.presets = presets;
-  generator.automatic = TRUE;
-  generator.tone = &tone;
-  generator.lfm = &lfm;
-
   /* Описание источника данных. */
   info.source = source;
   info.dev_id = dev_id;
   info.description = source_name;
-  info.master = HYSCAN_SOURCE_INVALID;
   info.position = NULL;
-  info.capabilities = &capabilities;
   info.receiver = &receiver;
-  info.generator = &generator;
+  info.presets = presets;
   info.tvg = &tvg;
 
   /* Уникальные параметры источников данных. */
@@ -1655,18 +1344,6 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
     {
       receiver.min_time = 0.01;
       receiver.max_time = 0.1;
-
-      tone.duration_name = "ssp-tone";
-      tone.min_duration = 1e-6;
-      tone.max_duration = 1e-4;
-      tone.duration_step = 2e-6;
-      tone.dirty_cycle = 10;
-
-      lfm.duration_name = "ssp-lfm";
-      lfm.min_duration = 1e-3;
-      lfm.max_duration = 1e-2;
-      lfm.duration_step = 2e-3;
-      lfm.dirty_cycle = 100;
 
       tvg.min_gain = -10.0;
       tvg.max_gain = 10.0;
@@ -1677,18 +1354,6 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
       receiver.min_time = 0.02;
       receiver.max_time = 0.2;
 
-      tone.duration_name = "sss-tone";
-      tone.min_duration = 2e-6;
-      tone.max_duration = 2e-4;
-      tone.duration_step = 4e-6;
-      tone.dirty_cycle = 20;
-
-      lfm.duration_name = "sss-lfm";
-      lfm.min_duration = 2e-3;
-      lfm.max_duration = 2e-2;
-      lfm.duration_step = 4e-3;
-      lfm.dirty_cycle = 200;
-
       tvg.min_gain = -20.0;
       tvg.max_gain = 20.0;
       tvg.decrease = TRUE;
@@ -1698,23 +1363,11 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
       receiver.min_time = 0.03;
       receiver.max_time = 0.3;
 
-      tone.duration_name = "pf-tone";
-      tone.min_duration = 3e-6;
-      tone.max_duration = 3e-4;
-      tone.duration_step = 6e-6;
-      tone.dirty_cycle = 30;
-
-      lfm.duration_name = "pf-lfm";
-      lfm.min_duration = 3e-3;
-      lfm.max_duration = 3e-2;
-      lfm.duration_step = 6e-3;
-      lfm.dirty_cycle = 300;
-
       tvg.min_gain = -30.0;
       tvg.max_gain = 30.0;
       tvg.decrease = TRUE;
     }
-  else if (source == HYSCAN_SOURCE_ECHOPROFILER)
+  else if (source == HYSCAN_SOURCE_PROFILER_ECHO)
     {
       receiver.min_time = 0.04;
       receiver.max_time = 0.4;
@@ -1722,11 +1375,6 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
       tvg.min_gain = -40.0;
       tvg.max_gain = 40.0;
       tvg.decrease = TRUE;
-
-      capabilities.generator = 0;
-
-      info.master = HYSCAN_SOURCE_PROFILER;
-      info.generator = NULL;
     }
   else
     {
@@ -1866,19 +1514,13 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
   iface->generator_set_preset = hyscan_dummy_device_sonar_generator_set_preset;
-  iface->generator_set_auto = hyscan_dummy_device_sonar_generator_set_auto;
-  iface->generator_set_simple = hyscan_dummy_device_sonar_generator_set_simple;
-  iface->generator_set_extended = hyscan_dummy_device_sonar_generator_set_extended;
   iface->tvg_set_auto = hyscan_dummy_device_sonar_tvg_set_auto;
-  iface->tvg_set_points = hyscan_dummy_device_sonar_tvg_set_points;
   iface->tvg_set_constant = hyscan_dummy_device_sonar_tvg_set_constant;
   iface->tvg_set_linear_db = hyscan_dummy_device_sonar_tvg_set_linear_db;
   iface->tvg_set_logarithmic = hyscan_dummy_device_sonar_tvg_set_logarithmic;
-  iface->set_software_ping = hyscan_dummy_device_sonar_set_software_ping;
   iface->start = hyscan_dummy_device_sonar_start;
   iface->stop = hyscan_dummy_device_sonar_stop;
   iface->sync = hyscan_dummy_device_sonar_sync;
-  iface->ping = hyscan_dummy_device_sonar_ping;
 }
 
 static void

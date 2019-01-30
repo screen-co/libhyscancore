@@ -100,26 +100,9 @@ gboolean                 hyscan_dummy_device_check_receiver_auto      (HyScanDum
 gboolean                 hyscan_dummy_device_check_generator_preset   (HyScanDummyDevice              *dummy,
                                                                        gint64                          preset);
 
-gboolean                 hyscan_dummy_device_check_generator_auto     (HyScanDummyDevice              *dummy,
-                                                                       HyScanSonarGeneratorSignalType  signal);
-
-gboolean                 hyscan_dummy_device_check_generator_simple   (HyScanDummyDevice              *dummy,
-                                                                       HyScanSonarGeneratorSignalType  signal,
-                                                                       gdouble                         power);
-
-gboolean                 hyscan_dummy_device_check_generator_extended (HyScanDummyDevice              *dummy,
-                                                                       HyScanSonarGeneratorSignalType  signal,
-                                                                       gdouble                         duration,
-                                                                       gdouble                         power);
-
 gboolean                 hyscan_dummy_device_check_tvg_auto           (HyScanDummyDevice              *dummy,
                                                                        gdouble                         level,
                                                                        gdouble                         sensitivity);
-
-gboolean                 hyscan_dummy_device_check_tvg_points         (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         time_step,
-                                                                       const gdouble                  *gains,
-                                                                       guint32                         n_gains);
 
 gboolean                 hyscan_dummy_device_check_tvg_constant       (HyScanDummyDevice              *dummy,
                                                                        gdouble                         gain);
@@ -133,8 +116,6 @@ gboolean                 hyscan_dummy_device_check_tvg_logarithmic    (HyScanDum
                                                                        gdouble                         beta,
                                                                        gdouble                         alpha);
 
-gboolean                 hyscan_dummy_device_check_software_ping      (HyScanDummyDevice              *dummy);
-
 gboolean                 hyscan_dummy_device_check_start              (HyScanDummyDevice              *dummy,
                                                                        const gchar                    *project_name,
                                                                        const gchar                    *track_name,
@@ -143,8 +124,6 @@ gboolean                 hyscan_dummy_device_check_start              (HyScanDum
 gboolean                 hyscan_dummy_device_check_stop               (HyScanDummyDevice              *dummy);
 
 gboolean                 hyscan_dummy_device_check_sync               (HyScanDummyDevice              *dummy);
-
-gboolean                 hyscan_dummy_device_check_ping               (HyScanDummyDevice              *dummy);
 
 gboolean                 hyscan_dummy_device_check_disconnect         (HyScanDummyDevice              *dummy);
 

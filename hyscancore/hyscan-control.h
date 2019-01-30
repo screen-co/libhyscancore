@@ -94,9 +94,6 @@ const HyScanSourceType *       hyscan_control_sources_list             (HyScanCo
                                                                         guint32                        *n_sources);
 
 HYSCAN_API
-gboolean                       hyscan_control_get_software_ping        (HyScanControl                  *control);
-
-HYSCAN_API
 const HyScanSensorInfoSensor * hyscan_control_sensor_get_info          (HyScanControl                  *control,
                                                                         const gchar                    *sensor);
 

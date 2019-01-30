@@ -139,10 +139,6 @@ verify_source (const HyScanSonarInfoSource *source1,
   if (g_strcmp0 (source1->description, source2->description) != 0)
     g_error ("description failed");
 
-  /* Ведущий источник данных. */
-  if (source1->master != source2->master)
-    g_error ("master failed");
-
   /* Местоположение антенн по умолчанию. */
   if ((source1->position != NULL) ||
       (source2->position != NULL))
@@ -158,19 +154,12 @@ verify_source (const HyScanSonarInfoSource *source1,
         }
     }
 
-  /* Режимы работы источника данных. */
-  if ((source1->capabilities->receiver != source2->capabilities->receiver) ||
-      (source1->capabilities->generator != source2->capabilities->generator) ||
-      (source1->capabilities->tvg != source2->capabilities->tvg))
-    {
-      g_error ("capabilities failed");
-    }
-
   /* Параметры приёмника. */
   if ((source1->receiver != NULL) ||
       (source2->receiver != NULL))
     {
-      if ((source1->receiver->min_time != source2->receiver->min_time) ||
+      if ((source1->receiver->capabilities != source2->receiver->capabilities) ||
+          (source1->receiver->min_time != source2->receiver->min_time) ||
           (source1->receiver->max_time != source2->receiver->max_time))
         {
           g_error ("receiver failed");
@@ -178,71 +167,38 @@ verify_source (const HyScanSonarInfoSource *source1,
     }
 
   /* Параметры генератора. */
-  if ((source1->generator != NULL) ||
-      (source2->generator != NULL))
+  if ((source1->presets != NULL) ||
+      (source2->presets != NULL))
     {
-      GList *orig_presets = source1->generator->presets;
+      GList *presets1 = source1->presets;
 
       /* Преднастройки генератора. */
-      while (orig_presets != NULL)
+      while (presets1 != NULL)
         {
-          HyScanDataSchemaEnumValue *orig_preset = orig_presets->data;
-          GList *presets = source2->generator->presets;
+          HyScanDataSchemaEnumValue *preset1 = presets1->data;
+          GList *presets2 = source2->presets;
           gboolean status = FALSE;
 
-          while (presets != NULL)
+          while (presets2 != NULL)
             {
-              HyScanDataSchemaEnumValue *preset = presets->data;
+              HyScanDataSchemaEnumValue *preset2 = presets2->data;
 
-              if ((orig_preset->value == preset->value) &&
-                  (g_strcmp0 (orig_preset->name, preset->name) == 0) &&
-                  (g_strcmp0 (orig_preset->description, preset->description) == 0))
+              if ((preset1->value == preset2->value) &&
+                  (g_strcmp0 (preset1->name, preset2->name) == 0) &&
+                  (g_strcmp0 (preset1->description, preset2->description) == 0))
                 {
                   if (status)
-                    g_error ("%s dup", orig_preset->name);
+                    g_error ("%s dup", preset1->name);
 
                   status = TRUE;
                 }
 
-              presets = g_list_next (presets);
+              presets2 = g_list_next (presets2);
             }
           if (!status)
-            g_error ("%s failed", orig_preset->name);
+            g_error ("%s failed", preset1->name);
 
-          orig_presets = g_list_next (orig_presets);
-        }
-
-      /* Параметры сигналов. */
-      if (source1->generator->signals != source2->generator->signals)
-        g_error ("generator signals failed %d %d", source1->generator->signals, source2->generator->signals);
-
-      if (source1->generator->automatic != source2->generator->automatic)
-        g_error ("generator auto signal failed");
-
-      if ((source1->generator->tone != NULL) ||
-          (source2->generator->tone != NULL))
-        {
-          if ((g_strcmp0 (source1->generator->tone->duration_name, source2->generator->tone->duration_name) != 0) ||
-              (source1->generator->tone->min_duration != source2->generator->tone->min_duration) ||
-              (source1->generator->tone->max_duration != source2->generator->tone->max_duration) ||
-              (source1->generator->tone->duration_step != source2->generator->tone->duration_step) ||
-              (source1->generator->tone->dirty_cycle != source2->generator->tone->dirty_cycle))
-            {
-              g_error ("generator tone signal failed");
-            }
-        }
-
-      if ((source1->generator->lfm != NULL) ||
-          (source2->generator->lfm != NULL))
-        {
-          if ((g_strcmp0 (source1->generator->lfm->duration_name, source2->generator->lfm->duration_name) != 0) ||
-              (source1->generator->lfm->min_duration != source2->generator->lfm->min_duration) ||
-              (source1->generator->lfm->max_duration != source2->generator->lfm->max_duration) ||
-              (source1->generator->lfm->duration_step != source2->generator->lfm->duration_step) ||
-              (source1->generator->lfm->dirty_cycle != source2->generator->lfm->dirty_cycle))
-            {
-              g_error ("generator lfm signal failed");
-            }
+          presets1 = g_list_next (presets1);
         }
     }
 
@@ -250,7 +206,8 @@ verify_source (const HyScanSonarInfoSource *source1,
   if ((source1->tvg != NULL) ||
       (source2->tvg != NULL))
     {
-      if ((source1->tvg->min_gain != source2->tvg->min_gain) ||
+      if ((source1->tvg->capabilities != source2->tvg->capabilities) ||
+          (source1->tvg->min_gain != source2->tvg->min_gain) ||
           (source1->tvg->max_gain != source2->tvg->max_gain) ||
           (source1->tvg->decrease != source2->tvg->decrease))
         {
@@ -419,7 +376,7 @@ check_sources (void)
     HYSCAN_SOURCE_SIDE_SCAN_PORT,
     HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,
     HYSCAN_SOURCE_PROFILER,
-    HYSCAN_SOURCE_ECHOPROFILER
+    HYSCAN_SOURCE_PROFILER_ECHO
   };
 
   const HyScanSourceType *sources;
@@ -583,48 +540,6 @@ check_sonar_generator_set_preset (HyScanSourceType source)
 }
 
 void
-check_sonar_generator_set_auto (HyScanSourceType source)
-{
-  HyScanDummyDevice *device = get_sonar_device (source);
-  guint signal = g_random_int ();
-
-  if (!hyscan_sonar_generator_set_auto (sonar, source, signal))
-    g_error ("call failed");
-
-  if (!hyscan_dummy_device_check_generator_auto (device, signal))
-    g_error ("param failed");
-}
-
-void
-check_sonar_generator_set_simple (HyScanSourceType source)
-{
-  HyScanDummyDevice *device = get_sonar_device (source);
-  guint signal = g_random_int ();
-  gdouble power = g_random_double ();
-
-  if (!hyscan_sonar_generator_set_simple (sonar, source, signal, power))
-    g_error ("call failed");
-
-  if (!hyscan_dummy_device_check_generator_simple (device, signal, power))
-    g_error ("param failed");
-}
-
-void
-check_sonar_generator_set_extended (HyScanSourceType source)
-{
-  HyScanDummyDevice *device = get_sonar_device (source);
-  guint signal = g_random_int ();
-  gdouble duration = g_random_double ();
-  gdouble power = g_random_double ();
-
-  if (!hyscan_sonar_generator_set_extended (sonar, source, signal, duration, power))
-    g_error ("call failed");
-
-  if (!hyscan_dummy_device_check_generator_extended (device, signal, duration, power))
-    g_error ("param failed");
-}
-
-void
 check_sonar_tvg_set_auto (HyScanSourceType source)
 {
   HyScanDummyDevice *device = get_sonar_device (source);
@@ -636,29 +551,6 @@ check_sonar_tvg_set_auto (HyScanSourceType source)
 
   if (!hyscan_dummy_device_check_tvg_auto (device, level, sensitivity))
     g_error ("param failed");
-}
-
-void
-check_sonar_tvg_set_points (HyScanSourceType source)
-{
-  HyScanDummyDevice *device = get_sonar_device (source);
-  gdouble time_step = g_random_double ();
-  gdouble *gains;
-  guint32 n_gains;
-  guint32 i;
-
-  n_gains = 32;
-  gains = g_new0 (gdouble, n_gains);
-  for (i = 0; i < n_gains; i++)
-    gains[i] = i;
-
-  if (!hyscan_sonar_tvg_set_points (sonar, source, time_step, gains, n_gains))
-    g_error ("call failed");
-
-  if (!hyscan_dummy_device_check_tvg_points (device, time_step, gains, n_gains))
-    g_error ("param failed");
-
-  g_free (gains);
 }
 
 void
@@ -704,19 +596,6 @@ check_sonar_tvg_set_logarithmic (HyScanSourceType source)
 }
 
 void
-check_sonar_set_software_ping (void)
-{
-  if (!hyscan_sonar_set_software_ping (sonar))
-    g_error ("call failed");
-
-  if (!hyscan_dummy_device_check_software_ping (device1) ||
-      !hyscan_dummy_device_check_software_ping (device2))
-    {
-      g_error ("param failed");
-    }
-}
-
-void
 check_sonar_start (void)
 {
   HyScanTrackType track_type = HYSCAN_TRACK_SURVEY;
@@ -752,19 +631,6 @@ check_sonar_sync (void)
 
   if (!hyscan_dummy_device_check_sync (device1) ||
       !hyscan_dummy_device_check_sync (device2))
-    {
-      g_error ("param failed");
-    }
-}
-
-void
-check_sonar_ping (void)
-{
-  if (!hyscan_sonar_ping (sonar))
-    g_error ("call failed");
-
-  if (!hyscan_dummy_device_check_ping (device1) ||
-      !hyscan_dummy_device_check_ping (device2))
     {
       g_error ("param failed");
     }
@@ -1076,25 +942,9 @@ main (int    argc,
   for (i = 0; i < n_sources; i++)
     check_sonar_generator_set_preset (sources[i]);
 
-  g_message ("Check hyscan_sonar_generator_set_auto");
-  for (i = 0; i < n_sources; i++)
-    check_sonar_generator_set_auto (sources[i]);
-
-  g_message ("Check hyscan_sonar_generator_set_simple");
-  for (i = 0; i < n_sources; i++)
-    check_sonar_generator_set_simple (sources[i]);
-
-  g_message ("Check hyscan_sonar_generator_set_extended");
-  for (i = 0; i < n_sources; i++)
-    check_sonar_generator_set_extended (sources[i]);
-
   g_message ("Check hyscan_sonar_tvg_set_auto");
   for (i = 0; i < n_sources; i++)
     check_sonar_tvg_set_auto (sources[i]);
-
-  g_message ("Check hyscan_sonar_tvg_set_points");
-  for (i = 0; i < n_sources; i++)
-    check_sonar_tvg_set_points (sources[i]);
 
   g_message ("Check hyscan_sonar_tvg_set_constant");
   for (i = 0; i < n_sources; i++)
@@ -1108,9 +958,6 @@ main (int    argc,
   for (i = 0; i < n_sources; i++)
     check_sonar_tvg_set_logarithmic (sources[i]);
 
-  g_message ("Check hyscan_sonar_set_software_ping");
-  check_sonar_set_software_ping ();
-
   g_message ("Check hyscan_sonar_start");
   check_sonar_start ();
   hyscan_dummy_device_send_data (device1);
@@ -1121,9 +968,6 @@ main (int    argc,
 
   g_message ("Check hyscan_sonar_sync");
   check_sonar_sync ();
-
-  g_message ("Check hyscan_sonar_ping");
-  check_sonar_ping ();
 
   g_message ("Check sensor data");
   for (i = 0; sensors[i] != NULL; i++)
