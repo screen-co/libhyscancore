@@ -723,7 +723,7 @@ check_sonar_data (HyScanSourceType source)
   cdata = hyscan_acoustic_data_get_signal (reader, 0, &n_points, &time);
   if ((orig_time != time) ||
       (orig_n_points != n_points) ||
-      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
+      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat)) != 0))
     {
       g_error ("%s signal error", hyscan_source_get_name_by_type (source));
     }
@@ -732,7 +732,7 @@ check_sonar_data (HyScanSourceType source)
   fdata = hyscan_acoustic_data_get_tvg (reader, 0, &n_points, &time);
   if ((orig_time != time) ||
       (orig_n_points != n_points) ||
-      (memcmp (orig_fdata, fdata, n_points * sizeof (gfloat) != 0)))
+      (memcmp (orig_fdata, fdata, n_points * sizeof (gfloat)) != 0))
     {
       g_error ("%s tvg error", hyscan_source_get_name_by_type (source));
     }
@@ -742,7 +742,7 @@ check_sonar_data (HyScanSourceType source)
   cdata = hyscan_acoustic_data_get_complex (reader, 0, &n_points, &time);
   if ((orig_time != time) ||
       (orig_n_points != n_points) ||
-      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat) != 0)))
+      (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat)) != 0))
     {
       g_error ("%s data error", hyscan_source_get_name_by_type (source));
     }
