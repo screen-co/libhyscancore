@@ -305,6 +305,24 @@ void                    hyscan_tile_color_converter_i2d        (guint32         
                                                                 gdouble                *blue,
                                                                 gdouble                *alpha);
 
+/**
+ *
+ * Функция переводит значение цвета из отдельных компонентов в упакованное 32-х битное значение
+ *
+ * \param red красная составляющая;
+ * \param green синяя составляющая;
+ * \param blue зеленая составляющая;
+ * \param alpha прозрачность.
+ *
+ * \return упакованное значение цвета.
+ *
+ */
+HYSCAN_API
+guint32                 hyscan_tile_color_converter_c2i        (guchar                  red,
+                                                                guchar                  green,
+                                                                guchar                  blue,
+                                                                guchar                  alpha);
+
 G_END_DECLS
 
 #endif /* __HYSCAN_TILE_COLOR_H__ */
