@@ -36,7 +36,6 @@
 #include <hyscan-core-schemas.h>
 #include <hyscan-core-common.h>
 
-#include <libxml/parser.h>
 #include <string.h>
 #include <math.h>
 

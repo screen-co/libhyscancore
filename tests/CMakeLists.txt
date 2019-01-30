@@ -1,7 +1,6 @@
 
 set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
                     ${MATH_LIBRARIES}
-                    ${LIBXML2_LIBRARIES}
                     ${HYSCAN_LIBRARIES}
                     ${HYSCAN_CORE_LIBRARY})
 
