@@ -30,6 +30,7 @@ typedef struct
 
   gboolean                amp_changed;           /* Флаг на смену AmplitudeFactory. */
   gboolean                dpt_changed;           /* Флаг на смену DepthFactory. */
+  gboolean                source_changed;        /* Флаг на смену типа источника. */
   gboolean                flags_changed;         /* Флаг на смену, хм, флагов. */
   gboolean                speed_changed;         /* Флаг на смену скорости движения. */
   gboolean                velocity_changed;      /* Флаг на смену скорости звука. */
@@ -206,6 +207,12 @@ hyscan_track_rect_sync_states (HyScanTrackRect *self)
       new_st->dpt_changed = FALSE;
       cur_st->dpt_changed = TRUE;
     }
+  if (new_st->source_changed)
+    {
+      cur_st->source = new_st->source;
+      new_st->source_changed = FALSE;
+      cur_st->source_changed = TRUE;
+    }
   if (new_st->speed_changed)
     {
       cur_st->ship_speed = new_st->ship_speed;
@@ -234,12 +241,13 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
   HyScanTrackRectPrivate *priv = self->priv;
   HyScanTrackRectState *state = &priv->cur_state;
 
-  if (state->amp_changed || state->flags_changed)
+  if (state->amp_changed || state->flags_changed || state->source_changed)
     {
       g_clear_object (&priv->dc);
       g_clear_object (&priv->pj);
       state->amp_changed = FALSE;
       state->flags_changed = FALSE;
+      state->source_changed = FALSE;
     }
   else if (state->dpt_changed)
     {
@@ -543,6 +551,7 @@ hyscan_track_rect_set_source (HyScanTrackRect  *self,
 
   g_mutex_lock (&priv->state_lock);
   priv->new_state.source = source;
+  priv->new_state.source_changed = TRUE;
   priv->have_data = FALSE;
   priv->state_changed = TRUE;
   g_atomic_int_set (&priv->abort, TRUE);

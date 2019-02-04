@@ -53,7 +53,7 @@ hyscan_mloc_class_init (HyScanmLocClass *klass)
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_CACHE,
-    g_param_spec_object ("Cache", "CACHE", "HyScanCache interface", HYSCAN_TYPE_CACHE,
+    g_param_spec_object ("cache", "Cache", "HyScanCache interface", HYSCAN_TYPE_CACHE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_PROJECT_NAME,
@@ -83,6 +83,8 @@ hyscan_mloc_set_property (GObject      *object,
 
   if (prop_id == PROP_DB)
     priv->db = g_value_dup_object (value);
+  else if (prop_id == PROP_CACHE)
+    priv->cache = g_value_dup_object (value);
   else if (prop_id == PROP_PROJECT_NAME)
     priv->project = g_value_dup_string (value);
   else if (prop_id == PROP_TRACK_NAME)
@@ -112,6 +114,9 @@ hyscan_mloc_object_constructed (GObject *object)
                                  priv->project, priv->track,
                                  HYSCAN_SOURCE_NMEA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_TRACK);
+
+  if (priv->lat == NULL || priv->lon == NULL || priv->trk == NULL)
+    return;
 
   priv->lat = HYSCAN_NAV_DATA (plat);
   priv->lon = HYSCAN_NAV_DATA (plon);
@@ -151,12 +156,19 @@ hyscan_mloc_new (HyScanDB    *db,
                  const gchar *project,
                  const gchar *track)
 {
-  return g_object_new (HYSCAN_TYPE_MLOC,
+  HyScanmLoc * mloc;
+
+  mloc = g_object_new (HYSCAN_TYPE_MLOC,
                        "db", db,
                        "cache", cache,
                        "project", project,
                        "track", track,
                        NULL);
+
+  if (mloc->priv->lat == NULL || mloc->priv->lon == NULL || mloc->priv->trk == NULL)
+    g_clear_object (&mloc);
+
+  return mloc;
 }
 
 gboolean

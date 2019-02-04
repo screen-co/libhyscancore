@@ -148,7 +148,7 @@ hyscan_nmea_parser_class_init (HyScanNMEAParserClass *klass)
                            G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_SOURCE_CHANNEL,
-      g_param_spec_int ("source-channel", "SourceChannel", "Source channel", 1, 5, 1,
+      g_param_spec_uint ("source-channel", "SourceChannel", "Source channel", 1, G_MAXUINT, 1,
                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_SOURCE_TYPE,
@@ -184,7 +184,7 @@ hyscan_nmea_parser_set_property (GObject      *object,
   else if (prop_id == PROP_TRACK)
     priv->track = g_value_dup_string (value);
   else if (prop_id == PROP_SOURCE_CHANNEL)
-    priv->channel_n = g_value_get_int (value);
+    priv->channel_n = g_value_get_uint (value);
   else if (prop_id == PROP_SOURCE_TYPE)
     priv->source_type = g_value_get_int (value);
   else if (prop_id == PROP_FIELD_TYPE)
@@ -204,7 +204,10 @@ hyscan_nmea_parser_object_constructed (GObject *object)
   if (!hyscan_nmea_parser_setup (priv))
     return;
 
-  /* Открываем КД. */
+  /* Если не заданы бд, проект и галс, выходим, это пустой парсер. */
+  if (priv->db == NULL && priv->project == NULL && priv->track == NULL)
+    return;
+
   priv->dc = hyscan_nmea_data_new (priv->db, priv->cache,
                                    priv->project, priv->track,
                                    priv->source_type, priv->channel_n);

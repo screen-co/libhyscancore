@@ -510,7 +510,7 @@ hyscan_tile_queue_apply_updates (HyScanTileQueue *self)
       while (g_hash_table_iter_next (&iter, &key, &value))
         {
           if (HYSCAN_IS_AMPLITUDE (value))
-            g_hash_table_remove (dctable, key);
+            g_hash_table_iter_remove (&iter);
         }
       g_hash_table_remove_all (dctable);
     }
@@ -523,7 +523,7 @@ hyscan_tile_queue_apply_updates (HyScanTileQueue *self)
       while (g_hash_table_iter_next (&iter, &key, &value))
         {
           if (HYSCAN_IS_DEPTHOMETER (value))
-            g_hash_table_remove (dctable, key);
+            g_hash_table_iter_remove (&iter);
         }
     }
 
