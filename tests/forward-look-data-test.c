@@ -35,8 +35,6 @@
 #include <hyscan-forward-look-data.h>
 #include <hyscan-cached.h>
 
-#include <libxml/parser.h>
-
 #include "hyscan-fl-gen.h"
 
 #define PROJECT_NAME           "test"

@@ -37,7 +37,6 @@
 #include <hyscan-buffer.h>
 #include <hyscan-cached.h>
 
-#include <libxml/parser.h>
 #include <string.h>
 #include <math.h>
 

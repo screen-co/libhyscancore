@@ -35,7 +35,6 @@
 #include <hyscan-forward-look-player.h>
 #include <hyscan-cached.h>
 
-#include <libxml/parser.h>
 #include <math.h>
 
 #include "hyscan-fl-gen.h"

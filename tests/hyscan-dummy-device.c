@@ -1320,14 +1320,16 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
   for (i = 0; i < N_PRESETS; i++)
     {
       HyScanDataSchemaEnumValue *preset;
-      gchar *name = g_strdup_printf ("%s preset %d", source_name, i + 1);
+      gchar *id = g_strdup_printf ("%s-preset-%d", source_name, i + 1);
+      gchar *name = g_strdup_printf ("%s name %d", source_name, i + 1);
       gchar *description = g_strdup_printf ("%s description %d", source_name, i + 1);
 
-      preset = hyscan_data_schema_enum_value_new (i, name, description);
+      preset = hyscan_data_schema_enum_value_new (i, id, name, description);
       presets = g_list_append (presets, preset);
 
       g_free (description);
       g_free (name);
+      g_free (id);
     }
 
   /* Описание источника данных. */
