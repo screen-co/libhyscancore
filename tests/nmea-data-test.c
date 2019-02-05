@@ -4,14 +4,14 @@
 #include <string.h>
 #include <glib/gprintf.h>
 
-#define DPT HYSCAN_SOURCE_NMEA_DPT
-#define DPT_CHANNEL 3
-#define START_TIME 1e10
+#define SENSOR_NAME    "sensor"
+#define SENSOR_CHANNEL 3
+#define START_TIME     1e10
 #define TIME_INCREMENT 1e6
 
-gchar  dec_to_ascii   (gint   dec);
-gchar *nmea_generator (gchar *prefix,
-                       gint   i);
+gchar  dec_to_ascii    (gint   dec);
+gchar *nmea_generator  (gchar *prefix,
+                        gint   i);
 
 int
 main (int argc, char **argv)
@@ -106,32 +106,28 @@ main (int argc, char **argv)
       gchar *data = nmea_generator ("DPT", i);
 
       hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
-      hyscan_data_writer_sensor_add_data (writer, "sensor", DPT, DPT_CHANNEL, time, buffer);
+      hyscan_data_writer_sensor_add_data (writer, SENSOR_NAME, HYSCAN_SOURCE_NMEA,
+                                                  SENSOR_CHANNEL, time, buffer);
 
       g_free (data);
     }
 
   /* Теперь потестируем объект. */
-  g_printf ("\nTrying to open an unsupported channel. The following warning is OK. \n");
-  nmea = hyscan_nmea_data_new (db, name, name, HYSCAN_SOURCE_SIDE_SCAN_PORT, 1);
-
+  g_printf ("\nTrying to open an unsupported sensor. The following warning is OK.\n");
+  nmea = hyscan_nmea_data_new_sensor (db, name, name, SENSOR_NAME"-bad");
   if (nmea != NULL)
     g_error ("Object creation failure");
 
   g_printf ("\nTrying to open an absent channel. The following warning is OK.\n");
-
-  nmea = hyscan_nmea_data_new (db, name, name, DPT, 1);
+  nmea = hyscan_nmea_data_new (db, name, name, SENSOR_CHANNEL + 1);
   if (nmea != NULL)
     g_error ("Object creation failure");
 
-  nmea = hyscan_nmea_data_new (db, name, name, DPT, DPT_CHANNEL);
+  nmea = hyscan_nmea_data_new_sensor (db, name, name, SENSOR_NAME);
   if (nmea == NULL)
     g_error ("Object creation failure");
 
-  if (DPT != hyscan_nmea_data_get_source (nmea))
-    g_error ("Source type mismatch");
-
-  if (DPT_CHANNEL != hyscan_nmea_data_get_channel (nmea))
+  if (SENSOR_CHANNEL != hyscan_nmea_data_get_channel (nmea))
     g_error ("Source channel mismatch");
 
   /* Анализируем данные без кэша. */
@@ -190,16 +186,16 @@ main (int argc, char **argv)
 
     data = nmea_generator ("RMC", 0);
 
-    if (HYSCAN_SOURCE_NMEA_RMC != hyscan_nmea_data_check_sentence (data))
+    if (HYSCAN_NMEA_DATA_RMC != hyscan_nmea_data_check_sentence (data))
       g_error ("RMC sentence check failure");
     g_free (data);
 
     data = nmea_generator ("LOL", 0);
-    if (HYSCAN_SOURCE_NMEA_ANY != hyscan_nmea_data_check_sentence (data))
+    if (HYSCAN_NMEA_DATA_ANY != hyscan_nmea_data_check_sentence (data))
       g_error ("ANY sentence check failure");
 
     data[1] = 'Z';
-    if (HYSCAN_SOURCE_INVALID != hyscan_nmea_data_check_sentence (data))
+    if (HYSCAN_NMEA_DATA_INVALID != hyscan_nmea_data_check_sentence (data))
       g_error ("Invalid sentence check failure");
     g_free (data);
   }

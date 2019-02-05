@@ -86,13 +86,6 @@
  * #hyscan_control_source_set_position. Если для датчика или источника данных
  * задано местоположение антенн по умолчанию, изменить его нельзя.
  *
- * В системе могут использоваться несколько однотипных датчиков, например
- * два и более датчиков систем позиционирования ГЛОНАСС или GPS. Для того,
- * чтобы различать информацию от этих датчиков, имеется возможность добавить
- * метку к данным каждого из датчиков. Такой меткой является номер канала.
- * Для задания номера канала предназначена функция
- * #hyscan_control_sensor_set_channel.
- *
  * Функция #hyscan_control_writer_set_db устанавливает систему хранения.
  *
  * Функции #hyscan_control_writer_set_operator_name и
@@ -1206,7 +1199,7 @@ hyscan_control_device_add (HyScanControl *control,
 
           info->device = device;
           info->info = hyscan_sensor_info_sensor_copy (hyscan_sensor_info_get_sensor (sensor_info, sensors[i]));
-          info->channel = 1;
+          info->channel = g_hash_table_size (priv->sensors) + 1;
 
           g_hash_table_insert (priv->sensors, g_strdup (sensors[i]), info);
         }
@@ -1629,40 +1622,6 @@ exit:
 }
 
 /**
- * hyscan_control_source_set_channel:
- * @control: указатель на #HyScanControl
- * @sensor: название датчика
- * @channel: номер приёмного канала
- *
- * Функция устанавливает номер приёмного канала для датчика.
- *
- * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
- */
-gboolean
-hyscan_control_sensor_set_channel (HyScanControl *control,
-                                   const gchar   *sensor,
-                                   guint          channel)
-{
-  HyScanControlPrivate *priv;
-  HyScanControlSensorInfo *sensor_info;
-
-  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
-
-  priv = control->priv;
-
-  if (!g_atomic_int_get (&priv->binded))
-    return FALSE;
-
-  sensor_info = g_hash_table_lookup (priv->sensors, sensor);
-  if (sensor_info == NULL)
-    return FALSE;
-
-  g_atomic_int_set (&sensor_info->channel, channel);
-
-  return TRUE;
-}
-
-/**
  * hyscan_control_writer_set_db:
  * @control: указатель на #HyScanControl
  * @db: указатель на #HyScanDB
@@ -1749,3 +1708,5 @@ hyscan_control_sensor_interface_init (HyScanSensorInterface *iface)
 {
   iface->set_enable = hyscan_control_sensor_set_enable;
 }
+
+#warning "write sensor name to channel parameters"

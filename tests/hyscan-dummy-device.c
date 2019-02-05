@@ -656,7 +656,7 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       sdata = hyscan_dummy_device_get_sensor_data (sensor, &time);
       hyscan_buffer_wrap_data (data, HYSCAN_DATA_STRING, sdata, strlen (sdata) + 1);
 
-      g_signal_emit_by_name (dummy, "sensor-data", sensor, HYSCAN_SOURCE_NMEA_ANY, time, data);
+      g_signal_emit_by_name (dummy, "sensor-data", sensor, HYSCAN_SOURCE_NMEA, time, data);
 
       g_free (sdata);
     }

@@ -41,12 +41,10 @@
  * верификацию строк, однако это можно сделать вспомогательной функцией
  * #hyscan_nmea_data_check_sentence.
  *
- * В канале HYSCAN_SOURCE_NMEA_ANY по одному индексу может оказаться несколько
- * строк. В таком случае класс вернет всю строку целиком. Для разбиения этой
- * строки на отдельные сообщения можно использовать функцию
- * #hyscan_nmea_data_split_sentence, которая вернет нуль-терминированный список
- * строк.
- *
+ * В канале по одному индексу может оказаться несколько строк. В таком случае
+ * класс вернет всю строку целиком. Для разбиения этой строки на отдельные
+ * сообщения можно использовать функцию #hyscan_nmea_data_split_sentence,
+ * которая вернет нуль-терминированный список строк.
  */
 
 #include "hyscan-nmea-data.h"
@@ -62,7 +60,6 @@ enum
   PROP_DB,
   PROP_PROJECT_NAME,
   PROP_TRACK_NAME,
-  PROP_SOURCE_TYPE,
   PROP_SOURCE_CHANNEL,
 };
 
@@ -80,8 +77,8 @@ struct _HyScanNMEADataPrivate
 
   gchar                *project;        /* Название проекта. */
   gchar                *track;          /* Название галса. */
-  HyScanSourceType      source_type;    /* Тип источника данных. */
   guint                 source_channel; /* Индекс канала данных. */
+  gchar                *sensor_name;    /* Название датчика. */
 
   HyScanCache          *cache;          /* Интерфейс системы кэширования. */
   gchar                *path;           /* Путь к БД, проекту, галсу и каналу. */
@@ -134,10 +131,6 @@ hyscan_nmea_data_class_init (HyScanNMEADataClass *klass)
     g_param_spec_string ("track-name", "TrackName", "Track name", NULL,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class, PROP_SOURCE_TYPE,
-    g_param_spec_int ("source-type", "SourceType", "Source type", 0, G_MAXINT, 0,
-                      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
   g_object_class_install_property (object_class, PROP_SOURCE_CHANNEL,
     g_param_spec_uint ("source-channel", "SourceChannel", "Source channel", 1, G_MAXUINT, 1,
                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
@@ -172,10 +165,6 @@ hyscan_nmea_data_set_property (GObject      *object,
       priv->track = g_value_dup_string (value);
       break;
 
-    case PROP_SOURCE_TYPE:
-      priv->source_type = g_value_get_int (value);
-      break;
-
     case PROP_SOURCE_CHANNEL:
       priv->source_channel = g_value_get_uint (value);
       break;
@@ -206,7 +195,7 @@ hyscan_nmea_data_object_constructed (GObject *object)
   priv->cache_buffer = hyscan_buffer_new ();
   priv->nmea_buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_channel_get_name_by_types (priv->source_type,
+  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA,
                                                    HYSCAN_CHANNEL_DATA,
                                                    priv->source_channel);
 
@@ -222,12 +211,6 @@ hyscan_nmea_data_object_constructed (GObject *object)
         g_warning ("HyScanNMEAData: track name is not specified");
       if (channel_name == NULL)
         g_warning ("HyScanNMEAData: unknown channel name");
-      goto exit;
-    }
-
-  if (!hyscan_source_is_sensor (priv->source_type))
-    {
-      g_warning ("HyScanNMEAData: unsupported source type %s", channel_name);
       goto exit;
     }
 
@@ -287,17 +270,13 @@ hyscan_nmea_data_object_constructed (GObject *object)
 exit:
   if (!status)
     {
-      if (priv->channel_id > 0)
-        hyscan_db_close (priv->db, priv->channel_id);
+      priv->channel_id > 0 ? hyscan_db_close (priv->db, priv->channel_id) : 0;
       priv->channel_id = -1;
     }
 
-  if (project_id > 0)
-    hyscan_db_close (priv->db, project_id);
-  if (track_id > 0)
-    hyscan_db_close (priv->db, track_id);
-  if (param_id > 0)
-    hyscan_db_close (priv->db, param_id);
+  project_id > 0 ? hyscan_db_close (priv->db, project_id) : 0;
+  track_id > 0 ? hyscan_db_close (priv->db, track_id) : 0;
+  param_id > 0 ? hyscan_db_close (priv->db, param_id) : 0;
 
   g_free (db_uri);
 }
@@ -308,8 +287,7 @@ hyscan_nmea_data_object_finalize (GObject *object)
   HyScanNMEAData *data = HYSCAN_NMEA_DATA (object);
   HyScanNMEADataPrivate *priv = data->priv;
 
-  if (priv->channel_id > 0)
-    hyscan_db_close (priv->db, priv->channel_id);
+  priv->channel_id > 0 ? hyscan_db_close (priv->db, priv->channel_id) : 0;
 
   g_free (priv->project);
   g_free (priv->track);
@@ -378,11 +356,10 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
 
 /**
  * hyscan_nmea_data_new:
- * @db указатель на #HyScanDB
- * @project_name название проекта
- * @track_name название галса
- * @source_type тип источника данных
- * @source_channel индекс канала данных
+ * @db: указатель на #HyScanDB
+ * @project_name: название проекта
+ * @track_name: название галса
+ * @source_channel: индекс канала данных
  *
  * Функция создаёт новый объект обработки NMEA строк.
  * В требуемом канале данных должна быть хотя бы одна запись,
@@ -390,11 +367,10 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
  *
  * Returns: Указатель на объект #HyScanNMEAData или NULL.
  */
-HyScanNMEAData*
+HyScanNMEAData *
 hyscan_nmea_data_new (HyScanDB         *db,
                       const gchar      *project_name,
                       const gchar      *track_name,
-                      HyScanSourceType  source_type,
                       guint             source_channel)
 {
   HyScanNMEAData *data;
@@ -403,7 +379,6 @@ hyscan_nmea_data_new (HyScanDB         *db,
                        "db", db,
                        "project-name", project_name,
                        "track-name", track_name,
-                       "source-type", source_type,
                        "source-channel", source_channel,
                        NULL);
 
@@ -414,9 +389,93 @@ hyscan_nmea_data_new (HyScanDB         *db,
 }
 
 /**
+ * hyscan_nmea_data_new_sensor:
+ * @db: указатель на #HyScanDB
+ * @project_name: название проекта
+ * @track_name: название галса
+ * @sensor_name: название датчика
+ *
+ * Функция создаёт новый объект обработки NMEA строк для указанного датчика.
+ * В требуемом канале данных должна быть хотя бы одна запись,
+ * иначе будет возращен NULL.
+ *
+ * Returns: Указатель на объект #HyScanNMEAData или NULL.
+ */
+HyScanNMEAData *
+hyscan_nmea_data_new_sensor (HyScanDB         *db,
+                             const gchar      *project_name,
+                             const gchar      *track_name,
+                             const gchar      *sensor_name)
+{
+  HyScanNMEAData *data = NULL;
+  gint32 project_id = -1;
+  gint32 track_id = -1;
+  gchar **channels = NULL;
+  guint i;
+
+  project_id = hyscan_db_project_open (db, project_name);
+  if (project_id <= 0)
+    goto exit;
+
+  track_id = hyscan_db_track_open (db, project_id, track_name);
+  if (track_id <= 0)
+    goto exit;
+
+  channels = hyscan_db_channel_list (db, track_id);
+  if (channels == NULL)
+    goto exit;
+
+  for (i = 0; (channels[i] != NULL) && (data == NULL); i++)
+    {
+      HyScanSourceType source_type;
+      HyScanChannelType channel_type;
+      guint source_channel = 0;
+      gchar *channel_sensor_name;
+      gint32 channel_id = -1;
+      gint32 param_id = -1;
+
+      if (!hyscan_channel_get_types_by_name (channels[i], &source_type, &channel_type, &source_channel) ||
+          (source_type != HYSCAN_SOURCE_NMEA) || (channel_type != HYSCAN_CHANNEL_DATA))
+        {
+          continue;
+        }
+
+      channel_id = hyscan_db_channel_open (db, track_id, channels[i]);
+      if (channel_id <= 0 )
+        continue;
+
+      param_id = hyscan_db_channel_param_open (db, channel_id);
+      hyscan_db_close (db, channel_id);
+      if (param_id < 0)
+        continue;
+
+      channel_sensor_name = hyscan_core_params_load_sensor_info (db, param_id);
+      hyscan_db_close (db, param_id);
+
+      if (g_strcmp0 (channel_sensor_name, sensor_name) == 0)
+        data = hyscan_nmea_data_new (db, project_name, track_name, source_channel);
+
+      g_free (channel_sensor_name);
+    }
+
+  if (data == NULL)
+    {
+      g_warning ("HyScanNMEAData: can't find channel in '%s.%s' for sensor '%s'",
+                 project_name, track_name, sensor_name);
+    }
+
+exit:
+  project_id > 0 ? hyscan_db_close (db, project_id) : 0;
+  track_id > 0 ? hyscan_db_close (db, track_id) : 0;
+  g_strfreev (channels);
+
+  return data;
+}
+
+/**
  * hyscan_nmea_data_set_cache:
- * @data указатель #HyScanNMEAData
- * @cache указатель #HyScanCache
+ * @data: указатель #HyScanNMEAData
+ * @cache: указатель #HyScanCache
  *
  * Функция задаёт используемый кэш.
  */
@@ -433,11 +492,11 @@ hyscan_nmea_data_set_cache (HyScanNMEAData *data,
 
 /**
  * hyscan_nmea_data_get_position:
- * @data указатель на #HyScanNMEAData
+ * @data: указатель на #HyScanNMEAData
  *
- * Функция возвращает информацию о местоположении приёмной антенны
+ * Функция возвращает информацию о местоположении приёмной антенны.
  *
- * \return Местоположение приёмной антенны.
+ * Returns: Местоположение приёмной антенны.
  */
 HyScanAntennaPosition
 hyscan_nmea_data_get_position (HyScanNMEAData *data)
@@ -452,23 +511,21 @@ hyscan_nmea_data_get_position (HyScanNMEAData *data)
   return data->priv->position;
 }
 
+
 /**
- * hyscan_nmea_data_get_source:
- * @data указатель на #HyScanNMEAData
+ * hyscan_nmea_data_get_sensor_name:
+ * @data: указатель на #HyScanNMEAData
  *
- * Функция возвращает тип источника данных.
+ * Функция возвращает название датчика.
  *
- * Returns: Тип источника данных из #HyScanSourceType.
+ * Returns: Название датчика.
  */
-HyScanSourceType
-hyscan_nmea_data_get_source (HyScanNMEAData *data)
+const gchar *
+hyscan_nmea_data_get_sensor_name (HyScanNMEAData *data)
 {
-  g_return_val_if_fail (HYSCAN_IS_NMEA_DATA (data), HYSCAN_SOURCE_INVALID);
+  g_return_val_if_fail (HYSCAN_IS_NMEA_DATA (data), NULL);
 
-  if (data->priv->channel_id <= 0)
-    return HYSCAN_SOURCE_INVALID;
-
-  return data->priv->source_type;
+  return data->priv->sensor_name;
 }
 
 /**
@@ -660,7 +717,7 @@ hyscan_nmea_data_get_mod_count (HyScanNMEAData *data)
  *
  * Returns: тип строки.
  */
-HyScanSourceType
+HyScanNmeaDataType
 hyscan_nmea_data_check_sentence (const gchar *sentence)
 {
   const gchar *ch = sentence;
@@ -669,12 +726,12 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
   gsize len = strlen (ch);
 
   if (sentence == NULL)
-    return HYSCAN_SOURCE_INVALID;
+    return HYSCAN_NMEA_DATA_INVALID;
   /* Контрольная сумма считается как XOR всех элементов между $ и *.
    * В самой строке контрольная сумма располагается после символа *
    */
   if (*ch != '$')
-    return HYSCAN_SOURCE_INVALID;
+    return HYSCAN_NMEA_DATA_INVALID;
 
   /* Подсчитываем контрольную сумму. */
   for (ch = sentence + 1, len--; *ch != '*' && len > 0; ch++, len--)
@@ -682,7 +739,7 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
 
   /* Если количество оставшихся меньше длины контрольной суммы, строка не валидна. */
   if (len < strlen("*xx"))
-    return HYSCAN_SOURCE_INVALID;
+    return HYSCAN_NMEA_DATA_INVALID;
 
   /* Считываем контрольную сумму из строки. */
   parsed = g_ascii_xdigit_value (*++ch) * 16; /*< Первый. */
@@ -690,19 +747,19 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
 
   /* Если контрольная сумма не совпала, строка не валидна. */
   if (parsed != checksum)
-    return HYSCAN_SOURCE_INVALID;
+    return HYSCAN_NMEA_DATA_INVALID;
 
   /* Определяем тип строки. Пропускаем первые 3 символа "$XXyyy". */
   ch = sentence + 3;
 
   if (g_str_has_prefix (ch, "DPT"))
-    return HYSCAN_SOURCE_NMEA_DPT;
+    return HYSCAN_NMEA_DATA_DPT;
   if (g_str_has_prefix (ch, "GGA"))
-    return HYSCAN_SOURCE_NMEA_GGA;
+    return HYSCAN_NMEA_DATA_GGA;
   if (g_str_has_prefix (ch, "RMC"))
-    return HYSCAN_SOURCE_NMEA_RMC;
+    return HYSCAN_NMEA_DATA_RMC;
 
-  return HYSCAN_SOURCE_NMEA_ANY;
+  return HYSCAN_NMEA_DATA_ANY;
 }
 
 /**

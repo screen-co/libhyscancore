@@ -66,6 +66,7 @@
       </key>
     </node>
     <node id="position" schema="position"/>
+    <key id="sensor-name" name="Sensor name" type="string"/>
   </schema>
 
   <schema id="acoustic">

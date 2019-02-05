@@ -639,7 +639,6 @@ check_sonar_sync (void)
 void
 check_sensor_data (const gchar *sensor)
 {
-  guint channel;
   HyScanNMEAData *nmea;
 
   HyScanAntennaPosition  position;
@@ -651,13 +650,12 @@ check_sensor_data (const gchar *sensor)
   gint64 time;
 
   /* Проверочные данные. */
-  channel = g_ascii_strtoull (sensor + strlen ("nmea-"), NULL, 10);
   orig_position = hyscan_dummy_device_get_sensor_position (sensor);
 
   /* открываем канал данных. */
-  nmea = hyscan_nmea_data_new (db, project_name, track_name, HYSCAN_SOURCE_NMEA_ANY, channel);
+  nmea = hyscan_nmea_data_new_sensor (db, project_name, track_name, sensor);
   if (nmea == NULL)
-    g_error ("can't open nmea channel %u", channel);
+    g_error ("can't open nmea channel for sensor %s", sensor);
 
   /* Проверяем местоположение антенн. */
   position = hyscan_nmea_data_get_position (nmea);
@@ -849,8 +847,8 @@ main (int    argc,
   /* Запуск составного устройства. */
   hyscan_control_device_bind (control1);
   hyscan_control_device_bind (control2);
-  hyscan_control_device_add (control, HYSCAN_DEVICE (control1));
   hyscan_control_device_add (control, HYSCAN_DEVICE (control2));
+  hyscan_control_device_add (control, HYSCAN_DEVICE (control1));
   hyscan_control_device_bind (control);
 
   /* Схема устройства. */
@@ -898,10 +896,6 @@ main (int    argc,
   /* Параметры записи данных. */
   hyscan_control_writer_set_db (control, db);
   hyscan_control_writer_set_operator_name (control, OPERATOR_NAME);
-
-  /* Настройка датчиков. */
-  for (i = 0; sensors[i] != NULL; i++)
-    hyscan_control_sensor_set_channel (control, sensors[i], i + 1);
 
   /* Проверка информации о датчиках. */
   g_message ("Check sensors info");

@@ -112,11 +112,6 @@ gboolean                       hyscan_control_source_set_position      (HyScanCo
                                                                         const HyScanAntennaPosition    *position);
 
 HYSCAN_API
-gboolean                       hyscan_control_sensor_set_channel       (HyScanControl                  *control,
-                                                                        const gchar                    *sensor,
-                                                                        guint                           channel);
-
-HYSCAN_API
 void                           hyscan_control_writer_set_db            (HyScanControl                  *control,
                                                                         HyScanDB                       *db);
 

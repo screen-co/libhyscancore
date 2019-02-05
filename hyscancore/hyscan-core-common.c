@@ -67,6 +67,32 @@ hyscan_core_params_set_antenna_position (HyScanDB              *db,
   return status;
 }
 
+/* Функция устанавливает параметры данных датчика. */
+gboolean
+hyscan_core_params_set_sensor_info (HyScanDB    *db,
+                                    gint32       channel_id,
+                                    const gchar *sensor_name)
+{
+  HyScanParamList *param_list;
+  gint32 param_id;
+  gboolean status;
+
+  param_id = hyscan_db_channel_param_open (db, channel_id);
+  if (param_id < 0)
+    return FALSE;
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_set_string (param_list, "/sensor-name", sensor_name);
+
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
+  hyscan_db_close (db, param_id);
+  g_object_unref (param_list);
+
+  return status;
+}
+
 /* Функция устанавливает параметры гидроакустических данных. */
 gboolean
 hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
@@ -232,6 +258,37 @@ exit:
   g_object_unref (param_list);
 
   return status;
+}
+
+/* Функция загружает параметры данных датчика. */
+gchar *
+hyscan_core_params_load_sensor_info (HyScanDB *db,
+                                     gint32    param_id)
+{
+  HyScanParamList *param_list;
+  gchar *sensor_name = NULL;
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/sensor-name");
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != SENSOR_CHANNEL_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != SENSOR_CHANNEL_SCHEMA_VERSION))
+    {
+      goto exit;
+    }
+
+  sensor_name = hyscan_param_list_dup_string (param_list, "/sensor-name");
+
+exit:
+  g_object_unref (param_list);
+
+  return sensor_name;
 }
 
 /* Функция загружает параметры гидроакустических данных. */

@@ -559,12 +559,24 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
   if (channel_id < 0)
     goto exit;
 
+  /* Параметры данных датчика. */
+  if (!hyscan_core_params_set_sensor_info (priv->db, channel_id, sensor))
+    {
+      g_warning ("HyScanDataWriter: %s.%s.%s: can't set sensor parameters",
+                 priv->project_name, priv->track_name, channel_name);
+      goto exit;
+    }
+
   /* Местоположение приёмных антенн. */
   position = g_hash_table_lookup (priv->sensor_positions, sensor);
   if (position != NULL)
     {
       if (!hyscan_core_params_set_antenna_position (priv->db, channel_id, position))
-        goto exit;
+        {
+          g_warning ("HyScanDataWriter: %s.%s.%s: can't set antenna position",
+                     priv->project_name, priv->track_name, channel_name);
+          goto exit;
+        }
     }
   else
     {
@@ -693,6 +705,8 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
       if (!hyscan_core_params_set_antenna_position (priv->db, data_id, position) ||
           !hyscan_core_params_set_antenna_position (priv->db, noise_id, position))
         {
+          g_warning ("HyScanDataWriter: %s.%s.%s: can't set antenna position",
+                     priv->project_name, priv->track_name, data_channel_name);
           goto exit;
         }
     }

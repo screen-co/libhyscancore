@@ -372,7 +372,7 @@ sensor_add_data (HyScanDataWriter *writer,
       hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
 
       status = hyscan_data_writer_sensor_add_data (writer, sensor,
-                                                   HYSCAN_SOURCE_NMEA_ANY, n_channel,
+                                                   HYSCAN_SOURCE_NMEA, n_channel,
                                                    timestamp + i, buffer);
       if (status != fail)
         g_error ("error adding data to '%s'", sensor);
@@ -529,7 +529,7 @@ sensor_check_data (HyScanDB    *db,
 
   buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_ANY, HYSCAN_CHANNEL_DATA, n_channel);
+  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA, HYSCAN_CHANNEL_DATA, n_channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 

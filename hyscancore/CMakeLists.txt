@@ -47,7 +47,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-forward-look-player.c
              hyscan-geo.c
              hyscan-nav-data.c
-             hyscan-nmea-parser.c
+#             hyscan-nmea-parser.c
              hyscan-depthometer.c
              hyscan-control.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c

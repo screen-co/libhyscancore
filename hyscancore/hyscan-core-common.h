@@ -45,6 +45,11 @@ gboolean       hyscan_core_params_set_antenna_position         (HyScanDB        
                                                                 HyScanAntennaPosition     *position);
 
 HYSCAN_API
+gboolean       hyscan_core_params_set_sensor_info              (HyScanDB                  *db,
+                                                                gint32                     channel_id,
+                                                                const gchar               *sensor_name);
+
+HYSCAN_API
 gboolean       hyscan_core_params_set_acoustic_data_info       (HyScanDB                  *db,
                                                                 gint32                     channel_id,
                                                                 HyScanAcousticDataInfo    *info);
@@ -69,6 +74,10 @@ gboolean       hyscan_core_params_load_antenna_position        (HyScanDB        
                                                                 gint64                     schema_id,
                                                                 gint64                     schema_version,
                                                                 HyScanAntennaPosition     *position);
+
+HYSCAN_API
+gchar *        hyscan_core_params_load_sensor_info             (HyScanDB                  *db,
+                                                                gint32                     param_id);
 
 HYSCAN_API
 gboolean       hyscan_core_params_load_acoustic_data_info      (HyScanDB                  *db,
