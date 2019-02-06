@@ -96,7 +96,7 @@ HYSCAN_API
 HyScanDiscretizationType       hyscan_acoustic_data_get_discretization (HyScanAcousticData    *data);
 
 HYSCAN_API
-HyScanAntennaPosition          hyscan_acoustic_data_get_position       (HyScanAcousticData    *data);
+HyScanAntennaOffset            hyscan_acoustic_data_get_offset         (HyScanAcousticData    *data);
 
 HYSCAN_API
 HyScanAcousticDataInfo         hyscan_acoustic_data_get_info           (HyScanAcousticData    *data);

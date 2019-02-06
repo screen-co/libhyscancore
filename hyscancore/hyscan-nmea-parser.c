@@ -77,14 +77,14 @@ struct _HyScanNMEAParserPrivate
   gchar                 *project;       /* Имя проекта. */
   gchar                 *track;         /* Имя галса. */
   HyScanSourceType       source_type;   /* Тип данных. */
-  guint                  channel_n;      /* Номер канала для используемого типа данных. */
+  guint                  channel_n;     /* Номер канала для используемого типа данных. */
   HyScanNMEAField        field_type;    /* Тип анализируемых данных. */
 
   /* Переменные, определяющиеся на этапе конструирования. */
   HyScanNMEAData        *dc;            /* Канал данных. */
   gchar                 *token;         /* Токен. */
 
-  HyScanAntennaPosition  position;      /* Местоположение приемника. */
+  HyScanAntennaOffset    offset;        /* Смещение антенны приемника. */
 
   /* Параметры лексического анализа. */
   gint                   field_n;
@@ -454,12 +454,12 @@ hyscan_nmea_parser_get_range (HyScanNavData *navdata,
   return hyscan_nmea_data_get_range (parser->priv->dc, first, last);
 }
 
-/* Функция получения местоположения антенны. */
-static HyScanAntennaPosition
-hyscan_nmea_parser_get_position (HyScanNavData *navdata)
+/* Функция получения смещения антенны. */
+static HyScanAntennaOffset
+hyscan_nmea_parser_get_offset (HyScanNavData *navdata)
 {
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
-  return hyscan_nmea_data_get_position (parser->priv->dc);
+  return hyscan_nmea_data_get_offset (parser->priv->dc);
 }
 
 /* Функция определяет, возможна ли дозапись в канал данных. */
@@ -530,7 +530,7 @@ hyscan_nmea_parser_interface_init (HyScanNavDataInterface *iface)
   iface->get           = hyscan_nmea_parser_get;
   iface->find_data     = hyscan_nmea_parser_find_data;
   iface->get_range     = hyscan_nmea_parser_get_range;
-  iface->get_position  = hyscan_nmea_parser_get_position;
+  iface->get_offset    = hyscan_nmea_parser_get_offset;
   iface->get_token     = hyscan_nmea_parser_get_token;
   iface->is_writable   = hyscan_nmea_parser_is_writable;
   iface->get_mod_count = hyscan_nmea_parser_get_mod_count;

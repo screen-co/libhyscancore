@@ -237,7 +237,7 @@ range_check (HyScanForwardLookPlayer *player,
 void
 data_check (HyScanForwardLookPlayer     *player,
             HyScanForwardLookPlayerInfo *info,
-            HyScanAntennaPosition       *position,
+            HyScanAntennaOffset         *offset,
             HyScanForwardLookDOA        *doa,
             guint32                      n_doa,
             gpointer                     user_data)
@@ -303,8 +303,8 @@ int main( int argc, char **argv )
   info.data_rate = 150000.0;
   info.antenna_voffset = 0.0;
   info.antenna_hoffset = 0.0;
-  info.antenna_vpattern = 10.0;
-  info.antenna_hpattern = 50.0;
+  info.antenna_vaperture = 10.0;
+  info.antenna_haperture = 50.0;
   info.antenna_frequency = 100000.0;
   info.antenna_bandwidth = 10000.0;
   info.adc_vref = 1.0;

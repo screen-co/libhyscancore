@@ -53,8 +53,8 @@
  * - #hyscan_data_writer_set_operator_name - устанавливает имя оператора гидролокатора;
  * - #hyscan_data_writer_set_sonar_info - для задания информации о гидролокаторе;
  * - #hyscan_data_writer_set_chunk_size - устанавливает максимальный размер файлов в галсе;
- * - #hyscan_data_writer_sensor_set_position - для установки местоположения приёмной антенны датчика;
- * - #hyscan_data_writer_sonar_set_position - для установки местоположения приёмной антенны гидролокатора.
+ * - #hyscan_data_writer_sensor_set_offset - для установки местоположения приёмной антенны датчика;
+ * - #hyscan_data_writer_sonar_set_offset - для установки местоположения приёмной антенны гидролокатора.
  *
  * Функции установки параметров необходимо вызывать до начала записи данных.
  *
@@ -131,10 +131,10 @@ struct _HyScanDataWriterPrivate
   gchar                       *operator_name;                  /* Имя оператора. */
   gchar                       *sonar_info;                     /* Информация о гидролокаторе. */
 
-  GHashTable                  *sensor_positions;               /* Информация о местоположении антенн датчиков. */
+  GHashTable                  *sensor_offsets;                 /* Информация о местоположении антенн датчиков. */
   GHashTable                  *sensor_channels;                /* Список каналов для записи данных от датчиков. */
 
-  GHashTable                  *sonar_positions;                /* Информация о местоположении гидролокационных антенн. */
+  GHashTable                  *sonar_offsets;                  /* Информация о местоположении гидролокационных антенн. */
   GHashTable                  *sonar_channels;                 /* Список каналов для записи гидролокационных данных. */
   GHashTable                  *signals;                        /* Список образов сигналов по источникам данных. */
   GHashTable                  *tvg;                            /* Список параметров ВАРУ. */
@@ -219,22 +219,22 @@ hyscan_data_writer_object_constructed (GObject *object)
   priv->log_data = hyscan_buffer_new ();
   priv->log_id = -1;
 
-  priv->sensor_positions = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                  g_free, (GDestroyNotify)hyscan_antenna_position_free);
+  priv->sensor_offsets =  g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                 g_free, (GDestroyNotify)hyscan_antenna_offset_free);
 
-  priv->sensor_channels = g_hash_table_new_full  (g_direct_hash, g_direct_equal,
-                                                  NULL, hyscan_data_writer_sensor_channel_free);
+  priv->sensor_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                 NULL, hyscan_data_writer_sensor_channel_free);
 
-  priv->sonar_positions = g_hash_table_new_full  (g_direct_hash, g_direct_equal,
-                                                  NULL, (GDestroyNotify)hyscan_antenna_position_free);
+  priv->sonar_offsets =   g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                 NULL, (GDestroyNotify)hyscan_antenna_offset_free);
 
-  priv->sonar_channels = g_hash_table_new_full   (g_direct_hash, g_direct_equal,
-                                                  NULL, hyscan_data_writer_sonar_channel_free);
+  priv->sonar_channels =  g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                 NULL, hyscan_data_writer_sonar_channel_free);
 
   priv->signals = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                          NULL, hyscan_data_writer_raw_signal_free);
 
-  priv->tvg = g_hash_table_new_full     (g_direct_hash, g_direct_equal,
+  priv->tvg =     g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                          NULL, hyscan_data_writer_raw_gain_free);
 }
 
@@ -244,9 +244,9 @@ hyscan_data_writer_object_finalize (GObject *object)
   HyScanDataWriter *writer = HYSCAN_DATA_WRITER (object);
   HyScanDataWriterPrivate *priv = writer->priv;
 
-  g_hash_table_unref (priv->sensor_positions);
+  g_hash_table_unref (priv->sensor_offsets);
   g_hash_table_unref (priv->sensor_channels);
-  g_hash_table_unref (priv->sonar_positions);
+  g_hash_table_unref (priv->sonar_offsets);
   g_hash_table_unref (priv->sonar_channels);
   g_hash_table_unref (priv->signals);
   g_hash_table_unref (priv->tvg);
@@ -548,7 +548,7 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
                                           guint                    channel)
 {
   HyScanDataWriterSensorChannel *channel_info = NULL;
-  HyScanAntennaPosition *position;
+  HyScanAntennaOffset *offset;
   const gchar *channel_name;
   gint32 channel_id;
 
@@ -567,20 +567,20 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  /* Местоположение приёмных антенн. */
-  position = g_hash_table_lookup (priv->sensor_positions, sensor);
-  if (position != NULL)
+  /* Смещение приёмных антенн. */
+  offset = g_hash_table_lookup (priv->sensor_offsets, sensor);
+  if (offset != NULL)
     {
-      if (!hyscan_core_params_set_antenna_position (priv->db, channel_id, position))
+      if (!hyscan_core_params_set_antenna_offset (priv->db, channel_id, offset))
         {
-          g_warning ("HyScanDataWriter: %s.%s.%s: can't set antenna position",
+          g_warning ("HyScanDataWriter: %s.%s.%s: can't set antenna offset",
                      priv->project_name, priv->track_name, channel_name);
           goto exit;
         }
     }
   else
     {
-      g_info ("HyScanDataWriter: unspecified antenna position for sensor %s", sensor);
+      g_info ("HyScanDataWriter: unspecified antenna offset for sensor %s", sensor);
     }
 
   channel_info = g_slice_new0 (HyScanDataWriterSensorChannel);
@@ -611,7 +611,7 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
                                             HyScanAcousticDataInfo  *info)
 {
   HyScanDataWriterSonarChannel *channel_info = NULL;
-  HyScanAntennaPosition *position;
+  HyScanAntennaOffset *offset;
   HyScanDataWriterSignal *signal;
   HyScanDataWriterTVG *tvg;
 
@@ -698,21 +698,21 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
       goto exit;
     }
 
-  /* Местоположение приёмных антенн. */
-  position = g_hash_table_lookup (priv->sonar_positions, GINT_TO_POINTER (source));
-  if (position != NULL)
+  /* Смещение приёмных антенн. */
+  offset = g_hash_table_lookup (priv->sonar_offsets, GINT_TO_POINTER (source));
+  if (offset != NULL)
     {
-      if (!hyscan_core_params_set_antenna_position (priv->db, data_id, position) ||
-          !hyscan_core_params_set_antenna_position (priv->db, noise_id, position))
+      if (!hyscan_core_params_set_antenna_offset (priv->db, data_id, offset) ||
+          !hyscan_core_params_set_antenna_offset (priv->db, noise_id, offset))
         {
-          g_warning ("HyScanDataWriter: %s.%s.%s: can't set antenna position",
+          g_warning ("HyScanDataWriter: %s.%s.%s: can't set antenna offset",
                      priv->project_name, priv->track_name, data_channel_name);
           goto exit;
         }
     }
   else
     {
-      g_info ("HyScanDataWriter: %s.%s.%s: unspecified antenna position",
+      g_info ("HyScanDataWriter: %s.%s.%s: unspecified antenna offset",
               priv->project_name, priv->track_name, data_channel_name);
     }
 
@@ -924,47 +924,47 @@ hyscan_data_writer_set_chunk_size (HyScanDataWriter *writer,
 }
 
 /**
- * hyscan_data_writer_sensor_set_position:
+ * hyscan_data_writer_sensor_set_offset:
  * @writer: указатель на #HyScanDataWriter
  * @sensor: название датчика
- * @position: информация о местоположении приёмной антенны
+ * @offset: информация о смещении приёмной антенны
  *
- * Функция устанавливает информацию о местоположении приёмной антенны датчика.
+ * Функция устанавливает информацию о смещении приёмной антенны датчика.
  */
 void
-hyscan_data_writer_sensor_set_position (HyScanDataWriter            *writer,
-                                        const gchar                 *sensor,
-                                        const HyScanAntennaPosition *position)
+hyscan_data_writer_sensor_set_offset (HyScanDataWriter          *writer,
+                                      const gchar               *sensor,
+                                      const HyScanAntennaOffset *offset)
 {
   g_return_if_fail (HYSCAN_IS_DATA_WRITER (writer));
 
   g_mutex_lock (&writer->priv->lock);
-  g_hash_table_insert (writer->priv->sensor_positions,
+  g_hash_table_insert (writer->priv->sensor_offsets,
                        g_strdup (sensor),
-                       hyscan_antenna_position_copy (position));
+                       hyscan_antenna_offset_copy (offset));
   g_mutex_unlock (&writer->priv->lock);
 }
 
 /**
- * hyscan_data_writer_sonar_set_position:
+ * hyscan_data_writer_sonar_set_offset:
  * @writer: указатель на #HyScanDataWriter
  * @source: тип источника данных
- * @position: информация о местоположении приёмной антенны
+ * @offset: информация о смещении приёмной антенны
  *
- * Функция устанавливает информацию о местоположении приёмной антенны
+ * Функция устанавливает информацию о смещении приёмной антенны
  * гидролокатора.
  */
 void
-hyscan_data_writer_sonar_set_position (HyScanDataWriter            *writer,
-                                       HyScanSourceType             source,
-                                       const HyScanAntennaPosition *position)
+hyscan_data_writer_sonar_set_offset (HyScanDataWriter          *writer,
+                                     HyScanSourceType           source,
+                                     const HyScanAntennaOffset *offset)
 {
   g_return_if_fail (HYSCAN_IS_DATA_WRITER (writer));
 
   g_mutex_lock (&writer->priv->lock);
-  g_hash_table_insert (writer->priv->sonar_positions,
+  g_hash_table_insert (writer->priv->sonar_offsets,
                        GINT_TO_POINTER (source),
-                       hyscan_antenna_position_copy (position));
+                       hyscan_antenna_offset_copy (offset));
   g_mutex_unlock (&writer->priv->lock);
 }
 

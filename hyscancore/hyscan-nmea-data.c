@@ -87,7 +87,7 @@ struct _HyScanNMEADataPrivate
   gchar                *key;            /* Ключ кэширования. */
   gsize                 key_length;     /* Максимальная длина ключа. */
 
-  HyScanAntennaPosition position;       /* Местоположение приёмной антенны. */
+  HyScanAntennaOffset   offset;         /* Смещение приёмной антенны. */
   gint32                channel_id;     /* Идентификатор открытого канала данных. */
 
   HyScanBuffer         *nmea_buffer;    /* Буфер данных. */
@@ -254,13 +254,13 @@ hyscan_nmea_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  status = hyscan_core_params_load_antenna_position (priv->db, param_id,
+  status = hyscan_core_params_load_antenna_offset (priv->db, param_id,
                                                      SENSOR_CHANNEL_SCHEMA_ID,
                                                      SENSOR_CHANNEL_SCHEMA_VERSION,
-                                                     &priv->position);
+                                                     &priv->offset);
   if (!status)
     {
-      g_warning ("HyScanNMEAData: '%s.%s.%s': can't read antenna position",
+      g_warning ("HyScanNMEAData: '%s.%s.%s': can't read antenna offset",
                  priv->project, priv->track, channel_name);
       goto exit;
     }
@@ -491,24 +491,24 @@ hyscan_nmea_data_set_cache (HyScanNMEAData *data,
 }
 
 /**
- * hyscan_nmea_data_get_position:
+ * hyscan_nmea_data_get_offset:
  * @data: указатель на #HyScanNMEAData
  *
- * Функция возвращает информацию о местоположении приёмной антенны.
+ * Функция возвращает информацию о смещении приёмной антенны.
  *
- * Returns: Местоположение приёмной антенны.
+ * Returns: Смещение приёмной антенны.
  */
-HyScanAntennaPosition
-hyscan_nmea_data_get_position (HyScanNMEAData *data)
+HyScanAntennaOffset
+hyscan_nmea_data_get_offset (HyScanNMEAData *data)
 {
-  HyScanAntennaPosition zero = {0};
+  HyScanAntennaOffset zero = {0};
 
   g_return_val_if_fail (HYSCAN_IS_NMEA_DATA (data), zero);
 
   if (data->priv->channel_id <= 0)
     return zero;
 
-  return data->priv->position;
+  return data->priv->offset;
 }
 
 

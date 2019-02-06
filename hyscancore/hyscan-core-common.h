@@ -40,9 +40,9 @@
 #include "hyscan-core-schemas.h"
 
 HYSCAN_API
-gboolean       hyscan_core_params_set_antenna_position         (HyScanDB                  *db,
+gboolean       hyscan_core_params_set_antenna_offset           (HyScanDB                  *db,
                                                                 gint32                     channel_id,
-                                                                HyScanAntennaPosition     *position);
+                                                                HyScanAntennaOffset       *offset);
 
 HYSCAN_API
 gboolean       hyscan_core_params_set_sensor_info              (HyScanDB                  *db,
@@ -69,11 +69,11 @@ gboolean       hyscan_core_params_check_log_schema             (HyScanDB        
                                                                 gint32                     param_id);
 
 HYSCAN_API
-gboolean       hyscan_core_params_load_antenna_position        (HyScanDB                  *db,
+gboolean       hyscan_core_params_load_antenna_offset          (HyScanDB                  *db,
                                                                 gint32                     param_id,
                                                                 gint64                     schema_id,
                                                                 gint64                     schema_version,
-                                                                HyScanAntennaPosition     *position);
+                                                                HyScanAntennaOffset       *offset);
 
 HYSCAN_API
 gchar *        hyscan_core_params_load_sensor_info             (HyScanDB                  *db,

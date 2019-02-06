@@ -139,9 +139,9 @@ HyScanDummyDeviceType    hyscan_dummy_device_get_type_by_sensor       (const gch
 
 HyScanDummyDeviceType    hyscan_dummy_device_get_type_by_source       (HyScanSourceType                source);
 
-HyScanAntennaPosition *  hyscan_dummy_device_get_sensor_position      (const gchar                    *sensor);
+HyScanAntennaOffset *    hyscan_dummy_device_get_sensor_offset        (const gchar                    *sensor);
 
-HyScanAntennaPosition *  hyscan_dummy_device_get_source_position      (HyScanSourceType                source);
+HyScanAntennaOffset *    hyscan_dummy_device_get_source_offset        (HyScanSourceType                source);
 
 HyScanSensorInfoSensor * hyscan_dummy_device_get_sensor_info          (const gchar                    *sensor);
 

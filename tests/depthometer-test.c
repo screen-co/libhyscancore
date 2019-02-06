@@ -92,7 +92,7 @@ main (int argc, char **argv)
     g_error ("can't start write");
 
   /* Местоположение приёмных антенн. */
-  hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
+  hyscan_data_writer_sensor_set_offset (writer, "sensor", &position);
 
   /* Наполняем данными. */
   buffer = hyscan_buffer_new ();

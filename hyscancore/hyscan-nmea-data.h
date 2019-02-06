@@ -103,7 +103,7 @@ void                    hyscan_nmea_data_set_cache             (HyScanNMEAData  
                                                                 HyScanCache      *cache);
 
 HYSCAN_API
-HyScanAntennaPosition   hyscan_nmea_data_get_position          (HyScanNMEAData   *data);
+HyScanAntennaOffset     hyscan_nmea_data_get_offset            (HyScanNMEAData   *data);
 
 
 HYSCAN_API

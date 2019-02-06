@@ -87,7 +87,7 @@ main (int argc, char **argv)
   position.psi = 40;
   position.gamma = 50;
   position.theta = 60;
-  hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
+  hyscan_data_writer_sensor_set_offset (writer, "sensor", &position);
 
   /* Наполняем данными. */
   buffer = hyscan_buffer_new ();

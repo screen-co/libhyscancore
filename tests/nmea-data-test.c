@@ -25,7 +25,7 @@ main (int argc, char **argv)
   /* Запись данных. */
   HyScanBuffer           *buffer;
   HyScanDataWriter       *writer;
-  HyScanAntennaPosition   position = {0};
+  HyScanAntennaOffset     offset = {0};
 
   /* Тестируемые объекты.*/
   HyScanNMEAData *nmea;
@@ -95,8 +95,8 @@ main (int argc, char **argv)
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
     g_error ("can't start write");
 
-  /* Местоположение приёмных антенн. */
-  hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
+  /* Смещение приёмных антенн. */
+  hyscan_data_writer_sensor_set_offset (writer, "sensor", &offset);
 
   /* Наполняем данными. */
   buffer = hyscan_buffer_new ();

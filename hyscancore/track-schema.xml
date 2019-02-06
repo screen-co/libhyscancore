@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="position">
+  <schema id="offset">
     <key id="x" name="X" type="double"/>
     <key id="y" name="Y" type="double"/>
     <key id="z" name="Z" type="double"/>
@@ -9,19 +9,22 @@
     <key id="theta" name="Theta" type="double"/>
   </schema>
 
+  <schema id="antenna">
+    <node id="offset">
+      <key id="vertical" name="Vertical offset" type="double"/>
+      <key id="horizontal" name="Horizontal offset" type="double"/>
+    </node>
+    <node id="aperture">
+      <key id="vertical" name="Vertical aperture" type="double"/>
+      <key id="horizontal" name="Horizontal aperture" type="double"/>
+    </node>
+    <key id="frequency" name="Center frequency" type="double"/>
+    <key id="bandwidth" name="Bandwidth" type="double"/>
+  </schema>
+
   <schema id="data">
     <key id="type" name="Data type" type="string"/>
     <key id="rate" name="Data discretization frequency" type="double"/>
-  </schema>
-
-  <schema id="antenna-offset">
-    <key id="vertical" name="Vertical offset" type="double"/>
-    <key id="horizontal" name="Horizontal offset" type="double"/>
-  </schema>
-
-  <schema id="antenna-pattern">
-    <key id="vertical" name="Vertical pattern" type="double"/>
-    <key id="horizontal" name="Horizontal pattern" type="double"/>
   </schema>
 
   <schema id="adc">
@@ -65,7 +68,7 @@
         <default>20180100</default>
       </key>
     </node>
-    <node id="position" schema="position"/>
+    <node id="offset" schema="offset"/>
     <key id="sensor-name" name="Sensor name" type="string"/>
   </schema>
 
@@ -78,19 +81,14 @@
         <default>20180100</default>
       </key>
     </node>
-    <node id="position" schema="position"/>
+    <node id="offset" schema="offset"/>
+    <node id="antenna" schema="antenna"/>
     <node id="data" schema="data"/>
+    <node id="adc" schema="adc"/>
     <node id="signal">
       <key id="frequency" name="Center frequency" type="double"/>
       <key id="bandwidth" name="Bandwidth" type="double"/>
     </node>
-    <node id="antenna">
-      <node id="offset" schema="antenna-offset"/>
-      <node id="pattern" schema="antenna-pattern"/>
-      <key id="frequency" name="Center frequency" type="double"/>
-      <key id="bandwidth" name="Bandwidth" type="double"/>
-    </node>
-    <node id="adc" schema="adc"/>
   </schema>
 
   <schema id="signal">

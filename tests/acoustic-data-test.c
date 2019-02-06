@@ -105,7 +105,7 @@ create_complex_data (HyScanDataWriter *writer,
                      guint             n_lines)
 {
   HyScanAcousticDataInfo acoustic_info;
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset offset;
 
   HyScanBuffer *channel_buffer;
   HyScanBuffer *data_buffer;
@@ -125,21 +125,21 @@ create_complex_data (HyScanDataWriter *writer,
   acoustic_info.signal_bandwidth = 0.1 * frequency;
   acoustic_info.antenna_voffset = 0.0;
   acoustic_info.antenna_hoffset = 0.0;
-  acoustic_info.antenna_vpattern = 40.0;
-  acoustic_info.antenna_hpattern = 2.0;
+  acoustic_info.antenna_vaperture = 40.0;
+  acoustic_info.antenna_haperture = 2.0;
   acoustic_info.antenna_frequency = frequency;
   acoustic_info.antenna_bandwidth = 0.1 * frequency;
   acoustic_info.adc_vref = 1.0;
   acoustic_info.adc_offset = 0;
 
-  position.x = 0.0;
-  position.y = 0.0;
-  position.z = 0.0;
-  position.psi = 0.0;
-  position.gamma = 0.0;
-  position.theta = 0.0;
+  offset.x = 0.0;
+  offset.y = 0.0;
+  offset.z = 0.0;
+  offset.psi = 0.0;
+  offset.gamma = 0.0;
+  offset.theta = 0.0;
 
-  hyscan_data_writer_sonar_set_position (writer, source, &position);
+  hyscan_data_writer_sonar_set_offset (writer, source, &offset);
 
   n_signal_points = discretization * duration;
   n_data_points = 100 * n_signal_points;
@@ -286,7 +286,7 @@ create_amplitude_data (HyScanDataWriter *writer,
                        guint             n_lines)
 {
   HyScanAcousticDataInfo acoustic_info;
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset offset;
 
   HyScanBuffer *data_buffer;
   HyScanBuffer *channel_buffer;
@@ -304,21 +304,21 @@ create_amplitude_data (HyScanDataWriter *writer,
   acoustic_info.signal_bandwidth = 0.1 * frequency;
   acoustic_info.antenna_voffset = 0.0;
   acoustic_info.antenna_hoffset = 0.0;
-  acoustic_info.antenna_vpattern = 40.0;
-  acoustic_info.antenna_hpattern = 2.0;
+  acoustic_info.antenna_vaperture = 40.0;
+  acoustic_info.antenna_haperture = 2.0;
   acoustic_info.antenna_frequency = frequency;
   acoustic_info.antenna_bandwidth = 0.1 * frequency;
   acoustic_info.adc_vref = 1.0;
   acoustic_info.adc_offset = 0;
 
-  position.x = 0.0;
-  position.y = 0.0;
-  position.z = 0.0;
-  position.psi = 0.0;
-  position.gamma = 0.0;
-  position.theta = 0.0;
+  offset.x = 0.0;
+  offset.y = 0.0;
+  offset.z = 0.0;
+  offset.psi = 0.0;
+  offset.gamma = 0.0;
+  offset.theta = 0.0;
 
-  hyscan_data_writer_sonar_set_position (writer, source, &position);
+  hyscan_data_writer_sonar_set_offset (writer, source, &offset);
 
   n_signal_points = discretization * duration;
   n_data_points = 100 * n_signal_points;

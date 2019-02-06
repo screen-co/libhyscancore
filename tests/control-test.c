@@ -105,17 +105,17 @@ verify_sensor (const HyScanSensorInfoSensor *sensor1,
   if (g_strcmp0 (sensor1->description, sensor2->description) != 0)
     g_error ("decripton failed");
 
-  if ((sensor1->position != NULL) ||
-      (sensor2->position != NULL))
+  if ((sensor1->offset != NULL) ||
+      (sensor2->offset != NULL))
     {
-      if ((sensor1->position->x != sensor2->position->x) ||
-          (sensor1->position->y != sensor2->position->y) ||
-          (sensor1->position->z != sensor2->position->z) ||
-          (sensor1->position->psi != sensor2->position->psi) ||
-          (sensor1->position->gamma != sensor2->position->gamma) ||
-          (sensor1->position->theta != sensor2->position->theta))
+      if ((sensor1->offset->x != sensor2->offset->x) ||
+          (sensor1->offset->y != sensor2->offset->y) ||
+          (sensor1->offset->z != sensor2->offset->z) ||
+          (sensor1->offset->psi != sensor2->offset->psi) ||
+          (sensor1->offset->gamma != sensor2->offset->gamma) ||
+          (sensor1->offset->theta != sensor2->offset->theta))
         {
-          g_error ("position failed");
+          g_error ("offset failed");
         }
     }
 }
@@ -139,18 +139,18 @@ verify_source (const HyScanSonarInfoSource *source1,
   if (g_strcmp0 (source1->description, source2->description) != 0)
     g_error ("description failed");
 
-  /* Местоположение антенн по умолчанию. */
-  if ((source1->position != NULL) ||
-      (source2->position != NULL))
+  /* Смещение антенн по умолчанию. */
+  if ((source1->offset != NULL) ||
+      (source2->offset != NULL))
     {
-      if ((source1->position->x != source2->position->x) ||
-          (source1->position->y != source2->position->y) ||
-          (source1->position->z != source2->position->z) ||
-          (source1->position->psi != source2->position->psi) ||
-          (source1->position->gamma != source2->position->gamma) ||
-          (source1->position->theta != source2->position->theta))
+      if ((source1->offset->x != source2->offset->x) ||
+          (source1->offset->y != source2->offset->y) ||
+          (source1->offset->z != source2->offset->z) ||
+          (source1->offset->psi != source2->offset->psi) ||
+          (source1->offset->gamma != source2->offset->gamma) ||
+          (source1->offset->theta != source2->offset->theta))
         {
-          g_error ("position failed");
+          g_error ("offset failed");
         }
     }
 
@@ -217,17 +217,17 @@ verify_source (const HyScanSonarInfoSource *source1,
 }
 
 void
-verify_position (const HyScanAntennaPosition *position1,
-                 const HyScanAntennaPosition *position2)
+verify_offset (const HyScanAntennaOffset *offset1,
+               const HyScanAntennaOffset *offset2)
 {
-  if ((position1->x != position2->x) ||
-      (position1->y != position2->y) ||
-      (position1->z != position2->z) ||
-      (position1->psi != position2->psi) ||
-      (position1->gamma != position2->gamma) ||
-      (position1->theta != position2->theta))
+  if ((offset1->x != offset2->x) ||
+      (offset1->y != offset2->y) ||
+      (offset1->z != offset2->z) ||
+      (offset1->psi != offset2->psi) ||
+      (offset1->gamma != offset2->gamma) ||
+      (offset1->theta != offset2->theta))
     {
-      g_error ("position failed");
+      g_error ("offset failed");
     }
 }
 
@@ -241,8 +241,8 @@ verify_acoustic_info (const HyScanAcousticDataInfo *info1,
       (info1->signal_bandwidth != info2->signal_bandwidth) ||
       (info1->antenna_voffset != info2->antenna_voffset) ||
       (info1->antenna_hoffset != info2->antenna_hoffset) ||
-      (info1->antenna_vpattern != info2->antenna_vpattern) ||
-      (info1->antenna_hpattern != info2->antenna_hpattern) ||
+      (info1->antenna_vaperture != info2->antenna_vaperture) ||
+      (info1->antenna_haperture != info2->antenna_haperture) ||
       (info1->antenna_frequency != info2->antenna_frequency) ||
       (info1->antenna_bandwidth != info2->antenna_bandwidth) ||
       (info1->adc_vref != info2->adc_vref) ||
@@ -357,11 +357,11 @@ check_sensors (void)
       if (j == n_sensors)
         g_error ("sensors list failed");
 
-      /* Для LUCKY_SENSOR задано местоположение антенны по умолчанию. */
+      /* Для LUCKY_SENSOR задано смещение антенны по умолчанию. */
       g_message ("Check sensor %s", sensors[i]);
       info = hyscan_control_sensor_get_info (control, orig_sensors[i]);
       if (g_strcmp0 (orig_sensors[i], LUCKY_SENSOR) == 0)
-        orig_info->position = hyscan_dummy_device_get_sensor_position (orig_sensors[i]);
+        orig_info->offset = hyscan_dummy_device_get_sensor_offset (orig_sensors[i]);
       verify_sensor (orig_info, info);
 
       hyscan_sensor_info_sensor_free (orig_info);
@@ -403,11 +403,11 @@ check_sources (void)
       if (j == n_sources)
         g_error ("sources list failed");
 
-      /* Для LUCKY_SOURCE добавлено местоположение антенны. */
+      /* Для LUCKY_SOURCE добавлено смещение антенны. */
       g_message ("Check source %s", hyscan_source_get_name_by_type (orig_sources[i]));
       info = hyscan_control_source_get_info (control, orig_sources[i]);
       if (orig_sources[i] == LUCKY_SOURCE)
-        orig_info->position = hyscan_dummy_device_get_source_position (orig_sources[i]);
+        orig_info->offset = hyscan_dummy_device_get_source_offset (orig_sources[i]);
       verify_source (orig_info, info);
 
       hyscan_sonar_info_source_free (orig_info);
@@ -641,8 +641,8 @@ check_sensor_data (const gchar *sensor)
 {
   HyScanNMEAData *nmea;
 
-  HyScanAntennaPosition  position;
-  HyScanAntennaPosition *orig_position;
+  HyScanAntennaOffset  offset;
+  HyScanAntennaOffset *orig_offset;
 
   gchar *orig_data;
   const gchar *data;
@@ -650,16 +650,16 @@ check_sensor_data (const gchar *sensor)
   gint64 time;
 
   /* Проверочные данные. */
-  orig_position = hyscan_dummy_device_get_sensor_position (sensor);
+  orig_offset = hyscan_dummy_device_get_sensor_offset (sensor);
 
   /* открываем канал данных. */
   nmea = hyscan_nmea_data_new_sensor (db, project_name, track_name, sensor);
   if (nmea == NULL)
     g_error ("can't open nmea channel for sensor %s", sensor);
 
-  /* Проверяем местоположение антенн. */
-  position = hyscan_nmea_data_get_position (nmea);
-  verify_position (orig_position, &position);
+  /* Проверяем смещение антенны. */
+  offset = hyscan_nmea_data_get_offset (nmea);
+  verify_offset (orig_offset, &offset);
 
   /* Проверяем данные. */
   orig_data = hyscan_dummy_device_get_sensor_data (sensor, &orig_time);
@@ -670,7 +670,7 @@ check_sensor_data (const gchar *sensor)
       g_error ("sensor %s data error", sensor);
     }
 
-  hyscan_antenna_position_free (orig_position);
+  hyscan_antenna_offset_free (orig_offset);
   g_free (orig_data);
 
   g_object_unref (nmea);
@@ -681,8 +681,8 @@ check_sonar_data (HyScanSourceType source)
 {
   HyScanAcousticData *reader;
 
-  HyScanAntennaPosition *orig_position;
-  HyScanAntennaPosition  position;
+  HyScanAntennaOffset  offset;
+  HyScanAntennaOffset *orig_offset;
 
   HyScanAcousticDataInfo *orig_info;
   HyScanAcousticDataInfo  info;
@@ -697,7 +697,7 @@ check_sonar_data (HyScanSourceType source)
   guint32 n_points;
 
   /* Проверочные данные. */
-  orig_position = hyscan_dummy_device_get_source_position (source);
+  orig_offset = hyscan_dummy_device_get_source_offset (source);
   orig_info = hyscan_dummy_device_get_acoustic_info (source);
 
   /* Открываем канал данных. */
@@ -706,9 +706,9 @@ check_sonar_data (HyScanSourceType source)
   if (reader == NULL)
     g_error ("can't open %s data", hyscan_source_get_name_by_type (source));
 
-  /* Проверяем местоположение антенн. */
-  position = hyscan_acoustic_data_get_position (reader);
-  verify_position (orig_position, &position);
+  /* Проверяем смещение антенны. */
+  offset = hyscan_acoustic_data_get_offset (reader);
+  verify_offset (orig_offset, &offset);
 
   /* Проверяем параметры каналов данных. */
   info = hyscan_acoustic_data_get_info (reader);
@@ -745,7 +745,7 @@ check_sonar_data (HyScanSourceType source)
       g_error ("%s data error", hyscan_source_get_name_by_type (source));
     }
 
-  hyscan_antenna_position_free (orig_position);
+  hyscan_antenna_offset_free (orig_offset);
   hyscan_acoustic_data_info_free (orig_info);
 
   g_free (orig_cdata);
@@ -758,7 +758,7 @@ int
 main (int    argc,
       char **argv)
 {
-  HyScanAntennaPosition *position;
+  HyScanAntennaOffset *offset;
   const HyScanSourceType *sources;
   const gchar * const *sensors;
   guint n_sources;
@@ -835,14 +835,14 @@ main (int    argc,
   hyscan_control_device_add (control1, HYSCAN_DEVICE (device1));
   hyscan_control_device_add (control2, HYSCAN_DEVICE (device2));
 
-  /* Местоположение антенн по умолчанию. */
-  position = hyscan_dummy_device_get_sensor_position (LUCKY_SENSOR);
-  hyscan_control_sensor_set_position (control1, LUCKY_SENSOR, position);
-  hyscan_antenna_position_free (position);
+  /* Смещение антенн по умолчанию. */
+  offset = hyscan_dummy_device_get_sensor_offset (LUCKY_SENSOR);
+  hyscan_control_sensor_set_offset (control1, LUCKY_SENSOR, offset);
+  hyscan_antenna_offset_free (offset);
 
-  position = hyscan_dummy_device_get_source_position (LUCKY_SOURCE);
-  hyscan_control_source_set_position (control2, LUCKY_SOURCE, position);
-  hyscan_antenna_position_free (position);
+  offset = hyscan_dummy_device_get_source_offset (LUCKY_SOURCE);
+  hyscan_control_source_set_offset (control2, LUCKY_SOURCE, offset);
+  hyscan_antenna_offset_free (offset);
 
   /* Запуск составного устройства. */
   hyscan_control_device_bind (control1);
@@ -865,32 +865,32 @@ main (int    argc,
   sensors = hyscan_control_sensors_list (control);
   sources = hyscan_control_sources_list (control, &n_sources);
 
-  /* Местоположение антенн датчиков. */
+  /* Смещение антенн датчиков. */
   for (i = 0; sensors[i] != NULL; i++)
     {
       const HyScanSensorInfoSensor *info;
 
       info = hyscan_control_sensor_get_info (control, sensors[i]);
-      if (info->position != NULL)
+      if (info->offset != NULL)
         continue;
 
-      position = hyscan_dummy_device_get_sensor_position (sensors[i]);
-      hyscan_control_sensor_set_position (control, sensors[i], position);
-      hyscan_antenna_position_free (position);
+      offset = hyscan_dummy_device_get_sensor_offset (sensors[i]);
+      hyscan_control_sensor_set_offset (control, sensors[i], offset);
+      hyscan_antenna_offset_free (offset);
     }
 
-  /* Местоположение антенн источников данных. */
+  /* Смещение антенн источников данных. */
   for (i = 0; i < n_sources; i++)
     {
       const HyScanSonarInfoSource *info;
 
       info = hyscan_control_source_get_info (control, sources[i]);
-      if (info->position != NULL)
+      if (info->offset != NULL)
         continue;
 
-      position = hyscan_dummy_device_get_source_position (sources[i]);
-      hyscan_control_source_set_position (control, sources[i], position);
-      hyscan_antenna_position_free (position);
+      offset = hyscan_dummy_device_get_source_offset (sources[i]);
+      hyscan_control_source_set_offset (control, sources[i], offset);
+      hyscan_antenna_offset_free (offset);
     }
 
   /* Параметры записи данных. */
