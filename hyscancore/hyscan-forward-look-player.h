@@ -62,7 +62,7 @@
  *
  * void    data_cb   (HyScanForwardLookPlayer     *player,
  *                    HyScanForwardLookPlayerInfo *info,
- *                    HyScanAntennaPosition       *position,
+ *                    HyScanAntennaOffset         *offset,
  *                    HyScanForwardLookDOA        *doa,
  *                    guint32                      n_points,
  *                    gpointer                     user_data);
@@ -71,7 +71,7 @@
  *
  * Где:
  * - info - информация о текущем зондировании \link HyScanForwardLookPlayerInfo \endlink;
- * - position - местоположение антенны локатора \link HyScanAntennaPosition \endlink;
+ * - offset - смещение антенны локатора \link HyScanAntennaOffset \endlink;
  * - doa - массив точек целей \link HyScanForwardLookDOA \endlink;
  * - n_points - число точек целей.
  *

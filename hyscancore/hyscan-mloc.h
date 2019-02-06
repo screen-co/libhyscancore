@@ -43,7 +43,7 @@ HyScanmLoc             *hyscan_mloc_new              (HyScanDB              *db,
 HYSCAN_API
 gboolean                hyscan_mloc_get              (HyScanmLoc            *mloc,
                                                       gint64                 time,
-                                                      HyScanAntennaPosition *antenna,
+                                                      HyScanAntennaOffset   *antenna,
                                                       gdouble                shiftx,
                                                       gdouble                shifty,
                                                       gdouble                shiftz,

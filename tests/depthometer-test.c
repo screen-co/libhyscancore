@@ -37,7 +37,7 @@ main (int argc, char **argv)
   gchar                  *nmea_data = NULL;
   HyScanBuffer           *buffer;
   HyScanDataWriter       *writer;
-  HyScanAntennaPosition   position = {0};
+  HyScanAntennaOffset     offset = {0};
 
   /* Тестируемые объекты.*/
   HyScanNMEAParser       *parser;
@@ -92,7 +92,7 @@ main (int argc, char **argv)
     g_error ("can't start write");
 
   /* Местоположение приёмных антенн. */
-  hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
+  hyscan_data_writer_sensor_set_offset (writer, "sensor", &offset);
 
   /* Наполняем данными. */
   buffer = hyscan_buffer_new ();
@@ -101,12 +101,12 @@ main (int argc, char **argv)
     {
       update_nmea_data (&nmea_data, i);
       hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, nmea_data, strlen (nmea_data));
-      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_DPT, NMEA_DPT_CHANNEL, time, buffer);
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA, NMEA_DPT_CHANNEL, time, buffer);
     }
 
   /* Тестируем определение глубины по NMEA. */
-  parser = hyscan_nmea_parser_new (db, cache, name, name, HYSCAN_SOURCE_NMEA_DPT,
-                                   NMEA_DPT_CHANNEL, HYSCAN_NMEA_FIELD_DEPTH);
+  parser = hyscan_nmea_parser_new (db, cache, name, name, NMEA_DPT_CHANNEL,
+                                   HYSCAN_NMEA_DATA_DPT, HYSCAN_NMEA_FIELD_DEPTH);
   test ("nmea", HYSCAN_NAV_DATA (parser), cache);
   g_clear_object (&parser);
 

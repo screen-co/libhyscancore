@@ -54,7 +54,7 @@ struct _HyScanFLGenPrivate
 {
   HyScanDataWriter            *writer;
 
-  HyScanAntennaPosition        position;
+  HyScanAntennaOffset          offset;
 
   HyScanAcousticDataInfo       info1;
   HyScanAcousticDataInfo       info2;
@@ -108,14 +108,14 @@ hyscan_fl_gen_new (void)
   return g_object_new (HYSCAN_TYPE_FL_GEN, NULL);
 }
 
-/* Функция задаёт местоположение приёмной антенны локатора. */
+/* Функция задаёт смещение приёмной антенны локатора. */
 void
-hyscan_fl_gen_set_position (HyScanFLGen           *fl_gen,
-                            HyScanAntennaPosition *position)
+hyscan_fl_gen_set_offset (HyScanFLGen         *fl_gen,
+                          HyScanAntennaOffset *offset)
 {
   g_return_if_fail (HYSCAN_IS_FL_GEN (fl_gen));
 
-  fl_gen->priv->position = *position;
+  fl_gen->priv->offset = *offset;
 }
 
 /* Функция задаёт параметры локатора. */
@@ -153,7 +153,7 @@ hyscan_fl_gen_set_track (HyScanFLGen *fl_gen,
   priv->writer = hyscan_data_writer_new ();
 
   hyscan_data_writer_set_db (priv->writer, db);
-  hyscan_data_writer_sonar_set_position (priv->writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &priv->position);
+  hyscan_data_writer_sonar_set_offset (priv->writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &priv->offset);
 
   if (!hyscan_data_writer_start (priv->writer, project_name, track_name, HYSCAN_TRACK_SURVEY, -1))
     return FALSE;

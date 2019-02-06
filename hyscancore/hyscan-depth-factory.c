@@ -222,7 +222,7 @@ hyscan_depth_factory_produce (HyScanDepthFactory *self)
 
   parser = hyscan_nmea_parser_new (priv->db, priv->cache,
                                    priv->project, priv->track, 1,
-                                   HYSCAN_SOURCE_NMEA_DPT,
+                                   HYSCAN_NMEA_DATA_DPT,
                                    HYSCAN_NMEA_FIELD_DEPTH);
 
   if (parser == NULL)

@@ -36,7 +36,6 @@
 #define __HYSCAN_NMEA_DATA_H__
 
 #include <hyscan-db.h>
-#include <hyscan-types.h>
 #include <hyscan-cache.h>
 
 G_BEGIN_DECLS
@@ -64,6 +63,25 @@ struct _HyScanNMEADataClass
   GObjectClass parent_class;
 };
 
+/**
+ * HyScanNmeaDataType:
+ * @HYSCAN_NMEA_DATA_INVALID: недопустимый тип, ошибка
+ * @HYSCAN_NMEA_DATA_ANY: любая строка NMEA
+ * @HYSCAN_NMEA_DATA_RMC: строка NMEA RMC
+ * @HYSCAN_NMEA_DATA_GGA: строка NMEA GGA
+ * @HYSCAN_NMEA_DATA_DPT: строка NMEA DPT
+ *
+ * Тип NMEA-0183 строки.
+ */
+typedef enum
+{
+  HYSCAN_NMEA_DATA_INVALID   = 0,
+  HYSCAN_NMEA_DATA_ANY       = 1,
+  HYSCAN_NMEA_DATA_RMC       = 1 << 1,
+  HYSCAN_NMEA_DATA_GGA       = 1 << 2,
+  HYSCAN_NMEA_DATA_DPT       = 1 << 3
+} HyScanNmeaDataType;
+
 HYSCAN_API
 GType                   hyscan_nmea_data_get_type              (void);
 
@@ -73,16 +91,21 @@ HyScanNMEAData         *hyscan_nmea_data_new                   (HyScanDB        
                                                                 HyScanCache      *cache,
                                                                 const gchar      *project_name,
                                                                 const gchar      *track_name,
-                                                                HyScanSourceType  source_type,
                                                                 guint             source_channel);
 
 HYSCAN_API
-HyScanAntennaPosition   hyscan_nmea_data_get_position          (HyScanNMEAData   *data);
+HyScanNMEAData *        hyscan_nmea_data_new_sensor            (HyScanDB         *db,
+                                                                HyScanCache      *cache,
+                                                                const gchar      *project_name,
+                                                                const gchar      *track_name,
+                                                                const gchar      *sensor_name);
+
+HYSCAN_API
+HyScanAntennaOffset     hyscan_nmea_data_get_offset            (HyScanNMEAData   *data);
 
 
 HYSCAN_API
-HyScanSourceType        hyscan_nmea_data_get_source            (HyScanNMEAData   *data);
-
+const gchar *           hyscan_nmea_data_get_sensor_name       (HyScanNMEAData   *data);
 
 HYSCAN_API
 guint                   hyscan_nmea_data_get_channel           (HyScanNMEAData   *data);
@@ -106,7 +129,7 @@ HyScanDBFindStatus      hyscan_nmea_data_find_data             (HyScanNMEAData  
                                                                 gint64           *rtime);
 
 HYSCAN_API
-const gchar            *hyscan_nmea_data_get_sentence          (HyScanNMEAData   *data,
+const gchar            *hyscan_nmea_data_get                   (HyScanNMEAData   *data,
                                                                 guint32           index,
                                                                 gint64           *time);
 
@@ -114,10 +137,10 @@ HYSCAN_API
 guint32                 hyscan_nmea_data_get_mod_count         (HyScanNMEAData   *data);
 
 HYSCAN_API
-HyScanSourceType        hyscan_nmea_data_check_sentence        (const gchar      *sentence);
+HyScanNmeaDataType      hyscan_nmea_data_check_sentence        (const gchar      *sentence);
 
 HYSCAN_API
-gchar                 **hyscan_nmea_data_split_sentence        (const gchar      *sentence,
+gchar **                hyscan_nmea_data_split_sentence        (const gchar      *sentence,
                                                                 guint32           length);
 
 G_END_DECLS

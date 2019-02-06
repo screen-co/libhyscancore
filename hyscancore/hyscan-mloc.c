@@ -26,7 +26,7 @@ struct _HyScanmLocPrivate
   HyScanNavData         *lon;
   HyScanNavData         *trk;
 
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset    position;
 };
 
 static void    hyscan_mloc_set_property             (GObject           *object,
@@ -104,15 +104,15 @@ hyscan_mloc_object_constructed (GObject *object)
 
   plat = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
-                                 HYSCAN_SOURCE_NMEA_RMC, 1,
+                                 HYSCAN_NMEA_DATA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_LAT);
   plon = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
-                                 HYSCAN_SOURCE_NMEA_RMC, 1,
+                                 HYSCAN_NMEA_DATA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_LON);
   ptrk = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
-                                 HYSCAN_SOURCE_NMEA_RMC, 1,
+                                 HYSCAN_NMEA_DATA_RMC, 1,
                                  HYSCAN_NMEA_FIELD_TRACK);
 
   if (priv->lat == NULL || priv->lon == NULL || priv->trk == NULL)
@@ -128,7 +128,7 @@ hyscan_mloc_object_constructed (GObject *object)
 
   priv->geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
-  priv->position = hyscan_nav_data_get_position (priv->lat);
+  priv->position = hyscan_nav_data_get_offset (priv->lat);
 }
 
 static void
@@ -174,7 +174,7 @@ hyscan_mloc_new (HyScanDB    *db,
 gboolean
 hyscan_mloc_get (HyScanmLoc            *self,
                  gint64                 time,
-                 HyScanAntennaPosition *antenna,
+                 HyScanAntennaOffset    *antenna,
                  gdouble                shiftx,
                  gdouble                shifty,
                  gdouble                shiftz,

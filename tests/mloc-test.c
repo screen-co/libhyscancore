@@ -54,7 +54,7 @@ main (int argc, char **argv)
   mloc = hyscan_mloc_new (db, cache, project_name, track_name);
 
   {
-    HyScanAntennaPosition pos;
+    HyScanAntennaOffset pos;
     HyScanGeoGeodetic result;
     gboolean found;
 

@@ -66,8 +66,8 @@ GType                  hyscan_fl_gen_get_type          (void);
 
 HyScanFLGen           *hyscan_fl_gen_new               (void);
 
-void                   hyscan_fl_gen_set_position      (HyScanFLGen                   *fl_gen,
-                                                        HyScanAntennaPosition         *position);
+void                   hyscan_fl_gen_set_offset        (HyScanFLGen                   *fl_gen,
+                                                        HyScanAntennaOffset           *offset);
 
 void                   hyscan_fl_gen_set_info          (HyScanFLGen                   *fl_gen,
                                                         HyScanAcousticDataInfo        *info);

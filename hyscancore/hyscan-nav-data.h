@@ -55,7 +55,7 @@ typedef struct _HyScanNavDataInterface HyScanNavDataInterface;
  * @get: Возвращает значение.
  * @find_data: Ищет данные.
  * @get_range: Определяет диапазон.
- * @get_position: Возвращает местоположение антенны.
+ * @get_offset: Возвращает смещение антенны.
  * @is_writable: Определяет возможность записи в канал данных.
  * @get_token: Возвращает токен.
  * @get_mod_count: Возвращает счётчик изменений.
@@ -77,7 +77,7 @@ struct _HyScanNavDataInterface
   gboolean                (*get_range)                    (HyScanNavData       *ndata,
                                                            guint32             *first,
                                                            guint32             *last);
-  HyScanAntennaPosition   (*get_position)                 (HyScanNavData       *ndata);
+  HyScanAntennaOffset     (*get_offset)                   (HyScanNavData       *ndata);
   gboolean                (*is_writable)                  (HyScanNavData       *ndata);
   const gchar            *(*get_token)                    (HyScanNavData       *ndata);
   guint32                 (*get_mod_count)                (HyScanNavData       *ndata);
@@ -106,7 +106,7 @@ gboolean                hyscan_nav_data_get_range       (HyScanNavData         *
                                                          guint32               *last);
 
 HYSCAN_API
-HyScanAntennaPosition   hyscan_nav_data_get_position    (HyScanNavData         *ndata);
+HyScanAntennaOffset     hyscan_nav_data_get_offset      (HyScanNavData         *ndata);
 
 HYSCAN_API
 gboolean                hyscan_nav_data_is_writable     (HyScanNavData         *ndata);

@@ -102,19 +102,14 @@ const HyScanSonarInfoSource *  hyscan_control_source_get_info          (HyScanCo
                                                                         HyScanSourceType                source);
 
 HYSCAN_API
-gboolean                       hyscan_control_sensor_set_position      (HyScanControl                  *control,
+gboolean                       hyscan_control_sensor_set_offset        (HyScanControl                  *control,
                                                                         const gchar                    *sensor,
-                                                                        const HyScanAntennaPosition    *position);
+                                                                        const HyScanAntennaOffset      *offset);
 
 HYSCAN_API
-gboolean                       hyscan_control_source_set_position      (HyScanControl                  *control,
+gboolean                       hyscan_control_source_set_offset        (HyScanControl                  *control,
                                                                         HyScanSourceType                source,
-                                                                        const HyScanAntennaPosition    *position);
-
-HYSCAN_API
-gboolean                       hyscan_control_sensor_set_channel       (HyScanControl                  *control,
-                                                                        const gchar                    *sensor,
-                                                                        guint                           channel);
+                                                                        const HyScanAntennaOffset      *offset);
 
 HYSCAN_API
 void                           hyscan_control_writer_set_db            (HyScanControl                  *control,

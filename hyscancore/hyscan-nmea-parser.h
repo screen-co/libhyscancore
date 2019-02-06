@@ -102,22 +102,22 @@ HYSCAN_API
 GType                   hyscan_nmea_parser_get_type      (void);
 
 HYSCAN_API
-HyScanNMEAParser*       hyscan_nmea_parser_new           (HyScanDB         *db,
-                                                          HyScanCache      *cache,
-                                                          const gchar      *project,
-                                                          const gchar      *track,
-                                                          HyScanSourceType  source_type,
-                                                          guint             source_channel,
-                                                          guint             field_type);
+HyScanNMEAParser*       hyscan_nmea_parser_new           (HyScanDB          *db,
+                                                          HyScanCache       *cache,
+                                                          const gchar       *project,
+                                                          const gchar       *track,
+                                                          guint              source_channel,
+                                                          HyScanNmeaDataType data_type,
+                                                          guint              field_type);
 
 HYSCAN_API
-HyScanNMEAParser*       hyscan_nmea_parser_new_empty     (HyScanSourceType  source_type,
-                                                          guint             field_type);
+HyScanNMEAParser*       hyscan_nmea_parser_new_empty     (HyScanNmeaDataType data_type,
+                                                          guint              field_type);
 
 HYSCAN_API
-gboolean                hyscan_nmea_parser_parse_string  (HyScanNMEAParser *parser,
-                                                          const gchar      *string,
-                                                          gdouble          *value);
+gboolean                hyscan_nmea_parser_parse_string  (HyScanNMEAParser  *parser,
+                                                          const gchar       *string,
+                                                          gdouble           *value);
 
 
 G_END_DECLS

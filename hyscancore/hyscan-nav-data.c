@@ -159,25 +159,25 @@ hyscan_nav_data_get_range (HyScanNavData *navdata,
 }
 
 /**
- * hyscan_nav_data_get_position:
+ * hyscan_nav_data_get_offset:
  * @ndata: указатель на интерфейс #HyScanNavData
  *
- * Функция возвращает информацию о местоположении приёмной антенны
- * в виде значения структуры #HyScanAntennaPosition.
+ * Функция возвращает информацию о смещении приёмной антенны
+ * в виде значения структуры #HyScanAntennaOffset.
  *
- * Returns: Местоположение приёмной антенны.
+ * Returns: Смещение приёмной антенны.
  */
-HyScanAntennaPosition
-hyscan_nav_data_get_position (HyScanNavData *navdata)
+HyScanAntennaOffset
+hyscan_nav_data_get_offset (HyScanNavData *navdata)
 {
   HyScanNavDataInterface *iface;
-  HyScanAntennaPosition zero = {0};
+  HyScanAntennaOffset zero = {0};
 
   g_return_val_if_fail (HYSCAN_IS_NAV_DATA (navdata), zero);
   iface = HYSCAN_NAV_DATA_GET_IFACE (navdata);
 
-  if (iface->get_position != NULL)
-    return (*iface->get_position) (navdata);
+  if (iface->get_offset != NULL)
+    return (*iface->get_offset) (navdata);
 
   return zero;
 }

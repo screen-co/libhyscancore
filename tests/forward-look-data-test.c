@@ -53,7 +53,7 @@ int main( int argc, char **argv )
   HyScanFLGen *generator;
   HyScanForwardLookData *reader;
 
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset offset;
   HyScanAcousticDataInfo info;
 
   guint16 *raw_values1;
@@ -101,18 +101,18 @@ int main( int argc, char **argv )
   }
 
   /* Параметры данных. */
-  position.x = 0.0;
-  position.y = 0.0;
-  position.z = 0.0;
-  position.psi = 0.0;
-  position.gamma = 0.0;
-  position.theta = 0.0;
+  offset.x = 0.0;
+  offset.y = 0.0;
+  offset.z = 0.0;
+  offset.psi = 0.0;
+  offset.gamma = 0.0;
+  offset.theta = 0.0;
 
   info.data_rate = 150000.0;
   info.antenna_voffset = 0.0;
   info.antenna_hoffset = 0.0;
-  info.antenna_vpattern = 10.0;
-  info.antenna_hpattern = 50.0;
+  info.antenna_vaperture = 10.0;
+  info.antenna_haperture = 50.0;
   info.antenna_frequency = 100000.0;
   info.antenna_bandwidth = 10000.0;
   info.adc_vref = 1.0;
@@ -130,7 +130,7 @@ int main( int argc, char **argv )
   /* Генератор данных. */
   generator = hyscan_fl_gen_new ();
   hyscan_fl_gen_set_info (generator, &info);
-  hyscan_fl_gen_set_position (generator, &position);
+  hyscan_fl_gen_set_offset (generator, &offset);
 
   /* Проект для записи галсов. */
 

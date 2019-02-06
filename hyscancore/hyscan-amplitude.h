@@ -52,7 +52,7 @@ typedef struct _HyScanAmplitudeInterface HyScanAmplitudeInterface;
  * HyScanSonarInterface:
  * @g_iface: Базовый интерфейс.
  * @get_token: Функция возвращает уникальный идентификатор.
- * @get_position: Функция возвращает информацию о местоположении приёмной антенны.
+ * @get_offset: Функция возвращает информацию о смещении приёмной антенны.
  * @get_info: Функция возвращает параметры канала гидроакустических данных.
  * @is_writable: Функция определяет возможность изменения данных.
  * @get_mod_count: Функция возвращает номер изменения в данных.
@@ -67,7 +67,7 @@ struct _HyScanAmplitudeInterface
 
   const gchar *          (*get_token)                          (HyScanAmplitude       *amplitude);
 
-  HyScanAntennaPosition  (*get_position)                       (HyScanAmplitude       *amplitude);
+  HyScanAntennaOffset    (*get_offset)                         (HyScanAmplitude       *amplitude);
 
   HyScanAcousticDataInfo (*get_info)                           (HyScanAmplitude       *amplitude);
 
@@ -105,7 +105,7 @@ HYSCAN_API
 const gchar *          hyscan_amplitude_get_token              (HyScanAmplitude       *amplitude);
 
 HYSCAN_API
-HyScanAntennaPosition  hyscan_amplitude_get_position           (HyScanAmplitude       *amplitude);
+HyScanAntennaOffset    hyscan_amplitude_get_offset             (HyScanAmplitude       *amplitude);
 
 HYSCAN_API
 HyScanAcousticDataInfo hyscan_amplitude_get_info               (HyScanAmplitude       *amplitude);

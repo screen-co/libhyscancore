@@ -59,7 +59,7 @@ typedef struct
   guint32                      doa_index;              /* Индекс текущих данных. */
   gboolean                     doa_changed;            /* Признак изменения данных. */
 
-  HyScanAntennaPosition        position;               /* Местоположение приёмной антенны. */
+  HyScanAntennaOffset          offset;                 /* Смещение приёмной антенны. */
   gdouble                      alpha;                  /* Максимальный/минимальный угол по азимуту, рад. */
 
   GMutex                       lock;                   /* Блокировка данных. */
@@ -246,7 +246,7 @@ hyscan_forward_look_player_open_data (HyScanForwardLookPlayerState *state,
 
       if (data->data != NULL)
         {
-          data->position = hyscan_forward_look_data_get_position (data->data);
+          data->offset = hyscan_forward_look_data_get_offset (data->data);
           data->alpha = hyscan_forward_look_data_get_alpha (data->data);
         }
 
@@ -492,7 +492,7 @@ hyscan_forward_look_player_signaller (gpointer user_data)
           info.distance = priv->data.doa[priv->data.n_points - 1].distance;
 
           g_signal_emit (player, hyscan_forward_look_player_signals[SIGNAL_DATA], 0,
-                         &info, &priv->data.position, priv->data.doa, priv->data.n_points);
+                         &info, &priv->data.offset, priv->data.doa, priv->data.n_points);
         }
       else
         {

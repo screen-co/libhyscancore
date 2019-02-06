@@ -15,7 +15,9 @@
                            (dec) + '0' : ((dec) >= 0xA && (dec) <= 0xF) ? \
                            (dec) - 10 + 'A' : 'z'
 
-gchar    *generate_string  (gfloat  seed);
+gchar    * generate_string    (gfloat       seed);
+gchar    * generate_substring (gfloat       seed,
+                               const gchar *signature);
 
 int
 main (int argc, char **argv)
@@ -90,14 +92,15 @@ main (int argc, char **argv)
 
       hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_STRING, data, strlen (data));
 
-      hyscan_data_writer_sensor_add_data (writer, "sensor", SRC, CHANNEL,
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA, CHANNEL,
                                           time, buffer);
 
       g_free (data);
     }
 
   /* Теперь потестируем объект. */
-  nmea = hyscan_nmea_parser_new (db, cache, name, name, SRC, CHANNEL,
+  nmea = hyscan_nmea_parser_new (db, cache, name, name, CHANNEL,
+                                 HYSCAN_NMEA_DATA_RMC,
                                  HYSCAN_NMEA_FIELD_LAT);
   ndata = HYSCAN_NAV_DATA (nmea);
 
@@ -129,16 +132,35 @@ main (int argc, char **argv)
 gchar*
 generate_string (gfloat seed)
 {
+  gchar *a, *b, *c, *out;
+
+  a = generate_substring (seed, "LOL");
+  b = generate_substring (seed, "RMC");
+  c = generate_substring (seed, "KEK");
+
+  out = g_strconcat(a, b, c, NULL);
+
+  g_free (a);
+  g_free (b);
+  g_free (c);
+
+  return out;
+}
+
+gchar*
+generate_substring (gfloat       seed,
+                    const gchar *signature)
+{
   gfloat deg, min;
   gchar *out, *inner, *ch;
   gchar cs1, cs2;
 
   gint checksum = 0;
 
-  // inner = g_strdup_printf ("HSDPT,%f,", seed);
+  // inner = g_strdup_printf ("HSRMC,%f,", seed);
   deg = floor (seed / 100);
   min = (seed - deg * 100) * 60 / 100;
-  inner = g_strdup_printf ("HSRMC,,,%02.0f%06.3f,N", deg, min);
+  inner = g_strdup_printf ("HS%s,,,%02.0f%06.3f,N", signature, deg, min);
 
   /* Подсчитываем чек-сумму. */
   for (ch = inner; *ch != '\0'; ch++)

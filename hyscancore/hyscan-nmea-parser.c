@@ -67,7 +67,7 @@ enum
   PROP_PROJECT,
   PROP_TRACK,
   PROP_SOURCE_CHANNEL,
-  PROP_SOURCE_TYPE,
+  PROP_DATA_TYPE,
   PROP_FIELD_TYPE
 };
 
@@ -78,15 +78,16 @@ struct _HyScanNMEAParserPrivate
   HyScanCache           *cache;         /* Кэш. */
   gchar                 *project;       /* Имя проекта. */
   gchar                 *track;         /* Имя галса. */
-  HyScanSourceType       source_type;   /* Тип данных. */
-  guint                  channel_n;      /* Номер канала для используемого типа данных. */
+  HyScanNmeaDataType     data_type;     /* Тип данных. */
+
+  guint                  channel_n;     /* Номер канала для используемого типа данных. */
   HyScanNMEAField        field_type;    /* Тип анализируемых данных. */
 
   /* Переменные, определяющиеся на этапе конструирования. */
   HyScanNMEAData        *dc;            /* Канал данных. */
   gchar                 *token;         /* Токен. */
 
-  HyScanAntennaPosition  position;      /* Местоположение приемника. */
+  HyScanAntennaOffset    offset;        /* Смещение антенны приемника. */
 
   /* Параметры лексического анализа. */
   gint                   field_n;
@@ -151,8 +152,8 @@ hyscan_nmea_parser_class_init (HyScanNMEAParserClass *klass)
       g_param_spec_uint ("source-channel", "SourceChannel", "Source channel", 1, G_MAXUINT, 1,
                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class, PROP_SOURCE_TYPE,
-      g_param_spec_int ("source-type", "SourceType", "Source type", 0, G_MAXINT, 0,
+  g_object_class_install_property (object_class, PROP_DATA_TYPE,
+      g_param_spec_int ("data-type", "DataType", "Desired string type", HYSCAN_NMEA_DATA_INVALID, G_MAXINT, 0,
                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_FIELD_TYPE,
@@ -185,8 +186,8 @@ hyscan_nmea_parser_set_property (GObject      *object,
     priv->track = g_value_dup_string (value);
   else if (prop_id == PROP_SOURCE_CHANNEL)
     priv->channel_n = g_value_get_uint (value);
-  else if (prop_id == PROP_SOURCE_TYPE)
-    priv->source_type = g_value_get_int (value);
+  else if (prop_id == PROP_DATA_TYPE)
+    priv->data_type = g_value_get_int (value);
   else if (prop_id == PROP_FIELD_TYPE)
     priv->field_type = g_value_get_int (value);
   else
@@ -210,7 +211,7 @@ hyscan_nmea_parser_object_constructed (GObject *object)
 
   priv->dc = hyscan_nmea_data_new (priv->db, priv->cache,
                                    priv->project, priv->track,
-                                   priv->source_type, priv->channel_n);
+                                   priv->channel_n);
 
   if (priv->dc == NULL)
     return;
@@ -219,7 +220,7 @@ hyscan_nmea_parser_object_constructed (GObject *object)
   db_uri = hyscan_db_get_uri (priv->db);
   priv->token = g_strdup_printf ("nmea_parser.%s.%s.%s.%i.%i",
                                  db_uri, priv->project, priv->track,
-                                 priv->source_type,
+                                 priv->data_type,
                                  priv->channel_n);
 
   g_free (db_uri);
@@ -265,11 +266,11 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
 
   priv->parse_func = fields[priv->field_type].func;
 
-  if (priv->source_type == HYSCAN_SOURCE_NMEA_RMC)
+  if (priv->data_type == HYSCAN_NMEA_DATA_RMC)
     priv->field_n = fields[priv->field_type].RMC_field_n;
-  if (priv->source_type == HYSCAN_SOURCE_NMEA_GGA)
+  if (priv->data_type == HYSCAN_NMEA_DATA_GGA)
     priv->field_n = fields[priv->field_type].GGA_field_n;
-  if (priv->source_type == HYSCAN_SOURCE_NMEA_DPT)
+  if (priv->data_type == HYSCAN_NMEA_DATA_DPT)
     priv->field_n = fields[priv->field_type].DPT_field_n;
 
   if (priv->field_n == -1)
@@ -414,9 +415,34 @@ hyscan_nmea_parser_parse_helper (HyScanNMEAParserPrivate *priv,
                                  const gchar             *sentence,
                                  gdouble                 *value)
 {
+  const gchar *signature;
+  gssize go_back = 0;
+
   /* Если строки нет, просто выходим. */
   if (sentence == NULL)
     return FALSE;
+
+  switch (priv->data_type)
+    {
+    case HYSCAN_NMEA_DATA_RMC:
+      signature = "RMC";
+      go_back = 3;
+      break;
+    case HYSCAN_NMEA_DATA_GGA:
+      signature = "GGA";
+      go_back = 3;
+      break;
+    case HYSCAN_NMEA_DATA_DPT:
+      signature = "DPT";
+      go_back = 3;
+      break;
+    default:
+      signature = "$";
+      break;
+    }
+
+  sentence = g_strstr_len (sentence, -1, signature);
+  sentence -= go_back;
 
   /* Ищем нужное поле. Если вернулся NULL, выходим. */
   sentence = hyscan_nmea_parser_shift (sentence, priv->field_n);
@@ -437,14 +463,14 @@ hyscan_nmea_parser_get (HyScanNavData *navdata,
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   HyScanNMEAParserPrivate *priv = parser->priv;
 
-  const gchar *sentence;
+  const gchar *record;
   gdouble nmea_value;
   gint64 nmea_time;
 
   /* Забираем строку из БД (или кэша, как повезет) и парсим её. */
-  sentence = hyscan_nmea_data_get_sentence (priv->dc, index, &nmea_time);
+  record = hyscan_nmea_data_get (priv->dc, index, &nmea_time);
 
-  if (!hyscan_nmea_parser_parse_helper (priv, sentence, &nmea_value))
+  if (!hyscan_nmea_parser_parse_helper (priv, record, &nmea_value))
     return FALSE;
 
   if (time != NULL)
@@ -478,12 +504,12 @@ hyscan_nmea_parser_get_range (HyScanNavData *navdata,
   return hyscan_nmea_data_get_range (parser->priv->dc, first, last);
 }
 
-/* Функция получения местоположения антенны. */
-static HyScanAntennaPosition
-hyscan_nmea_parser_get_position (HyScanNavData *navdata)
+/* Функция получения смещения антенны. */
+static HyScanAntennaOffset
+hyscan_nmea_parser_get_offset (HyScanNavData *navdata)
 {
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
-  return hyscan_nmea_data_get_position (parser->priv->dc);
+  return hyscan_nmea_data_get_offset (parser->priv->dc);
 }
 
 /* Функция определяет, возможна ли дозапись в канал данных. */
@@ -529,8 +555,8 @@ hyscan_nmea_parser_new (HyScanDB        *db,
                         HyScanCache     *cache,
                         const gchar     *project,
                         const gchar     *track,
-                        HyScanSourceType source_type,
                         guint            source_channel,
+                        HyScanNmeaDataType data_type,
                         guint            field_type)
 {
   HyScanNMEAParser *parser;
@@ -540,8 +566,8 @@ hyscan_nmea_parser_new (HyScanDB        *db,
                          "cache", cache,
                          "project", project,
                          "track", track,
-                         "source-type", source_type,
                          "source-channel", source_channel,
+                         "data-type", data_type,
                          "field-type", field_type,
                          NULL);
 
@@ -552,11 +578,11 @@ hyscan_nmea_parser_new (HyScanDB        *db,
 }
 
 HyScanNMEAParser*
-hyscan_nmea_parser_new_empty (HyScanSourceType  source_type,
-                              guint             field_type)
+hyscan_nmea_parser_new_empty (HyScanNmeaDataType data_type,
+                              guint              field_type)
 {
   return g_object_new (HYSCAN_TYPE_NMEA_PARSER,
-                       "source-type", source_type,
+                       "data-type", data_type,
                        "field-type", field_type,
                        NULL);
 }
@@ -572,7 +598,7 @@ hyscan_nmea_parser_parse_string (HyScanNMEAParser *parser,
   g_return_val_if_fail (HYSCAN_IS_NMEA_PARSER (parser), FALSE);
   priv = parser->priv;
 
-  if (HYSCAN_SOURCE_INVALID == hyscan_nmea_data_check_sentence (string))
+  if (HYSCAN_NMEA_DATA_INVALID == hyscan_nmea_data_check_sentence (string))
     {
       g_message ("Broken string <%s>", string);
       return FALSE;
@@ -593,7 +619,7 @@ hyscan_nmea_parser_interface_init (HyScanNavDataInterface *iface)
   iface->get           = hyscan_nmea_parser_get;
   iface->find_data     = hyscan_nmea_parser_find_data;
   iface->get_range     = hyscan_nmea_parser_get_range;
-  iface->get_position  = hyscan_nmea_parser_get_position;
+  iface->get_offset    = hyscan_nmea_parser_get_offset;
   iface->get_token     = hyscan_nmea_parser_get_token;
   iface->is_writable   = hyscan_nmea_parser_is_writable;
   iface->get_mod_count = hyscan_nmea_parser_get_mod_count;

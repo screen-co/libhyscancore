@@ -110,23 +110,23 @@ sonar_get_type (guint n_channel)
   return HYSCAN_SOURCE_INVALID;
 }
 
-/* Функция возвращает местоположение приёмной антенны. */
-HyScanAntennaPosition
-antenna_get_position (guint n_channel)
+/* Функция возвращает смещение приёмной антенны. */
+HyScanAntennaOffset
+antenna_get_offset (guint n_channel)
 {
-  HyScanAntennaPosition position = {0};
+  HyScanAntennaOffset offset = {0};
 
   if (n_channel % 2)
     {
-      position.x = 1.0 * n_channel;
-      position.y = 2.0 * n_channel;
-      position.z = 3.0 * n_channel;
-      position.psi = 4.0 * n_channel;
-      position.gamma = 5.0 * n_channel;
-      position.theta = 6.0 * n_channel;
+      offset.x = 1.0 * n_channel;
+      offset.y = 2.0 * n_channel;
+      offset.z = 3.0 * n_channel;
+      offset.psi = 4.0 * n_channel;
+      offset.gamma = 5.0 * n_channel;
+      offset.theta = 6.0 * n_channel;
     }
 
-  return position;
+  return offset;
 }
 
 /* Функция возвращает информацию о гидроакустических данных. */
@@ -143,8 +143,8 @@ acoustic_get_info (guint n_channel)
 
   info.antenna_voffset = 3.0 * n_channel;
   info.antenna_hoffset = 4.0 * n_channel;
-  info.antenna_vpattern = 5.0 * n_channel;
-  info.antenna_hpattern = 6.0 * n_channel;
+  info.antenna_vaperture = 5.0 * n_channel;
+  info.antenna_haperture = 6.0 * n_channel;
   info.antenna_frequency = 7.0 * n_channel;
   info.antenna_bandwidth = 8.0 * n_channel;
 
@@ -239,33 +239,33 @@ void track_check_info (HyScanDB *db,
   g_object_unref (param_list);
 }
 
-/* Функция проверяет параметры местоположения приёмной антенны. */
+/* Функция проверяет параметры смещения приёмной антенны. */
 void
-antenna_check_position (HyScanDB *db,
-                        gint32    channel_id,
-                        gint64    schema_id,
-                        guint     n_channel)
+antenna_check_offset (HyScanDB *db,
+                      gint32    channel_id,
+                      gint64    schema_id,
+                      guint     n_channel)
 {
   gint32 param_id;
 
-  HyScanAntennaPosition position1;
-  HyScanAntennaPosition position2;
+  HyScanAntennaOffset offset1;
+  HyScanAntennaOffset offset2;
 
   param_id = hyscan_db_channel_param_open (db, channel_id);
   if (param_id < 0)
     g_error ("can't open parameters");
 
-  position1 = antenna_get_position (n_channel);
+  offset1 = antenna_get_offset (n_channel);
 
-  if (!hyscan_core_params_load_antenna_position (db, param_id, schema_id, TRACK_SCHEMA_VERSION, &position2))
+  if (!hyscan_core_params_load_antenna_offset (db, param_id, schema_id, TRACK_SCHEMA_VERSION, &offset2))
     g_error ("error in schema");
 
-  if ((fabs (position1.x - position2.x) > 1e-6) ||
-      (fabs (position1.y - position2.y) > 1e-6) ||
-      (fabs (position1.z - position2.z) > 1e-6) ||
-      (fabs (position1.psi - position2.psi) > 1e-6) ||
-      (fabs (position1.gamma - position2.gamma) > 1e-6) ||
-      (fabs (position1.theta - position2.theta) > 1e-6))
+  if ((fabs (offset1.x - offset2.x) > 1e-6) ||
+      (fabs (offset1.y - offset2.y) > 1e-6) ||
+      (fabs (offset1.z - offset2.z) > 1e-6) ||
+      (fabs (offset1.psi - offset2.psi) > 1e-6) ||
+      (fabs (offset1.gamma - offset2.gamma) > 1e-6) ||
+      (fabs (offset1.theta - offset2.theta) > 1e-6))
     {
       g_error ("error in parameters");
     }
@@ -299,8 +299,8 @@ acoustic_check_info (HyScanDB *db,
       (fabs (info1.signal_bandwidth - info2.signal_bandwidth) > 1e-6) ||
       (fabs (info1.antenna_voffset - info2.antenna_voffset) > 1e-6) ||
       (fabs (info1.antenna_hoffset - info2.antenna_hoffset) > 1e-6) ||
-      (fabs (info1.antenna_vpattern - info2.antenna_vpattern) > 1e-6) ||
-      (fabs (info1.antenna_hpattern - info2.antenna_hpattern) > 1e-6) ||
+      (fabs (info1.antenna_vaperture - info2.antenna_vaperture) > 1e-6) ||
+      (fabs (info1.antenna_haperture - info2.antenna_haperture) > 1e-6) ||
       (fabs (info1.antenna_frequency - info2.antenna_frequency) > 1e-6) ||
       (fabs (info1.antenna_bandwidth - info2.antenna_bandwidth) > 1e-6) ||
       (fabs (info1.adc_vref - info2.adc_vref) > 1e-6) ||
@@ -372,7 +372,7 @@ sensor_add_data (HyScanDataWriter *writer,
       hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
 
       status = hyscan_data_writer_sensor_add_data (writer, sensor,
-                                                   HYSCAN_SOURCE_NMEA_ANY, n_channel,
+                                                   HYSCAN_SOURCE_NMEA, n_channel,
                                                    timestamp + i, buffer);
       if (status != fail)
         g_error ("error adding data to '%s'", sensor);
@@ -529,7 +529,7 @@ sensor_check_data (HyScanDB    *db,
 
   buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA_ANY, HYSCAN_CHANNEL_DATA, n_channel);
+  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA, HYSCAN_CHANNEL_DATA, n_channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 
@@ -546,7 +546,7 @@ sensor_check_data (HyScanDB    *db,
     g_error ("can't open channel");
 
   /* Проверка параметров. */
-  antenna_check_position (db, channel_id, SENSOR_CHANNEL_SCHEMA_ID, n_channel);
+  antenna_check_offset (db, channel_id, SENSOR_CHANNEL_SCHEMA_ID, n_channel);
 
   /* Проверка данных. */
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
@@ -642,7 +642,7 @@ sonar_check_data (HyScanDB    *db,
     }
 
   /* Проверка параметров. */
-  antenna_check_position (db, data_channel_id, ACOUSTIC_CHANNEL_SCHEMA_ID, channel);
+  antenna_check_offset (db, data_channel_id, ACOUSTIC_CHANNEL_SCHEMA_ID, channel);
   acoustic_check_info (db, data_channel_id, channel);
   signal_check_info (db, signal_channel_id, channel);
   tvg_check_info (db, tvg_channel_id, channel);
@@ -848,20 +848,20 @@ main (int    argc,
   /* Информация о гидролокаторе. */
   hyscan_data_writer_set_sonar_info (writer, SONAR_INFO);
 
-  /* Местоположение антенн "датчиков" и "гидролокатора". */
+  /* Смещение антенн "датчиков" и "гидролокатора". */
   for (i = 1; i <= N_CHANNELS_PER_TYPE; i++)
     {
-      HyScanAntennaPosition position = antenna_get_position (i);
+      HyScanAntennaOffset offset = antenna_get_offset (i);
 
       if (i % 2)
         {
-          hyscan_data_writer_sensor_set_position (writer, sensor_get_name (i), &position);
-          hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), &position);
+          hyscan_data_writer_sensor_set_offset (writer, sensor_get_name (i), &offset);
+          hyscan_data_writer_sonar_set_offset (writer, sonar_get_type (i), &offset);
         }
       else
         {
-          hyscan_data_writer_sensor_set_position (writer, sensor_get_name (i), NULL);
-          hyscan_data_writer_sonar_set_position (writer, sonar_get_type (i), NULL);
+          hyscan_data_writer_sensor_set_offset (writer, sensor_get_name (i), NULL);
+          hyscan_data_writer_sonar_set_offset (writer, sonar_get_type (i), NULL);
         }
     }
 

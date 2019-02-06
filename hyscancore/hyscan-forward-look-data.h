@@ -98,7 +98,7 @@ HYSCAN_API
 const gchar *                  hyscan_forward_look_data_get_track_name     (HyScanForwardLookData *data);
 
 HYSCAN_API
-HyScanAntennaPosition          hyscan_forward_look_data_get_position       (HyScanForwardLookData *data);
+HyScanAntennaOffset            hyscan_forward_look_data_get_offset         (HyScanForwardLookData *data);
 
 HYSCAN_API
 gboolean                       hyscan_forward_look_data_is_writable        (HyScanForwardLookData *data);

@@ -85,14 +85,14 @@ void                   hyscan_data_writer_set_chunk_size       (HyScanDataWriter
                                                                 gint32                         chunk_size);
 
 HYSCAN_API
-void                   hyscan_data_writer_sensor_set_position  (HyScanDataWriter              *writer,
+void                   hyscan_data_writer_sensor_set_offset    (HyScanDataWriter              *writer,
                                                                 const gchar                   *sensor,
-                                                                const HyScanAntennaPosition   *position);
+                                                                const HyScanAntennaOffset     *offset);
 
 HYSCAN_API
-void                   hyscan_data_writer_sonar_set_position   (HyScanDataWriter              *writer,
+void                   hyscan_data_writer_sonar_set_offset     (HyScanDataWriter              *writer,
                                                                 HyScanSourceType               source,
-                                                                const HyScanAntennaPosition   *position);
+                                                                const HyScanAntennaOffset     *offset);
 
 HYSCAN_API
 gboolean               hyscan_data_writer_start                (HyScanDataWriter              *writer,

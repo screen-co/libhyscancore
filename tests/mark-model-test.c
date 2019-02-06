@@ -1,6 +1,5 @@
 #include <hyscan-data-writer.h>
 #include <hyscan-mark-model.h>
-#include <libxml/parser.h>
 
 #define if_verbose(...) if (verbose) g_print (__VA_ARGS__);
 #define SEED g_rand_int_range (grand, 0, 65536)
@@ -128,8 +127,6 @@ exit:
 
   if (loop != NULL)
     g_main_loop_unref (loop);
-
-  xmlCleanupParser ();
 
   if (!status)
     {

@@ -36,11 +36,11 @@
 
 #include <math.h>
 
-/* Функция устанавливает параметры местоположения приёмной антенны. */
+/* Функция устанавливает параметры смещения приёмной антенны. */
 gboolean
-hyscan_core_params_set_antenna_position (HyScanDB              *db,
-                                         gint32                 channel_id,
-                                         HyScanAntennaPosition *position)
+hyscan_core_params_set_antenna_offset (HyScanDB            *db,
+                                       gint32               channel_id,
+                                       HyScanAntennaOffset *offset)
 {
   HyScanParamList *param_list;
   gint32 param_id;
@@ -52,12 +52,38 @@ hyscan_core_params_set_antenna_position (HyScanDB              *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_double (param_list, "/position/x", position->x);
-  hyscan_param_list_set_double (param_list, "/position/y", position->y);
-  hyscan_param_list_set_double (param_list, "/position/z", position->z);
-  hyscan_param_list_set_double (param_list, "/position/psi", position->psi);
-  hyscan_param_list_set_double (param_list, "/position/gamma", position->gamma);
-  hyscan_param_list_set_double (param_list, "/position/theta", position->theta);
+  hyscan_param_list_set_double (param_list, "/offset/x", offset->x);
+  hyscan_param_list_set_double (param_list, "/offset/y", offset->y);
+  hyscan_param_list_set_double (param_list, "/offset/z", offset->z);
+  hyscan_param_list_set_double (param_list, "/offset/psi", offset->psi);
+  hyscan_param_list_set_double (param_list, "/offset/gamma", offset->gamma);
+  hyscan_param_list_set_double (param_list, "/offset/theta", offset->theta);
+
+  status = hyscan_db_param_set (db, param_id, NULL, param_list);
+
+  hyscan_db_close (db, param_id);
+  g_object_unref (param_list);
+
+  return status;
+}
+
+/* Функция устанавливает параметры данных датчика. */
+gboolean
+hyscan_core_params_set_sensor_info (HyScanDB    *db,
+                                    gint32       channel_id,
+                                    const gchar *sensor_name)
+{
+  HyScanParamList *param_list;
+  gint32 param_id;
+  gboolean status;
+
+  param_id = hyscan_db_channel_param_open (db, channel_id);
+  if (param_id < 0)
+    return FALSE;
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_set_string (param_list, "/sensor-name", sensor_name);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
 
@@ -89,8 +115,8 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
   hyscan_param_list_set_double (param_list, "/signal/bandwidth", info->signal_bandwidth);
   hyscan_param_list_set_double (param_list, "/antenna/offset/vertical", info->antenna_voffset);
   hyscan_param_list_set_double (param_list, "/antenna/offset/horizontal", info->antenna_hoffset);
-  hyscan_param_list_set_double (param_list, "/antenna/pattern/vertical", info->antenna_vpattern);
-  hyscan_param_list_set_double (param_list, "/antenna/pattern/horizontal", info->antenna_hpattern);
+  hyscan_param_list_set_double (param_list, "/antenna/aperture/vertical", info->antenna_vaperture);
+  hyscan_param_list_set_double (param_list, "/antenna/aperture/horizontal", info->antenna_haperture);
   hyscan_param_list_set_double (param_list, "/antenna/frequency", info->antenna_frequency);
   hyscan_param_list_set_double (param_list, "/antenna/bandwidth", info->antenna_bandwidth);
   hyscan_param_list_set_double (param_list, "/adc/vref", info->adc_vref);
@@ -188,13 +214,13 @@ exit:
   return status;
 }
 
-/* Функция загружает местоположение приёмной антенны гидролокатора. */
+/* Функция загружает смещение приёмной антенны. */
 gboolean
-hyscan_core_params_load_antenna_position (HyScanDB              *db,
-                                          gint32                 param_id,
-                                          gint64                 schema_id,
-                                          gint64                 schema_version,
-                                          HyScanAntennaPosition *position)
+hyscan_core_params_load_antenna_offset (HyScanDB            *db,
+                                        gint32               param_id,
+                                        gint64               schema_id,
+                                        gint64               schema_version,
+                                        HyScanAntennaOffset *offset)
 {
   HyScanParamList *param_list;
   gboolean status = FALSE;
@@ -203,12 +229,12 @@ hyscan_core_params_load_antenna_position (HyScanDB              *db,
 
   hyscan_param_list_add (param_list, "/schema/id");
   hyscan_param_list_add (param_list, "/schema/version");
-  hyscan_param_list_add (param_list, "/position/x");
-  hyscan_param_list_add (param_list, "/position/y");
-  hyscan_param_list_add (param_list, "/position/z");
-  hyscan_param_list_add (param_list, "/position/psi");
-  hyscan_param_list_add (param_list, "/position/gamma");
-  hyscan_param_list_add (param_list, "/position/theta");
+  hyscan_param_list_add (param_list, "/offset/x");
+  hyscan_param_list_add (param_list, "/offset/y");
+  hyscan_param_list_add (param_list, "/offset/z");
+  hyscan_param_list_add (param_list, "/offset/psi");
+  hyscan_param_list_add (param_list, "/offset/gamma");
+  hyscan_param_list_add (param_list, "/offset/theta");
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     goto exit;
@@ -219,12 +245,12 @@ hyscan_core_params_load_antenna_position (HyScanDB              *db,
       goto exit;
     }
 
-  position->x = hyscan_param_list_get_double (param_list, "/position/x");
-  position->y = hyscan_param_list_get_double (param_list, "/position/y");
-  position->z = hyscan_param_list_get_double (param_list, "/position/z");
-  position->psi = hyscan_param_list_get_double (param_list, "/position/psi");
-  position->gamma = hyscan_param_list_get_double (param_list, "/position/gamma");
-  position->theta = hyscan_param_list_get_double (param_list, "/position/theta");
+  offset->x = hyscan_param_list_get_double (param_list, "/offset/x");
+  offset->y = hyscan_param_list_get_double (param_list, "/offset/y");
+  offset->z = hyscan_param_list_get_double (param_list, "/offset/z");
+  offset->psi = hyscan_param_list_get_double (param_list, "/offset/psi");
+  offset->gamma = hyscan_param_list_get_double (param_list, "/offset/gamma");
+  offset->theta = hyscan_param_list_get_double (param_list, "/offset/theta");
 
   status = TRUE;
 
@@ -232,6 +258,37 @@ exit:
   g_object_unref (param_list);
 
   return status;
+}
+
+/* Функция загружает параметры данных датчика. */
+gchar *
+hyscan_core_params_load_sensor_info (HyScanDB *db,
+                                     gint32    param_id)
+{
+  HyScanParamList *param_list;
+  gchar *sensor_name = NULL;
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/sensor-name");
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != SENSOR_CHANNEL_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != SENSOR_CHANNEL_SCHEMA_VERSION))
+    {
+      goto exit;
+    }
+
+  sensor_name = hyscan_param_list_dup_string (param_list, "/sensor-name");
+
+exit:
+  g_object_unref (param_list);
+
+  return sensor_name;
 }
 
 /* Функция загружает параметры гидроакустических данных. */
@@ -253,8 +310,8 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
   hyscan_param_list_add (param_list, "/signal/bandwidth");
   hyscan_param_list_add (param_list, "/antenna/offset/vertical");
   hyscan_param_list_add (param_list, "/antenna/offset/horizontal");
-  hyscan_param_list_add (param_list, "/antenna/pattern/vertical");
-  hyscan_param_list_add (param_list, "/antenna/pattern/horizontal");
+  hyscan_param_list_add (param_list, "/antenna/aperture/vertical");
+  hyscan_param_list_add (param_list, "/antenna/aperture/horizontal");
   hyscan_param_list_add (param_list, "/antenna/frequency");
   hyscan_param_list_add (param_list, "/antenna/bandwidth");
   hyscan_param_list_add (param_list, "/adc/vref");
@@ -275,8 +332,8 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
   info->signal_bandwidth = hyscan_param_list_get_double (param_list, "/signal/bandwidth");
   info->antenna_voffset = hyscan_param_list_get_double (param_list, "/antenna/offset/vertical");
   info->antenna_hoffset = hyscan_param_list_get_double (param_list, "/antenna/offset/horizontal");
-  info->antenna_vpattern = hyscan_param_list_get_double (param_list, "/antenna/pattern/vertical");
-  info->antenna_hpattern = hyscan_param_list_get_double (param_list, "/antenna/pattern/horizontal");
+  info->antenna_vaperture = hyscan_param_list_get_double (param_list, "/antenna/aperture/vertical");
+  info->antenna_haperture = hyscan_param_list_get_double (param_list, "/antenna/aperture/horizontal");
   info->antenna_frequency = hyscan_param_list_get_double (param_list, "/antenna/frequency");
   info->antenna_bandwidth = hyscan_param_list_get_double (param_list, "/antenna/bandwidth");
   info->adc_vref = hyscan_param_list_get_double (param_list, "/adc/vref");

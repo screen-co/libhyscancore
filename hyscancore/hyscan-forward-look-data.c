@@ -54,7 +54,7 @@
  * Функции #hyscan_forward_look_data_get_db,
  * #hyscan_forward_look_data_get_project_name,
  * #hyscan_forward_look_data_get_track_name,
- * #hyscan_forward_look_data_get_position,
+ * #hyscan_forward_look_data_get_offset,
  * #hyscan_forward_look_data_is_writable и
  * #hyscan_forward_look_data_get_alpha предназначены для получения информации
  * о канале данных и типа данных в нём.
@@ -431,19 +431,19 @@ hyscan_forward_look_data_get_track_name (HyScanForwardLookData *data)
 }
 
 /**
- * hyscan_forward_look_data_get_position:
+ * hyscan_forward_look_data_get_offset:
  * @data: указатель на #HyScanForwardLookData
  *
- * Функция возвращает информацию о местоположении приёмной
+ * Функция возвращает информацию о смещении приёмной
  * антенны гидролокатора.
  *
- * Returns: Местоположение приёмной антенны.
+ * Returns: Смещение приёмной антенны.
  */
-HyScanAntennaPosition
-hyscan_forward_look_data_get_position (HyScanForwardLookData *data)
+HyScanAntennaOffset
+hyscan_forward_look_data_get_offset (HyScanForwardLookData *data)
 {
   HyScanForwardLookDataPrivate *priv;
-  HyScanAntennaPosition zero = {0};
+  HyScanAntennaOffset zero = {0};
 
   g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), zero);
 
@@ -452,7 +452,7 @@ hyscan_forward_look_data_get_position (HyScanForwardLookData *data)
   if (priv->channel1 == NULL)
     return zero;
 
-  return hyscan_acoustic_data_get_position (priv->channel1);
+  return hyscan_acoustic_data_get_offset (priv->channel1);
 }
 
 /**

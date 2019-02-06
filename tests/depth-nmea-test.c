@@ -11,8 +11,8 @@
 gint64    time_for_index   (guint32 index);
 gchar     dec_to_ascii     (gint    dec);
 gchar    *generate_string  (gfloat  seed);
-gboolean  compare_position (HyScanAntennaPosition p1,
-                            HyScanAntennaPosition p2);
+gboolean  compare_position (HyScanAntennaOffset p1,
+                            HyScanAntennaOffset p2);
 
 int
 main (int argc, char **argv)
@@ -26,7 +26,7 @@ main (int argc, char **argv)
   /* Запись данных. */
   HyScanBuffer          *buffer;
   HyScanDataWriter      *writer;
-  HyScanAntennaPosition  position;
+  HyScanAntennaOffset  position;
 
   /* Тестируемые объекты.*/
   HyScanNMEAParser *nmea;
@@ -87,7 +87,7 @@ main (int argc, char **argv)
   position.psi = 40;
   position.gamma = 50;
   position.theta = 60;
-  hyscan_data_writer_sensor_set_position (writer, "sensor", &position);
+  hyscan_data_writer_sensor_set_offset (writer, "sensor", &position);
 
   /* Наполняем данными. */
   buffer = hyscan_buffer_new ();
@@ -97,14 +97,14 @@ main (int argc, char **argv)
       gchar *data = generate_string (i);
 
       hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
-      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA_DPT, CHANNEL, time_for_index (i), buffer);
+      hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_NMEA_DATA_DPT, CHANNEL, time_for_index (i), buffer);
 
       g_free (data);
     }
 
   /* Теперь потестируем объект. */
-  nmea = hyscan_nmea_parser_new (db, name, name, CHANNEL,
-                                 HYSCAN_SOURCE_NMEA_DPT,
+  nmea = hyscan_nmea_parser_new (db, cache, name, name, CHANNEL,
+                                 HYSCAN_NMEA_DATA_DPT,
                                  HYSCAN_NMEA_FIELD_DEPTH);
   idepth = HYSCAN_NAV_DATA (nmea);
 
@@ -147,9 +147,9 @@ main (int argc, char **argv)
         g_error ("Failed to find data");
       }
   }
-  /* hyscan_nav_data_get_position */
+  /* hyscan_nav_data_get_offset */
   {
-    HyScanAntennaPosition acquired = hyscan_nav_data_get_position (idepth);
+    HyScanAntennaOffset acquired = hyscan_nav_data_get_offset (idepth);
 
     if (!compare_position (acquired, position))
       g_error ("Antenna positions are not equal");
@@ -248,8 +248,8 @@ generate_string (gfloat seed)
 }
 
 gboolean
-compare_position (HyScanAntennaPosition p1,
-                  HyScanAntennaPosition p2)
+compare_position (HyScanAntennaOffset p1,
+                  HyScanAntennaOffset p2)
 {
   return (p1.x == p2.x &&
           p1.y == p2.y &&

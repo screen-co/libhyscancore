@@ -52,7 +52,7 @@
  * Функции #hyscan_acoustic_data_get_db, #hyscan_acoustic_data_get_project_name,
  * #hyscan_acoustic_data_get_track_name, #hyscan_acoustic_data_get_source,
  * #hyscan_acoustic_data_get_channel, #hyscan_acoustic_data_is_noise,
- * #hyscan_acoustic_data_get_discretization, #hyscan_acoustic_data_get_position,
+ * #hyscan_acoustic_data_get_discretization, #hyscan_acoustic_data_get_offset,
  * #hyscan_acoustic_data_get_info, #hyscan_acoustic_data_is_writable и
  * #hyscan_acoustic_data_has_tvg предназначены для получения информации
  * о канале данных и типе данных в нём.
@@ -135,7 +135,7 @@ struct _HyScanAcousticDataPrivate
   guint                        channel;                /* Индекс канала данных. */
   gboolean                     noise;                  /* Канал с шумами. */
 
-  HyScanAntennaPosition        position;               /* Местоположение приёмной антенны. */
+  HyScanAntennaOffset          offset;                 /* Смещение приёмной антенны. */
   HyScanAcousticDataInfo       info;                   /* Параметры гидроакустических данных. */
   HyScanDiscretizationType     discretization;         /* Тип дискретизации данных. */
 
@@ -393,13 +393,13 @@ hyscan_acoustic_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  status = hyscan_core_params_load_antenna_position (priv->db, param_id,
+  status = hyscan_core_params_load_antenna_offset (priv->db, param_id,
                                                      ACOUSTIC_CHANNEL_SCHEMA_ID,
                                                      ACOUSTIC_CHANNEL_SCHEMA_VERSION,
-                                                     &priv->position);
+                                                     &priv->offset);
   if (!status)
     {
-      g_warning ("HyScanAcousticData: '%s.%s.%s': can't read antenna position",
+      g_warning ("HyScanAcousticData: '%s.%s.%s': can't read antenna offset",
                  priv->project_name, priv->track_name, data_channel_name);
       goto exit;
     }
@@ -1124,27 +1124,25 @@ hyscan_acoustic_data_get_discretization (HyScanAcousticData *data)
 }
 
 /**
- * hyscan_acoustic_data_get_position:
+ * hyscan_acoustic_data_get_offset:
  * @data: указатель на #HyScanAcousticData
  *
- * Функция возвращает информацию о местоположении приёмной
+ * Функция возвращает информацию о смещении приёмной
  * антенны гидролокатора.
  *
- * Returns: Местоположение приёмной антенны.
+ * Returns: Смещение приёмной антенны.
  */
-HyScanAntennaPosition
-hyscan_acoustic_data_get_position (HyScanAcousticData *data)
+HyScanAntennaOffset
+hyscan_acoustic_data_get_offset (HyScanAcousticData *data)
 {
   HyScanAcousticDataPrivate *priv;
-  HyScanAntennaPosition zero;
-
-  memset (&zero, 0, sizeof (HyScanAntennaPosition));
+  HyScanAntennaOffset zero = {0};
 
   g_return_val_if_fail (HYSCAN_IS_ACOUSTIC_DATA (data), zero);
 
   priv = data->priv;
 
-  return (priv->channel_id > 0) ? priv->position : zero;
+  return (priv->channel_id > 0) ? priv->offset : zero;
 }
 
 /**
@@ -1768,12 +1766,12 @@ hyscan_acoustic_data_amplitude_get_token (HyScanAmplitude *amplitude)
   return data->priv->cache_token;
 }
 
-static HyScanAntennaPosition
-hyscan_acoustic_data_amplitude_get_position (HyScanAmplitude *amplitude)
+static HyScanAntennaOffset
+hyscan_acoustic_data_amplitude_get_offset (HyScanAmplitude *amplitude)
 {
   HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
 
-  return hyscan_acoustic_data_get_position (data);
+  return hyscan_acoustic_data_get_offset (data);
 }
 
 static HyScanAcousticDataInfo
@@ -1852,7 +1850,7 @@ static void
 hyscan_acoustic_data_interface_init (HyScanAmplitudeInterface *iface)
 {
   iface->get_token = hyscan_acoustic_data_amplitude_get_token;
-  iface->get_position = hyscan_acoustic_data_amplitude_get_position;
+  iface->get_offset = hyscan_acoustic_data_amplitude_get_offset;
   iface->get_info = hyscan_acoustic_data_amplitude_get_info;
   iface->is_writable = hyscan_acoustic_data_amplitude_is_writable;
   iface->get_mod_count = hyscan_acoustic_data_amplitude_get_mod_count;

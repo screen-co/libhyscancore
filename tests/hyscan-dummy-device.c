@@ -656,7 +656,7 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       sdata = hyscan_dummy_device_get_sensor_data (sensor, &time);
       hyscan_buffer_wrap_data (data, HYSCAN_DATA_STRING, sdata, strlen (sdata) + 1);
 
-      g_signal_emit_by_name (dummy, "sensor-data", sensor, HYSCAN_SOURCE_NMEA_ANY, time, data);
+      g_signal_emit_by_name (dummy, "sensor-data", sensor, HYSCAN_SOURCE_NMEA, time, data);
 
       g_free (sdata);
     }
@@ -1175,54 +1175,53 @@ hyscan_dummy_device_get_type_by_source (HyScanSourceType source)
 }
 
 /**
- * hyscan_dummy_device_get_sensor_position:
+ * hyscan_dummy_device_get_sensor_offset:
  * @sensor: название датчика
  *
- * Функция возвращает эталонные значения установки местоположения
- * антенн датчика.
+ * Функция возвращает эталонные значения смещения антенн датчика.
  *
- * Returns: (transfer full): Местоположение антенн #HyScanAntennaPosition.
- * Для удаления #hyscan_antenna_position_free.
+ * Returns: (transfer full): Смещение антенн #HyScanAntennaOffset.
+ * Для удаления #hyscan_antenna_offset_free.
  */
-HyScanAntennaPosition *
-hyscan_dummy_device_get_sensor_position (const gchar *sensor)
+HyScanAntennaOffset *
+hyscan_dummy_device_get_sensor_offset (const gchar *sensor)
 {
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset offset;
   guint seed = g_str_hash (sensor);
 
-  position.x = 1.0 * seed;
-  position.y = 2.0 * seed;
-  position.z = 3.0 * seed;
-  position.psi = 4.0 * seed;
-  position.gamma = 5.0 * seed;
-  position.theta = 6.0 * seed;
+  offset.x = 1.0 * seed;
+  offset.y = 2.0 * seed;
+  offset.z = 3.0 * seed;
+  offset.psi = 4.0 * seed;
+  offset.gamma = 5.0 * seed;
+  offset.theta = 6.0 * seed;
 
-  return hyscan_antenna_position_copy (&position);
+  return hyscan_antenna_offset_copy (&offset);
 }
 
 /**
- * hyscan_dummy_device_get_source_position:
+ * hyscan_dummy_device_get_source_offset:
  * @source: тип гидролокационного источника данных
  *
- * Функция возвращает эталонные значения установки местоположения
- * антенн гидролокационного источника данных.
+ * Функция возвращает эталонные значения смещения антенн гидролокационного
+ * источника данных.
  *
- * Returns: (transfer full): Местоположение антенн #HyScanAntennaPosition.
- * Для удаления #hyscan_antenna_position_free.
+ * Returns: (transfer full): Смещение антенн #HyScanAntennaOffset.
+ * Для удаления #hyscan_antenna_offset_free.
  */
-HyScanAntennaPosition *
-hyscan_dummy_device_get_source_position (HyScanSourceType source)
+HyScanAntennaOffset *
+hyscan_dummy_device_get_source_offset (HyScanSourceType source)
 {
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset offset;
 
-  position.x = 1.0 * source;
-  position.y = 2.0 * source;
-  position.z = 3.0 * source;
-  position.psi = 4.0 * source;
-  position.gamma = 5.0 * source;
-  position.theta = 6.0 * source;
+  offset.x = 1.0 * source;
+  offset.y = 2.0 * source;
+  offset.z = 3.0 * source;
+  offset.psi = 4.0 * source;
+  offset.gamma = 5.0 * source;
+  offset.theta = 6.0 * source;
 
-  return hyscan_antenna_position_copy (&position);
+  return hyscan_antenna_offset_copy (&offset);
 }
 
 /**
@@ -1257,12 +1256,12 @@ hyscan_dummy_device_get_sensor_info (const gchar *sensor)
   info.description = g_strdup_printf ("%s description", sensor);
 
   if (g_strcmp0 (sensor, "nmea-3") == 0)
-    info.position = hyscan_dummy_device_get_sensor_position (sensor);
+    info.offset = hyscan_dummy_device_get_sensor_offset (sensor);
   else
-    info.position = NULL;
+    info.offset = NULL;
 
   pinfo = hyscan_sensor_info_sensor_copy (&info);
-  hyscan_antenna_position_free (info.position);
+  hyscan_antenna_offset_free (info.offset);
   g_free ((gchar*)info.description);
 
   return pinfo;
@@ -1336,7 +1335,7 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
   info.source = source;
   info.dev_id = dev_id;
   info.description = source_name;
-  info.position = NULL;
+  info.offset = NULL;
   info.receiver = &receiver;
   info.presets = presets;
   info.tvg = &tvg;
@@ -1411,8 +1410,8 @@ hyscan_dummy_device_get_acoustic_info (HyScanSourceType source)
   info.signal_bandwidth = 4.0 * source;
   info.antenna_voffset = 5.0 * source;
   info.antenna_hoffset = 6.0 * source;
-  info.antenna_vpattern = 7.0 * source;
-  info.antenna_hpattern = 8.0 * source;
+  info.antenna_vaperture = 7.0 * source;
+  info.antenna_haperture = 8.0 * source;
   info.antenna_frequency = 9.0 * source;
   info.antenna_bandwidth = 10.0 * source;
   info.adc_vref = 11.0 * source;

@@ -15,7 +15,7 @@ main (int argc, char **argv)
   gchar *name = "test";                  /* Проект и галс. */
   HyScanDataWriter *writer = NULL;       /* Класс записи данных. */
   HyScanBuffer *buffer = NULL;
-  HyScanAntennaPosition position;
+  HyScanAntennaOffset position;
   HyScanProjector *projector = NULL;
   HyScanAcousticData *adata;
   HyScanSoundVelocity elem;
@@ -75,7 +75,7 @@ main (int argc, char **argv)
   position.gamma = 0.0;
   position.theta = 0.0;
 
-  hyscan_data_writer_sonar_set_position (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);
+  hyscan_data_writer_sonar_set_offset (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);
 
   hyscan_data_writer_set_db (writer, db);
 

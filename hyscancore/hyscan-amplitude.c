@@ -40,7 +40,7 @@
  * Интерфейс предназначен для универсального доступа к амплитудным данным
  * разных типов: боковой обзор, эхолот, профилограф и т.п.
  *
- * Функции #hyscan_amplitude_get_token, #hyscan_amplitude_get_position,
+ * Функции #hyscan_amplitude_get_token, #hyscan_amplitude_get_offset,
  * #hyscan_amplitude_get_info и #hyscan_amplitude_is_writable предназначены
  * для получения информации о канале данных и типе данных в нём.
  *
@@ -91,25 +91,25 @@ hyscan_amplitude_get_token (HyScanAmplitude *amplitude)
 }
 
 /**
- * hyscan_amplitude_get_position:
+ * hyscan_amplitude_get_offset:
  * @amplitude: указатель на #HyScanAmplitude
  *
- * Функция возвращает информацию о местоположении приёмной антенны
- * гидролокатора в виде значения структуры #HyScanAntennaPosition.
+ * Функция возвращает информацию о смещении приёмной антенны
+ * гидролокатора в виде значения структуры #HyScanAntennaOffset.
  *
- * Returns: Местоположение приёмной антенны.
+ * Returns: Смещение приёмной антенны.
  */
-HyScanAntennaPosition
-hyscan_amplitude_get_position (HyScanAmplitude *amplitude)
+HyScanAntennaOffset
+hyscan_amplitude_get_offset (HyScanAmplitude *amplitude)
 {
   HyScanAmplitudeInterface *iface;
-  HyScanAntennaPosition zero = {0};
+  HyScanAntennaOffset zero = {0};
 
   g_return_val_if_fail (HYSCAN_IS_AMPLITUDE (amplitude), zero);
 
   iface = HYSCAN_AMPLITUDE_GET_IFACE (amplitude);
-  if (iface->get_position != NULL)
-    return (* iface->get_position) (amplitude);
+  if (iface->get_offset != NULL)
+    return (* iface->get_offset) (amplitude);
 
   return zero;
 }
