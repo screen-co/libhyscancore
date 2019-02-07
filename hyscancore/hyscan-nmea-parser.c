@@ -442,6 +442,9 @@ hyscan_nmea_parser_parse_helper (HyScanNMEAParserPrivate *priv,
     }
 
   sentence = g_strstr_len (sentence, -1, signature);
+  if (sentence == NULL)
+      return FALSE;
+
   sentence -= go_back;
 
   /* Ищем нужное поле. Если вернулся NULL, выходим. */
