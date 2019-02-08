@@ -320,9 +320,9 @@ hyscan_nmea_parser_parse_date (const gchar *sentence,
   if (sentence == NULL || sentence[0] == ',')
     return FALSE;
 
-  day =   sentence[0] * 10 + sentence[1];
-  month = sentence[2] * 10 + sentence[3];
-  year =  sentence[4] * 10 + sentence[5];
+  day =   (sentence[0]-'0') * 10 + (sentence[1]-'0');
+  month = (sentence[2]-'0') * 10 + (sentence[3]-'0');
+  year =  (sentence[4]-'0') * 10 + (sentence[5]-'0');
 
   dt = g_date_time_new_utc (year, month, day, 0, 0, 0);
   val = g_date_time_to_unix (dt);
@@ -346,11 +346,13 @@ hyscan_nmea_parser_parse_time (const gchar *sentence,
   if (sentence == NULL || sentence[0] == ',')
     return FALSE;
 
-  hour = sentence[0] * 10 + sentence[1];
-  min =  sentence[2] * 10 + sentence[3];
-  sec =  sentence[4] * 10 + sentence[5];
+  hour = (sentence[0]-'0') * 10 + (sentence[1]-'0');
+  min =  (sentence[2]-'0') * 10 + (sentence[3]-'0');
+  sec =  (sentence[4]-'0') * 10 + (sentence[5]-'0');
 
-  dt = g_date_time_new_utc (0, 0, 0, hour, min, sec);
+  dt = g_date_time_new_utc (1970, 1, 1, hour, min, sec);
+  if (dt == NULL)
+    return FALSE;
   val = g_date_time_to_unix (dt);
   g_date_time_unref (dt);
 

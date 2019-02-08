@@ -759,10 +759,12 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
   const gchar *ch = sentence;
   gint checksum = 0;
   gint parsed = 0;
-  gsize len = strlen (ch);
+  gsize len;
 
   if (sentence == NULL)
     return HYSCAN_NMEA_DATA_INVALID;
+
+  len = strlen (ch);
   /* Контрольная сумма считается как XOR всех элементов между $ и *.
    * В самой строке контрольная сумма располагается после символа *
    */
