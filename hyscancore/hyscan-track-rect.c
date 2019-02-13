@@ -392,7 +392,8 @@ hyscan_track_rect_watcher (gpointer data)
       priv->length = length;
       priv->writeable = writeable;
 
-      if (init)
+      /* Задаем этот флаг только если никаких изменений не было. */
+      if (init & !priv->state_changed)
         priv->have_data = TRUE;
 
       g_mutex_unlock (&priv->lock);
@@ -404,7 +405,6 @@ next:
       if (!g_atomic_int_get(&priv->abort))
         g_cond_wait_until (&priv->cond, &cond_lock, end_time);
       g_mutex_unlock (&cond_lock);
-
     }
 
   g_clear_object (&priv->pj);
@@ -440,6 +440,7 @@ hyscan_track_rect_amp_changed (HyScanTrackRect *self)
 
   priv->new_state.amp_changed = TRUE;
   priv->state_changed = TRUE;
+  priv->have_data = FALSE;
 
   g_mutex_unlock (&priv->state_lock);
 }
@@ -456,6 +457,7 @@ hyscan_track_rect_dpt_changed (HyScanTrackRect *self)
 
   priv->new_state.dpt_changed = TRUE;
   priv->state_changed = TRUE;
+  priv->have_data = FALSE;
 
   g_mutex_unlock (&priv->state_lock);
 }
