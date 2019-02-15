@@ -249,7 +249,7 @@ hyscan_track_rect_apply_updates (HyScanTrackRect *self)
       state->flags_changed = FALSE;
       state->source_changed = FALSE;
     }
-  else if (state->dpt_changed)
+  if (state->dpt_changed)
     {
       g_clear_object (&priv->depth);
       state->dpt_changed = FALSE;
@@ -402,7 +402,7 @@ next:
       end_time = g_get_monotonic_time () + 250 * G_TIME_SPAN_MILLISECOND;
 
       g_mutex_lock (&cond_lock);
-      if (!g_atomic_int_get(&priv->abort))
+      if (!g_atomic_int_get (&priv->abort))
         g_cond_wait_until (&priv->cond, &cond_lock, end_time);
       g_mutex_unlock (&cond_lock);
     }
