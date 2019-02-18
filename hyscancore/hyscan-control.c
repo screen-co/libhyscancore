@@ -979,6 +979,9 @@ hyscan_control_sonar_start (HyScanSonar     *sonar,
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
+  if (!hyscan_data_writer_start (priv->writer, project_name, track_name, track_type, -1))
+    return FALSE;
+
   g_hash_table_iter_init (&iter, priv->devices);
   while (g_hash_table_iter_next (&iter, NULL, &device))
     {
@@ -989,8 +992,6 @@ hyscan_control_sonar_start (HyScanSonar     *sonar,
         status = FALSE;
     }
 
-  if (status)
-    status = hyscan_data_writer_start (priv->writer, project_name, track_name, track_type, -1);
   if (!status)
     hyscan_control_sonar_stop (sonar);
 
