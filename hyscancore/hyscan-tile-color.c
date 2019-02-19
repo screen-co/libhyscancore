@@ -435,8 +435,6 @@ hyscan_tile_color_check (HyScanTileColor *color,
   gchar *key;
   gboolean found;
 
-  guint32 size = sizeof (HyScanTile);
-
   g_return_val_if_fail (HYSCAN_IS_TILE_COLOR (color), FALSE);
   priv = color->priv;
 
@@ -460,14 +458,8 @@ hyscan_tile_color_check (HyScanTileColor *color,
   g_mutex_unlock (&priv->lock);
 
   /* Ищем тайл в кэше. */
-  hyscan_buffer_wrap_data (priv->read1, HYSCAN_DATA_BLOB,
-                           cached_tile, size);
-
-
-  //// found = hyscan_cache_get (priv->cache, key, NULL, cached_tile, &size);
-  //hyscan_buffer_wrap_data (priv->read1, HYSCAN_DATA_BLOB, cached_tile, size);
   hyscan_buffer_wrap_data (priv->read1, HYSCAN_DATA_BLOB, &header, sizeof (header));
-  found = hyscan_cache_get2 (priv->cache, key, NULL, size, priv->read1, NULL);
+  found = hyscan_cache_get2 (priv->cache, key, NULL, sizeof (header), priv->read1, NULL);
   g_free (key);
 
   if (!found || header.magic != TILE_COLOR_MAGIC)

@@ -79,6 +79,8 @@ struct _HyScanForwardLookPlayerPrivate
   GThread                     *processor;              /* Поток фоновой обработки данных. */
 
   GMutex                       ctl_lock;               /* Блокировка управления. */
+
+  guint                        signaller_tag;          /* Тег функции-сигнализатора. */
 };
 
 static void      hyscan_forward_look_player_object_constructed (GObject                       *object);
@@ -146,8 +148,9 @@ hyscan_forward_look_player_object_constructed (GObject *object)
 
   priv->processor = g_thread_new ("fl-processor", hyscan_forward_look_player_processor, priv);
 
-  g_timeout_add_full (G_PRIORITY_DEFAULT_IDLE, priv->delay / 1000,
-                      hyscan_forward_look_player_signaller, player, NULL);
+  priv->signaller_tag = g_timeout_add (priv->delay / 1000,
+                                       hyscan_forward_look_player_signaller,
+                                       player);
 }
 
 static void
@@ -156,7 +159,7 @@ hyscan_forward_look_player_object_finalize (GObject *object)
   HyScanForwardLookPlayer *player = HYSCAN_FORWARD_LOOK_PLAYER (object);
   HyScanForwardLookPlayerPrivate *priv = player->priv;
 
-  g_source_remove_by_user_data (player);
+  g_source_remove (priv->signaller_tag);
 
   g_atomic_int_set (&priv->shutdown, 1);
   g_clear_pointer (&priv->processor, g_thread_join);
@@ -505,7 +508,7 @@ hyscan_forward_look_player_signaller (gpointer user_data)
 
   g_mutex_unlock (&priv->data.lock);
 
-  return TRUE;
+  return G_SOURCE_CONTINUE;
 }
 
 /* Функция создаёт новый объект обработки и воспроизведения данных. */
@@ -537,8 +540,9 @@ hyscan_forward_look_player_set_fps (HyScanForwardLookPlayer *player,
 
   g_mutex_unlock (&priv->ctl_lock);
 
-  g_timeout_add_full (G_PRIORITY_DEFAULT_IDLE, delay / 1000,
-                      hyscan_forward_look_player_signaller, player, NULL);
+  if (priv->signaller_tag > 0)
+    g_source_remove (priv->signaller_tag);
+  priv->signaller_tag = g_timeout_add (delay / 1000, hyscan_forward_look_player_signaller, player);
 }
 
 /* Функция задаёт скорость звука в воде. */
