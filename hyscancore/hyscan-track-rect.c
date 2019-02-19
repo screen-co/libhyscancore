@@ -329,7 +329,7 @@ hyscan_track_rect_watcher (gpointer data)
 
           if (pj == NULL)
             {
-              g_usleep (10);
+              g_usleep (100);
               continue;
             }
         }
