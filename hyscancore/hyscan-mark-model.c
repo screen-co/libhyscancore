@@ -10,7 +10,7 @@
 
 #include "hyscan-mark-model.h"
 
-#define DELAY (1 * G_TIME_SPAN_SECOND)
+#define DELAY (250 * G_TIME_SPAN_MILLISECOND)
 
 enum
 {
@@ -119,7 +119,7 @@ hyscan_mark_model_object_constructed (GObject *object)
 
   priv->stop = FALSE;
   priv->processing = g_thread_new ("wf-mark-process", hyscan_mark_model_processing, priv);
-  priv->alerter = g_timeout_add (1000, hyscan_mark_model_signaller, model);
+  priv->alerter = g_timeout_add (500, hyscan_mark_model_signaller, model);
 
   priv->marks = hyscan_mark_model_make_ht ();
 }
@@ -277,6 +277,7 @@ hyscan_mark_model_processing (gpointer data)
   HyScanWaterfallMarkData *mdata = NULL; /* Объект работы с метками. */
   gchar **id_list;                       /* Идентификаторы меток. */
   GHashTable *mark_list;                 /* Метки из БД. */
+  GHashTable *temp;                      /* Для обмена списка меток. */
   GMutex im_lock;                        /* Мьютекс нужен для GCond. */
   HyScanWaterfallMark *mark;
   guint len, i;
@@ -335,13 +336,14 @@ hyscan_mark_model_processing (gpointer data)
           mc = hyscan_waterfall_mark_data_get_mod_count (mdata);
         }
 
-      oldmc = mc;
-
       /* Выполняем все задания. */
       hyscan_mark_model_do_all_tasks (priv, mdata);
 
       /* Забираем метки из БД во временную хэш-таблицу. */
       mark_list = hyscan_mark_model_make_ht ();
+
+      /* Запоминаем мод_каунт, чтобы второй раз не приходилось сюда заходить. */
+      oldmc = hyscan_waterfall_mark_data_get_mod_count (mdata);
 
       id_list = hyscan_waterfall_mark_data_get_ids (mdata, &len);
       for (i = 0; i < len; i++)
@@ -352,12 +354,17 @@ hyscan_mark_model_processing (gpointer data)
         }
       g_strfreev (id_list);
 
-      /* Очищаем хэш-таблицу из привата и помещаем туда свежесозданную. */
+      /* Воруем хэш-таблицу из привата, помещаем туда свежесозданную,
+       * инициируем отправление сигнала. */
       g_mutex_lock (&priv->marks_lock);
-      g_clear_pointer (&priv->marks, g_hash_table_unref);
-      priv->marks = mark_list;
+      temp = priv->marks;
+      priv->marks = g_hash_table_ref (mark_list);
       priv->marks_changed = TRUE;
       g_mutex_unlock (&priv->marks_lock);
+
+      /* Очищаем все хэш-таблицы. */
+      g_clear_pointer (&temp, g_hash_table_unref);
+      g_clear_pointer (&mark_list, g_hash_table_unref);
     }
 
   g_clear_object (&mdata);
@@ -365,7 +372,6 @@ hyscan_mark_model_processing (gpointer data)
   return NULL;
 }
 
-/* Функция выполняется в MainLoop и сигнализирует об изменениях. */
 static gboolean
 hyscan_mark_model_signaller (gpointer data)
 {
@@ -494,6 +500,9 @@ hyscan_mark_model_copy (GHashTable *src)
   GHashTable *dst;
   GHashTableIter iter;
   gpointer k, v;
+
+  if (src == NULL)
+    return NULL;
 
   dst = hyscan_mark_model_make_ht ();
 
