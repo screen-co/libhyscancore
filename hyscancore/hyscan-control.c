@@ -425,7 +425,8 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
       /* Запоминаем какой драйвер обрабатывает эти параметры. */
       for (i = 0; keys[i] != NULL; i++)
         {
-          if (g_str_has_prefix (keys[i], "/params/") ||
+          if (g_str_has_prefix (keys[i], "/info/") ||
+              g_str_has_prefix (keys[i], "/params/") ||
               g_str_has_prefix (keys[i], "/system/") ||
               g_str_has_prefix (keys[i], "/state/"))
             {
