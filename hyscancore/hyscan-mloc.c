@@ -104,18 +104,18 @@ hyscan_mloc_object_constructed (GObject *object)
 
   plat = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
-                                 HYSCAN_NMEA_DATA_RMC, 1,
+                                 1, HYSCAN_NMEA_DATA_RMC,
                                  HYSCAN_NMEA_FIELD_LAT);
   plon = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
-                                 HYSCAN_NMEA_DATA_RMC, 1,
+                                 1, HYSCAN_NMEA_DATA_RMC,
                                  HYSCAN_NMEA_FIELD_LON);
   ptrk = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
-                                 HYSCAN_NMEA_DATA_RMC, 1,
+                                 1, HYSCAN_NMEA_DATA_RMC,
                                  HYSCAN_NMEA_FIELD_TRACK);
 
-  if (priv->lat == NULL || priv->lon == NULL || priv->trk == NULL)
+  if (plat == NULL || plon == NULL || ptrk == NULL)
     return;
 
   priv->lat = HYSCAN_NAV_DATA (plat);

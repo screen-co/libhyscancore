@@ -231,6 +231,7 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
 
       if (info->discover == NULL)
         {
+          g_warning ("Con: %s %s", info->uri, driver);
           hyscan_hw_connector_info_free (info);
           continue;
         }
