@@ -62,6 +62,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-waterfall-mark-data.c
              hyscan-mark-model.c
              hyscan-mloc.c
+             hyscan-hw-connector.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
