@@ -176,8 +176,8 @@ hyscan_hw_connector_new (void)
 }
 
 void
-hyscan_hw_connector_set_driver_paths (HyScanHWConnector *connector,
-                                      const gchar      **paths)
+hyscan_hw_connector_set_driver_paths (HyScanHWConnector   *connector,
+                                      const gchar * const *paths)
 {
   g_return_if_fail (HYSCAN_IS_HW_CONNECTOR (connector));
 

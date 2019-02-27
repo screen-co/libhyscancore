@@ -38,18 +38,18 @@ HYSCAN_API
 HyScanHWConnector *        hyscan_hw_connector_new              (void);
 
 HYSCAN_API
-void                       hyscan_hw_connector_set_driver_paths (HyScanHWConnector *connector,
-                                                                 const gchar      **paths);
+void                       hyscan_hw_connector_set_driver_paths (HyScanHWConnector   *connector,
+                                                                 const gchar * const *paths);
 
 HYSCAN_API
-gboolean                   hyscan_hw_connector_read             (HyScanHWConnector *connector,
-                                                                 const gchar        *file);
+gboolean                   hyscan_hw_connector_read             (HyScanHWConnector   *connector,
+                                                                 const gchar         *file);
 
 HYSCAN_API
-gboolean                   hyscan_hw_connector_check            (HyScanHWConnector *connector);
+gboolean                   hyscan_hw_connector_check            (HyScanHWConnector   *connector);
 
 HYSCAN_API
-HyScanControl *            hyscan_hw_connector_connect          (HyScanHWConnector *connector);
+HyScanControl *            hyscan_hw_connector_connect          (HyScanHWConnector   *connector);
 
 G_END_DECLS
 
