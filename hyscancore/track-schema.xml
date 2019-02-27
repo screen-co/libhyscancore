@@ -42,6 +42,8 @@
       </key>
     </node>
     <key id="id" name="Track id" type="string"/>
+    <key id="prev-id" name="Prev track id" type="string"/>
+    <key id="next-id" name="Next track id" type="string"/>
     <key id="ctime" name="Creation date and time" type="integer" view="datetime"/>
     <key id="type" name="Track type" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
