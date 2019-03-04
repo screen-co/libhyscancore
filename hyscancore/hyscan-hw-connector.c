@@ -194,6 +194,7 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
   GKeyFile *keyfile;
   gchar **groups, **iter;
   HyScanHWConnectorPrivate *priv;
+  gboolean status = TRUE;
 
   g_return_val_if_fail (HYSCAN_IS_HW_CONNECTOR (connector), FALSE);
   priv = connector->priv;
@@ -230,7 +231,7 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
       if (info->discover == NULL)
         {
           g_warning ("Couldn't find driver %s for %s", info->driver, *iter);
-          hyscan_hw_connector_info_free (info);
+          status = FALSE;
           continue;
         }
 
@@ -242,8 +243,14 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
       g_object_unref (schema);
     }
 
+  if (!status)
+    {
+      g_list_free_full (priv->devices, (GDestroyNotify)hyscan_hw_connector_info_free);
+      priv->devices = NULL;
+    }
+
   g_key_file_unref (keyfile);
-  return TRUE;
+  return status;
 }
 
 gboolean
