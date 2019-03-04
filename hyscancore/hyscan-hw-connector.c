@@ -12,6 +12,7 @@ enum
 typedef struct
 {
   gchar           *uri;
+  gchar           *driver;
   HyScanDiscover  *discover;
   HyScanParamList *params;
 } HyScanHWConnectorInfo;
@@ -65,6 +66,7 @@ hyscan_hw_connector_info_free (HyScanHWConnectorInfo *info)
     return;
 
   g_clear_pointer (&info->uri, g_free);
+  g_clear_pointer (&info->driver, g_free);
   g_clear_object (&info->discover);
   g_clear_object (&info->params);
 
@@ -79,7 +81,6 @@ hyscan_hw_profile_device_find_driver (gchar       **paths,
 
   if (paths == NULL)
     return NULL;
-
   /* Проходим по нуль-терминированному списку и возвращаем первый драйвер. */
   for (; *paths != NULL; ++paths)
     {
@@ -217,21 +218,18 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
   for (iter = groups; *iter != NULL; ++iter)
     {
       HyScanHWConnectorInfo *info = NULL;
-      gchar *driver = NULL;
       HyScanDataSchema *schema = NULL;
 
       info = g_new0 (HyScanHWConnectorInfo, 1);
 
-      driver = g_key_file_get_string (keyfile, *iter, HYSCAN_HW_PROFILE_DEVICE_DRIVER, NULL);
+      info->driver = g_key_file_get_string (keyfile, *iter, HYSCAN_HW_PROFILE_DEVICE_DRIVER, NULL);
 
       info->uri = g_key_file_get_string (keyfile, *iter, HYSCAN_HW_PROFILE_DEVICE_URI, NULL);
-      info->discover = hyscan_hw_profile_device_find_driver (priv->paths, driver);
-
-      g_free (driver);
+      info->discover = hyscan_hw_profile_device_find_driver (priv->paths, info->driver);
 
       if (info->discover == NULL)
         {
-          g_warning ("Con: %s %s", info->uri, driver);
+          g_warning ("Couldn't find driver %s for %s", info->driver, *iter);
           hyscan_hw_connector_info_free (info);
           continue;
         }
@@ -239,9 +237,9 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
       schema = hyscan_discover_config (info->discover, info->uri);
       info->params = hyscan_hw_profile_device_read_params (keyfile, *iter, schema);
 
-      g_object_unref (schema);
-
       priv->devices = g_list_append (priv->devices, info);
+
+      g_object_unref (schema);
     }
 
   g_key_file_unref (keyfile);
@@ -285,11 +283,21 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
       HyScanHWConnectorInfo *info = link->data;
       HyScanDevice *device;
 
+      /* Подключение. */
       device = hyscan_discover_connect (info->discover, info->uri, info->params);
-      if (device != NULL)
+      if (device == NULL)
         {
-          if (!hyscan_control_device_add (control, device))
-            g_warning ("couldn't add device");
+          g_warning ("Couldn't connect to device: %s %s", info->driver, info->uri);
+          g_clear_object (&control);
+          return NULL;
+        }
+
+      /* Добавление в HyScanControl. */
+      if (!hyscan_control_device_add (control, device))
+        {
+          g_warning ("Couldn't add device: %s %s", info->driver, info->uri);
+          g_clear_object (&control);
+          return NULL;
         }
     }
 
