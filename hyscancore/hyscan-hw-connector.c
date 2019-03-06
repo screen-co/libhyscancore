@@ -268,7 +268,10 @@ hyscan_hw_connector_check (HyScanHWConnector *connector)
       HyScanHWConnectorInfo *info = link->data;
 
       if (!hyscan_discover_check (info->discover, info->uri, info->params))
-        return FALSE;
+        {
+          g_warning ("Device check failed: %s %s", info->driver, info->uri);
+          return FALSE;
+        }
     }
 
   return TRUE;
