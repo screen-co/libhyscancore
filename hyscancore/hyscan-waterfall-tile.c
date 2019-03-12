@@ -1276,6 +1276,7 @@ static void derivativate (gfloat* data, guint32 size)
   for (i = 0; i < size - 1; ++i)
     {
       data[i] = MAX (0, data[i+1] - data[i]);
+      data[i] *= 10;
     }
   data[size - 1] = data[size - 2];
 }
