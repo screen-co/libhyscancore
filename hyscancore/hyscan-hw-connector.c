@@ -283,6 +283,7 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
   HyScanHWConnectorPrivate *priv;
   HyScanControl * control;
   GList *link;
+  gboolean added;
 
   g_return_val_if_fail (HYSCAN_IS_HW_CONNECTOR (connector), NULL);
   priv = connector->priv;
@@ -303,7 +304,9 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
         }
 
       /* Добавление в HyScanControl. */
-      if (!hyscan_control_device_add (control, device))
+      added = hyscan_control_device_add (control, device);
+      g_object_unref (device);
+      if (!added)
         {
           g_warning ("Couldn't add device: %s %s", info->driver, info->uri);
           g_clear_object (&control);
