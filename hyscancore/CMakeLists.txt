@@ -87,19 +87,31 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
          DESTINATION "lib/pkgconfig"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-install (FILES hyscan-data-writer.h
+install (FILES hyscan-core-schemas.h
+               hyscan-data-writer.h
                hyscan-amplitude.h
                hyscan-acoustic-data.h
-               hyscan-amplitude-factory.h
-               hyscan-forward-look-data.h
                hyscan-nmea-data.h
+               hyscan-forward-look-data.h
                hyscan-forward-look-player.h
                hyscan-geo.h
                hyscan-nav-data.h
                hyscan-nmea-parser.h
                hyscan-depthometer.h
-               hyscan-depth-factory.h
                hyscan-control.h
+               hyscan-amplitude-factory.h
+               hyscan-depth-factory.h
+               hyscan-projector.h
+               hyscan-track-rect.h
+               hyscan-mloc.h
+               hyscan-tile-common.h
+               hyscan-tile-queue.h
+               hyscan-tile-color.h
+               hyscan-waterfall-tile.h
+               hyscan-waterfall-mark.h
+               hyscan-waterfall-mark-data.h
+               hyscan-mark-model.h
+               hyscan-hw-connector.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
