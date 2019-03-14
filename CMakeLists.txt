@@ -55,8 +55,7 @@ add_definitions (${GLIB2_CFLAGS})
 link_directories (${GLIB2_LIBRARY_DIRS})
 
 if (HYSCAN_USE_SYS_LIBS)
-  pkg_check_modules (HYSCAN REQUIRED "hyscantypes-${HYSCAN_MAJOR_VERSION}"
-                                     "hyscandriver-${HYSCAN_MAJOR_VERSION}"
+  pkg_check_modules (HYSCAN REQUIRED "hyscandriver-${HYSCAN_MAJOR_VERSION}"
                                      "hyscancache-${HYSCAN_MAJOR_VERSION}"
                                      "hyscanmath-${HYSCAN_MAJOR_VERSION}"
                                      "hyscandb-${HYSCAN_MAJOR_VERSION}")
