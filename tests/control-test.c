@@ -527,6 +527,18 @@ check_sonar_receiver_set_auto (HyScanSourceType source)
 }
 
 void
+check_sonar_receiver_disable (HyScanSourceType source)
+{
+  HyScanDummyDevice *device = get_sonar_device (source);
+
+  if (!hyscan_sonar_receiver_disable (sonar, source))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_receiver_disable (device))
+    g_error ("param failed");
+}
+
+void
 check_sonar_generator_set_preset (HyScanSourceType source)
 {
   HyScanDummyDevice *device = get_sonar_device (source);
@@ -536,6 +548,18 @@ check_sonar_generator_set_preset (HyScanSourceType source)
     g_error ("call failed");
 
   if (!hyscan_dummy_device_check_generator_preset (device, preset))
+    g_error ("param failed");
+}
+
+void
+check_sonar_generator_disable (HyScanSourceType source)
+{
+  HyScanDummyDevice *device = get_sonar_device (source);
+
+  if (!hyscan_sonar_generator_disable (sonar, source))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_generator_disable (device))
     g_error ("param failed");
 }
 
@@ -592,6 +616,18 @@ check_sonar_tvg_set_logarithmic (HyScanSourceType source)
     g_error ("call failed");
 
   if (!hyscan_dummy_device_check_tvg_logarithmic (device, gain0, beta, alpha))
+    g_error ("param failed");
+}
+
+void
+check_sonar_tvg_disable (HyScanSourceType source)
+{
+  HyScanDummyDevice *device = get_sonar_device (source);
+
+  if (!hyscan_sonar_tvg_disable (sonar, source))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_tvg_disable (device))
     g_error ("param failed");
 }
 
@@ -932,9 +968,17 @@ main (int    argc,
   for (i = 0; i < n_sources; i++)
     check_sonar_receiver_set_auto (sources[i]);
 
+  g_message ("Check hyscan_sonar_receiver_disable");
+  for (i = 0; i < n_sources; i++)
+    check_sonar_receiver_disable (sources[i]);
+
   g_message ("Check hyscan_sonar_generator_set_preset");
   for (i = 0; i < n_sources; i++)
     check_sonar_generator_set_preset (sources[i]);
+
+  g_message ("Check hyscan_sonar_generator_disable");
+  for (i = 0; i < n_sources; i++)
+    check_sonar_generator_disable (sources[i]);
 
   g_message ("Check hyscan_sonar_tvg_set_auto");
   for (i = 0; i < n_sources; i++)
@@ -951,6 +995,10 @@ main (int    argc,
   g_message ("Check hyscan_sonar_tvg_set_logarithmic");
   for (i = 0; i < n_sources; i++)
     check_sonar_tvg_set_logarithmic (sources[i]);
+
+  g_message ("Check hyscan_sonar_tvg_disable");
+  for (i = 0; i < n_sources; i++)
+    check_sonar_tvg_disable (sources[i]);
 
   g_message ("Check hyscan_sonar_start");
   check_sonar_start ();

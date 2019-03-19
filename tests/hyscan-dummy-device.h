@@ -97,8 +97,12 @@ gboolean                 hyscan_dummy_device_check_receiver_time      (HyScanDum
 
 gboolean                 hyscan_dummy_device_check_receiver_auto      (HyScanDummyDevice              *dummy);
 
+gboolean                 hyscan_dummy_device_check_receiver_disable   (HyScanDummyDevice              *dummy);
+
 gboolean                 hyscan_dummy_device_check_generator_preset   (HyScanDummyDevice              *dummy,
                                                                        gint64                          preset);
+
+gboolean                 hyscan_dummy_device_check_generator_disable  (HyScanDummyDevice              *dummy);
 
 gboolean                 hyscan_dummy_device_check_tvg_auto           (HyScanDummyDevice              *dummy,
                                                                        gdouble                         level,
@@ -115,6 +119,8 @@ gboolean                 hyscan_dummy_device_check_tvg_logarithmic    (HyScanDum
                                                                        gdouble                         gain0,
                                                                        gdouble                         beta,
                                                                        gdouble                         alpha);
+
+gboolean                 hyscan_dummy_device_check_tvg_disable        (HyScanDummyDevice              *dummy);
 
 gboolean                 hyscan_dummy_device_check_start              (HyScanDummyDevice              *dummy,
                                                                        const gchar                    *project_name,

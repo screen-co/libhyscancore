@@ -853,6 +853,25 @@ hyscan_control_sonar_receiver_set_auto (HyScanSonar      *sonar,
   return hyscan_sonar_receiver_set_auto (HYSCAN_SONAR (source_info->device), source);
 }
 
+/* Метод HyScanSonar->receiver_disable. */
+static gboolean
+hyscan_control_sonar_receiver_disable (HyScanSonar      *sonar,
+                                       HyScanSourceType  source)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+  HyScanControlSourceInfo *source_info;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if (source_info == NULL)
+    return FALSE;
+
+  return hyscan_sonar_receiver_disable (HYSCAN_SONAR (source_info->device), source);
+}
+
 /* Метод HyScanSonar->generator_set_preset. */
 static gboolean
 hyscan_control_sonar_generator_set_preset (HyScanSonar      *sonar,
@@ -872,6 +891,25 @@ hyscan_control_sonar_generator_set_preset (HyScanSonar      *sonar,
 
   return hyscan_sonar_generator_set_preset (HYSCAN_SONAR (source_info->device),
                                             source, preset);
+}
+
+/* Метод HyScanSonar->generator_disable. */
+static gboolean
+hyscan_control_sonar_generator_disable (HyScanSonar      *sonar,
+                                        HyScanSourceType  source)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+  HyScanControlSourceInfo *source_info;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if (source_info == NULL)
+    return FALSE;
+
+  return hyscan_sonar_generator_disable (HYSCAN_SONAR (source_info->device), source);
 }
 
 /* Метод HyScanSonar->tvg_set_auto. */
@@ -960,6 +998,25 @@ hyscan_control_sonar_tvg_set_logarithmic (HyScanSonar      *sonar,
 
   return hyscan_sonar_tvg_set_logarithmic (HYSCAN_SONAR (source_info->device),
                                            source, gain0, beta, alpha);
+}
+
+/* Метод HyScanSonar->tvg_disable. */
+static gboolean
+hyscan_control_sonar_tvg_disable (HyScanSonar      *sonar,
+                                  HyScanSourceType  source)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+  HyScanControlSourceInfo *source_info;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if (source_info == NULL)
+    return FALSE;
+
+  return hyscan_sonar_tvg_disable (HYSCAN_SONAR (source_info->device), source);
 }
 
 /* Метод HyScanSonar->start. */
@@ -1695,11 +1752,14 @@ hyscan_control_sonar_interface_init (HyScanSonarInterface *iface)
 {
   iface->receiver_set_time = hyscan_control_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_control_sonar_receiver_set_auto;
+  iface->receiver_disable = hyscan_control_sonar_receiver_disable;
   iface->generator_set_preset = hyscan_control_sonar_generator_set_preset;
+  iface->generator_disable = hyscan_control_sonar_generator_disable;
   iface->tvg_set_auto = hyscan_control_sonar_tvg_set_auto;
   iface->tvg_set_constant = hyscan_control_sonar_tvg_set_constant;
   iface->tvg_set_linear_db = hyscan_control_sonar_tvg_set_linear_db;
   iface->tvg_set_logarithmic = hyscan_control_sonar_tvg_set_logarithmic;
+  iface->tvg_disable = hyscan_control_sonar_tvg_disable;
   iface->start = hyscan_control_sonar_start;
   iface->stop = hyscan_control_sonar_stop;
   iface->sync = hyscan_control_sonar_sync;

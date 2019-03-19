@@ -85,11 +85,14 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_AUTO,
+  HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_DISABLE,
   HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_PRESET,
+  HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_DISABLE,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_CONSTANT,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LINEAR_DB,
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LOGARITHMIC,
+  HYSCAN_DUMMY_DEVICE_COMMAND_TVG_DISABLE,
   HYSCAN_DUMMY_DEVICE_COMMAND_START,
   HYSCAN_DUMMY_DEVICE_COMMAND_STOP,
   HYSCAN_DUMMY_DEVICE_COMMAND_SYNC,
@@ -445,6 +448,18 @@ hyscan_dummy_device_sonar_receiver_set_auto (HyScanSonar      *sonar,
 }
 
 static gboolean
+hyscan_dummy_device_sonar_receiver_disable (HyScanSonar      *sonar,
+                                            HyScanSourceType  source)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_DISABLE;
+
+  return TRUE;
+}
+
+static gboolean
 hyscan_dummy_device_sonar_generator_set_preset (HyScanSonar      *sonar,
                                                 HyScanSourceType  source,
                                                 gint64            preset)
@@ -454,6 +469,18 @@ hyscan_dummy_device_sonar_generator_set_preset (HyScanSonar      *sonar,
 
   priv->generator_preset = preset;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_SET_PRESET;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_sonar_generator_disable (HyScanSonar      *sonar,
+                                             HyScanSourceType  source)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_DISABLE;
 
   return TRUE;
 }
@@ -518,6 +545,18 @@ hyscan_dummy_device_sonar_tvg_set_logarithmic (HyScanSonar      *sonar,
   priv->tvg_beta = beta;
   priv->tvg_alpha = alpha;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_TVG_SET_LOGARITHMIC;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_sonar_tvg_disable (HyScanSonar      *sonar,
+                                       HyScanSourceType  source)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_TVG_DISABLE;
 
   return TRUE;
 }
@@ -791,6 +830,29 @@ hyscan_dummy_device_check_receiver_auto (HyScanDummyDevice *dummy)
 }
 
 /**
+ * hyscan_dummy_device_check_receiver_disable:
+ * @dummy: указатель на #HyScanDummyDevice
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_receiver_disable.
+ */
+gboolean
+hyscan_dummy_device_check_receiver_disable (HyScanDummyDevice *dummy)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_DISABLE)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+
+  return TRUE;
+}
+
+/**
  * hyscan_dummy_device_check_generator_preset:
  * @dummy: указатель на #HyScanDummyDevice
  * @preset: идентификатор преднастройки
@@ -815,6 +877,29 @@ hyscan_dummy_device_check_generator_preset (HyScanDummyDevice *dummy,
 
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
   priv->generator_preset = 0;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_generator_disable:
+ * @dummy: указатель на #HyScanDummyDevice
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_generator_disable.
+ */
+gboolean
+hyscan_dummy_device_check_generator_disable (HyScanDummyDevice *dummy)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_GENERATOR_DISABLE)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
 
   return TRUE;
 }
@@ -953,6 +1038,29 @@ hyscan_dummy_device_check_tvg_logarithmic (HyScanDummyDevice *dummy,
   priv->tvg_gain0 = 0.0;
   priv->tvg_beta = 0.0;
   priv->tvg_alpha = 0.0;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_tvg_disable:
+ * @dummy: указатель на #HyScanDummyDevice
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_tvg_disable.
+ */
+gboolean
+hyscan_dummy_device_check_tvg_disable (HyScanDummyDevice *dummy)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_TVG_DISABLE)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
 
   return TRUE;
 }
@@ -1514,11 +1622,14 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 {
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
+  iface->receiver_disable = hyscan_dummy_device_sonar_receiver_disable;
   iface->generator_set_preset = hyscan_dummy_device_sonar_generator_set_preset;
+  iface->generator_disable = hyscan_dummy_device_sonar_generator_disable;
   iface->tvg_set_auto = hyscan_dummy_device_sonar_tvg_set_auto;
   iface->tvg_set_constant = hyscan_dummy_device_sonar_tvg_set_constant;
   iface->tvg_set_linear_db = hyscan_dummy_device_sonar_tvg_set_linear_db;
   iface->tvg_set_logarithmic = hyscan_dummy_device_sonar_tvg_set_logarithmic;
+  iface->tvg_disable = hyscan_dummy_device_sonar_tvg_disable;
   iface->start = hyscan_dummy_device_sonar_start;
   iface->stop = hyscan_dummy_device_sonar_stop;
   iface->sync = hyscan_dummy_device_sonar_sync;
