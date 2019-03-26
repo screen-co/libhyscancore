@@ -19,6 +19,7 @@ add_executable (tile-queue-test tile-queue-test.c)
 add_executable (waterfall-mark-data-test waterfall-mark-data-test.c)
 add_executable (mark-model-test mark-model-test.c)
 add_executable (mloc-test mloc-test.c)
+add_executable (view-log view-log.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -36,6 +37,7 @@ target_link_libraries (tile-queue-test ${TEST_LIBRARIES})
 target_link_libraries (waterfall-mark-data-test ${TEST_LIBRARIES})
 target_link_libraries (mark-model-test ${TEST_LIBRARIES})
 target_link_libraries (mloc-test ${TEST_LIBRARIES})
+target_link_libraries (view-log ${TEST_LIBRARIES})
 
 install (TARGETS data-writer-test
                  acoustic-data-test
@@ -53,6 +55,7 @@ install (TARGETS data-writer-test
                  waterfall-mark-data-test
                  mark-model-test
                  mloc-test
+                 view-log
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
