@@ -873,11 +873,11 @@ main (int    argc,
 
   /* Смещение антенн по умолчанию. */
   offset = hyscan_dummy_device_get_sensor_offset (LUCKY_SENSOR);
-  hyscan_control_sensor_set_offset (control1, LUCKY_SENSOR, offset);
+  hyscan_control_sensor_set_default_offset (control1, LUCKY_SENSOR, offset);
   hyscan_antenna_offset_free (offset);
 
   offset = hyscan_dummy_device_get_source_offset (LUCKY_SOURCE);
-  hyscan_control_source_set_offset (control2, LUCKY_SOURCE, offset);
+  hyscan_control_source_set_default_offset (control2, LUCKY_SOURCE, offset);
   hyscan_antenna_offset_free (offset);
 
   /* Запуск составного устройства. */
@@ -901,31 +901,45 @@ main (int    argc,
   sensors = hyscan_control_sensors_list (control);
   sources = hyscan_control_sources_list (control, &n_sources);
 
-  /* Смещение антенн датчиков. */
-  for (i = 0; sensors[i] != NULL; i++)
-    {
-      const HyScanSensorInfoSensor *info;
-
-      info = hyscan_control_sensor_get_info (control, sensors[i]);
-      if (info->offset != NULL)
-        continue;
-
-      offset = hyscan_dummy_device_get_sensor_offset (sensors[i]);
-      hyscan_control_sensor_set_offset (control, sensors[i], offset);
-      hyscan_antenna_offset_free (offset);
-    }
-
   /* Смещение антенн источников данных. */
+  g_message ("Check hyscan_sonar_antenna_set_offset");
   for (i = 0; i < n_sources; i++)
     {
       const HyScanSonarInfoSource *info;
+      HyScanDummyDevice *device;
 
       info = hyscan_control_source_get_info (control, sources[i]);
       if (info->offset != NULL)
         continue;
 
       offset = hyscan_dummy_device_get_source_offset (sources[i]);
-      hyscan_control_source_set_offset (control, sources[i], offset);
+      hyscan_sonar_antenna_set_offset (sonar, sources[i], offset);
+
+      device = get_sonar_device (sources[i]);
+      if (!hyscan_dummy_device_check_antenna_offset (device, offset))
+        g_error ("%s: offset failed", hyscan_source_get_name_by_type (sources[i]));
+
+      hyscan_antenna_offset_free (offset);
+    }
+
+  /* Смещение антенн датчиков. */
+  g_message ("Check hyscan_sensor_antenna_set_offset");
+  for (i = 0; sensors[i] != NULL; i++)
+    {
+      const HyScanSensorInfoSensor *info;
+      HyScanDummyDevice *device;
+
+      info = hyscan_control_sensor_get_info (control, sensors[i]);
+      if (info->offset != NULL)
+        continue;
+
+      offset = hyscan_dummy_device_get_sensor_offset (sensors[i]);
+      hyscan_sensor_antenna_set_offset (sensor, sensors[i], offset);
+
+      device = get_sensor_device (sensors[i]);
+      if (!hyscan_dummy_device_check_antenna_offset (device, offset))
+        g_error ("%s: offset failed", sensors[i]);
+
       hyscan_antenna_offset_free (offset);
     }
 

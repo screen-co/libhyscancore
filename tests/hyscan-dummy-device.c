@@ -83,6 +83,8 @@ typedef enum
 {
   HYSCAN_DUMMY_DEVICE_COMMAND_INVALID,
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY,
+  HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT,
+  HYSCAN_DUMMY_DEVICE_COMMAND_ANTENNA_SET_OFFSET,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_TIME,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_SET_AUTO,
   HYSCAN_DUMMY_DEVICE_COMMAND_RECEIVER_DISABLE,
@@ -96,7 +98,6 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_START,
   HYSCAN_DUMMY_DEVICE_COMMAND_STOP,
   HYSCAN_DUMMY_DEVICE_COMMAND_SYNC,
-  HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT,
   HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE
 } HyScanDummyDeviceCommand;
 
@@ -113,6 +114,7 @@ struct _HyScanDummyDevicePrivate
   HyScanDummyDeviceCommand         command;
 
   GList                           *svp;
+  HyScanAntennaOffset              offset;
 
   gdouble                          receiver_time;
   gdouble                          wait_time;
@@ -420,6 +422,20 @@ hyscan_dummy_device_disconnect (HyScanDevice *device)
 }
 
 static gboolean
+hyscan_dummy_device_sonar_antenna_set_offset (HyScanSonar               *sonar,
+                                              HyScanSourceType           source,
+                                              const HyScanAntennaOffset *offset)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->offset = *offset;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_ANTENNA_SET_OFFSET;
+
+  return TRUE;
+}
+
+static gboolean
 hyscan_dummy_device_sonar_receiver_set_time (HyScanSonar      *sonar,
                                              HyScanSourceType  source,
                                              gdouble           receive_time,
@@ -601,6 +617,20 @@ hyscan_dummy_device_sonar_sync (HyScanSonar *sonar)
 }
 
 static gboolean
+hyscan_dummy_device_sensor_antenna_set_offset (HyScanSensor              *sensor,
+                                               const gchar               *sensor_name,
+                                               const HyScanAntennaOffset *offset)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sensor);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->offset = *offset;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_ANTENNA_SET_OFFSET;
+
+  return TRUE;
+}
+
+static gboolean
 hyscan_dummy_device_sensor_set_enable (HyScanSensor *sensor,
                                        const gchar  *sensor_name,
                                        gboolean      enable)
@@ -749,8 +779,7 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
  * @dummy: указатель на #HyScanDummyDevice
  * @svp: профиль скорости звука
  *
- * Функция проверяет параметры функций #hyscan_sonar_set_sound_velocity
- * и #hyscan_sensor_set_sound_velocity.
+ * Функция проверяет параметры функции #hyscan_device_set_sound_velocity.
  */
 gboolean
 hyscan_dummy_device_check_sound_velocity (HyScanDummyDevice *dummy,
@@ -772,6 +801,74 @@ hyscan_dummy_device_check_sound_velocity (HyScanDummyDevice *dummy,
   priv->svp = NULL;
 
   return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_disconnect:
+ * @dummy: указатель на #HyScanDummyDevice
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_disconnect.
+ */
+gboolean
+hyscan_dummy_device_check_disconnect (HyScanDummyDevice *dummy)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT)
+    return FALSE;
+
+  if (priv->connected)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_sound_velocity:
+ * @dummy: указатель на #HyScanDummyDevice
+ * @offset: смещение приёмной антенны
+ *
+ * Функция проверяет параметры функций #hyscan_sonar_antenna_set_offset и
+ * #hyscan_sensor_antenna_set_offset.
+ */
+gboolean
+hyscan_dummy_device_check_antenna_offset (HyScanDummyDevice   *dummy,
+                                          HyScanAntennaOffset *offset)
+{
+  HyScanDummyDevicePrivate *priv;
+
+   g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+   priv = dummy->priv;
+
+   if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_ANTENNA_SET_OFFSET)
+     return FALSE;
+
+   if ((offset->x != priv->offset.x) ||
+       (offset->y != priv->offset.y) ||
+       (offset->z != priv->offset.z) ||
+       (offset->psi != priv->offset.psi) ||
+       (offset->gamma != priv->offset.gamma) ||
+       (offset->theta != priv->offset.theta))
+     {
+       return FALSE;
+     }
+
+   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+   priv->offset.x = G_MAXDOUBLE;
+   priv->offset.y = G_MAXDOUBLE;
+   priv->offset.z = G_MAXDOUBLE;
+   priv->offset.psi = G_MAXDOUBLE;
+   priv->offset.gamma = G_MAXDOUBLE;
+   priv->offset.theta = G_MAXDOUBLE;
+
+   return TRUE;
 }
 
 /**
@@ -1142,32 +1239,6 @@ hyscan_dummy_device_check_sync (HyScanDummyDevice *dummy)
   priv = dummy->priv;
 
   if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_SYNC)
-    return FALSE;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-
-  return TRUE;
-}
-
-/**
- * hyscan_dummy_device_check_disconnect:
- * @dummy: указатель на #HyScanDummyDevice
- *
- * Функция проверяет параметры функций #hyscan_sonar_disconnect.
- */
-gboolean
-hyscan_dummy_device_check_disconnect (HyScanDummyDevice *dummy)
-{
-  HyScanDummyDevicePrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
-
-  priv = dummy->priv;
-
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT)
-    return FALSE;
-
-  if (priv->connected)
     return FALSE;
 
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
@@ -1620,6 +1691,7 @@ hyscan_dummy_device_device_interface_init (HyScanDeviceInterface *iface)
 static void
 hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 {
+  iface->antenna_set_offset = hyscan_dummy_device_sonar_antenna_set_offset;
   iface->receiver_set_time = hyscan_dummy_device_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_dummy_device_sonar_receiver_set_auto;
   iface->receiver_disable = hyscan_dummy_device_sonar_receiver_disable;
@@ -1638,5 +1710,6 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
 static void
 hyscan_dummy_device_sensor_interface_init (HyScanSensorInterface *iface)
 {
+  iface->antenna_set_offset = hyscan_dummy_device_sensor_antenna_set_offset;
   iface->set_enable = hyscan_dummy_device_sensor_set_enable;
 }

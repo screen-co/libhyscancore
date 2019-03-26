@@ -91,6 +91,11 @@ void                     hyscan_dummy_device_send_data                (HyScanDum
 gboolean                 hyscan_dummy_device_check_sound_velocity     (HyScanDummyDevice              *dummy,
                                                                        GList                          *svp);
 
+gboolean                 hyscan_dummy_device_check_disconnect         (HyScanDummyDevice              *dummy);
+
+gboolean                 hyscan_dummy_device_check_antenna_offset     (HyScanDummyDevice              *dummy,
+                                                                       HyScanAntennaOffset            *offset);
+
 gboolean                 hyscan_dummy_device_check_receiver_time      (HyScanDummyDevice              *dummy,
                                                                        gdouble                         receive_time,
                                                                        gdouble                         wait_time);
@@ -130,8 +135,6 @@ gboolean                 hyscan_dummy_device_check_start              (HyScanDum
 gboolean                 hyscan_dummy_device_check_stop               (HyScanDummyDevice              *dummy);
 
 gboolean                 hyscan_dummy_device_check_sync               (HyScanDummyDevice              *dummy);
-
-gboolean                 hyscan_dummy_device_check_disconnect         (HyScanDummyDevice              *dummy);
 
 gboolean                 hyscan_dummy_device_check_sensor_enable      (HyScanDummyDevice              *dummy,
                                                                        const gchar                    *sensor);

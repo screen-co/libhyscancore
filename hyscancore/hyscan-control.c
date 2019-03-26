@@ -57,6 +57,11 @@
  * её вызова, добавлять новые устройства нельзя. Работать с HyScanControl
  * можно только после вызова #hyscan_control_device_bind.
  *
+ * До завершения конфигурирования и если для датчика или гидролокационного
+ * источника данных не задано смещение приёмных антенн по умолчанию, их
+ * можно задать с помощью функций #hyscan_control_sensor_set_default_offset и
+ * #hyscan_control_source_set_default_offset.
+ *
  * Через интерфейс #HyScanParam имеется возможность управлять внутренними
  * параметрами устройств и поведением объекта HyScanControl. Эти параметры
  * находятся в ветке "/params/control" схемы данных. Кроме этого, HyScanControl
@@ -81,11 +86,6 @@
  * Информацию о датчиках и источниках данных можно получить с помощью функций
  * #hyscan_control_sensor_get_info и #hyscan_control_source_get_info.
  *
- * Задать смещение приёмных антенн датчика или источника данных можно
- * с помощью функций #hyscan_control_sensor_set_offset и
- * #hyscan_control_source_set_offset. Если для датчика или источника данных
- * задано смещение антенн по умолчанию, изменить его нельзя.
- *
  * Функция #hyscan_control_writer_set_db устанавливает систему хранения.
  *
  * Функции #hyscan_control_writer_set_operator_name и
@@ -107,16 +107,15 @@ typedef struct
 {
   HyScanDevice                *device;                         /* Указатель на подключенное устройство. */
   HyScanSensorInfoSensor      *info;                           /* Информация о датчике. */
-  HyScanAntennaOffset         *offset;                       /* Смещение антенны. */
+  HyScanAntennaOffset         *offset;                         /* Смещение антенны. */
   guint                        channel;                        /* Номер приёмного канала. */
-  gboolean                     enable;                         /* Признак приёма данных датчиком. */
 } HyScanControlSensorInfo;
 
 typedef struct
 {
   HyScanDevice                *device;                         /* Указатель на подключенное устройство. */
   HyScanSonarInfoSource       *info;                           /* Информация об источнике данных. */
-  HyScanAntennaOffset         *offset;                       /* Смещение антенны. */
+  HyScanAntennaOffset         *offset;                         /* Смещение антенны. */
 } HyScanControlSourceInfo;
 
 struct _HyScanControlPrivate
@@ -209,6 +208,10 @@ static gboolean    hyscan_control_device_set_sound_velocity    (HyScanDevice    
 
 static gboolean    hyscan_control_device_disconnect            (HyScanDevice                   *device);
 
+static gboolean    hyscan_control_sonar_antenna_set_offset     (HyScanSonar                    *sonar,
+                                                                HyScanSourceType                source,
+                                                                const HyScanAntennaOffset      *offset);
+
 static gboolean    hyscan_control_sonar_receiver_set_time      (HyScanSonar                    *sonar,
                                                                 HyScanSourceType                source,
                                                                 gdouble                         receive_time,
@@ -245,6 +248,10 @@ static gboolean    hyscan_control_sonar_start                  (HyScanSonar     
 static gboolean    hyscan_control_sonar_stop                   (HyScanSonar                    *sonar);
 
 static gboolean    hyscan_control_sonar_sync                   (HyScanSonar                    *sonar);
+
+static gboolean    hyscan_control_sensor_antenna_set_offset    (HyScanSensor                   *sensor,
+                                                                const gchar                    *name,
+                                                                const HyScanAntennaOffset      *offset);
 
 static gboolean    hyscan_control_sensor_set_enable            (HyScanSensor                   *sensor,
                                                                 const gchar                    *name,
@@ -379,13 +386,6 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
 
       if (!hyscan_sensor_schema_add_full (sensor, info->info))
         goto exit;
-
-      /* Смещение по умолчанию. */
-      if ((info->info->offset == NULL) && (info->offset != NULL))
-        {
-          if (!hyscan_sensor_schema_set_offset (sensor, info->info->name, info->offset))
-            goto exit;
-        }
     }
 
   /* Добавляем источники данных. */
@@ -396,13 +396,6 @@ hyscan_control_create_device_schema (HyScanControlPrivate *priv)
 
       if (!hyscan_sonar_schema_source_add_full (sonar, info->info))
         goto exit;
-
-      /* Смещение по умолчанию. */
-      if ((info->info->offset == NULL) && (info->offset != NULL))
-        {
-          if (!hyscan_sonar_schema_source_set_offset (sonar, info->info->source, info->offset))
-           goto exit;
-        }
     }
 
   /* Параметры устройств. */
@@ -812,6 +805,46 @@ hyscan_control_device_disconnect (HyScanDevice *device)
   return status;
 }
 
+/* Метод HyScanSonar->antenna_set_offset. */
+static gboolean
+hyscan_control_sonar_antenna_set_offset (HyScanSonar               *sonar,
+                                         HyScanSourceType           source,
+                                         const HyScanAntennaOffset *offset)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sonar);
+  HyScanControlPrivate *priv = control->priv;
+  HyScanControlSourceInfo *source_info;
+  gboolean status = FALSE;
+
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+
+  priv = control->priv;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  g_mutex_lock (&priv->lock);
+
+  /* Если нет источника или задано смещение по умолчанию - выходим. */
+  source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if ((source_info == NULL) || (source_info->info->offset != NULL))
+    goto exit;
+
+  /* Запоминаем новое смещение. */
+  hyscan_antenna_offset_free (source_info->offset);
+  source_info->offset = hyscan_antenna_offset_copy (offset);
+  hyscan_data_writer_sonar_set_offset (priv->writer, source, offset);
+
+  /* Передаём новые значения в драйвер. */
+  status = hyscan_sonar_antenna_set_offset (HYSCAN_SONAR (source_info->device),
+                                            source, offset);
+
+exit:
+  g_mutex_unlock (&priv->lock);
+
+  return status;
+}
+
 /* Метод HyScanSonar->receiver_set_time. */
 static gboolean
 hyscan_control_sonar_receiver_set_time (HyScanSonar      *sonar,
@@ -1114,6 +1147,46 @@ hyscan_control_sonar_sync (HyScanSonar *sonar)
   return status;
 }
 
+/* Метод HyScanSensor->antenna_set_offset. */
+static gboolean
+hyscan_control_sensor_antenna_set_offset (HyScanSensor              *sensor,
+                                          const gchar               *name,
+                                          const HyScanAntennaOffset *offset)
+{
+  HyScanControl *control = HYSCAN_CONTROL (sensor);
+  HyScanControlPrivate *priv = control->priv;
+  HyScanControlSensorInfo *sensor_info;
+  gboolean status = FALSE;
+
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
+
+  priv = control->priv;
+
+  if (!g_atomic_int_get (&priv->binded))
+    return FALSE;
+
+  g_mutex_lock (&priv->lock);
+
+  /* Если нет датчика или задано смещение по умолчанию - выходим. */
+  sensor_info = g_hash_table_lookup (priv->sensors, name);
+  if ((sensor_info == NULL) || (sensor_info->info->offset != NULL))
+    goto exit;
+
+  /* Запоминаем новое смещение. */
+  hyscan_antenna_offset_free (sensor_info->offset);
+  sensor_info->offset = hyscan_antenna_offset_copy (offset);
+  hyscan_data_writer_sensor_set_offset (priv->writer, name, offset);
+
+  /* Передаём новые значения в драйвер. */
+  status = hyscan_sensor_antenna_set_offset (HYSCAN_SENSOR (sensor_info->device),
+                                             name, offset);
+
+exit:
+  g_mutex_unlock (&priv->lock);
+
+  return status;
+}
+
 /* Метод HyScanSensor->set_enable. */
 static gboolean
 hyscan_control_sensor_set_enable (HyScanSensor *sensor,
@@ -1135,9 +1208,6 @@ hyscan_control_sensor_set_enable (HyScanSensor *sensor,
 
   status = hyscan_sensor_set_enable (HYSCAN_SENSOR (sensor_info->device),
                                      name, enable);
-
-  if (status)
-    sensor_info->enable = enable;
 
   return status;
 }
@@ -1323,9 +1393,8 @@ exit:
  * hyscan_control_device_bind:
  * @control: указатель на #HyScanControl
  *
- * Функция завершает конфигурирование объекта управления и переводит все
- * устройства в рабочий режим. После вызова этой функции, добавить новые
- * устройства нельзя.
+ * Функция завершает конфигурирование объекта управления. После вызова этой
+ * функции, добавить новые устройства нельзя.
  *
  * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
  */
@@ -1375,10 +1444,9 @@ hyscan_control_device_bind (HyScanControl *control)
             {
               HyScanSourceType source = GPOINTER_TO_INT (key);
               HyScanControlSourceInfo *info = value;
-              HyScanAntennaOffset *offset;
 
-              offset = (info->offset != NULL) ? info->offset : info->info->offset;
-              hyscan_data_writer_sonar_set_offset (priv->writer, source, offset);
+              if (info->info->offset != NULL)
+                hyscan_data_writer_sonar_set_offset (priv->writer, source, info->info->offset);
 
               priv->sources_list[n_sources++] = source;
               g_hash_table_insert (devices, (gpointer)info->info->dev_id, NULL);
@@ -1397,10 +1465,9 @@ hyscan_control_device_bind (HyScanControl *control)
             {
               const gchar *sensor = key;
               HyScanControlSensorInfo *info = value;
-              HyScanAntennaOffset *offset;
 
-              offset = (info->offset != NULL) ? info->offset : info->info->offset;
-              hyscan_data_writer_sensor_set_offset (priv->writer, sensor, offset);
+              if (info->info->offset != NULL)
+                hyscan_data_writer_sensor_set_offset (priv->writer, sensor, info->info->offset);
 
               priv->sensors_list[n_sensors++] = key;
               g_hash_table_insert (devices, (gpointer)info->info->dev_id, NULL);
@@ -1589,95 +1656,82 @@ hyscan_control_source_get_info (HyScanControl    *control,
 }
 
 /**
- * hyscan_control_source_set_offset:
+ * hyscan_control_source_set_default_offset:
  * @control: указатель на #HyScanControl
  * @sensor: название датчика
- * @offset: (nullable): смещение приёмной антенны
+ * @offset: смещение приёмной антенны
  *
- * Функция устанавливает информацию о смещении приёмных антенн
- * датчика. Подробное описание параметров приводится в #HyScanTypes.
+ * Функция задаёт смещение приёмных антенн датчика по умолчанию.
+ * Данная функция может быть вызвана только если смещение антенн по
+ * умолчанию ещё не было задано устройством или этой же функцией.
  *
- * Если для датчика задано смещение по умолчанию, изменить его нельзя.
+ * Подробное описание параметров приводится в #HyScanTypes.
  *
  * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
  */
 gboolean
-hyscan_control_sensor_set_offset (HyScanControl             *control,
-                                  const gchar               *sensor,
-                                  const HyScanAntennaOffset *offset)
+hyscan_control_sensor_set_default_offset (HyScanControl             *control,
+                                          const gchar               *sensor,
+                                          const HyScanAntennaOffset *offset)
 {
   HyScanControlPrivate *priv;
   HyScanControlSensorInfo *sensor_info;
-  gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
 
   priv = control->priv;
 
-  g_mutex_lock (&priv->lock);
+  if (g_atomic_int_get (&priv->binded))
+    return FALSE;
 
   /* Если нет датчика или задано смещение по умолчанию - выходим. */
   sensor_info = g_hash_table_lookup (priv->sensors, sensor);
   if ((sensor_info == NULL) || (sensor_info->info->offset != NULL))
-    goto exit;
+    return FALSE;
 
-  /* Запоминаем новое смещение. */
-  hyscan_antenna_offset_free (sensor_info->offset);
-  sensor_info->offset = hyscan_antenna_offset_copy (offset);
-  hyscan_data_writer_sensor_set_offset (priv->writer, sensor, offset);
+  /* Запоминаем новое смещение по умолчанию. */
+  sensor_info->info->offset = hyscan_antenna_offset_copy (offset);
 
-  status = TRUE;
-
-exit:
-  g_mutex_unlock (&priv->lock);
-
-  return status;
+  return TRUE;
 }
 
 /**
- * hyscan_control_source_set_offset:
+ * hyscan_control_source_set_default_offset:
  * @control: указатель на #HyScanControl
  * @source: источник гидролокационных данных
- * @offset: (nullable): Смещение приёмной антенны
+ * @offset: смещение приёмной антенны
  *
- * Функция устанавливает информацию о смещении приёмных антенн
- * гидролокатора. Подробное описание параметров приводится в #HyScanTypes.
+ * Функция задаёт смещение приёмных антенн гидролокатора по умолчанию.
+ * Данная функция может быть вызвана только если смещение антенн по
+ * умолчанию ещё не было задано устройством или этой же функцией.
  *
- * Если для источника задано смещение по умолчанию, изменить его нельзя.
+ * Подробное описание параметров приводится в #HyScanTypes.
  *
  * Returns: %TRUE если команда выполнена успешно, иначе %FALSE.
  */
 gboolean
-hyscan_control_source_set_offset (HyScanControl             *control,
-                                  HyScanSourceType           source,
-                                  const HyScanAntennaOffset *offset)
+hyscan_control_source_set_default_offset (HyScanControl             *control,
+                                          HyScanSourceType           source,
+                                          const HyScanAntennaOffset *offset)
 {
   HyScanControlPrivate *priv;
   HyScanControlSourceInfo *source_info;
-  gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), FALSE);
 
   priv = control->priv;
 
-  g_mutex_lock (&priv->lock);
+  if (g_atomic_int_get (&priv->binded))
+    return FALSE;
 
-  /* Если нет источника или задано смещение по умолчанию - выходим. */
   source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
   if ((source_info == NULL) || (source_info->info->offset != NULL))
-    goto exit;
+    return FALSE;
 
-  /* Запоминаем новое смещение. */
-  hyscan_antenna_offset_free (source_info->offset);
-  source_info->offset = hyscan_antenna_offset_copy (offset);
-  hyscan_data_writer_sonar_set_offset (priv->writer, source, offset);
+  /* Запоминаем новое смещение по умолчанию. */
+  source_info->info->offset = hyscan_antenna_offset_copy (offset);
 
-  status = TRUE;
-
-exit:
-  g_mutex_unlock (&priv->lock);
-
-  return status;
+  return TRUE;
 }
 
 /**
@@ -1750,6 +1804,7 @@ hyscan_control_device_interface_init (HyScanDeviceInterface *iface)
 static void
 hyscan_control_sonar_interface_init (HyScanSonarInterface *iface)
 {
+  iface->antenna_set_offset = hyscan_control_sonar_antenna_set_offset;
   iface->receiver_set_time = hyscan_control_sonar_receiver_set_time;
   iface->receiver_set_auto = hyscan_control_sonar_receiver_set_auto;
   iface->receiver_disable = hyscan_control_sonar_receiver_disable;
@@ -1768,5 +1823,6 @@ hyscan_control_sonar_interface_init (HyScanSonarInterface *iface)
 static void
 hyscan_control_sensor_interface_init (HyScanSensorInterface *iface)
 {
+  iface->antenna_set_offset = hyscan_control_sensor_antenna_set_offset;
   iface->set_enable = hyscan_control_sensor_set_enable;
 }
