@@ -424,6 +424,27 @@ check_state_signal (void)
   devices = hyscan_control_devices_list (control);
   n_devices = g_strv_length ((gchar**)devices);
 
+  /* Проверяем список устройств. */
+  if ((devices == NULL) || (n_devices == 0))
+    g_error ("dev-id number mismatch");
+
+  for (i = 0; i < n_devices; i++)
+    {
+      gboolean used = FALSE;
+      const gchar *dev_id;
+
+      dev_id = hyscan_dummy_device_get_id (device1);
+      if (g_strcmp0 (devices[i], dev_id) == 0)
+        used = TRUE;
+
+      dev_id = hyscan_dummy_device_get_id (device2);
+      if (g_strcmp0 (devices[i], dev_id) == 0)
+        used = TRUE;
+
+      if (!used)
+        g_error ("unknown dev-id %s", devices[i]);
+    }
+
   /* Проверяем что устройства находятся в отключенном состоянии. */
   for (i = 0; i < n_devices; i++)
     {
