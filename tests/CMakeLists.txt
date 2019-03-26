@@ -13,6 +13,7 @@ add_executable (geo-test geo-test.c)
 #add_executable (nmea-parser-test nmea-parser-test.c)
 #add_executable (depthometer-test depthometer-test.c)
 add_executable (control-test control-test.c hyscan-dummy-device.c)
+add_executable (view-log view-log.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -23,6 +24,7 @@ target_link_libraries (geo-test ${TEST_LIBRARIES})
 #target_link_libraries (nmea-parser-test ${TEST_LIBRARIES})
 #target_link_libraries (depthometer-test ${TEST_LIBRARIES})
 target_link_libraries (control-test ${TEST_LIBRARIES})
+target_link_libraries (view-log ${TEST_LIBRARIES})
 
 install (TARGETS data-writer-test
                  acoustic-data-test
@@ -33,6 +35,7 @@ install (TARGETS data-writer-test
 #                 nmea-parser-test
 #                 depthometer-test
                  control-test
+                 view-log
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
