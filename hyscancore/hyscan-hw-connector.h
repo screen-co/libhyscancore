@@ -17,7 +17,6 @@ typedef struct _HyScanHWConnector HyScanHWConnector;
 typedef struct _HyScanHWConnectorPrivate HyScanHWConnectorPrivate;
 typedef struct _HyScanHWConnectorClass HyScanHWConnectorClass;
 
-/* TODO: Change GObject to type of the base class. */
 struct _HyScanHWConnector
 {
   GObject parent_instance;
@@ -25,7 +24,6 @@ struct _HyScanHWConnector
   HyScanHWConnectorPrivate *priv;
 };
 
-/* TODO: Change GObjectClass to type of the base class. */
 struct _HyScanHWConnectorClass
 {
   GObjectClass parent_class;
@@ -42,7 +40,11 @@ void                       hyscan_hw_connector_set_driver_paths (HyScanHWConnect
                                                                  const gchar * const *paths);
 
 HYSCAN_API
-gboolean                   hyscan_hw_connector_read             (HyScanHWConnector   *connector,
+gboolean                   hyscan_hw_connector_load_profile     (HyScanHWConnector   *connector,
+                                                                 const gchar         *file);
+
+HYSCAN_API
+gboolean                   hyscan_hw_connector_default_offsets  (HyScanHWConnector   *connector,
                                                                  const gchar         *file);
 
 HYSCAN_API

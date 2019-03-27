@@ -21,15 +21,19 @@ struct _HyScanHWConnectorPrivate
 {
   gchar     **paths;
   GList      *devices;
+  GKeyFile   *offsets;
 };
 
 static void              hyscan_hw_connector_object_finalize  (GObject               *object);
 static void              hyscan_hw_connector_info_free        (HyScanHWConnectorInfo *info);
-static HyScanDiscover *  hyscan_hw_profile_device_find_driver (gchar                **paths,
+static HyScanDiscover *  hyscan_hw_connector_find_driver      (gchar                **paths,
                                                                const gchar           *name);
-static HyScanParamList * hyscan_hw_profile_device_read_params (GKeyFile              *kf,
+static HyScanParamList * hyscan_hw_connector_read_params      (GKeyFile              *kf,
                                                                const gchar           *group,
                                                                HyScanDataSchema      *schema);
+static gboolean          hyscan_hw_connector_load_offset      (GKeyFile              *offsets,
+                                                               const gchar           *source,
+                                                               HyScanAntennaOffset   *offset);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanHWConnector, hyscan_hw_connector, G_TYPE_OBJECT);
 
@@ -55,6 +59,7 @@ hyscan_hw_connector_object_finalize (GObject *object)
 
   g_strfreev (priv->paths);
   g_list_free_full (priv->devices, (GDestroyNotify)hyscan_hw_connector_info_free);
+  g_clear_pointer (&priv->offsets, g_key_file_unref);
 
   G_OBJECT_CLASS (hyscan_hw_connector_parent_class)->finalize (object);
 }
@@ -74,13 +79,14 @@ hyscan_hw_connector_info_free (HyScanHWConnectorInfo *info)
 }
 
 static HyScanDiscover *
-hyscan_hw_profile_device_find_driver (gchar       **paths,
-                                      const gchar  *name)
+hyscan_hw_connector_find_driver (gchar       **paths,
+                                 const gchar  *name)
 {
   HyScanDriver * driver;
 
   if (paths == NULL)
     return NULL;
+
   /* Проходим по нуль-терминированному списку и возвращаем первый драйвер. */
   for (; *paths != NULL; ++paths)
     {
@@ -93,9 +99,9 @@ hyscan_hw_profile_device_find_driver (gchar       **paths,
 }
 
 static HyScanParamList *
-hyscan_hw_profile_device_read_params (GKeyFile         *kf,
-                                      const gchar      *group,
-                                      HyScanDataSchema *schema)
+hyscan_hw_connector_read_params (GKeyFile         *kf,
+                                 const gchar      *group,
+                                 HyScanDataSchema *schema)
 {
   gchar ** keys, ** iter;
   HyScanParamList * params;
@@ -170,6 +176,24 @@ hyscan_hw_profile_device_read_params (GKeyFile         *kf,
   return params;
 }
 
+static gboolean
+hyscan_hw_connector_load_offset (GKeyFile            *offsets,
+                                 const gchar         *source,
+                                 HyScanAntennaOffset *offset)
+{
+  if (!g_key_file_has_group (offsets, source))
+    return FALSE;
+
+  offset->x = g_key_file_get_double (offsets, source, "offset-x", NULL);
+  offset->y = g_key_file_get_double (offsets, source, "offset-y", NULL);
+  offset->z = g_key_file_get_double (offsets, source, "offset-z", NULL);
+  offset->psi = g_key_file_get_double (offsets, source, "offset-psi", NULL);
+  offset->gamma = g_key_file_get_double (offsets, source, "offset-gamma", NULL);
+  offset->theta = g_key_file_get_double (offsets, source, "offset-theta", NULL);
+
+  return TRUE;
+}
+
 HyScanHWConnector *
 hyscan_hw_connector_new (void)
 {
@@ -187,8 +211,8 @@ hyscan_hw_connector_set_driver_paths (HyScanHWConnector   *connector,
 }
 
 gboolean
-hyscan_hw_connector_read (HyScanHWConnector *connector,
-                          const gchar       *file)
+hyscan_hw_connector_load_profile (HyScanHWConnector *connector,
+                                  const gchar       *file)
 {
   GError *error = NULL;
   GKeyFile *keyfile;
@@ -198,6 +222,10 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
 
   g_return_val_if_fail (HYSCAN_IS_HW_CONNECTOR (connector), FALSE);
   priv = connector->priv;
+
+  /* Если уже был загружен профиль, очищаем текущий список устройств.  */
+  g_list_free_full (priv->devices, (GDestroyNotify)hyscan_hw_connector_info_free);
+  priv->devices = NULL;
 
   keyfile = g_key_file_new ();
 
@@ -226,17 +254,17 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
       info->driver = g_key_file_get_string (keyfile, *iter, HYSCAN_HW_PROFILE_DEVICE_DRIVER, NULL);
 
       info->uri = g_key_file_get_string (keyfile, *iter, HYSCAN_HW_PROFILE_DEVICE_URI, NULL);
-      info->discover = hyscan_hw_profile_device_find_driver (priv->paths, info->driver);
+      info->discover = hyscan_hw_connector_find_driver (priv->paths, info->driver);
 
       if (info->discover == NULL)
         {
-          g_warning ("Couldn't find driver %s for %s", info->driver, *iter);
+          g_warning ("HyScanHWConnector: couldn't find driver %s for %s", info->driver, *iter);
           status = FALSE;
           continue;
         }
 
       schema = hyscan_discover_config (info->discover, info->uri);
-      info->params = hyscan_hw_profile_device_read_params (keyfile, *iter, schema);
+      info->params = hyscan_hw_connector_read_params (keyfile, *iter, schema);
 
       priv->devices = g_list_append (priv->devices, info);
 
@@ -251,6 +279,28 @@ hyscan_hw_connector_read (HyScanHWConnector *connector,
 
   g_key_file_unref (keyfile);
   return status;
+}
+
+gboolean
+hyscan_hw_connector_default_offsets (HyScanHWConnector *connector,
+                                     const gchar       *file)
+{
+  HyScanHWConnectorPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_HW_CONNECTOR (connector), FALSE);
+  priv = connector->priv;
+
+  g_clear_pointer (&priv->offsets, g_key_file_unref);
+
+  priv->offsets = g_key_file_new ();
+  if (!g_key_file_load_from_file (priv->offsets, file, G_KEY_FILE_NONE, NULL))
+    {
+      g_warning ("HyScanHWConnector: can't load default offsets profile");
+      g_clear_pointer (&priv->offsets, g_key_file_unref);
+      return FALSE;
+    }
+
+  return TRUE;
 }
 
 gboolean
@@ -269,7 +319,7 @@ hyscan_hw_connector_check (HyScanHWConnector *connector)
 
       if (!hyscan_discover_check (info->discover, info->uri, info->params))
         {
-          g_warning ("Device check failed: %s %s", info->driver, info->uri);
+          g_warning ("HyScanHWConnector: device check failed: %s %s", info->driver, info->uri);
           return FALSE;
         }
     }
@@ -283,7 +333,6 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
   HyScanHWConnectorPrivate *priv;
   HyScanControl * control;
   GList *link;
-  gboolean added;
 
   g_return_val_if_fail (HYSCAN_IS_HW_CONNECTOR (connector), NULL);
   priv = connector->priv;
@@ -293,12 +342,13 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
     {
       HyScanHWConnectorInfo *info = link->data;
       HyScanDevice *device;
+      gboolean added;
 
       /* Подключение. */
       device = hyscan_discover_connect (info->discover, info->uri, info->params);
       if (device == NULL)
         {
-          g_warning ("Couldn't connect to device: %s %s", info->driver, info->uri);
+          g_warning ("HyScanHWConnector: couldn't connect to device: %s %s", info->driver, info->uri);
           g_clear_object (&control);
           return NULL;
         }
@@ -308,13 +358,53 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
       g_object_unref (device);
       if (!added)
         {
-          g_warning ("Couldn't add device: %s %s", info->driver, info->uri);
+          g_warning ("HyScanHWConnector: couldn't add device: %s %s", info->driver, info->uri);
           g_clear_object (&control);
           return NULL;
         }
     }
 
-  hyscan_control_device_bind (control);
+  /* Устанавливаем смещения антенн по умолчанию. */
+  if (priv->offsets != NULL)
+    {
+      HyScanAntennaOffset offset;
+      const HyScanSourceType *sources;
+      const gchar * const *sensors;
+      guint32 n_sources;
+      guint32 i;
+
+      sources = hyscan_control_sources_list (control, &n_sources);
+      if (sources != NULL)
+        {
+          for (i = 0; i < n_sources; i++)
+            {
+              const gchar *source_name = hyscan_source_get_name_by_type (sources[i]);
+
+              if (!hyscan_hw_connector_load_offset (priv->offsets, source_name, &offset))
+                continue;
+
+              hyscan_control_source_set_default_offset (control, sources[i], &offset);
+            }
+        }
+
+      sensors = hyscan_control_sensors_list (control);
+      if (sensors != NULL)
+        {
+          for (i = 0; sensors[i] != NULL; i++)
+            {
+              if (!hyscan_hw_connector_load_offset (priv->offsets, sensors[i], &offset))
+                continue;
+
+              hyscan_control_sensor_set_default_offset (control, sensors[i], &offset);
+            }
+        }
+    }
+
+  if (!hyscan_control_device_bind (control))
+    {
+      g_clear_object (&control);
+      return NULL;
+    }
 
   return control;
 }
