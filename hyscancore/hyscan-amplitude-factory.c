@@ -199,10 +199,11 @@ hyscan_amplitude_factory_produce (HyScanAmplitudeFactory *self,
                                   HyScanSourceType        source)
 {
   HyScanAmplitudeFactoryPrivate *priv;
-  HyScanAmplitude * out = NULL;
-  HyScanDB * db;
-  gchar * project;
-  gchar * track;
+  HyScanAcousticData *data;
+  HyScanAmplitude *out = NULL;
+  HyScanDB *db;
+  gchar *project;
+  gchar *track;
 
   g_return_val_if_fail (HYSCAN_IS_AMPLITUDE_FACTORY (self), NULL);
   priv = self->priv;
@@ -215,14 +216,18 @@ hyscan_amplitude_factory_produce (HyScanAmplitudeFactory *self,
   g_mutex_unlock (&priv->lock);
 
   if (db == NULL || project == NULL || track == NULL)
-    {
-      out = NULL;
-      goto fail;
-    }
+    goto fail;
 
-  out = HYSCAN_AMPLITUDE (hyscan_acoustic_data_new (db, self->priv->cache,
-                                                    project, track, source,
-                                                    1, FALSE));
+  data = hyscan_acoustic_data_new (db, priv->cache, project, track, source, 1, FALSE);
+  if (data == NULL)
+    goto fail;
+
+  /* При просмотре данных увеличиваем "яркость" для ЛЧМ сигналов.
+   * По опыту, 10 раз является экспериментально подтверждённым
+   * значением. В будущем нужно добавить настройку. */
+  hyscan_acoustic_data_set_convolve (data, TRUE, 10.0);
+
+  out = HYSCAN_AMPLITUDE (data);
 
 fail:
   g_clear_object (&db);
