@@ -580,7 +580,8 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
     }
   else
     {
-      g_info ("HyScanDataWriter: unspecified antenna offset for sensor %s", sensor);
+      g_info ("HyScanDataWriter: %s.%s.%s: unspecified antenna offset for sensor %s",
+              priv->project_name, priv->track_name, channel_name, sensor);
     }
 
   channel_info = g_slice_new0 (HyScanDataWriterSensorChannel);
