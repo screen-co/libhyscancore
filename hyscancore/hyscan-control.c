@@ -1572,6 +1572,9 @@ hyscan_control_sensor_get_info (HyScanControl *control,
 
   g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
 
+  if (sensor == NULL)
+    return NULL;
+
   sensor_info = g_hash_table_lookup (control->priv->sensors, sensor);
 
   return (sensor_info != NULL) ? sensor_info->info : NULL;
