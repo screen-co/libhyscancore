@@ -22,6 +22,7 @@
 #define HYSCAN_COLOR_AT(i, j) *((guint32*)(data + (i) * (stride) + (j) * sizeof (guint32)))
 
 #define TILE_COLOR_MAGIC 0x1983390d
+#define TILE_COLOR_DEFAULT_CMAP GINT_TO_POINTER (HYSCAN_SOURCE_INVALID)
 
 enum
 {
@@ -71,8 +72,9 @@ static void     hyscan_tile_color_set_property                 (GObject         
 static void     hyscan_tile_color_object_constructed           (GObject                *object);
 static void     hyscan_tile_color_object_finalize              (GObject                *object);
 
-static HyScanTileColorInfo *hyscan_tile_color_info_new         (void);
-static HyScanTileColorInfo *hyscan_tile_color_info_lookup      (HyScanTileColorPrivate *priv,
+static HyScanTileColorInfo * hyscan_tile_color_info_new        (void);
+static HyScanTileColorInfo * hyscan_tile_color_info_copy       (HyScanTileColorInfo    *source);
+static HyScanTileColorInfo * hyscan_tile_color_info_lookup     (HyScanTileColorPrivate *priv,
                                                                 HyScanSourceType        source);
 static void     hyscan_tile_color_destroy_info                 (gpointer                data);
 
@@ -86,7 +88,7 @@ static gboolean hyscan_tile_color_set_colormap_internal        (HyScanTileColor 
                                                                 guint32                *colormap,
                                                                 guint                   length,
                                                                 guint32                 background);
-static gchar   *hyscan_tile_color_cache_key                    (HyScanTile             *tile,
+static gchar   * hyscan_tile_color_cache_key                   (HyScanTile             *tile,
                                                                 const gchar            *mnemonic,
                                                                 const gchar            *path);
 static void     hyscan_tile_color_update_mnemonic              (HyScanTileColorInfo    *cmap);
@@ -141,7 +143,7 @@ hyscan_tile_color_object_constructed (GObject *object)
 
   /* Создаем цветовую схему по умолчанию. */
   cmap = hyscan_tile_color_info_new ();
-  g_hash_table_insert (priv->colorinfos, GINT_TO_POINTER (HYSCAN_SOURCE_INVALID), cmap);
+  g_hash_table_insert (priv->colorinfos, TILE_COLOR_DEFAULT_CMAP, cmap);
 
   priv->write1 = hyscan_buffer_new ();
   priv->write2 = hyscan_buffer_new ();
@@ -172,7 +174,7 @@ hyscan_tile_color_object_finalize (GObject *object)
 }
 
 /* Функция создает структуру с параметрами разукрашивания. */
-static HyScanTileColorInfo*
+static HyScanTileColorInfo *
 hyscan_tile_color_info_new (void)
 {
   HyScanTileColorInfo* info;
@@ -206,8 +208,40 @@ hyscan_tile_color_info_new (void)
   return info;
 }
 
+/* Функция копирует структуру с параметрами разукрашивания. */
+static HyScanTileColorInfo *
+hyscan_tile_color_info_copy (HyScanTileColorInfo* source)
+{
+  HyScanTileColorInfo* info;
+  guint length;
+
+  if (source == NULL)
+    return NULL;
+
+  /* Создаем структуру. */
+  info = g_new0 (HyScanTileColorInfo, 1);
+
+  /* Копируем уровни. */
+  info->black = source->black;
+  info->gamma = source->gamma;
+  info->white = source->white;
+
+  /* Копируем цветовую схему. */
+  length = source->colormap->len;
+
+  info->colormap = g_array_sized_new (FALSE, TRUE, sizeof (guint32), length);
+  memcpy (info->colormap->data, source->colormap->data, length * sizeof (guint32));
+  info->colormap->len = length;
+
+  info->background = source->background;
+
+  hyscan_tile_color_update_mnemonic (info);
+
+  return info;
+}
+
 /* Функция ищет цветовую схему для источника. */
-static HyScanTileColorInfo*
+static HyScanTileColorInfo *
 hyscan_tile_color_info_lookup (HyScanTileColorPrivate *priv,
                                HyScanSourceType        source)
 {
@@ -219,7 +253,7 @@ hyscan_tile_color_info_lookup (HyScanTileColorPrivate *priv,
     return cmap;
 
   /* Так как эта схема может быть не задана, ищем схему по умолчанию. */
-  cmap = g_hash_table_lookup (priv->colorinfos, GINT_TO_POINTER (HYSCAN_SOURCE_INVALID));
+  cmap = g_hash_table_lookup (priv->colorinfos, TILE_COLOR_DEFAULT_CMAP);
 
   if (cmap != NULL)
     return cmap;
@@ -264,10 +298,11 @@ hyscan_tile_color_set_levels_internal (HyScanTileColor *color,
   /* Ищем в хэш-таблице. */
   link = g_hash_table_lookup (priv->colorinfos, GINT_TO_POINTER (source));
 
-  /* Если не нашли, создаем новый. */
+  /* Если не нашли, создаем новую структуру со значениями из дефолтной. */
   if (link == NULL)
     {
-      link = hyscan_tile_color_info_new ();
+      link = g_hash_table_lookup (priv->colorinfos, TILE_COLOR_DEFAULT_CMAP);
+      link = hyscan_tile_color_info_copy (link);
       g_hash_table_insert (priv->colorinfos, GINT_TO_POINTER (source), link);
     }
 
@@ -303,10 +338,11 @@ hyscan_tile_color_set_colormap_internal (HyScanTileColor *color,
   /* Ищем в хэш-таблице. */
   link = g_hash_table_lookup (priv->colorinfos, GINT_TO_POINTER (source));
 
-  /* Если не нашли, создаем новый. */
+  /* Если не нашли, создаем новую структуру со значениями из дефолтной. */
   if (link == NULL)
     {
-      link = hyscan_tile_color_info_new ();
+      link = g_hash_table_lookup (priv->colorinfos, TILE_COLOR_DEFAULT_CMAP);
+      link = hyscan_tile_color_info_copy (link);
       g_hash_table_insert (priv->colorinfos, GINT_TO_POINTER (source), link);
     }
 
@@ -331,7 +367,7 @@ hyscan_tile_color_set_colormap_internal (HyScanTileColor *color,
 }
 
 /* Функция генерирует ключ для системы кэширования. */
-static gchar*
+static gchar *
 hyscan_tile_color_cache_key (HyScanTile  *tile,
                              const gchar *mnemonic,
                              const gchar *path)
@@ -377,7 +413,7 @@ hyscan_tile_color_update_mnemonic (HyScanTileColorInfo *cmap)
 }
 
 /* Функция создает новый объект HyScanTileColor. */
-HyScanTileColor*
+HyScanTileColor *
 hyscan_tile_color_new (HyScanCache *cache)
 {
   return g_object_new (HYSCAN_TYPE_TILE_COLOR,
@@ -702,7 +738,7 @@ hyscan_tile_color_set_colormap_for_all (HyScanTileColor *color,
 }
 
 /* Функция составляет цветовую схему. */
-guint32*
+guint32 *
 hyscan_tile_color_compose_colormap (guint32 *colors,
                                     guint    num,
                                     guint   *length)
