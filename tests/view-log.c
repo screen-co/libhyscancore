@@ -123,7 +123,7 @@ main (int    argc,
       guint32 size;
       gchar *data;
 
-      data = hyscan_buffer_get_data (buffer, &size);
+      data = hyscan_buffer_get (buffer, NULL, &size);
       if (data == NULL)
         continue;
 

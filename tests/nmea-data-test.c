@@ -105,7 +105,7 @@ main (int argc, char **argv)
     {
       gchar *data = nmea_generator ("DPT", i);
 
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
       hyscan_data_writer_sensor_add_data (writer, SENSOR_NAME, HYSCAN_SOURCE_NMEA,
                                                   SENSOR_CHANNEL, time, buffer);
 

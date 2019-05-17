@@ -53,7 +53,7 @@ typedef struct
   guint32                      last_index;             /* Последний индекс данных. */
   gboolean                     range_changed;          /* Признак изменения диапазона индексов данных. */
 
-  const HyScanForwardLookDOA  *doa;                    /* Текущий массив целей. */
+  const HyScanDOA             *doa;                    /* Текущий массив целей. */
   guint32                      n_points;               /* Число точек данных. */
   gint64                       doa_time;               /* Метка времени текущих данных. */
   guint32                      doa_index;              /* Индекс текущих данных. */
@@ -417,12 +417,12 @@ hyscan_forward_look_player_processor (gpointer user_data)
       /* Запрашиваем данные для текущего индекса. */
       if ((priv->cur_state.index_changed) && (!priv->data.doa_changed))
         {
-          const HyScanForwardLookDOA *doa;
+          const HyScanDOA *doa;
           guint32 n_points;
           gint64 doa_time;
 
           doa = hyscan_forward_look_data_get_doa (priv->data.data, priv->cur_state.index,
-                                                         &n_points, &doa_time);
+                                                  &n_points, &doa_time);
           if (doa != NULL)
             {
               g_mutex_lock (&priv->data.lock);

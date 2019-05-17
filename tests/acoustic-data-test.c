@@ -160,8 +160,7 @@ create_complex_data (HyScanDataWriter *writer,
           HyScanComplexFloat *data;
           gboolean status;
 
-          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
-          hyscan_buffer_set_size (data_buffer, n_signal_points * sizeof (HyScanComplexFloat));
+          hyscan_buffer_set_complex_float (data_buffer, NULL, n_signal_points);
           data = hyscan_buffer_get_complex_float (data_buffer, &n_signal_points);
 
           for (j = 0; j < n_signal_points; j++)
@@ -173,7 +172,7 @@ create_complex_data (HyScanDataWriter *writer,
               data[j].im = sin (phase);
             }
 
-          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE))
+          if (!hyscan_buffer_export (data_buffer, channel_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE))
             g_error ("can't export channel data");
 
           status = hyscan_data_writer_acoustic_add_signal (writer, source, channel,
@@ -188,14 +187,13 @@ create_complex_data (HyScanDataWriter *writer,
           gfloat *data;
           gboolean status;
 
-          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_FLOAT);
-          hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (gfloat));
+          hyscan_buffer_set_float (data_buffer, NULL, n_data_points);
           data = hyscan_buffer_get_float (data_buffer, &n_data_points);
 
           for (j = 0; j < n_data_points; j++)
             data[j] = tvg0 + j;
 
-          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, HYSCAN_DATA_FLOAT32LE))
+          if (!hyscan_buffer_export (data_buffer, channel_buffer, HYSCAN_DATA_FLOAT32LE))
             g_error ("can't export channel data");
 
           status = hyscan_data_writer_acoustic_add_tvg (writer, source, channel,
@@ -210,8 +208,7 @@ create_complex_data (HyScanDataWriter *writer,
           gfloat *data;
           gboolean status;
 
-          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_FLOAT);
-          hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (gfloat));
+          hyscan_buffer_set_float (data_buffer, NULL, n_data_points);
           data = hyscan_buffer_get_float (data_buffer, &n_data_points);
 
           memset (data, 0, n_data_points * sizeof (gfloat));
@@ -223,7 +220,7 @@ create_complex_data (HyScanDataWriter *writer,
               data[j] = cos (phase);
             }
 
-          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, type))
+          if (!hyscan_buffer_export (data_buffer, channel_buffer, type))
             g_error ("can't export channel data");
 
           status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
@@ -238,8 +235,7 @@ create_complex_data (HyScanDataWriter *writer,
           HyScanComplexFloat *data;
           gboolean status;
 
-          hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
-          hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (HyScanComplexFloat));
+          hyscan_buffer_set_complex_float (data_buffer, NULL, n_data_points);
           data = hyscan_buffer_get_complex_float (data_buffer, &n_data_points);
 
           memset (data, 0, n_data_points * sizeof (HyScanComplexFloat));
@@ -252,7 +248,7 @@ create_complex_data (HyScanDataWriter *writer,
               data[j].im = sin (phase);
             }
 
-          if (!hyscan_buffer_export_data (data_buffer, channel_buffer, type))
+          if (!hyscan_buffer_export (data_buffer, channel_buffer, type))
             g_error ("can't export channel data");
 
           status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
@@ -331,8 +327,7 @@ create_amplitude_data (HyScanDataWriter *writer,
 
       data_time = 1000 * (i + 1);
 
-      hyscan_buffer_set_data_type (data_buffer, HYSCAN_DATA_FLOAT);
-      hyscan_buffer_set_size (data_buffer, n_data_points * sizeof (gfloat));
+      hyscan_buffer_set_float (data_buffer, NULL, n_data_points);
       data = hyscan_buffer_get_float (data_buffer, &n_data_points);
 
       memset (data, 0, n_data_points * sizeof (gfloat));
@@ -344,7 +339,7 @@ create_amplitude_data (HyScanDataWriter *writer,
           data[j] = fabs (sin (phase));
         }
 
-      if (!hyscan_buffer_export_data (data_buffer, channel_buffer, type))
+      if (!hyscan_buffer_export (data_buffer, channel_buffer, type))
         g_error ("can't export amplitude data");
 
       status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,

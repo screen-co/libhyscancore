@@ -721,7 +721,7 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
   signal = g_hash_table_lookup (priv->signals,
                                 hyscan_data_writer_uniq_channel (source, channel));
   if ((signal != NULL) &&
-      (hyscan_buffer_get_size (signal->image) >= 2 * sizeof (HyScanComplexFloat)))
+      (hyscan_buffer_get_data_size (signal->image) >= 2 * sizeof (HyScanComplexFloat)))
     {
       if (!hyscan_db_channel_add_data (priv->db, signal_id, signal->time, signal->image, NULL))
         {
@@ -736,7 +736,7 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
   tvg = g_hash_table_lookup (priv->tvg,
                              hyscan_data_writer_uniq_channel (source, channel));
   if ((tvg != NULL) &&
-      (hyscan_buffer_get_size (tvg->gains) >= sizeof (gfloat)))
+      (hyscan_buffer_get_data_size (tvg->gains) >= sizeof (gfloat)))
     {
       if (!hyscan_db_channel_add_data (priv->db, tvg_id, tvg->time, tvg->gains, NULL))
         {
@@ -1080,8 +1080,6 @@ void
 hyscan_data_writer_stop (HyScanDataWriter *writer)
 {
   HyScanDataWriterPrivate *priv;
-  GHashTableIter iter;
-  gpointer data;
 
   g_return_if_fail (HYSCAN_IS_DATA_WRITER (writer));
 
@@ -1092,23 +1090,8 @@ hyscan_data_writer_stop (HyScanDataWriter *writer)
   /* Закрываем все открытые каналы. */
   g_hash_table_remove_all (priv->sensor_channels);
   g_hash_table_remove_all (priv->sonar_channels);
-
-  /* Обнуляем текущие параметры ВАРУ и сигналы. */
-  g_hash_table_iter_init (&iter, priv->signals);
-  while (g_hash_table_iter_next (&iter, NULL, &data))
-    {
-      HyScanDataWriterSignal *signal = data;
-      hyscan_buffer_set_size (signal->image, 0);
-      signal->time = 0;
-    }
-
-  g_hash_table_iter_init (&iter, priv->tvg);
-  while (g_hash_table_iter_next (&iter, NULL, &data))
-    {
-      HyScanDataWriterTVG *tvg = data;
-      hyscan_buffer_set_size (tvg->gains, 0);
-      tvg->time = 0;
-    }
+  g_hash_table_remove_all (priv->signals);
+  g_hash_table_remove_all (priv->tvg);
 
   /* Закрываем текущий галс. */
   if (priv->db != NULL)
@@ -1181,8 +1164,8 @@ hyscan_data_writer_log_add_message (HyScanDataWriter *writer,
                    hyscan_log_level_get_name_by_type (level),
                    message);
 
-  hyscan_buffer_wrap_data (priv->log_data, HYSCAN_DATA_STRING,
-                           priv->log_message->str, priv->log_message->len + 1);
+  hyscan_buffer_wrap (priv->log_data, HYSCAN_DATA_STRING,
+                      priv->log_message->str, priv->log_message->len + 1);
 
   /* Записываем данные. */
   status = hyscan_db_channel_add_data (priv->db, priv->log_id, time, priv->log_data, NULL);
@@ -1405,7 +1388,7 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
 
   /* Ищем текущий образ или создаём новую запись. */
   signal = g_hash_table_lookup (priv->signals,
-                                    hyscan_data_writer_uniq_channel (source, channel));
+                                hyscan_data_writer_uniq_channel (source, channel));
   if (signal == NULL)
     {
       signal = g_slice_new0 (HyScanDataWriterSignal);
@@ -1419,12 +1402,12 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
   /* Запоминаем текущий образ сигнала. */
   if (image != NULL)
     {
-      hyscan_buffer_copy_data (signal->image, image);
+      hyscan_buffer_copy (signal->image, image);
     }
   else
     {
       guint32 zero[2] = {0, 0};
-      hyscan_buffer_set_data (signal->image, HYSCAN_DATA_COMPLEX_FLOAT32LE, &zero, sizeof (zero));
+      hyscan_buffer_set (signal->image, HYSCAN_DATA_COMPLEX_FLOAT32LE, &zero, sizeof (zero));
     }
   signal->time = time;
 
@@ -1517,7 +1500,7 @@ hyscan_data_writer_acoustic_add_tvg (HyScanDataWriter *writer,
     }
 
   /* Запоминаем текущие параметры ВАРУ. */
-  hyscan_buffer_copy_data (cur_tvg->gains, gains);
+  hyscan_buffer_copy (cur_tvg->gains, gains);
   cur_tvg->time = time;
 
   /* Записываем параметры ВАРУ. */

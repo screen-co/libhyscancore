@@ -52,21 +52,6 @@ typedef struct _HyScanForwardLookData HyScanForwardLookData;
 typedef struct _HyScanForwardLookDataPrivate HyScanForwardLookDataPrivate;
 typedef struct _HyScanForwardLookDataClass HyScanForwardLookDataClass;
 
-/**
- * HyScanForwardLookDOA:
- * @angle: азимут цели относительно перпендикуляра к антенне, рад
- * @distance: дистанция до цели, метры
- * @amplitude: амплитуда отражённого сигнала
- *
- * Точка цели вперёдсмотрящего локатора (Direction Of Arrival)
- */
-typedef struct
-{
-  gfloat angle;
-  gfloat distance;
-  gfloat amplitude;
-} HyScanForwardLookDOA;
-
 struct _HyScanForwardLookData
 {
   GObject parent_instance;
@@ -133,7 +118,7 @@ gboolean                       hyscan_forward_look_data_get_size_time      (HySc
                                                                             gint64                *time);
 
 HYSCAN_API
-const HyScanForwardLookDOA    *hyscan_forward_look_data_get_doa            (HyScanForwardLookData *data,
+const HyScanDOA               *hyscan_forward_look_data_get_doa            (HyScanForwardLookData *data,
                                                                             guint32                index,
                                                                             guint32               *n_points,
                                                                             gint64                *time);

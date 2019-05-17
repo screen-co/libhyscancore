@@ -723,7 +723,7 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       gint64 time;
 
       sdata = hyscan_dummy_device_get_sensor_data (sensor, &time);
-      hyscan_buffer_wrap_data (data, HYSCAN_DATA_STRING, sdata, strlen (sdata) + 1);
+      hyscan_buffer_wrap (data, HYSCAN_DATA_STRING, sdata, strlen (sdata) + 1);
 
       g_signal_emit_by_name (dummy, "sensor-data", sensor, HYSCAN_SOURCE_NMEA, time, data);
 
@@ -743,12 +743,12 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       info = hyscan_dummy_device_get_acoustic_info (source);
 
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_data (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
+      hyscan_buffer_wrap (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
       g_signal_emit_by_name (dummy, "sonar-signal", source, 1, time, data);
       g_signal_emit_by_name (dummy, "sonar-acoustic-data", source, 1, FALSE, time, info, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
-      hyscan_buffer_wrap_data (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
+      hyscan_buffer_wrap (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
       g_signal_emit_by_name (dummy, "sonar-tvg", source, 1, time, data);
 
       hyscan_acoustic_data_info_free (info);
