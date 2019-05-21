@@ -494,7 +494,7 @@ hyscan_tile_color_check (HyScanTileColor *color,
   g_mutex_unlock (&priv->lock);
 
   /* Ищем тайл в кэше. */
-  hyscan_buffer_wrap_data (priv->read1, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  hyscan_buffer_wrap (priv->read1, HYSCAN_DATA_BLOB, &header, sizeof (header));
   found = hyscan_cache_get2 (priv->cache, key, NULL, sizeof (header), priv->read1, NULL);
   g_free (key);
 
@@ -541,10 +541,9 @@ hyscan_tile_color_get (HyScanTileColor   *color,
   g_mutex_unlock (&priv->lock);
 
   /* Ищем тайл в кэше. */
-  hyscan_buffer_wrap_data (priv->read1, HYSCAN_DATA_BLOB,
-                           &header, sizeof (header));
-  hyscan_buffer_wrap_data (priv->read2, HYSCAN_DATA_BLOB,
-                           surface->data, G_MAXUINT32);
+  hyscan_buffer_wrap (priv->read1, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  hyscan_buffer_wrap (priv->read2, HYSCAN_DATA_BLOB, surface->data,
+                      surface->height * surface->stride);
 
   status = hyscan_cache_get2 (priv->cache, key, NULL, sizeof (header),
                               priv->read1, priv->read2);
@@ -659,8 +658,8 @@ hyscan_tile_color_add (HyScanTileColor   *color,
 
       g_mutex_lock (&priv->lock);
 
-      hyscan_buffer_wrap_data (priv->write1, HYSCAN_DATA_BLOB, &header, size1);
-      hyscan_buffer_wrap_data (priv->write2, HYSCAN_DATA_BLOB, data, size2);
+      hyscan_buffer_wrap (priv->write1, HYSCAN_DATA_BLOB, &header, size1);
+      hyscan_buffer_wrap (priv->write2, HYSCAN_DATA_BLOB, data, size2);
       hyscan_cache_set2 (priv->cache, key, NULL, priv->write1, priv->write2);
 
       g_mutex_unlock (&priv->lock);

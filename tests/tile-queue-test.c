@@ -33,12 +33,13 @@ int
 main (int argc, char **argv)
 {
   HyScanDB *db;                 /* БД. */
-  gchar *db_uri = "file://./";  /* Путь к БД. */
+  gchar *db_uri;                /* Путь к БД. */
   gchar *name = "test";         /* Проект и галс. */
 
   HyScanDataWriter *writer;     /* Класс записи данных. */
   HyScanCache *cache;           /* Система кэширования. */
   HyScanAmplitudeFactory *af;   /* Фабрика акустических данных. */
+  HyScanDepthFactory *df;       /* Фабрика глубин. */
 
   HyScanTileQueue *tq = NULL;   /* Очередь тайлов. */
   HyScanTile tile, cached_tile; /* Тайлы. */
@@ -84,6 +85,9 @@ main (int argc, char **argv)
 
     if (argc == 2)
       db_uri = g_strdup (args[1]);
+    else
+      db_uri = g_strdup ("file://./");
+
     g_strfreev (args);
   }
 
@@ -93,6 +97,7 @@ main (int argc, char **argv)
   writer = hyscan_data_writer_new ();
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
   af = hyscan_amplitude_factory_new (cache);
+  df = hyscan_depth_factory_new (cache);
 
   hyscan_data_writer_set_db (writer, db);
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
@@ -106,7 +111,7 @@ main (int argc, char **argv)
       HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
 
       vals = make_acoustic_string (SIZE, &real_size);
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
 
       hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time, &info, buffer);
       hyscan_data_writer_acoustic_add_data (writer, SSP, 1, FALSE, time, &info, buffer);
@@ -115,9 +120,11 @@ main (int argc, char **argv)
     }
 
   /* Теперь займемся генерацией тайлов. */
-  tq = hyscan_tile_queue_new (1, cache, af, NULL);
+  tq = hyscan_tile_queue_new (1, cache, af, df);
   hyscan_amplitude_factory_set_track (af, db, name, name);
+  hyscan_depth_factory_set_track (df, db, name, name);
   hyscan_tile_queue_amp_changed (tq);
+  hyscan_tile_queue_dpt_changed (tq);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);
   g_signal_connect (tq, "tile-queue-ready", G_CALLBACK (tile_ready_callback), &reduced_callback_number);
 
@@ -145,7 +152,7 @@ main (int argc, char **argv)
       if (!found)
         FAIL ("Failed to get tile.");
 
-      g_free (image);
+      // g_free (image);
     }
 
   status = TRUE;
@@ -160,6 +167,8 @@ finish:
   g_clear_object (&af);
   g_clear_object (&db);
   g_clear_object (&tq);
+
+  g_clear_pointer (&db_uri, g_free);
 
   g_printf ("test %s\n", status ? "passed" : "falled");
 

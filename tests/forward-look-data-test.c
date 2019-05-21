@@ -109,6 +109,8 @@ int main( int argc, char **argv )
   offset.theta = 0.0;
 
   info.data_rate = 150000.0;
+  info.signal_frequency = 100000.0;
+  info.signal_bandwidth = 10000.0;
   info.antenna_voffset = 0.0;
   info.antenna_hoffset = 0.0;
   info.antenna_vaperture = 10.0;
@@ -173,7 +175,7 @@ int main( int argc, char **argv )
 
       for (i = 0; i < n_lines; i++)
         {
-          const HyScanForwardLookDOA *doa;
+          const HyScanDOA *doa;
           guint32 doa_size;
           gint64 doa_time;
 

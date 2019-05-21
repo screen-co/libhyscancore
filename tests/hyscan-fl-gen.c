@@ -82,9 +82,6 @@ hyscan_fl_gen_init (HyScanFLGen *fl_gen)
 
   fl_gen->priv->values1 = hyscan_buffer_new ();
   fl_gen->priv->values2 = hyscan_buffer_new ();
-
-  hyscan_buffer_set_data_type (fl_gen->priv->values1, HYSCAN_DATA_COMPLEX_FLOAT);
-  hyscan_buffer_set_data_type (fl_gen->priv->values2, HYSCAN_DATA_COMPLEX_FLOAT);
 }
 
 static void
@@ -182,8 +179,8 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
   if (priv->writer == NULL)
     return FALSE;
 
-  hyscan_buffer_set_size (priv->values1, n_points * sizeof (HyScanComplexFloat));
-  hyscan_buffer_set_size (priv->values2, n_points * sizeof (HyScanComplexFloat));
+  hyscan_buffer_set_complex_float (priv->values1, NULL, n_points);
+  hyscan_buffer_set_complex_float (priv->values2, NULL, n_points);
 
   raw_values1 = hyscan_buffer_get_complex_float (priv->values1, &n_points);
   raw_values2 = hyscan_buffer_get_complex_float (priv->values2, &n_points);
@@ -193,13 +190,11 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
    * отклонением зависящим от текущего времени. */
   for (i = 0; i < n_points; i++)
     {
-      gdouble mini_pi;
       gdouble phase;
 
-      mini_pi = 0.999 * G_PI;
-      phase  = mini_pi;
-      phase -= mini_pi * ((gdouble)i / (gdouble)(n_points - 1));
-      phase -= mini_pi * ((gdouble)(time % 1000000) / 999999.0);
+      phase  = G_PI;
+      phase -= G_PI * ((gdouble)i / (gdouble)(n_points - 1));
+      phase -= G_PI * ((gdouble)(time % 1000000) / 999999.0);
 
       raw_values1[i].re = 1.0;
       raw_values1[i].im = 0.0;
@@ -222,10 +217,10 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
 
 /* Функция проверяет валидность данных. */
 gboolean
-hyscan_fl_gen_check (const HyScanForwardLookDOA *doa,
-                     guint32                     n_points,
-                     gint64                      time,
-                     gdouble                     alpha)
+hyscan_fl_gen_check (const HyScanDOA *doa,
+                     guint32          n_points,
+                     gint64           time,
+                     gdouble          alpha)
 {
   gdouble max_distance = doa[n_points - 1].distance;
   guint i;

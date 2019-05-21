@@ -238,7 +238,7 @@ void
 data_check (HyScanForwardLookPlayer     *player,
             HyScanForwardLookPlayerInfo *info,
             HyScanAntennaOffset         *offset,
-            HyScanForwardLookDOA        *doa,
+            HyScanDOA                   *doa,
             guint32                      n_doa,
             gpointer                     user_data)
 {
@@ -301,6 +301,8 @@ int main( int argc, char **argv )
 
   /* Параметры данных. */
   info.data_rate = 150000.0;
+  info.signal_frequency = 100000.0;
+  info.signal_bandwidth = 10000.0;
   info.antenna_voffset = 0.0;
   info.antenna_hoffset = 0.0;
   info.antenna_vaperture = 10.0;

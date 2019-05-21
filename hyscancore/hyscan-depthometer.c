@@ -328,7 +328,7 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
   if (priv->cache != NULL)
     {
       hyscan_depthometer_update_cache_key (meter, time);
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
       if (hyscan_cache_get (priv->cache, priv->key, NULL, priv->cache_buffer))
         if (retval_size == sizeof (retval))
           return retval;
@@ -375,7 +375,7 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
   /* Кладем получившееся значение в кэш. */
   if (priv->cache != NULL)
     {
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
       hyscan_cache_set (priv->cache, priv->key, NULL, priv->cache_buffer);
     }
 
@@ -415,7 +415,7 @@ hyscan_depthometer_check (HyScanDepthometer *meter,
 
   hyscan_depthometer_update_cache_key (meter, time);
 
-  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
+  hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &retval, sizeof (retval));
   if (hyscan_cache_get (priv->cache, priv->key, NULL, priv->cache_buffer))
     if (retval_size == sizeof (retval))
       return retval;

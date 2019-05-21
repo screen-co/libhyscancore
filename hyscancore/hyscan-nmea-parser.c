@@ -237,6 +237,7 @@ hyscan_nmea_parser_object_finalize (GObject *object)
 
   g_clear_object (&priv->dc);
 
+  g_clear_object (&priv->cache);
   g_clear_object (&priv->db);
   g_free (priv->token);
 

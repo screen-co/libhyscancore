@@ -753,8 +753,8 @@ hyscan_tile_queue_task_processor (gpointer data,
       header.magic = TILE_QUEUE_MAGIC;
       header.size = sizeof (header) + image_size;
       header.tile = tile;
-      hyscan_buffer_wrap_data (meta, HYSCAN_DATA_BLOB, &header, sizeof (header));
-      hyscan_buffer_wrap_data (data, HYSCAN_DATA_BLOB, image, image_size);
+      hyscan_buffer_wrap (meta, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_buffer_wrap (data, HYSCAN_DATA_BLOB, image, image_size);
 
       key = hyscan_tile_queue_cache_key (&tile, state->hash);
       hyscan_cache_set2 (cache, key, NULL, meta, data);
@@ -1005,8 +1005,8 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.hash);
 
   /* Ищем тайл в кэше и проверяем магическую константу. */
-  hyscan_buffer_wrap_data (priv->header, HYSCAN_DATA_BLOB, &header, size);
-  found = hyscan_cache_get (priv->cache, key, NULL, priv->header);
+  hyscan_buffer_wrap (priv->header, HYSCAN_DATA_BLOB, &header, size);
+  found = hyscan_cache_get2 (priv->cache, key, NULL, size, priv->header, NULL);
   found &= header.magic == TILE_QUEUE_MAGIC;
 
   *cached_tile = header.tile;
@@ -1032,8 +1032,7 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
 {
   gchar *key;
   gboolean status = FALSE;
-  guint32 size1 = sizeof (HyScanTileQueueCache);
-  guint32 size2;
+  guint32 header_size = sizeof (HyScanTileQueueCache);
   HyScanTileQueuePrivate *priv;
   HyScanTileQueueCache header;
 
@@ -1049,22 +1048,18 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
   key = hyscan_tile_queue_cache_key (requested_tile, priv->des_state.hash);
 
   /* Ищем тайл в кэше. */
-  hyscan_buffer_wrap_data (priv->header, HYSCAN_DATA_BLOB, &header, size1);
-  status = hyscan_cache_get (priv->cache, key, NULL, priv->header);
+  hyscan_buffer_wrap (priv->header, HYSCAN_DATA_BLOB, &header, header_size);
+  status = hyscan_cache_get2 (priv->cache, key, NULL,
+                              header_size, priv->header, priv->data);
   if (status && header.magic == TILE_QUEUE_MAGIC)
     {
-      gfloat *tmp;
-      size2 = header.size - size1;
+      // gfloat *tmp;
+      guint32 data_size = header.size - header_size;
 
-      tmp = g_malloc0 (size2 * sizeof (gfloat));
-      hyscan_buffer_wrap_data (priv->data, HYSCAN_DATA_BLOB, tmp, size2);
-      hyscan_buffer_set_size (priv->header, size1);
+      // tmp = g_malloc0 (data_size * sizeof (gfloat));
+      // hyscan_buffer_wrap_data (priv->data, HYSCAN_DATA_BLOB, tmp, data_size);
 
-      status = hyscan_cache_get2 (priv->cache, key, NULL,
-                                  size1, priv->header, priv->data);
-
-      *size = size2;
-      *buffer = tmp;
+      *buffer = hyscan_buffer_get (priv->data, NULL, size);
       *cached_tile = header.tile;
     }
   else

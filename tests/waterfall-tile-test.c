@@ -21,7 +21,7 @@ int
 main (int argc, char **argv)
 {
   HyScanDB *db;                          /* БД. */
-  gchar *db_uri = "file://./";           /* Путь к БД. */
+  gchar *db_uri;                         /* Путь к БД. */
   gchar *name = "test";                  /* Проект и галс. */
 
   HyScanDataWriter *writer;              /* Класс записи данных. */
@@ -74,6 +74,9 @@ main (int argc, char **argv)
 
     if (argc == 2)
       db_uri = g_strdup (args[1]);
+    else
+      db_uri = g_strdup ("file://./");
+
     g_strfreev (args);
   }
 
@@ -91,7 +94,7 @@ main (int argc, char **argv)
       HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
 
       vals = make_acoustic_string (SIZE, &real_size);
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
 
       hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time,
                                             &info, buffer);
@@ -140,6 +143,8 @@ finish:
   g_clear_object (&dc);
   g_clear_object (&db);
   g_clear_object (&wf);
+  g_clear_object (&buffer);
+  g_clear_pointer (&db_uri, g_free);
 
   g_printf ("test %s\n", status ? "passed" : "falled");
   return status ? 0 : 1;
