@@ -70,6 +70,7 @@ struct _HyScanNMEADataClass
  * @HYSCAN_NMEA_DATA_RMC: строка NMEA RMC
  * @HYSCAN_NMEA_DATA_GGA: строка NMEA GGA
  * @HYSCAN_NMEA_DATA_DPT: строка NMEA DPT
+ * @HYSCAN_NMEA_DATA_HDT: строка NMEA HDT
  *
  * Тип NMEA-0183 строки.
  */
@@ -79,7 +80,8 @@ typedef enum
   HYSCAN_NMEA_DATA_ANY       = 1,
   HYSCAN_NMEA_DATA_RMC       = 1 << 1,
   HYSCAN_NMEA_DATA_GGA       = 1 << 2,
-  HYSCAN_NMEA_DATA_DPT       = 1 << 3
+  HYSCAN_NMEA_DATA_DPT       = 1 << 3,
+  HYSCAN_NMEA_DATA_HDT       = 1 << 4,
 } HyScanNmeaDataType;
 
 HYSCAN_API
