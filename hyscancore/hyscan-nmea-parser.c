@@ -352,12 +352,13 @@ hyscan_nmea_parser_parse_time (const gchar *sentence,
 
   hour = (sentence[0]-'0') * 10 + (sentence[1]-'0');
   min =  (sentence[2]-'0') * 10 + (sentence[3]-'0');
-  sec =  (sentence[4]-'0') * 10 + (sentence[5]-'0');
+  sec = g_strtod (sentence + 4, NULL);
 
   dt = g_date_time_new_utc (1970, 1, 1, hour, min, sec);
   if (dt == NULL)
     return FALSE;
   val = g_date_time_to_unix (dt);
+  val += g_date_time_get_microsecond (dt) / 1e6;
   g_date_time_unref (dt);
 
   *_val = val;
