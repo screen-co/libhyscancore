@@ -1324,7 +1324,7 @@ hyscan_acoustic_data_set_convolve (HyScanAcousticData *data,
     scale *= 2.0;
 
   if (scale > 0.0)
-    priv->conv_scale = scale;
+    priv->conv_scale = CONV_SCALE * scale;
 }
 
 /**
