@@ -90,7 +90,7 @@ main (int argc, char **argv)
       gint64 time = time_for_index (i);
       gchar *data = generate_string (i * 50);
 
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_STRING, data, strlen (data));
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_STRING, data, strlen (data));
 
       hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA, CHANNEL,
                                           time, buffer);
@@ -122,6 +122,7 @@ main (int argc, char **argv)
   g_clear_object (&cache);
   g_clear_object (&writer);
   g_clear_object (&nmea);
+  g_clear_object (&buffer);
 
   g_free (db_uri);
 

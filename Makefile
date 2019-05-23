@@ -13,10 +13,11 @@ PREFIX ?= /usr
 
 all: release
 
+test: release-test
+
 release:
 	@-${MAKE_DIR} bin
 	@-${MAKE_DIR} build
-	@-${MAKE_DIR} doc/documentation
 	@cd build && cmake -G $(CMAKE_GENERATOR) \
                        -D CMAKE_BUILD_TYPE=Release \
                        -D CMAKE_INSTALL_PREFIX=$(PREFIX) \
@@ -24,16 +25,21 @@ release:
                        ..
 	@$(MAKE) -C build
 
+release-test: release
+	@$(MAKE) -C build test
+
 debug:
 	@-${MAKE_DIR} bin
 	@-${MAKE_DIR} build
-	@-${MAKE_DIR} doc/documentation
 	@cd build && cmake -G $(CMAKE_GENERATOR) \
                        -D CMAKE_BUILD_TYPE=Debug \
                        -D CMAKE_INSTALL_PREFIX=$(PREFIX) \
                        -D HYSCAN_USE_SYS_LIBS=$(USE_SYS_LIBS) \
                        ..
 	@$(MAKE) -C build
+
+debug-test: debug
+	@$(MAKE) -C build test
 
 install: install-runtime
 
@@ -59,9 +65,6 @@ install-test: install-runtime
                        -D CMAKE_INSTALL_DO_STRIP=YES \
                        -P cmake_install.cmake
 
-doc:
-	@cd doc && doxygen
-
 clean:
 	@echo "Cleaning build directory"
 	-@$(MAKE) -C build clean
@@ -70,6 +73,3 @@ distclean: clean
 	@echo "Removing build directory"
 	-@${REMOVE_DIR} bin
 	-@${REMOVE_DIR} build
-	-@${REMOVE_DIR} doc/documentation
-
-.PHONY: doc

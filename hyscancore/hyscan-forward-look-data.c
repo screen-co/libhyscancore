@@ -84,11 +84,13 @@
 #include "hyscan-acoustic-data.h"
 #include "hyscan-core-schemas.h"
 
+#include <hyscan-inter2-doa.h>
 #include <string.h>
 #include <math.h>
 
-#define DOUBLE_STR_LENGTH      64                      /* Максимальная длина строки с числом типа double. */
-#define CACHE_HEADER_MAGIC     0x8a09be31              /* Идентификатор заголовка кэша. */
+#define CACHE_HEADER_MAGIC     0x8a09be31      /* Идентификатор заголовка кэша. */
+#define DEFAULT_SOUND_VELOCITY 1500.0          /* Скорость звука по умолчанию. */
+#define SOUND_VELOCITY_SCALE   100.0           /* Коэфициент перевода скорости звука в integer. */
 
 enum
 {
@@ -102,37 +104,31 @@ enum
 /* Структруа заголовка кэша. */
 typedef struct
 {
-  guint32                      magic;                  /* Идентификатор заголовка. */
-  guint32                      n_points;               /* Число точек данных. */
-  gint64                       time;                   /* Метка времени. */
+  guint32                      magic;          /* Идентификатор заголовка. */
+  guint32                      n_points;       /* Число точек данных. */
+  gint64                       time;           /* Метка времени. */
 } HyScanForwardLookDataCacheHeader;
 
 struct _HyScanForwardLookDataPrivate
 {
-  HyScanDB                    *db;                     /* Интерфейс базы данных. */
-  gchar                       *db_uri;                 /* URI базы данных. */
+  HyScanDB            *db;                     /* Интерфейс базы данных. */
+  gchar               *project_name;           /* Название проекта. */
+  gchar               *track_name;             /* Название галса. */
 
-  gchar                       *project_name;           /* Название проекта. */
-  gchar                       *track_name;             /* Название галса. */
+  HyScanInter2DOA     *doa;                    /* Объект расчёта данных. */
+  HyScanBuffer        *doa_buffer;             /* Буфер данных. */
+  gdouble              signal_frequency;       /* Рабочая частота, Гц. */
+  gdouble              antenna_base;           /* Расстояние между антеннами, м. */
+  gdouble              data_rate;              /* Частота дискретизации. */
+  guint                sound_velocity;         /* Скорость звука, см/с. */
 
-  gdouble                      data_rate;              /* Частота дискретизации. */
-  gdouble                      sound_velocity;         /* Скорость звука, м/с. */
-  gdouble                      antenna_base;           /* Расстояние между антеннами, м. */
-  gdouble                      frequency;              /* Центральная рабочая частота, Гц. */
-  gdouble                      wave_length;            /* Длина волны, м. */
-  gdouble                      alpha;                  /* Максимальный/минимальный угол по азимуту, рад. */
+  HyScanAcousticData  *channel1;               /* Данные канала 1. */
+  HyScanAcousticData  *channel2;               /* Данные канала 2. */
 
-  HyScanAcousticData          *channel1;               /* Данные канала 1. */
-  HyScanAcousticData          *channel2;               /* Данные канала 2. */
-
-  HyScanBuffer                *doa_buffer;             /* Буфер обработанных данных. */
-  HyScanBuffer                *cache_buffer;           /* Буфер заголовка кэша данных. */
-
-  HyScanCache                 *cache;                  /* Интерфейс системы кэширования. */
-  gchar                       *cache_token;            /* Основа ключа кэширования. */
-  gchar                       *cache_key;              /* Ключ кэширования. */
-  gsize                        cache_key_length;       /* Максимальная длина ключа кэширования. */
-  gchar                       *detail_key;             /* Ключ детализации кэширования. */
+  HyScanCache         *cache;                  /* Интерфейс системы кэширования. */
+  HyScanBuffer        *cache_buffer;           /* Буфер заголовка кэша данных. */
+  gchar               *cache_token;            /* Основа ключа кэширования. */
+  GString             *cache_key;              /* Ключ кэширования. */
 };
 
 static void    hyscan_forward_look_data_set_property           (GObject                       *object,
@@ -240,12 +236,12 @@ hyscan_forward_look_data_object_constructed (GObject *object)
       return;
     }
 
-  priv->db_uri = hyscan_db_get_uri (priv->db);
-
   /* Каналы данных. */
-  priv->channel1 = hyscan_acoustic_data_new (priv->db, NULL, priv->project_name, priv->track_name,
+  priv->channel1 = hyscan_acoustic_data_new (priv->db, NULL,
+                                             priv->project_name, priv->track_name,
                                              HYSCAN_SOURCE_FORWARD_LOOK, 1, FALSE);
-  priv->channel2 = hyscan_acoustic_data_new (priv->db, NULL, priv->project_name, priv->track_name,
+  priv->channel2 = hyscan_acoustic_data_new (priv->db, NULL,
+                                             priv->project_name, priv->track_name,
                                              HYSCAN_SOURCE_FORWARD_LOOK, 2, FALSE);
   if ((priv->channel1 == NULL) || (priv->channel2 == NULL))
     {
@@ -254,17 +250,15 @@ hyscan_forward_look_data_object_constructed (GObject *object)
       return;
     }
 
-  /* Параметры каналов данных. */
-  channel_info1 = hyscan_acoustic_data_get_info (priv->channel1);
-  channel_info2 = hyscan_acoustic_data_get_info (priv->channel2);
-
   /* Проверяем параметры каналов данных.
    * Должны быть указаны рабочая частота и база антенны, а также должны
    * совпадать рабочие частоты каналов и частоты оцифровки данных.*/
-  if ((channel_info1.antenna_frequency < 1.0) ||
+  channel_info1 = hyscan_acoustic_data_get_info (priv->channel1);
+  channel_info2 = hyscan_acoustic_data_get_info (priv->channel2);
+  if ((channel_info1.signal_frequency < 1.0) ||
+      (fabs (channel_info1.signal_frequency - channel_info2.signal_frequency) > 0.1) ||
       (fabs (channel_info1.antenna_hoffset - channel_info2.antenna_hoffset) < 1e-4) ||
-      (fabs (channel_info1.data_rate - channel_info2.data_rate) > 0.1) ||
-      (fabs (channel_info1.antenna_frequency - channel_info2.antenna_frequency) > 0.1))
+      (fabs (channel_info1.data_rate - channel_info2.data_rate) > 0.1))
     {
       g_warning ("HyScanForwardLookData: error in channels parameters");
       g_clear_object (&priv->channel1);
@@ -273,21 +267,24 @@ hyscan_forward_look_data_object_constructed (GObject *object)
       return;
     }
 
-  /* Буферы для обработки. */
-  priv->cache_buffer = hyscan_buffer_new ();
+  priv->doa = hyscan_inter2_doa_new ();
   priv->doa_buffer = hyscan_buffer_new ();
 
   /* Параметры обработки. */
-  priv->data_rate = channel_info1.data_rate;
+  priv->signal_frequency = channel_info1.signal_frequency;
   priv->antenna_base = channel_info2.antenna_hoffset - channel_info1.antenna_hoffset;
-  priv->frequency = channel_info1.antenna_frequency;
-  hyscan_forward_look_data_set_sound_velocity (data, 1500.0);
+  priv->data_rate = channel_info1.data_rate;
+  priv->sound_velocity = SOUND_VELOCITY_SCALE * DEFAULT_SOUND_VELOCITY;
+  hyscan_inter2_doa_configure (priv->doa, priv->signal_frequency, priv->antenna_base,
+                               priv->data_rate, DEFAULT_SOUND_VELOCITY);
+
+  /* Ключ кэширования. */
+  priv->cache_key = g_string_new (NULL);
+  priv->cache_buffer = hyscan_buffer_new ();
 
   db_uri = hyscan_db_get_uri (priv->db);
   priv->cache_token = g_strdup_printf ("FORWARDLOOK.%s.%s.%s",
-                                       db_uri,
-                                       priv->project_name,
-                                       priv->track_name);
+                                       db_uri, priv->project_name, priv->track_name);
   g_free (db_uri);
 }
 
@@ -297,45 +294,33 @@ hyscan_forward_look_data_object_finalize (GObject *object)
   HyScanForwardLookData *data = HYSCAN_FORWARD_LOOK_DATA (object);
   HyScanForwardLookDataPrivate *priv = data->priv;
 
-  g_clear_object (&priv->cache_buffer);
-  g_clear_object (&priv->doa_buffer);
-
-  g_clear_object (&priv->cache);
+  g_clear_object (&priv->db);
   g_clear_object (&priv->channel1);
   g_clear_object (&priv->channel2);
-  g_clear_object (&priv->db);
+
+  g_clear_object (&priv->doa);
+  g_clear_object (&priv->doa_buffer);
+
+  if (priv->cache_key != NULL)
+    g_string_free (priv->cache_key, TRUE);
+  g_clear_object (&priv->cache_buffer);
+  g_clear_object (&priv->cache);
+  g_free (priv->cache_token);
 
   g_free (priv->project_name);
   g_free (priv->track_name);
-  g_free (priv->db_uri);
-
-  g_free (priv->cache_token);
-  g_free (priv->detail_key);
-  g_free (priv->cache_key);
 
   G_OBJECT_CLASS (hyscan_forward_look_data_parent_class)->finalize (object);
 }
 
-/* Функция создаёт ключ кэширования данных. */
+/* Функция обновляет ключ кэширования данных. */
 static void
 hyscan_forward_look_data_update_cache_key (HyScanForwardLookDataPrivate *priv,
                                            guint32                       index)
 {
-  gchar svv[64];
-
-  if (priv->cache_key == NULL)
-    {
-      priv->cache_key = g_strdup_printf ("%s.%u", priv->cache_token, G_MAXUINT32);
-      priv->cache_key_length = strlen (priv->cache_key);
-      priv->detail_key = g_malloc (DOUBLE_STR_LENGTH);
-    }
-
-  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%u", priv->cache_token, index);
-
-  g_ascii_dtostr (svv, sizeof (svv), priv->sound_velocity);
-  g_snprintf (priv->detail_key, DOUBLE_STR_LENGTH, "%s", svv);
+  g_string_printf (priv->cache_key, "%s.%u.%u",
+                   priv->cache_token, priv->sound_velocity, index);
 }
-
 
 /**
  * hyscan_forward_look_data_new:
@@ -501,7 +486,7 @@ hyscan_forward_look_data_get_alpha (HyScanForwardLookData *data)
 {
   g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), 0.0);
 
-  return data->priv->alpha;
+  return hyscan_inter2_doa_get_alpha (data->priv->doa);
 }
 
 /**
@@ -612,10 +597,11 @@ hyscan_forward_look_data_set_sound_velocity (HyScanForwardLookData *data,
   if (sound_velocity <= 0.0)
     return;
 
-  priv->sound_velocity = sound_velocity;
-  priv->wave_length = sound_velocity / priv->frequency;
-  priv->alpha = asin (sound_velocity / (2.0 * priv->antenna_base * priv->frequency));
-  priv->alpha = ABS (priv->alpha);
+  priv->sound_velocity = SOUND_VELOCITY_SCALE * sound_velocity;
+  sound_velocity = priv->sound_velocity / SOUND_VELOCITY_SCALE;
+
+  hyscan_inter2_doa_configure (priv->doa, priv->signal_frequency, priv->antenna_base,
+                               priv->data_rate, sound_velocity);
 }
 
 /**
@@ -664,7 +650,7 @@ hyscan_forward_look_data_get_size_time (HyScanForwardLookData *data,
  * Returns: (nullable) (array length=n_points) (transfer none):
  *          Данные вперёдсмотрящего локатора или NULL.
  */
-const HyScanForwardLookDOA *
+const HyScanDOA *
 hyscan_forward_look_data_get_doa (HyScanForwardLookData *data,
                                   guint32                index,
                                   guint32               *n_points,
@@ -675,13 +661,11 @@ hyscan_forward_look_data_get_doa (HyScanForwardLookData *data,
   HyScanDBFindStatus find_status;
   const HyScanComplexFloat *data1;
   const HyScanComplexFloat *data2;
-  HyScanForwardLookDOA *doa;
+  HyScanDOA *doa;
 
   guint32 n_points1, n_points2;
   guint32 index1, index2;
   gint64 time1, time2;
-
-  guint32 i;
 
   g_return_val_if_fail (HYSCAN_IS_FORWARD_LOOK_DATA (data), NULL);
 
@@ -699,14 +683,14 @@ hyscan_forward_look_data_get_doa (HyScanForwardLookData *data,
       hyscan_forward_look_data_update_cache_key (priv, index);
 
       /* Ищем данные в кэше. */
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
-      if (hyscan_cache_get2 (priv->cache, priv->cache_key, priv->detail_key,
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      if (hyscan_cache_get2 (priv->cache, priv->cache_key->str, NULL,
                              sizeof (header), priv->cache_buffer, priv->doa_buffer))
         {
           guint32 cached_n_points;
 
-          cached_n_points  = hyscan_buffer_get_size (priv->doa_buffer);
-          cached_n_points /= sizeof (HyScanForwardLookDOA);
+          cached_n_points  = hyscan_buffer_get_data_size (priv->doa_buffer);
+          cached_n_points /= sizeof (HyScanDOA);
 
           /* Верификация данных. */
           if ((header.magic == CACHE_HEADER_MAGIC) &&
@@ -715,7 +699,7 @@ hyscan_forward_look_data_get_doa (HyScanForwardLookData *data,
               (time != NULL) ? *time = header.time : 0;
               *n_points = cached_n_points;
 
-              return hyscan_buffer_get_data (priv->doa_buffer, &cached_n_points);
+              return hyscan_buffer_get (priv->doa_buffer, NULL, &cached_n_points);
             }
         }
     }
@@ -744,26 +728,11 @@ hyscan_forward_look_data_get_doa (HyScanForwardLookData *data,
 
   /* Корректируем размер буфера данных. */
   *n_points = n_points1 = n_points2 = MIN (n_points1, n_points2);
-  hyscan_buffer_set_size (priv->doa_buffer, n_points1 * sizeof (HyScanForwardLookDOA));
+  hyscan_buffer_set_doa (priv->doa_buffer, NULL, n_points1);
+  doa = hyscan_buffer_get_doa (priv->doa_buffer, &n_points1);
 
   /* Расчитываем углы прихода и интенсивности. */
-  doa = hyscan_buffer_get_data (priv->doa_buffer, &n_points1);
-  n_points1 /= sizeof (HyScanForwardLookDOA);
-  for (i = 0; i < n_points1; i++)
-    {
-      gfloat re1 = data1[i].re;
-      gfloat im1 = data1[i].im;
-      gfloat re2 = data2[i].re;
-      gfloat im2 = data2[i].im;
-
-      gfloat re = re1 * re2 - im1 * -im2;
-      gfloat im = re1 * -im2 + im1 * re2;
-      gfloat phase = atan2f (im, re);
-
-      doa[i].angle = asinf (phase * priv->wave_length / (2.0 * G_PI * priv->antenna_base));
-      doa[i].distance = i * priv->sound_velocity / (2 * priv->data_rate);
-      doa[i].amplitude = sqrtf (re1 * re1 + im1 * im1) * sqrtf (re2 * re2 + im2 * im2);
-    }
+  hyscan_inter2_doa_get (priv->doa, doa, data1, data2, n_points1);
 
   /* Сохраняем данные в кэше. */
   if (priv->cache != NULL)
@@ -773,9 +742,9 @@ hyscan_forward_look_data_get_doa (HyScanForwardLookData *data,
       header.magic = CACHE_HEADER_MAGIC;
       header.n_points = n_points1;
       header.time = time1;
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
 
-      hyscan_cache_set2 (priv->cache, priv->cache_key, priv->detail_key, priv->cache_buffer, priv->doa_buffer);
+      hyscan_cache_set2 (priv->cache, priv->cache_key->str, NULL, priv->cache_buffer, priv->doa_buffer);
     }
 
   (time != NULL) ? *time = time1 : 0;

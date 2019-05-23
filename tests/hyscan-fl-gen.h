@@ -81,7 +81,7 @@ gboolean               hyscan_fl_gen_generate          (HyScanFLGen             
                                                         guint32                        n_points,
                                                         gint64                         time);
 
-gboolean               hyscan_fl_gen_check             (const HyScanForwardLookDOA    *doa,
+gboolean               hyscan_fl_gen_check             (const HyScanDOA               *doa,
                                                         guint32                        n_points,
                                                         gint64                         time,
                                                         gdouble                        alpha);

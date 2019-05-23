@@ -100,7 +100,7 @@ main (int argc, char **argv)
   for (i = 0, time = DB_TIME_START; i < SAMPLES; i++, time += DB_TIME_INC)
     {
       update_nmea_data (&nmea_data, i);
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, nmea_data, strlen (nmea_data));
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, nmea_data, strlen (nmea_data));
       hyscan_data_writer_sensor_add_data (writer, "sensor", HYSCAN_SOURCE_NMEA, NMEA_DPT_CHANNEL, time, buffer);
     }
 

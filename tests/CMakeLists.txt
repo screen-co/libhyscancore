@@ -39,6 +39,23 @@ target_link_libraries (mark-model-test ${TEST_LIBRARIES})
 target_link_libraries (mloc-test ${TEST_LIBRARIES})
 target_link_libraries (view-log ${TEST_LIBRARIES})
 
+file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
+file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
+add_test (NAME DataWriterTest COMMAND data-writer-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME AcousticDataTest COMMAND acoustic-data-test -c 1024 file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME NMEADataTest COMMAND nmea-data-test -s 10000 file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME ForwardLookDataTest COMMAND forward-look-data-test -l 500 -n 100000 -c 1024 file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME ForwardLookPlayerTest COMMAND forward-look-player-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME GeoTest COMMAND geo-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME ControlTest COMMAND control-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
 install (TARGETS data-writer-test
                  acoustic-data-test
                  nmea-data-test

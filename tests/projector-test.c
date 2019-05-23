@@ -90,7 +90,7 @@ main (int argc, char **argv)
 
       data_size = 100 * sizeof (HyScanComplexFloat);
 
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_FLOAT, vals, data_size);
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_FLOAT, vals, data_size);
 
 
       hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,

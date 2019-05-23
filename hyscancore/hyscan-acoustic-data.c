@@ -86,6 +86,7 @@
 
 #define CACHE_DATA_MAGIC       0xf97603e8              /* Идентификатор заголовка кэша данных. */
 #define CACHE_META_MAGIC       0x1e4a8071              /* Идентификатор заголовка кэша метаинформации. */
+#define CONV_SCALE             100.0                   /* Коэффициент перевода масштаба свёртки в integer. */
 
 enum
 {
@@ -143,22 +144,21 @@ struct _HyScanAcousticDataPrivate
   gint32                       signal_id;              /* Идентификатор открытого канала с образами сигналов. */
   gint32                       tvg_id;                 /* Идентификатор открытого канала с коэффициентами усиления. */
 
-  HyScanBuffer                *cache_buffer;           /* Буфер кэша данных. */
   HyScanBuffer                *channel_buffer;         /* Буфер канальных данных. */
   HyScanBuffer                *real_buffer;            /* Буфер действительных данных. */
   HyScanBuffer                *complex_buffer;         /* Буфер комплексных данных. */
   gint64                       data_time;              /* Метка времени обрабатываемых данных. */
 
   HyScanCache                 *cache;                  /* Кэш данных. */
+  HyScanBuffer                *cache_buffer;           /* Буфер кэша данных. */
   gchar                       *cache_token;            /* Основа ключа кэширования. */
-  gchar                       *cache_key;              /* Ключ кэширования. */
-  gsize                        cache_key_length;       /* Длина ключа кэширования. */
+  GString                     *cache_key;              /* Ключ кэширования. */
 
   GArray                      *signals;                /* Массив сигналов. */
   guint32                      last_signal_index;      /* Индекс последнего загруженного сигнала. */
   guint64                      signals_mod_count;      /* Номер изменений сигналов. */
   gboolean                     convolve;               /* Выполнять или нет свёртку. */
-  gdouble                      conv_scale;             /* Коэффициент дополнительного масштабирования свёртки. */
+  guint                        conv_scale;             /* Коэффициент дополнительного масштабирования свёртки. */
 };
 
 static void            hyscan_acoustic_data_interface_init     (HyScanAmplitudeInterface      *iface);
@@ -308,11 +308,6 @@ hyscan_acoustic_data_object_constructed (GObject *object)
 
   gboolean status = FALSE;
 
-  priv->cache_buffer = hyscan_buffer_new ();
-  priv->channel_buffer = hyscan_buffer_new ();
-  priv->real_buffer = hyscan_buffer_new ();
-  priv->complex_buffer = hyscan_buffer_new ();
-
   /* Проверка входных параметров. */
   if (priv->db == NULL)
     {
@@ -337,6 +332,13 @@ hyscan_acoustic_data_object_constructed (GObject *object)
       g_warning ("HyScanAcousticData: unsupported source type");
       goto exit;
     }
+
+  priv->channel_buffer = hyscan_buffer_new ();
+  priv->real_buffer = hyscan_buffer_new ();
+  priv->complex_buffer = hyscan_buffer_new ();
+
+  hyscan_buffer_set_float (priv->real_buffer, NULL, 0);
+  hyscan_buffer_set_complex_float (priv->complex_buffer, NULL, 0);
 
   /* Открываем канал с данными. */
   data_channel_name = hyscan_channel_get_name_by_types (priv->source,
@@ -471,25 +473,26 @@ hyscan_acoustic_data_object_constructed (GObject *object)
       param_id = -1;
     }
 
+  priv->discretization = hyscan_discretization_get_type_by_data (priv->info.data_type);
+
+  priv->convolve = TRUE;
+  if (priv->discretization == HYSCAN_DISCRETIZATION_REAL)
+    priv->conv_scale = 2.0 * CONV_SCALE;
+  else
+    priv->conv_scale = 1.0 * CONV_SCALE;
+
+  /* Ключ кэширования. */
+  priv->cache_key = g_string_new (NULL);
+  priv->cache_buffer = hyscan_buffer_new ();
+
   db_uri = hyscan_db_get_uri (priv->db);
-  priv->cache_token = g_strdup_printf ("ACOUSTIC.%s.%s.%s.%d.%d",
+  priv->cache_token = g_strdup_printf ("ACOUSTIC.%s.%s.%s.%u.%u",
                                        db_uri,
                                        priv->project_name,
                                        priv->track_name,
                                        priv->source,
                                        priv->channel);
   g_free (db_uri);
-
-  priv->discretization = hyscan_discretization_get_type_by_data (priv->info.data_type);
-
-  priv->convolve = TRUE;
-  if (priv->discretization == HYSCAN_DISCRETIZATION_REAL)
-    priv->conv_scale = 2.0;
-  else
-    priv->conv_scale = 1.0;
-
-  hyscan_buffer_set_data_type (priv->real_buffer, HYSCAN_DATA_FLOAT);
-  hyscan_buffer_set_data_type (priv->complex_buffer, HYSCAN_DATA_COMPLEX_FLOAT);
 
   status = TRUE;
 
@@ -548,18 +551,19 @@ hyscan_acoustic_data_object_finalize (GObject *object)
       g_array_unref (priv->signals);
     }
 
+  g_clear_object (&priv->channel_buffer);
+  g_clear_object (&priv->real_buffer);
+  g_clear_object (&priv->complex_buffer);
+  g_clear_object (&priv->db);
+
+  if (priv->cache_key != NULL)
+    g_string_free (priv->cache_key, TRUE);
+  g_free (priv->cache_token);
+  g_clear_object (&priv->cache_buffer);
+  g_clear_object (&priv->cache);
+
   g_free (priv->project_name);
   g_free (priv->track_name);
-  g_free (priv->cache_token);
-  g_free (priv->cache_key);
-
-  g_object_unref (priv->cache_buffer);
-  g_object_unref (priv->channel_buffer);
-  g_object_unref (priv->real_buffer);
-  g_object_unref (priv->complex_buffer);
-
-  g_clear_object (&priv->db);
-  g_clear_object (&priv->cache);
 
   G_OBJECT_CLASS (hyscan_acoustic_data_parent_class)->finalize (object);
 }
@@ -571,13 +575,6 @@ hyscan_acoustic_data_update_cache_key (HyScanAcousticDataPrivate *priv,
                                        guint32                    index)
 {
   const gchar *dts = "XXX";
-  gchar csv[64];
-
-  if (priv->cache_key == NULL)
-    {
-      priv->cache_key = g_strdup_printf ("%s.XXX.%64s.%u", priv->cache_token, "x", G_MAXUINT32);
-      priv->cache_key_length = strlen (priv->cache_key);
-    }
 
   switch (type)
     {
@@ -602,10 +599,10 @@ hyscan_acoustic_data_update_cache_key (HyScanAcousticDataPrivate *priv,
       break;
     }
 
-  g_ascii_dtostr (csv, sizeof (csv), priv->conv_scale);
-
-  g_snprintf (priv->cache_key, priv->cache_key_length, "%s.%s.%s.%u",
-              priv->cache_token, dts, csv, index);
+  g_string_printf (priv->cache_key, "%s.%s.%u.%u",
+                   priv->cache_token, dts,
+                   priv->convolve ? priv->conv_scale : 0,
+                   index);
 }
 
 /* Функция загружает образы сигналов для свёртки. */
@@ -667,10 +664,10 @@ hyscan_acoustic_data_load_signals (HyScanAcousticDataPrivate *priv)
         return;
 
       hyscan_buffer_set_data_type (priv->channel_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE);
-      if (!hyscan_buffer_import_data (priv->complex_buffer, priv->channel_buffer))
+      if (!hyscan_buffer_import (priv->complex_buffer, priv->channel_buffer))
         return;
 
-      image = hyscan_buffer_get_data (priv->channel_buffer, &size);
+      image = hyscan_buffer_get (priv->complex_buffer, NULL, &size);
 
       /* Ищем индекс данных с которого начинает действовать сигнал. */
       find_status = hyscan_db_channel_find_data (priv->db, priv->channel_id, time,
@@ -746,7 +743,7 @@ hyscan_acoustic_data_read_channel_data (HyScanAcousticDataPrivate *priv,
   if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, priv->channel_buffer, &priv->data_time))
     return FALSE;
 
-  data = hyscan_buffer_get_data (priv->channel_buffer, &size);
+  data = hyscan_buffer_get (priv->channel_buffer, NULL, &size);
   if ((data == NULL) || (size == 0))
     return FALSE;
 
@@ -758,17 +755,17 @@ hyscan_acoustic_data_read_channel_data (HyScanAcousticDataPrivate *priv,
   hyscan_buffer_set_data_type (priv->channel_buffer, priv->info.data_type);
   if (priv->discretization == HYSCAN_DISCRETIZATION_REAL)
     {
-      if (!hyscan_buffer_import_data (priv->real_buffer, priv->channel_buffer))
+      if (!hyscan_buffer_import (priv->real_buffer, priv->channel_buffer))
         return FALSE;
     }
   else if (priv->discretization == HYSCAN_DISCRETIZATION_COMPLEX)
     {
-      if (!hyscan_buffer_import_data (priv->complex_buffer, priv->channel_buffer))
+      if (!hyscan_buffer_import (priv->complex_buffer, priv->channel_buffer))
         return FALSE;
     }
   else if (priv->discretization == HYSCAN_DISCRETIZATION_AMPLITUDE)
     {
-      if (!hyscan_buffer_import_data (priv->real_buffer, priv->channel_buffer))
+      if (!hyscan_buffer_import (priv->real_buffer, priv->channel_buffer))
         return FALSE;
     }
   else
@@ -798,7 +795,7 @@ hyscan_acoustic_data_real2complex (HyScanAcousticDataPrivate *priv)
   if ((real_data == NULL) || (n_points == 0))
     return FALSE;
 
-  hyscan_buffer_set_size (priv->complex_buffer, n_points * sizeof (HyScanComplexFloat));
+  hyscan_buffer_set_complex_float (priv->complex_buffer, NULL, n_points);
   complex_data = hyscan_buffer_get_complex_float (priv->complex_buffer, &n_points);
   if ((complex_data == NULL) || (n_points == 0))
     return FALSE;
@@ -838,7 +835,10 @@ hyscan_acoustic_data_convolution (HyScanAcousticDataPrivate *priv,
 
   data = hyscan_buffer_get_complex_float (priv->complex_buffer, &n_points);
   if (data != NULL)
-    return hyscan_convolution_convolve (signal->convolution, data, n_points, priv->conv_scale);
+    {
+      return hyscan_convolution_convolve (signal->convolution, data, n_points,
+                                          priv->conv_scale / CONV_SCALE);
+    }
 
   return FALSE;
 }
@@ -859,7 +859,7 @@ hyscan_acoustic_data_calc_amplitude (HyScanAcousticDataPrivate *priv)
   if ((complex == NULL) || (n_points == 0))
     return FALSE;
 
-  hyscan_buffer_set_size (priv->real_buffer, n_points * sizeof (gfloat));
+  hyscan_buffer_set_float (priv->real_buffer, NULL, n_points);
   amplitude = hyscan_buffer_get_float (priv->real_buffer, &n_points);
   for (i = 0; i < n_points; i++)
     {
@@ -890,7 +890,7 @@ hyscan_acoustic_data_check_data_cache (HyScanAcousticDataPrivate *priv,
   hyscan_acoustic_data_update_cache_key (priv, type, index);
 
   /* Буфер для чтения данных. */
-  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
   if (type == DATA_TYPE_COMPLEX)
     data_buffer = priv->complex_buffer;
   else if ((type == DATA_TYPE_AMPLITUDE) || (type == DATA_TYPE_TVG))
@@ -899,14 +899,13 @@ hyscan_acoustic_data_check_data_cache (HyScanAcousticDataPrivate *priv,
     return FALSE;
 
   /* Ищем данные в кэше. */
-  status = hyscan_cache_get2 (priv->cache, priv->cache_key,
-                              NULL, sizeof (header),
-                              priv->cache_buffer, data_buffer);
+  status = hyscan_cache_get2 (priv->cache, priv->cache_key->str, NULL,
+                              sizeof (header), priv->cache_buffer, data_buffer);
   if (!status)
     return FALSE;
 
   /* Верификация данных. */
-  data_n_points  = hyscan_buffer_get_size (data_buffer);
+  data_n_points  = hyscan_buffer_get_data_size (data_buffer);
   data_n_points /= hyscan_data_get_point_size (hyscan_buffer_get_data_type (data_buffer));
   if ((header.magic != CACHE_DATA_MAGIC) || (header.n_points != data_n_points))
     return FALSE;
@@ -933,10 +932,10 @@ hyscan_acoustic_data_check_meta_cache (HyScanAcousticDataPrivate *priv,
   hyscan_acoustic_data_update_cache_key (priv, DATA_TYPE_META, index);
 
   /* Буфер для чтения данных. */
-  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
 
   /* Ищем данные в кэше. */
-  if (!hyscan_cache_get (priv->cache, priv->cache_key, NULL, priv->cache_buffer))
+  if (!hyscan_cache_get (priv->cache, priv->cache_key->str, NULL, priv->cache_buffer))
     return FALSE;
 
   /* Верификация данных. */
@@ -1325,7 +1324,7 @@ hyscan_acoustic_data_set_convolve (HyScanAcousticData *data,
     scale *= 2.0;
 
   if (scale > 0.0)
-    priv->conv_scale = scale;
+    priv->conv_scale = CONV_SCALE * scale;
 }
 
 /**
@@ -1376,10 +1375,10 @@ hyscan_acoustic_data_get_size_time (HyScanAcousticData *data,
       header.magic = CACHE_META_MAGIC;
       header.n_points = readed_size;
       header.time = readed_time;
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
 
       hyscan_acoustic_data_update_cache_key (priv, DATA_TYPE_META, index);
-      hyscan_cache_set (priv->cache, priv->cache_key, NULL, priv->cache_buffer);
+      hyscan_cache_set (priv->cache, priv->cache_key->str, NULL, priv->cache_buffer);
     }
 
   (n_points != NULL) ? *n_points = readed_size : 0;
@@ -1508,7 +1507,7 @@ hyscan_acoustic_data_get_tvg (HyScanAcousticData *data,
     return NULL;
 
   hyscan_buffer_set_data_type (priv->channel_buffer, HYSCAN_DATA_FLOAT32LE);
-  if (!hyscan_buffer_import_data (priv->real_buffer, priv->channel_buffer))
+  if (!hyscan_buffer_import (priv->real_buffer, priv->channel_buffer))
     return NULL;
 
   /* Сохраняем данные в кэше. */
@@ -1517,13 +1516,14 @@ hyscan_acoustic_data_get_tvg (HyScanAcousticData *data,
       HyScanAcousticDataCacheHeader header;
 
       header.magic = CACHE_DATA_MAGIC;
-      header.n_points = hyscan_buffer_get_size (priv->real_buffer);
+      header.n_points = hyscan_buffer_get_data_size (priv->real_buffer);
       header.n_points /= sizeof (gfloat);
       header.time = priv->data_time;
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
 
       hyscan_acoustic_data_update_cache_key (priv, DATA_TYPE_TVG, index);
-      hyscan_cache_set2 (priv->cache, priv->cache_key, NULL, priv->cache_buffer, priv->real_buffer);
+      hyscan_cache_set2 (priv->cache, priv->cache_key->str, NULL,
+                         priv->cache_buffer, priv->real_buffer);
     }
 
   (time != NULL) ? *time = priv->data_time : 0;
@@ -1585,13 +1585,14 @@ hyscan_acoustic_data_get_real (HyScanAcousticData *data,
       HyScanAcousticDataCacheHeader header;
 
       header.magic = CACHE_DATA_MAGIC;
-      header.n_points = hyscan_buffer_get_size (priv->real_buffer);
+      header.n_points = hyscan_buffer_get_data_size (priv->real_buffer);
       header.n_points /= sizeof (gfloat);
       header.time = priv->data_time;
 
       hyscan_acoustic_data_update_cache_key (priv, DATA_TYPE_REAL, index);
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
-      hyscan_cache_set2 (priv->cache, priv->cache_key, NULL, priv->cache_buffer, priv->real_buffer);
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_cache_set2 (priv->cache, priv->cache_key->str, NULL,
+                         priv->cache_buffer, priv->real_buffer);
     }
 
   (time != NULL) ? *time = priv->data_time : 0;
@@ -1663,12 +1664,13 @@ hyscan_acoustic_data_get_complex (HyScanAcousticData    *data,
       HyScanAcousticDataCacheHeader header;
 
       header.magic = CACHE_DATA_MAGIC;
-      header.n_points = hyscan_buffer_get_size (priv->complex_buffer);
+      header.n_points = hyscan_buffer_get_data_size (priv->complex_buffer);
       header.n_points /= sizeof (HyScanComplexFloat);
       header.time = priv->data_time;
 
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
-      hyscan_cache_set2 (priv->cache, priv->cache_key, NULL, priv->cache_buffer, priv->complex_buffer);
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_cache_set2 (priv->cache, priv->cache_key->str, NULL,
+                         priv->cache_buffer, priv->complex_buffer);
     }
 
   (time != NULL) ? *time = priv->data_time : 0;
@@ -1744,13 +1746,14 @@ hyscan_acoustic_data_get_amplitude (HyScanAcousticData *data,
       HyScanAcousticDataCacheHeader header;
 
       header.magic = CACHE_DATA_MAGIC;
-      header.n_points = hyscan_buffer_get_size (priv->real_buffer);
+      header.n_points = hyscan_buffer_get_data_size (priv->real_buffer);
       header.n_points /= sizeof (gfloat);
       header.time = priv->data_time;
 
       hyscan_acoustic_data_update_cache_key (priv, DATA_TYPE_AMPLITUDE, index);
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
-      hyscan_cache_set2 (priv->cache, priv->cache_key, NULL, priv->cache_buffer, priv->real_buffer);
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_cache_set2 (priv->cache, priv->cache_key->str, NULL,
+                         priv->cache_buffer, priv->real_buffer);
     }
 
   (time != NULL) ? *time = priv->data_time : 0;

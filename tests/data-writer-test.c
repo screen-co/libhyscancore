@@ -369,7 +369,7 @@ sensor_add_data (HyScanDataWriter *writer,
       gboolean status;
 
       g_snprintf (data, sizeof (data), "sensor-%d data %d", n_channel, i);
-      hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, data, strlen (data));
 
       status = hyscan_data_writer_sensor_add_data (writer, sensor,
                                                    HYSCAN_SOURCE_NMEA, n_channel,
@@ -408,16 +408,16 @@ sonar_add_data (HyScanDataWriter *writer,
   acoustic_info = acoustic_get_info (channel);
 
   data_values = g_new (guint16, DATA_SIZE);
-  hyscan_buffer_wrap_data (data_buffer, acoustic_info.data_type,
-                           data_values, DATA_SIZE * sizeof (guint16));
+  hyscan_buffer_wrap (data_buffer, acoustic_info.data_type,
+                      data_values, DATA_SIZE * sizeof (guint16));
 
   signal_points = g_new (HyScanComplexFloat, SIGNAL_SIZE);
-  hyscan_buffer_wrap_data (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE,
-                           signal_points, SIGNAL_SIZE * sizeof (HyScanComplexFloat));
+  hyscan_buffer_wrap (signal_buffer, HYSCAN_DATA_COMPLEX_FLOAT32LE,
+                      signal_points, SIGNAL_SIZE * sizeof (HyScanComplexFloat));
 
   tvg_gains = g_new (gfloat, TVG_SIZE);
-  hyscan_buffer_wrap_data (tvg_buffer, HYSCAN_DATA_FLOAT32LE,
-                           tvg_gains, TVG_SIZE * sizeof (gfloat));
+  hyscan_buffer_wrap (tvg_buffer, HYSCAN_DATA_FLOAT32LE,
+                      tvg_gains, TVG_SIZE * sizeof (gfloat));
 
   source = sonar_get_type (channel);
 
@@ -561,7 +561,7 @@ sensor_check_data (HyScanDB    *db,
       if (time != timestamp + i)
         g_error ("time stamp mismatch");
 
-      data = hyscan_buffer_get_data (buffer, &data_size);
+      data = hyscan_buffer_get (buffer, NULL, &data_size);
       if (data_size != strlen (data_orig))
         g_error ("data size mismatch");
 
@@ -661,7 +661,7 @@ sonar_check_data (HyScanDB    *db,
           if (!hyscan_db_channel_get_data (db, channel_id, i, data_buffer, &time))
             g_error ("can't read data from channel");
 
-          data_values = hyscan_buffer_get_data (data_buffer, &data_size);
+          data_values = hyscan_buffer_get (data_buffer, NULL, &data_size);
 
           if (time != timestamp + i)
             g_error ("time stamp mismatch");
@@ -688,7 +688,7 @@ sonar_check_data (HyScanDB    *db,
       if (!hyscan_db_channel_get_data (db, signal_channel_id, i / N_LINES_PER_SIGNAL, signal_buffer, &time))
         g_error ("can't read data from signal channel");
 
-      signal_points = hyscan_buffer_get_data (signal_buffer, &signal_size);
+      signal_points = hyscan_buffer_get (signal_buffer, NULL, &signal_size);
 
       if (time != timestamp + i)
         g_error ("signal time stamp mismatch");
@@ -715,7 +715,7 @@ sonar_check_data (HyScanDB    *db,
       if (!hyscan_db_channel_get_data (db, tvg_channel_id, i / N_LINES_PER_TVG, tvg_buffer, &time))
         g_error ("can't read data from tvg channel");
 
-      tvg_gains = hyscan_buffer_get_data (tvg_buffer, &tvg_size);
+      tvg_gains = hyscan_buffer_get (tvg_buffer, NULL, &tvg_size);
 
       if (time != timestamp + i)
         g_error ("tvg time stamp mismatch");
@@ -795,7 +795,7 @@ log_check_data (HyScanDB    *db,
       if (time != i)
         g_error ("time stamp mismatch");
 
-      log = hyscan_buffer_get_data (buffer, &log_size);
+      log = hyscan_buffer_get (buffer, NULL, &log_size);
       if (g_strcmp0 (log_orig, log) != 0)
         g_error ("log content mismatch ('%s', '%s')", log_orig, log);
 

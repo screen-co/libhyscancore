@@ -388,13 +388,13 @@ hyscan_nmea_data_check_cache (HyScanNMEADataPrivate *priv,
   hyscan_nmea_data_update_cache_key (priv, index);
 
   /* Ищем данные в кэше. */
-  hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+  hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
   if (!hyscan_cache_get2 (priv->cache, priv->key, NULL, sizeof (header), priv->cache_buffer, priv->nmea_buffer))
     return FALSE;
 
   /* Верификация данных. */
   if ((header.magic != CACHE_HEADER_MAGIC) ||
-      (header.length != hyscan_buffer_get_size (priv->nmea_buffer)))
+      (header.length != hyscan_buffer_get_data_size (priv->nmea_buffer)))
     {
       return FALSE;
     }
@@ -688,16 +688,16 @@ hyscan_nmea_data_get (HyScanNMEAData *data,
     return NULL;
 
   if (hyscan_nmea_data_check_cache (priv, index, time))
-    return hyscan_buffer_get_data (priv->nmea_buffer, &size);
+    return hyscan_buffer_get (priv->nmea_buffer, NULL, &size);
 
   /* Считываем всю строку во внутренний буфер. */
   if (!hyscan_db_channel_get_data (priv->db, priv->channel_id, index, priv->nmea_buffer, &nmea_time))
     return NULL;
 
   /* Принудительно пишем '\0' в конец строки.*/
-  size = hyscan_buffer_get_size (priv->nmea_buffer);
-  hyscan_buffer_set_size (priv->nmea_buffer, size + 1);
-  nmea = hyscan_buffer_get_data (priv->nmea_buffer, &size);
+  size = hyscan_buffer_get_data_size (priv->nmea_buffer);
+  hyscan_buffer_set_data_size (priv->nmea_buffer, size + 1);
+  nmea = hyscan_buffer_get (priv->nmea_buffer, NULL, &size);
   nmea[size - 1] = '\0';
 
   /* Сохраняем данные в кэше. Сначала время, потом строка. */
@@ -708,7 +708,7 @@ hyscan_nmea_data_get (HyScanNMEAData *data,
       header.magic = CACHE_HEADER_MAGIC;
       header.length = size;
       header.time = nmea_time;
-      hyscan_buffer_wrap_data (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
+      hyscan_buffer_wrap (priv->cache_buffer, HYSCAN_DATA_BLOB, &header, sizeof (header));
 
       hyscan_cache_set2 (priv->cache, priv->key, NULL, priv->cache_buffer, priv->nmea_buffer);
     }
