@@ -1,4 +1,3 @@
-
 find_program (RESOURCE_COMPILER glib-compile-resources)
 if (${RESOURCE_COMPILER} STREQUAL RESOURCE_COMPILER-NOTFOUND)
   message (FATAL_ERROR "GLib resource compiler not found.")
@@ -66,7 +65,11 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
-target_link_libraries (${HYSCAN_CORE_LIBRARY} ${GLIB2_LIBRARIES} ${MATH_LIBRARIES} ${HYSCAN_LIBRARIES})
+target_link_libraries (${HYSCAN_CORE_LIBRARY}
+                       ${GLIB2_LIBRARIES}
+                       ${MATH_LIBRARIES}
+                       ${HYSCAN_LIBRARIES}
+                       ${ZLIB_LIBRARIES})
 
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES SOVERSION ${HYSCAN_CORE_VERSION})
