@@ -110,7 +110,7 @@ main (int    argc,
   if (track_id < 0)
     goto exit;
 
-  log_id = hyscan_db_channel_open (db, track_id, hyscan_source_get_name_by_type (HYSCAN_SOURCE_LOG));
+  log_id = hyscan_db_channel_open (db, track_id, hyscan_source_get_id_by_type (HYSCAN_SOURCE_LOG));
   if (log_id < 0)
     goto exit;
 

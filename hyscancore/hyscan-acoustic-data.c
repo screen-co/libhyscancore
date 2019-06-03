@@ -341,15 +341,15 @@ hyscan_acoustic_data_object_constructed (GObject *object)
   hyscan_buffer_set_complex_float (priv->complex_buffer, NULL, 0);
 
   /* Открываем канал с данными. */
-  data_channel_name = hyscan_channel_get_name_by_types (priv->source,
+  data_channel_name = hyscan_channel_get_id_by_types (priv->source,
                         priv->noise ? HYSCAN_CHANNEL_NOISE : HYSCAN_CHANNEL_DATA,
                         priv->channel);
-  signal_channel_name = hyscan_channel_get_name_by_types (priv->source,
-                                                          HYSCAN_CHANNEL_SIGNAL,
-                                                          priv->channel);
-  tvg_channel_name = hyscan_channel_get_name_by_types (priv->source,
-                                                       HYSCAN_CHANNEL_TVG,
-                                                       priv->channel);
+  signal_channel_name = hyscan_channel_get_id_by_types (priv->source,
+                                                        HYSCAN_CHANNEL_SIGNAL,
+                                                        priv->channel);
+  tvg_channel_name = hyscan_channel_get_id_by_types (priv->source,
+                                                     HYSCAN_CHANNEL_TVG,
+                                                     priv->channel);
   if ((data_channel_name == NULL) ||
       (signal_channel_name == NULL) ||
       (tvg_channel_name == NULL))
@@ -772,7 +772,7 @@ hyscan_acoustic_data_read_channel_data (HyScanAcousticDataPrivate *priv,
     {
       g_warning ("HyScanAcousticData: '%s.%s.%s': unsupported discretization type",
                  priv->project_name, priv->track_name,
-                 hyscan_source_get_name_by_type (priv->source));
+                 hyscan_source_get_id_by_type (priv->source));
 
       return FALSE;
     }
