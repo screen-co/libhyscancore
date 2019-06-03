@@ -195,9 +195,9 @@ hyscan_nmea_data_object_constructed (GObject *object)
   priv->cache_buffer = hyscan_buffer_new ();
   priv->nmea_buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA,
-                                                   HYSCAN_CHANNEL_DATA,
-                                                   priv->source_channel);
+  channel_name = hyscan_channel_get_id_by_types (HYSCAN_SOURCE_NMEA,
+                                                 HYSCAN_CHANNEL_DATA,
+                                                 priv->source_channel);
 
   /* Проверяем БД, проект, галс и название канала. */
   if ((priv->db == NULL) || (priv->project == NULL) ||
@@ -434,7 +434,7 @@ hyscan_nmea_data_new_sensor (HyScanDB         *db,
       gint32 channel_id = -1;
       gint32 param_id = -1;
 
-      if (!hyscan_channel_get_types_by_name (channels[i], &source_type, &channel_type, &source_channel) ||
+      if (!hyscan_channel_get_types_by_id (channels[i], &source_type, &channel_type, &source_channel) ||
           (source_type != HYSCAN_SOURCE_NMEA) || (channel_type != HYSCAN_CHANNEL_DATA))
         {
           continue;

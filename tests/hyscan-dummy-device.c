@@ -1474,7 +1474,7 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
   guint i;
 
   /* Название источника данных. */
-  source_name = hyscan_source_get_name_by_type (source);
+  source_name = hyscan_source_get_id_by_type (source);
 
   /* Идентификатор устройства. */
   dev_type = hyscan_dummy_device_get_type_by_source (source);

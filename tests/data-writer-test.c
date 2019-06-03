@@ -226,7 +226,7 @@ void track_check_info (HyScanDB *db,
   if (ctime != (CTIME + n_track))
     g_error ("track ctime error");
 
-  if (g_strcmp0 (track_type, hyscan_track_get_name_by_type (HYSCAN_TRACK_SURVEY)) != 0)
+  if (g_strcmp0 (track_type, hyscan_track_get_id_by_type (HYSCAN_TRACK_SURVEY)) != 0)
     g_error ("track type error");
 
   if (g_strcmp0 (operator_name, OPERATOR_NAME) != 0)
@@ -439,7 +439,7 @@ sonar_add_data (HyScanDataWriter *writer,
           if (status != fail)
             {
               g_error ("error adding signal to '%s-%d'",
-                       hyscan_source_get_name_by_type (source), channel);
+                       hyscan_source_get_id_by_type (source), channel);
             }
         }
 
@@ -454,7 +454,7 @@ sonar_add_data (HyScanDataWriter *writer,
           if (status != fail)
             {
               g_error ("error adding tvg to '%s-%d'",
-                       hyscan_source_get_name_by_type (source), channel);
+                       hyscan_source_get_id_by_type (source), channel);
             }
         }
 
@@ -467,7 +467,7 @@ sonar_add_data (HyScanDataWriter *writer,
       if (status != fail)
         {
           g_error ("error adding data to '%s-%d'",
-                   hyscan_source_get_name_by_type (source), channel);
+                   hyscan_source_get_id_by_type (source), channel);
         }
 
       status = hyscan_data_writer_acoustic_add_data (writer, source, channel, TRUE,
@@ -475,7 +475,7 @@ sonar_add_data (HyScanDataWriter *writer,
       if (status != fail)
         {
           g_error ("error adding noise to '%s-%d'",
-                   hyscan_source_get_name_by_type (source), channel);
+                   hyscan_source_get_id_by_type (source), channel);
         }
     }
 
@@ -529,7 +529,7 @@ sensor_check_data (HyScanDB    *db,
 
   buffer = hyscan_buffer_new ();
 
-  channel_name = hyscan_channel_get_name_by_types (HYSCAN_SOURCE_NMEA, HYSCAN_CHANNEL_DATA, n_channel);
+  channel_name = hyscan_channel_get_id_by_types (HYSCAN_SOURCE_NMEA, HYSCAN_CHANNEL_DATA, n_channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
 
@@ -611,10 +611,10 @@ sonar_check_data (HyScanDB    *db,
   signal_buffer = hyscan_buffer_new ();
 
   source = sonar_get_type (channel);
-  data_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
-  noise_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
-  signal_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
-  tvg_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_TVG, channel);
+  data_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_DATA, channel);
+  noise_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
+  signal_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
+  tvg_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_TVG, channel);
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, data_channel_name);
 
@@ -754,7 +754,7 @@ log_check_data (HyScanDB    *db,
   HyScanBuffer *buffer;
   guint i;
 
-  channel_name = hyscan_source_get_name_by_type (HYSCAN_SOURCE_LOG);
+  channel_name = hyscan_source_get_id_by_type (HYSCAN_SOURCE_LOG);
   buffer = hyscan_buffer_new ();
 
   g_message ("checking '%s.%s.%s'", PROJECT_NAME, track_name, channel_name);
@@ -787,7 +787,7 @@ log_check_data (HyScanDB    *db,
       gint64 time;
 
       log_orig = g_strdup_printf ("test\t%s\ttest log message for time %d",
-                                  hyscan_log_level_get_name_by_type (HYSCAN_LOG_LEVEL_INFO), i);
+                                  hyscan_log_level_get_id_by_type (HYSCAN_LOG_LEVEL_INFO), i);
 
       if (!hyscan_db_channel_get_data (db, channel_id, i, buffer, &time))
         g_error ("can't read data from channel %d", i);

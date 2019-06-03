@@ -109,7 +109,7 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (info->data_type));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_id_by_type (info->data_type));
   hyscan_param_list_set_double (param_list, "/data/rate", info->data_rate);
   hyscan_param_list_set_double (param_list, "/signal/frequency", info->signal_frequency);
   hyscan_param_list_set_double (param_list, "/signal/bandwidth", info->signal_bandwidth);
@@ -146,7 +146,7 @@ hyscan_core_params_set_signal_info (HyScanDB *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_COMPLEX_FLOAT32LE));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_id_by_type (HYSCAN_DATA_COMPLEX_FLOAT32LE));
   hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
@@ -173,7 +173,7 @@ hyscan_core_params_set_tvg_info (HyScanDB *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_name_by_type (HYSCAN_DATA_FLOAT32LE));
+  hyscan_param_list_set_string (param_list, "/data/type", hyscan_data_get_id_by_type (HYSCAN_DATA_FLOAT32LE));
   hyscan_param_list_set_double (param_list, "/data/rate", data_rate);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
@@ -326,7 +326,7 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
       goto exit;
     }
 
-  info->data_type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  info->data_type = hyscan_data_get_type_by_id (hyscan_param_list_get_string (param_list, "/data/type"));
   info->data_rate = hyscan_param_list_get_double (param_list, "/data/rate");
   info->signal_frequency = hyscan_param_list_get_double (param_list, "/signal/frequency");
   info->signal_bandwidth = hyscan_param_list_get_double (param_list, "/signal/bandwidth");
@@ -367,7 +367,7 @@ hyscan_core_params_check_signal_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     goto exit;
 
-  data_type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  data_type = hyscan_data_get_type_by_id (hyscan_param_list_get_string (param_list, "/data/type"));
 
   if ((hyscan_param_list_get_integer (param_list, "/schema/id") != SIGNAL_CHANNEL_SCHEMA_ID) ||
       (hyscan_param_list_get_integer (param_list, "/schema/version") != SIGNAL_CHANNEL_SCHEMA_VERSION) ||
@@ -405,7 +405,7 @@ hyscan_core_params_check_tvg_info (HyScanDB *db,
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     goto exit;
 
-  data_type = hyscan_data_get_type_by_name (hyscan_param_list_get_string (param_list, "/data/type"));
+  data_type = hyscan_data_get_type_by_id (hyscan_param_list_get_string (param_list, "/data/type"));
 
   if ((hyscan_param_list_get_integer (param_list, "/schema/id") != TVG_CHANNEL_SCHEMA_ID) ||
       (hyscan_param_list_get_integer (param_list, "/schema/version") != TVG_CHANNEL_SCHEMA_VERSION) ||

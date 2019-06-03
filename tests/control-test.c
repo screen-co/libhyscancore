@@ -404,7 +404,7 @@ check_sources (void)
         g_error ("sources list failed");
 
       /* Для LUCKY_SOURCE добавлено смещение антенны. */
-      g_message ("Check source %s", hyscan_source_get_name_by_type (orig_sources[i]));
+      g_message ("Check source %s", hyscan_source_get_id_by_type (orig_sources[i]));
       info = hyscan_control_source_get_info (control, orig_sources[i]);
       if (orig_sources[i] == LUCKY_SOURCE)
         orig_info->offset = hyscan_dummy_device_get_source_offset (orig_sources[i]);
@@ -761,7 +761,7 @@ check_sonar_data (HyScanSourceType source)
   reader = hyscan_acoustic_data_new (db, NULL, project_name, track_name, source, 1, FALSE);
 
   if (reader == NULL)
-    g_error ("can't open %s data", hyscan_source_get_name_by_type (source));
+    g_error ("can't open %s data", hyscan_source_get_id_by_type (source));
 
   /* Проверяем смещение антенны. */
   offset = hyscan_acoustic_data_get_offset (reader);
@@ -780,7 +780,7 @@ check_sonar_data (HyScanSourceType source)
       (orig_n_points != n_points) ||
       (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat)) != 0))
     {
-      g_error ("%s signal error", hyscan_source_get_name_by_type (source));
+      g_error ("%s signal error", hyscan_source_get_id_by_type (source));
     }
 
   /* Проверяем ВАРУ. */
@@ -789,7 +789,7 @@ check_sonar_data (HyScanSourceType source)
       (orig_n_points != n_points) ||
       (memcmp (orig_fdata, fdata, n_points * sizeof (gfloat)) != 0))
     {
-      g_error ("%s tvg error", hyscan_source_get_name_by_type (source));
+      g_error ("%s tvg error", hyscan_source_get_id_by_type (source));
     }
 
   /* Проверяем данные. */
@@ -799,7 +799,7 @@ check_sonar_data (HyScanSourceType source)
       (orig_n_points != n_points) ||
       (memcmp (orig_cdata, cdata, n_points * sizeof (HyScanComplexFloat)) != 0))
     {
-      g_error ("%s data error", hyscan_source_get_name_by_type (source));
+      g_error ("%s data error", hyscan_source_get_id_by_type (source));
     }
 
   hyscan_antenna_offset_free (orig_offset);
@@ -938,7 +938,7 @@ main (int    argc,
 
       device = get_sonar_device (sources[i]);
       if (!hyscan_dummy_device_check_antenna_offset (device, offset))
-        g_error ("%s: offset failed", hyscan_source_get_name_by_type (sources[i]));
+        g_error ("%s: offset failed", hyscan_source_get_id_by_type (sources[i]));
 
       hyscan_antenna_offset_free (offset);
     }
