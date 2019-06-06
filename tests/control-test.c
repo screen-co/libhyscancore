@@ -32,9 +32,9 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
+#include <hyscan-control-proxy.h>
 #include <hyscan-acoustic-data.h>
 #include <hyscan-nmea-data.h>
-#include <hyscan-control.h>
 
 #include "hyscan-dummy-device.h"
 
@@ -56,6 +56,7 @@ gchar *schema_file = NULL;
 HyScanDB *db;
 HyScanDummyDevice *device1;
 HyScanDummyDevice *device2;
+HyScanControlProxy *proxy;
 HyScanControl *control1;
 HyScanControl *control2;
 HyScanControl *control;
@@ -876,19 +877,11 @@ main (int    argc,
   device1 = hyscan_dummy_device_new (HYSCAN_DUMMY_DEVICE_SIDE_SCAN);
   device2 = hyscan_dummy_device_new (HYSCAN_DUMMY_DEVICE_PROFILER);
 
-  /* Объект управления. */
+  /* Объекты управления. */
   control1 = hyscan_control_new ();
   control2 = hyscan_control_new ();
-  control = hyscan_control_new ();
-  device = HYSCAN_DEVICE (control);
-  sensor = HYSCAN_SENSOR (control);
-  sonar = HYSCAN_SONAR (control);
-  param = HYSCAN_PARAM (control);
 
-  /* Обработчик сигнала device-state. */
-  g_signal_connect (control, "device-state", G_CALLBACK (device_state_cb), NULL);
-
-  /* Добавляем устройства в объект управления. */
+  /* Добавляем устройства в объекты управления. */
   hyscan_control_device_add (control1, HYSCAN_DEVICE (device1));
   hyscan_control_device_add (control2, HYSCAN_DEVICE (device2));
 
@@ -901,12 +894,34 @@ main (int    argc,
   hyscan_control_source_set_default_offset (control2, LUCKY_SOURCE, offset);
   hyscan_antenna_offset_free (offset);
 
-  /* Запуск составного устройства. */
+  /* Завершаем конфигурирование устройств. */
   hyscan_control_device_bind (control1);
   hyscan_control_device_bind (control2);
+
+  /* Составноное устройство. */
+  control = hyscan_control_new ();
   hyscan_control_device_add (control, HYSCAN_DEVICE (control2));
   hyscan_control_device_add (control, HYSCAN_DEVICE (control1));
   hyscan_control_device_bind (control);
+
+  /* Параметры записи данных. */
+  hyscan_control_writer_set_db (control, db);
+  hyscan_control_writer_set_operator_name (control, OPERATOR_NAME);
+
+  /* Прокси устройство. */
+  proxy = hyscan_control_proxy_new (control, NULL);
+  g_object_unref (control);
+  control = hyscan_control_new ();
+  hyscan_control_device_add (control, HYSCAN_DEVICE (proxy));
+  hyscan_control_device_bind (control);
+
+  device = HYSCAN_DEVICE (control);
+  sensor = HYSCAN_SENSOR (control);
+  sonar = HYSCAN_SONAR (control);
+  param = HYSCAN_PARAM (control);
+
+  /* Обработчик сигнала device-state. */
+  g_signal_connect (control, "device-state", G_CALLBACK (device_state_cb), NULL);
 
   /* Схема устройства. */
   if (schema_file != NULL)
@@ -963,10 +978,6 @@ main (int    argc,
 
       hyscan_antenna_offset_free (offset);
     }
-
-  /* Параметры записи данных. */
-  hyscan_control_writer_set_db (control, db);
-  hyscan_control_writer_set_operator_name (control, OPERATOR_NAME);
 
   /* Проверка информации о датчиках. */
   g_message ("Check sensors info");
@@ -1059,6 +1070,7 @@ main (int    argc,
 
   hyscan_db_project_remove (db, project_name);
 
+  g_object_unref (proxy);
   g_object_unref (control);
   g_object_unref (control1);
   g_object_unref (control2);

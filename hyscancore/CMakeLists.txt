@@ -51,6 +51,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-depthometer.c
              hyscan-depth-factory.c
              hyscan-control.c
+             hyscan-control-proxy.c
              hyscan-projector.c
              hyscan-tile-common.c
              hyscan-tile-color.c
@@ -102,6 +103,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-nmea-parser.h
                hyscan-depthometer.h
                hyscan-control.h
+               hyscan-control-proxy.h
                hyscan-amplitude-factory.h
                hyscan-depth-factory.h
                hyscan-projector.h
