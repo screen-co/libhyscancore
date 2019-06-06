@@ -87,5 +87,6 @@ endif ()
 include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/hyscancore")
 
 add_definitions (-DG_LOG_DOMAIN="HyScanCore")
+add_definitions (-DGETTEXT_PACKAGE="hyscancore")
 add_subdirectory (hyscancore)
 add_subdirectory (tests)
