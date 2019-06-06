@@ -1362,7 +1362,7 @@ hyscan_acoustic_data_get_size_time (HyScanAcousticData *data,
 
   readed_time = hyscan_db_channel_get_data_time (priv->db, priv->channel_id, index);
   readed_size = hyscan_db_channel_get_data_size (priv->db, priv->channel_id, index);
-  readed_size /= sizeof (gfloat);
+  readed_size /= hyscan_data_get_point_size (priv->info.data_type);
 
   if ((readed_size == 0) || (readed_time < 0))
     return FALSE;
