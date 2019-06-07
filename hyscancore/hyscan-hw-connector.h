@@ -32,25 +32,28 @@ struct _HyScanHWConnectorClass
 HYSCAN_API
 GType                      hyscan_hw_connector_get_type         (void);
 
+G_DEPRECATED_FOR(HyScanProfileHW)
 HYSCAN_API
 HyScanHWConnector *        hyscan_hw_connector_new              (void);
 
+G_DEPRECATED_FOR(HyScanProfileHW)
 HYSCAN_API
 void                       hyscan_hw_connector_set_driver_paths (HyScanHWConnector   *connector,
                                                                  const gchar * const *paths);
 
+G_DEPRECATED_FOR(HyScanProfileHW)
 HYSCAN_API
 gboolean                   hyscan_hw_connector_load_profile     (HyScanHWConnector   *connector,
                                                                  const gchar         *file);
 
-HYSCAN_API
+G_DEPRECATED_FOR(HyScanProfileHW and HyScanProfileOffset)
 gboolean                   hyscan_hw_connector_default_offsets  (HyScanHWConnector   *connector,
                                                                  const gchar         *file);
 
-HYSCAN_API
+G_DEPRECATED_FOR(HyScanProfileHW)
 gboolean                   hyscan_hw_connector_check            (HyScanHWConnector   *connector);
 
-HYSCAN_API
+G_DEPRECATED_FOR(HyScanProfileHW)
 HyScanControl *            hyscan_hw_connector_connect          (HyScanHWConnector   *connector);
 
 G_END_DECLS

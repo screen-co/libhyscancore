@@ -49,16 +49,6 @@
 #include <string.h>
 #include <math.h>
 
-struct HyScanFieldFunc
-{
-  gint       RMC_field_n;
-  gint       GGA_field_n;
-  gint       DPT_field_n;
-  gboolean (*func) (const gchar *sentence,
-                    gdouble     *value);
-};
-
-
 enum
 {
   PROP_O,
@@ -247,9 +237,16 @@ hyscan_nmea_parser_object_finalize (GObject *object)
 static gboolean
 hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
 {
-  struct HyScanFieldFunc fields[] =
+  struct HyScanFieldFunc
   {
-    /* .RMC_field_n, .GGA_field_n, .DPT_field_n, .func */
+    gint       RMC;
+    gint       GGA;
+    gint       DPT;
+    gboolean (*func) (const gchar *sentence,
+                      gdouble     *value);
+  } fields[] =
+  {
+    /* .RMC, .GGA, .DPT, .func */
     { 1,   1,  -1, hyscan_nmea_parser_parse_time},   /* HYSCAN_NMEA_FIELD_TIME      */
     { 3,   2,  -1, hyscan_nmea_parser_parse_latlon}, /* HYSCAN_NMEA_FIELD_LAT       */
     { 5,   4,  -1, hyscan_nmea_parser_parse_latlon}, /* HYSCAN_NMEA_FIELD_LON       */
@@ -268,11 +265,11 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
   priv->parse_func = fields[priv->field_type].func;
 
   if (priv->data_type == HYSCAN_NMEA_DATA_RMC)
-    priv->field_n = fields[priv->field_type].RMC_field_n;
-  if (priv->data_type == HYSCAN_NMEA_DATA_GGA)
-    priv->field_n = fields[priv->field_type].GGA_field_n;
-  if (priv->data_type == HYSCAN_NMEA_DATA_DPT)
-    priv->field_n = fields[priv->field_type].DPT_field_n;
+    priv->field_n = fields[priv->field_type].RMC;
+  else if (priv->data_type == HYSCAN_NMEA_DATA_GGA)
+    priv->field_n = fields[priv->field_type].GGA;
+  else if (priv->data_type == HYSCAN_NMEA_DATA_DPT)
+    priv->field_n = fields[priv->field_type].DPT;
 
   if (priv->field_n == -1)
     return FALSE;
