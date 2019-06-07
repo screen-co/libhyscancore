@@ -64,6 +64,11 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-mark-model.c
              hyscan-mloc.c
              hyscan-hw-connector.c
+             hyscan-geo-projection.c
+             hyscan-mercator.c
+             hyscan-pseudo-mercator.c
+             hyscan-cartesian.c
+             hyscan-task-queue.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -114,6 +119,11 @@ install (FILES hyscan-core-schemas.h
                hyscan-waterfall-mark-data.h
                hyscan-mark-model.h
                hyscan-hw-connector.h
+               hyscan-geo-projection.h
+               hyscan-mercator.h
+               hyscan-pseudo-mercator.h
+               hyscan-cartesian.h
+               hyscan-task-queue.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

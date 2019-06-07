@@ -20,6 +20,9 @@ add_executable (waterfall-mark-data-test waterfall-mark-data-test.c)
 add_executable (mark-model-test mark-model-test.c)
 add_executable (mloc-test mloc-test.c)
 add_executable (view-log view-log.c)
+add_executable (mercator-test mercator-test.c)
+add_executable (cartesian-test cartesian-test.c)
+add_executable (task-queue-test task-queue-test.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -38,6 +41,9 @@ target_link_libraries (waterfall-mark-data-test ${TEST_LIBRARIES})
 target_link_libraries (mark-model-test ${TEST_LIBRARIES})
 target_link_libraries (mloc-test ${TEST_LIBRARIES})
 target_link_libraries (view-log ${TEST_LIBRARIES})
+target_link_libraries (mercator-test ${TEST_LIBRARIES})
+target_link_libraries (cartesian-test ${TEST_LIBRARIES})
+target_link_libraries (task-queue-test ${TEST_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
@@ -57,6 +63,12 @@ add_test (NAME GeoTest COMMAND geo-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ControlTest COMMAND control-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME MercatorTest COMMAND mercator-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME CartesianTest COMMAND cartesian-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME TaskQueueTest COMMAND task-queue-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 install (TARGETS data-writer-test
                  acoustic-data-test
@@ -75,6 +87,9 @@ install (TARGETS data-writer-test
                  mark-model-test
                  mloc-test
                  view-log
+                 mercator-test
+                 cartesian-test
+                 task-queue-test
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
