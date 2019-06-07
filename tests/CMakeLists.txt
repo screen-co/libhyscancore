@@ -23,6 +23,9 @@ add_executable (view-log view-log.c)
 add_executable (mercator-test mercator-test.c)
 add_executable (cartesian-test cartesian-test.c)
 add_executable (task-queue-test task-queue-test.c)
+add_executable (nmea-file-device-test nmea-file-device-test.c)
+add_executable (navigation-model-test navigation-model-test.c)
+add_executable (nmea-file2udp nmea-file2udp.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -44,6 +47,9 @@ target_link_libraries (view-log ${TEST_LIBRARIES})
 target_link_libraries (mercator-test ${TEST_LIBRARIES})
 target_link_libraries (cartesian-test ${TEST_LIBRARIES})
 target_link_libraries (task-queue-test ${TEST_LIBRARIES})
+target_link_libraries (nmea-file-device-test ${TEST_LIBRARIES})
+target_link_libraries (navigation-model-test ${TEST_LIBRARIES})
+target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
@@ -90,6 +96,9 @@ install (TARGETS data-writer-test
                  mercator-test
                  cartesian-test
                  task-queue-test
+                 nmea-file-device-test
+                 navigation-model-test
+                 nmea-file2udp
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
