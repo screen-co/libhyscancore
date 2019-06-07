@@ -58,7 +58,8 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-waterfall-tile.c
              hyscan-tile-queue.c
              hyscan-track-rect.c
-             hyscan-waterfall-mark.c
+             hyscan-mark.c
+             hyscan-mark-data.c
              hyscan-waterfall-mark-data.c
              hyscan-mark-model.c
              hyscan-mloc.c
@@ -108,7 +109,8 @@ install (FILES hyscan-core-schemas.h
                hyscan-tile-queue.h
                hyscan-tile-color.h
                hyscan-waterfall-tile.h
-               hyscan-waterfall-mark.h
+               hyscan-mark.h
+               hyscan-mark-data.h
                hyscan-waterfall-mark-data.h
                hyscan-mark-model.h
                hyscan-hw-connector.h

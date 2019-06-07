@@ -10,7 +10,7 @@
  * \defgroup HyScanMarkModel HyScanMarkModel - класс асинхронной работы с метками водопада.
  *
  * HyScanMarkModel - класс асинхронной работы с метками режима водопад.
- * Он представляет собой обертку над HyScanWaterfallMarkData. Класс предоставляет
+ * Он представляет собой обертку над HyScanMarkData. Класс предоставляет
  * все методы, необходимые для создания, изменения и удаления меток.
  *
  * Сигнал "changed" сигнализирует о том, что есть изменения в списке меток.
@@ -27,7 +27,8 @@
 #ifndef __HYSCAN_MARK_MODEL_H__
 #define __HYSCAN_MARK_MODEL_H__
 
-#include <hyscan-waterfall-mark-data.h>
+#include <hyscan-mark-data.h>
+#include <hyscan-mark.h>
 
 G_BEGIN_DECLS
 
@@ -60,12 +61,12 @@ GType                   hyscan_mark_model_get_type        (void);
 /**
  * Функция создает новый объект HyScanMarkModel.
  *
- * \param db указатель на \link HyScanDB \endlink.
+ * \param data_type тип класса работы с метками.
  *
  * \return объект HyScanMarkModel.
  */
 HYSCAN_API
-HyScanMarkModel*        hyscan_mark_model_new               (void);
+HyScanMarkModel*        hyscan_mark_model_new             (GType data_type);
 
 /**
  * Функция устанавливает проект.
@@ -97,7 +98,7 @@ void                    hyscan_mark_model_refresh         (HyScanMarkModel      
  */
 HYSCAN_API
 void                    hyscan_mark_model_add_mark        (HyScanMarkModel           *model,
-                                                           const HyScanWaterfallMark *mark);
+                                                           const HyScanMark          *mark);
 
 /**
  * Функция изменяет метку в базе данных.
@@ -111,7 +112,7 @@ void                    hyscan_mark_model_add_mark        (HyScanMarkModel      
 HYSCAN_API
 void                    hyscan_mark_model_modify_mark     (HyScanMarkModel           *model,
                                                            const gchar               *id,
-                                                           const HyScanWaterfallMark *mark);
+                                                           const HyScanMark          *mark);
 
 /**
  * Функция удаляет метку из базы данных.
@@ -130,7 +131,7 @@ void                    hyscan_mark_model_remove_mark     (HyScanMarkModel      
  * \param model указатель на \link HyScanMarkModel \endlink;
  *
  * \return GHashTable, где ключом является идентификатор метки,
- * а значением - структура HyScanWaterfallMark.
+ * а значением - структура HyScanMark.
  */
 HYSCAN_API
 GHashTable*             hyscan_mark_model_get             (HyScanMarkModel           *model);
