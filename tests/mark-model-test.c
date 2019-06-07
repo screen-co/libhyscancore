@@ -1,5 +1,6 @@
 #include <hyscan-data-writer.h>
 #include <hyscan-mark-model.h>
+#include <hyscan-waterfall-mark-data.h>
 
 #define if_verbose(...) if (verbose) g_print (__VA_ARGS__);
 #define SEED g_rand_int_range (grand, 0, 65536)
@@ -20,15 +21,15 @@ gboolean             make_track        (HyScanDB            *db,
                                         gchar               *name);
 
 guint                hash_table_len    (GHashTable          *ht);
-HyScanWaterfallMark *make_mark         (gint                 seed,
+HyScanMarkWaterfall *make_mark         (gint                 seed,
                                         gint                 seed2);
 gboolean             mark_model_test   (gpointer             data);
 
 gboolean             final_check       (GSList              *expect,
                                         GHashTable          *real);
 
-void                 update_list       (HyScanWaterfallMark *cur,
-                                        HyScanWaterfallMark *prev,
+void                 update_list       (HyScanMarkWaterfall *cur,
+                                        HyScanMarkWaterfall *prev,
                                         Actions              action);
 
 static gint        count = 10;
@@ -108,7 +109,7 @@ main (int argc, char **argv)
   loop = g_main_loop_new (NULL, TRUE);
   g_timeout_add (interval, mark_model_test, loop);
 
-  model = hyscan_mark_model_new ();
+  model = hyscan_mark_model_new (HYSCAN_TYPE_WATERFALL_MARK_DATA);
   hyscan_mark_model_set_project (model, db, name);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
 
@@ -167,7 +168,7 @@ changed_cb (HyScanMarkModel *model,
       g_hash_table_iter_init (&iter, ht);
       while (g_hash_table_iter_next (&iter, &key, &value))
         {
-          HyScanWaterfallMark *mark = value;
+          HyScanMarkWaterfall *mark = value;
 
           if_verbose ("| %s: %s\n", (gchar*)key, mark->name);
         }
@@ -219,11 +220,11 @@ hash_table_len (GHashTable *ht)
   return len;
 }
 
-HyScanWaterfallMark*
+HyScanMarkWaterfall*
 make_mark (gint   seed,
            gint   seed2)
 {
-  HyScanWaterfallMark *mark = g_new0 (HyScanWaterfallMark, 1);
+  HyScanMarkWaterfall *mark = (HyScanMarkWaterfall*)hyscan_mark_new ();
   mark->track = g_strdup_printf ("TrackID%05i%05i", seed, seed2);
   mark->name = g_strdup_printf ("Mark %05i%05i", seed, seed2);
   mark->description = g_strdup_printf ("description %i", seed);
@@ -249,7 +250,7 @@ mark_model_test (gpointer data)
   GHashTableIter iter;
   gpointer value = NULL;
   guint len = 0;
-  HyScanWaterfallMark *mark = NULL;
+  HyScanMarkWaterfall *mark = NULL;
 
   if (!count)
     {
@@ -267,7 +268,7 @@ mark_model_test (gpointer data)
   if (action == ADD)
     {
       if_verbose ("Add <%s>\n", mark->name);
-      hyscan_mark_model_add_mark (model, mark);
+      hyscan_mark_model_add_mark (model, (HyScanMark*)mark);
     }
   else
     {
@@ -282,20 +283,20 @@ mark_model_test (gpointer data)
 
           if (action == REMOVE)
             {
-              if_verbose ("Remove <%s>\n", ((HyScanWaterfallMark*)value)->name);
+              if_verbose ("Remove <%s>\n", ((HyScanMarkWaterfall*)value)->name);
               hyscan_mark_model_remove_mark (model, key);
             }
           else if (action == MODIFY)
             {
-              if_verbose ("Modify <%s> to <%s>\n", ((HyScanWaterfallMark*)value)->name, mark->name);
-              hyscan_mark_model_modify_mark (model, key, mark);
+              if_verbose ("Modify <%s> to <%s>\n", ((HyScanMarkWaterfall*)value)->name, mark->name);
+              hyscan_mark_model_modify_mark (model, key, (HyScanMark*)mark);
             }
           break;
         }
     }
-  update_list (mark, (HyScanWaterfallMark*)value, action);
+  update_list (mark, (HyScanMarkWaterfall*)value, action);
 
-  hyscan_waterfall_mark_free (mark);
+  hyscan_mark_free ((HyScanMark*)mark);
   g_hash_table_unref (ht);
 
   g_rand_free (grand);
@@ -307,7 +308,7 @@ gboolean
 final_check (GSList     *expect,
              GHashTable *real)
 {
-  HyScanWaterfallMark *mark;
+  HyScanMarkWaterfall *mark;
   GHashTableIter iter;
   gpointer value;
   gboolean res;
@@ -359,8 +360,8 @@ final_check (GSList     *expect,
 }
 
 void
-update_list (HyScanWaterfallMark *cur,
-             HyScanWaterfallMark *prev,
+update_list (HyScanMarkWaterfall *cur,
+             HyScanMarkWaterfall *prev,
              Actions              action)
 {
   GSList *link;
