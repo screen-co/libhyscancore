@@ -1,11 +1,51 @@
-/*
- * \file hyscan-mark-data.c
+/* hyscan-mark-data.c
  *
- * \brief Исходный файл класса работы с метками
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2017-2019 Screen LLC, Dmitriev Alexander <m1n7@yandex.ru>
+ * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
+ * This file is part of HyScanGui library.
+ *
+ * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanGui is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanGui имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-mark-data
+ * @Short_description: Абстрактный класс работы с метками
+ * @Title: HyScanMarkData
+ * @See_also: HyScanMarkDataWaterfall
+ *
+ * HyScanMarkData - абстрактный класс позволяющий работать с различными типами меток.
+ * Он представляет собой обертку над базой данных, что позволяет потребителю работать
+ * не с конкретными записями в базе данных, а с метками и их идентификаторами.
+ *
+ * Класс решает задачи добавления, удаления, модификации и получения меток.
+ *
+ * Класс не потокобезопасен.
  */
 
 #include "hyscan-mark-data.h"
@@ -47,7 +87,7 @@ static gboolean hyscan_mark_data_set_internal            (HyScanMarkData        
                                                           const gchar            *id,
                                                           const HyScanMark       *mark);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkData, hyscan_mark_data, G_TYPE_OBJECT);
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (HyScanMarkData, hyscan_mark_data, G_TYPE_OBJECT);
 
 static void
 hyscan_mark_data_class_init (HyScanMarkDataClass *klass)
@@ -121,7 +161,7 @@ hyscan_mark_data_object_constructed (GObject *object)
 
   if (priv->db == NULL)
     {
-      g_warning ("HyScanWaterfallMarkData: db not specified");
+      g_warning ("HyScanMarkData: db not specified");
       goto exit;
     }
 
@@ -129,16 +169,16 @@ hyscan_mark_data_object_constructed (GObject *object)
   project_id = hyscan_db_project_open (priv->db, priv->project);
   if (project_id <= 0)
     {
-      g_warning ("HyScanWaterfallMarkData: can't open project '%s'", priv->project);
+      g_warning ("HyScanMarkData: can't open project '%s'", priv->project);
       goto exit;
     }
 
   /* Открываем (или создаем) группу параметров. */
-  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, WATERFALL_MARK_SCHEMA);
+  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, klass->schema_id);
   if (priv->param_id <= 0)
     {
-      g_warning ("HyScanWaterfallMarkData: can't open group %s (project '%s')",
-                 WATERFALL_MARK_SCHEMA, priv->project);
+      g_warning ("HyScanMarkData: can't open group %s (project '%s')",
+                 klass->schema_id, priv->project);
       goto exit;
     }
 
@@ -204,19 +244,6 @@ hyscan_mark_data_generate_id (void)
   return id;
 }
 
-/* Функция возвращает информация о схеме меток. */
-static const gchar *
-hyscan_mark_data_get_schema_info (HyScanMarkData *data,
-                                  gint64         *id,
-                                  gint64         *version)
-{
-  HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
-
-  g_return_val_if_fail (klass->get_schema != NULL, NULL);
-
-  return klass->get_schema (data, id, version);
-}
-
 /* Функция считывает содержимое объекта. */
 static gboolean
 hyscan_mark_data_get_internal (HyScanMarkData *data,
@@ -226,16 +253,14 @@ hyscan_mark_data_get_internal (HyScanMarkData *data,
   HyScanMarkDataPrivate *priv = data->priv;
   HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
   gint64 sid, sver;
-  gint64 data_sid, data_sver;
 
   if (!hyscan_db_param_get (priv->db, priv->param_id, id, priv->read_plist))
     return FALSE;
 
-  hyscan_mark_data_get_schema_info (data, &data_sid, &data_sver);
   sid = hyscan_param_list_get_integer (priv->read_plist, "/schema/id");
   sver = hyscan_param_list_get_integer (priv->read_plist, "/schema/version");
 
-  if (sid != data_sid || sver != data_sver)
+  if (sid != klass->param_sid || sver != klass->param_sver)
     return FALSE;
 
   if (mark != NULL)
@@ -294,7 +319,15 @@ hyscan_mark_data_set_internal (HyScanMarkData    *data,
   return hyscan_db_param_set (priv->db, priv->param_id, id, priv->write_plist);
 }
 
-/* Функция добавляет метку в базу данных. */
+/**
+ * hyscan_mark_data_add:
+ * @data: указатель на объект #HyScanMarkData
+ * @mark: указатель на структуру #HyScanMark
+ *
+ * Функция добавляет метку в базу данных.
+ *
+ * Returns: %TRUE, если удалось добавить метку, иначе %FALSE.
+ */
 gboolean
 hyscan_mark_data_add (HyScanMarkData *data,
                       HyScanMark     *mark)
@@ -302,6 +335,7 @@ hyscan_mark_data_add (HyScanMarkData *data,
   gchar *id;
   gboolean status;
   HyScanMarkDataPrivate *priv;
+  HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
 
   g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), FALSE);
   priv = data->priv;
@@ -309,7 +343,7 @@ hyscan_mark_data_add (HyScanMarkData *data,
   id = hyscan_mark_data_generate_id ();
 
   status = hyscan_db_param_object_create (priv->db, priv->param_id,
-                                          id, WATERFALL_MARK_SCHEMA);
+                                          id, klass->schema_id);
   if (!status)
     {
       g_info ("Failed to create object %s", id);
@@ -323,7 +357,15 @@ exit:
   return status;
 }
 
-/* Функция удаляет метку из базы данных. */
+/**
+ * hyscan_mark_data_remove:
+ * @data: указатель на объект #HyScanMarkData
+ * @id: идентификатор метки
+ *
+ * Функция удаляет метку из базы данных.
+ *
+ * Returns: %TRUE, если удалось удалить метку, иначе %FALSE.
+ */
 gboolean
 hyscan_mark_data_remove (HyScanMarkData *data,
                          const gchar    *id)
@@ -335,7 +377,16 @@ hyscan_mark_data_remove (HyScanMarkData *data,
                                         id);
 }
 
-/* Функция изменяет метку. */
+/**
+ * hyscan_mark_data_modify:
+ * @data: указатель на объект #HyScanMarkData
+ * @id: идентификатор метки
+ * @mark: указатель на структуру #HyScanMark
+ *
+ * Функция изменяет метку.
+ *
+ * Returns: %TRUE, если удалось изменить метку, иначе %FALSE
+ */
 gboolean
 hyscan_mark_data_modify (HyScanMarkData *data,
                          const gchar    *id,
@@ -350,8 +401,17 @@ hyscan_mark_data_modify (HyScanMarkData *data,
   return hyscan_mark_data_set_internal (data, id, mark);
 }
 
-/* Функция возвращает список идентификаторов всех меток. */
-gchar**
+/**
+ * hyscan_mark_data_get_ids:
+ * @data: указатель на объект #HyScanMarkData
+ * @len: количество элементов или %NULL
+ *
+ * Функция возвращает список идентификаторов всех меток.
+ *
+ * Returns: (array length=len): (transfer full): %NULL-терминированный список
+ *   идентификаторов, %NULL если меток нет. Для удаления g_strfreev()
+ */
+gchar **
 hyscan_mark_data_get_ids (HyScanMarkData *data,
                           guint          *len)
 {
@@ -367,8 +427,17 @@ hyscan_mark_data_get_ids (HyScanMarkData *data,
   return objects;
 }
 
-/* Функция возвращает метку по идентификатору. */
-HyScanMark*
+/**
+ * hyscan_mark_data_get:
+ * @data: указатель на объект #HyScanMarkData
+ * @id: идентификатор метки
+ *
+ * Функция возвращает метку по идентификатору.
+ *
+ * Returns: указатель на структуру #HyScanMark, %NULL в случае ошибки. Для
+ *   удаления hyscan_mark_free().
+ */
+HyScanMark *
 hyscan_mark_data_get (HyScanMarkData *data,
                       const gchar    *id)
 {
@@ -387,7 +456,15 @@ hyscan_mark_data_get (HyScanMarkData *data,
   return mark;
 }
 
-/* Функция возвращает счётчик изменений. */
+/**
+ * hyscan_mark_data_get_mod_count:
+ *
+ * @data: указатель на объект #HyScanMarkData
+ *
+ * Функция возвращает счётчик изменений.
+ *
+ * Returns: номер изменения.
+ */
 guint32
 hyscan_mark_data_get_mod_count (HyScanMarkData *data)
 {

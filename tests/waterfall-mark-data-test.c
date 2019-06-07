@@ -1,5 +1,5 @@
 #include <hyscan-data-writer.h>
-#include <hyscan-waterfall-mark-data.h>
+#include <hyscan-mark-data-waterfall.h>
 #include <glib/gprintf.h>
 #include <stdio.h>
 #include <hyscan-mark.h>
@@ -59,7 +59,7 @@ main (int argc, char **argv)
   make_track (db, name);
 
   /* Начинаем тестирование объекта. */
-  data = g_object_new (HYSCAN_TYPE_WATERFALL_MARK_DATA, "db", db, "project", name, NULL);
+  data = g_object_new (HYSCAN_TYPE_MARK_DATA_WATERFALL, "db", db, "project", name, NULL);
 
   /* Отправим несколько меток. */
   g_message ("Adding marks...");

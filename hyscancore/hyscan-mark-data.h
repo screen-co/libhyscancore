@@ -1,21 +1,36 @@
-/**
+/* hyscan-mark-data.h
  *
- * \file hyscan-mark-data.h
+ * Copyright 2017-2019 Screen LLC, Dmitriev Alexander <m1n7@yandex.ru>
+ * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * \brief Заголовочный файл класса работы с метками водопада.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * This file is part of HyScanGui library.
  *
- * \defgroup HyScanMarkData HyScanMarkData - базовый класс работы с метками режима водопад.
+ * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * HyScanMarkData - базовый класс работы с метками режима водопад. Он представляет собой
- * обертку над базой данных, что позволяет потребителю работать не с конкретными записями в базе
- * данных, а с метками и их идентификаторами.
+ * HyScanGui is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Класс решает задачи добавления, удаления, модификации и получения меток.
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
- * Класс не потокобезопасен.
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanGui имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #ifndef __HYSCAN_MARK_DATA_H__
@@ -47,21 +62,23 @@ struct _HyScanMarkData
 
 /**
  * HyScanMarkDataClass:
+ * @schema_id: идентификатор схемы меток
+ * @param_sid: значение параметра /schema/id для метки
+ * @param_sver: значение параметра /schema/version для метки
  * @init_plist: функция добавляет в список параметров дополнительные ключи
- * @get_schema: функция возвращает информацию о схеме данных (название, ИД, версия)
  * @get: функция считывает содержимое объекта
  * @set: функция записывает значения в существующий объект
  */
 struct _HyScanMarkDataClass
 {
-  GObjectClass parent_class;
+  GObjectClass   parent_class;
+
+  const gchar   *schema_id;
+  gint64         param_sid;
+  gint64         param_sver;
 
   void           (*init_plist)   (HyScanMarkData    *data,
                                   HyScanParamList   *plist);
-
-  const gchar *  (*get_schema)   (HyScanMarkData    *data,
-                                  gint64            *id,
-                                  gint64            *version);
 
   void           (*get)          (HyScanMarkData    *data,
                                   HyScanParamList   *read_plist,
@@ -75,79 +92,27 @@ struct _HyScanMarkDataClass
 HYSCAN_API
 GType                           hyscan_mark_data_get_type          (void);
 
-/**
- *
- * Функция добавляет метку в базу данных.
- *
- * \param data указатель на объект \link HyScanMarkData \endlink;
- * \param mark указатель на структуру \link HyScanMark \endlink.
- *
- * \return TRUE, если удалось добавить метку, иначе FALSE.
- */
 HYSCAN_API
 gboolean                        hyscan_mark_data_add               (HyScanMarkData    *data,
                                                                     HyScanMark        *mark);
 
-/**
- *
- * Функция удаляет метку из базы данных.
- *
- * \param data указатель на объект \link HyScanMarkData \endlink;
- * \param id идентификатор метки.
- *
- * \return TRUE, если удалось удалить метку, иначе FALSE.
- */
 HYSCAN_API
 gboolean                        hyscan_mark_data_remove            (HyScanMarkData    *data,
                                                                     const gchar       *id);
 
-/**
- *
- * Функция изменяет метку.
- *
- * \param data указатель на объект \link HyScanMarkData \endlink;
- * \param id идентификатор метки;
- * \param mark указатель на структуру \link HyScanMark \endlink.
- *
- * \return TRUE, если удалось изменить метку, иначе FALSE.
- */
 HYSCAN_API
 gboolean                        hyscan_mark_data_modify            (HyScanMarkData    *data,
                                                                     const gchar       *id,
                                                                     HyScanMark        *mark);
 
-/**
- *
- * Функция возвращает список идентификаторов всех меток.
- *
- * \param data указатель на объект \link HyScanMarkData \endlink;
- * \param len количество элементов или NULL.
- *
- * \return NULL-терминированный список идентификаторов, NULL если меток нет.
- */
 HYSCAN_API
-gchar                         **hyscan_mark_data_get_ids           (HyScanMarkData    *data,
+gchar **                        hyscan_mark_data_get_ids           (HyScanMarkData    *data,
                                                                     guint             *len);
-/**
- *
- * Функция возвращает метку по идентификатору.
- *
- * \param data указатель на объект \link HyScanMarkData \endlink;
- * \param id идентификатор метки.
- *
- * \return указатель на структуру \link HyScanMark \endlink, NULL в случае ошибки.
- */
+
 HYSCAN_API
-HyScanMark                     *hyscan_mark_data_get               (HyScanMarkData    *data,
+HyScanMark *                    hyscan_mark_data_get               (HyScanMarkData    *data,
                                                                     const gchar       *id);
-/**
- *
- * Функция возвращает счётчик изменений.
- *
- * \param data указатель на объект \link HyScanMarkData \endlink;
- *
- * \return номер изменения.
- */
+
 HYSCAN_API
 guint32                         hyscan_mark_data_get_mod_count     (HyScanMarkData    *data);
 
