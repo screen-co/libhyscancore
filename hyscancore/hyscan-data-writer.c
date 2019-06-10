@@ -444,7 +444,7 @@ hyscan_data_writer_create_track (HyScanDB        *db,
   gint32 param_id = -1;
 
   HyScanParamList *param_list = NULL;
-  const gchar *track_type_name;
+  const gchar *track_type_id;
   GBytes *track_schema;
 
   /* Схема галса. */
@@ -456,8 +456,8 @@ hyscan_data_writer_create_track (HyScanDB        *db,
       return FALSE;
     }
 
-  track_type_name = hyscan_track_get_name_by_type (track_type);
-  if (track_type_name == NULL)
+  track_type_id = hyscan_track_get_id_by_type (track_type);
+  if (track_type_id == NULL)
     goto exit;
 
   /* Создаём галс. Галс не должен существовать. */
@@ -476,7 +476,7 @@ hyscan_data_writer_create_track (HyScanDB        *db,
 
   hyscan_param_list_set_string (param_list, "/id", track_ids);
   hyscan_param_list_set_integer (param_list, "/ctime", date_time);
-  hyscan_param_list_set_string (param_list, "/type", track_type_name);
+  hyscan_param_list_set_string (param_list, "/type", track_type_id);
   hyscan_param_list_set_string (param_list, "/operator", operator);
   hyscan_param_list_set_string (param_list, "/sonar", sonar);
   if (!hyscan_db_param_set (db, param_id, NULL, param_list))
@@ -529,7 +529,7 @@ hyscan_data_writer_create_log_channel (HyScanDataWriterPrivate *priv)
   gint32 channel_id;
 
   /* Канал записи сообщений. */
-  channel_name =  hyscan_source_get_name_by_type (HYSCAN_SOURCE_LOG);
+  channel_name =  hyscan_source_get_id_by_type (HYSCAN_SOURCE_LOG);
   channel_id = hyscan_db_channel_create (priv->db, priv->track_id, channel_name, LOG_CHANNEL_SCHEMA);
   if (channel_id < 0)
     return -1;
@@ -553,7 +553,7 @@ hyscan_data_writer_create_sensor_channel (HyScanDataWriterPrivate *priv,
   gint32 channel_id;
 
   /* Канал записи данных. */
-  channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
+  channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_DATA, channel);
   channel_id = hyscan_db_channel_create (priv->db, priv->track_id,
                                          channel_name, SENSOR_CHANNEL_SCHEMA);
   if (channel_id < 0)
@@ -626,10 +626,10 @@ hyscan_data_writer_create_acoustic_channel (HyScanDataWriterPrivate *priv,
   gint32 tvg_id = -1;
 
   /* Название канала для данных. */
-  data_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_DATA, channel);
-  noise_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
-  signal_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
-  tvg_channel_name = hyscan_channel_get_name_by_types (source, HYSCAN_CHANNEL_TVG, channel);
+  data_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_DATA, channel);
+  noise_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_NOISE, channel);
+  signal_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_SIGNAL, channel);
+  tvg_channel_name = hyscan_channel_get_id_by_types (source, HYSCAN_CHANNEL_TVG, channel);
 
   /* Каналы образов сигналов. */
   signal_id = hyscan_db_channel_create (priv->db, priv->track_id,
@@ -1161,7 +1161,7 @@ hyscan_data_writer_log_add_message (HyScanDataWriter *writer,
   /* Формируем сообщение. */
   g_string_printf (priv->log_message, "%s\t%s\t%s",
                    source,
-                   hyscan_log_level_get_name_by_type (level),
+                   hyscan_log_level_get_id_by_type (level),
                    message);
 
   hyscan_buffer_wrap (priv->log_data, HYSCAN_DATA_STRING,
@@ -1243,7 +1243,7 @@ hyscan_data_writer_sensor_add_data (HyScanDataWriter *writer,
     {
       g_warning ("HyScanDataWriter: %s.%s.%s: can't add data",
                  priv->project_name, priv->track_name,
-                 hyscan_source_get_name_by_type (channel_info->source));
+                 hyscan_source_get_id_by_type (channel_info->source));
     }
 
 exit:
@@ -1325,7 +1325,7 @@ hyscan_data_writer_acoustic_add_data (HyScanDataWriter       *writer,
         {
           g_warning ("HyScanDataWriter: %s.%s.%s: can't add data",
                      priv->project_name, priv->track_name,
-                     hyscan_source_get_name_by_type (channel_info->source));
+                     hyscan_source_get_id_by_type (channel_info->source));
         }
     }
 
@@ -1422,7 +1422,7 @@ hyscan_data_writer_acoustic_add_signal (HyScanDataWriter *writer,
         {
           g_warning ("HyScanDataWriter: %s.%s.%s: can't add signal",
                      priv->project_name, priv->track_name,
-                     hyscan_source_get_name_by_type (channel_info->source));
+                     hyscan_source_get_id_by_type (channel_info->source));
         }
     }
   else
@@ -1514,7 +1514,7 @@ hyscan_data_writer_acoustic_add_tvg (HyScanDataWriter *writer,
         {
           g_warning ("HyScanDataWriter: %s.%s.%s: can't add tvg",
                      priv->project_name, priv->track_name,
-                     hyscan_source_get_name_by_type (channel_info->source));
+                     hyscan_source_get_id_by_type (channel_info->source));
         }
     }
   else

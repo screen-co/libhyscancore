@@ -378,7 +378,7 @@ hyscan_hw_connector_connect (HyScanHWConnector *connector)
         {
           for (i = 0; i < n_sources; i++)
             {
-              const gchar *source_name = hyscan_source_get_name_by_type (sources[i]);
+              const gchar *source_name = hyscan_source_get_id_by_type (sources[i]);
 
               if (!hyscan_hw_connector_load_offset (priv->offsets, source_name, &offset))
                 continue;

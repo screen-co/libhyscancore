@@ -506,7 +506,7 @@ hyscan_control_sonar_signal (HyScanDevice  *device,
   if (!hyscan_data_writer_acoustic_add_signal (priv->writer, source, channel, time, image))
     {
       g_warning ("HyScanControl: can't set signal image for %s",
-                 hyscan_source_get_name_by_type (source));
+                 hyscan_source_get_id_by_type (source));
     }
 
   g_signal_emit_by_name (control, "sonar-signal", source, channel, time, image);
@@ -534,7 +534,7 @@ hyscan_control_sonar_tvg (HyScanDevice  *device,
   if (!hyscan_data_writer_acoustic_add_tvg (priv->writer, source, channel, time, gains))
     {
       g_warning ("HyScanControl: can't set tvg for %s",
-                 hyscan_source_get_name_by_type (source));
+                 hyscan_source_get_id_by_type (source));
     }
 
   g_signal_emit_by_name (control, "sonar-tvg", source, channel, time, gains);
@@ -566,7 +566,7 @@ hyscan_control_sonar_acoustic_data (HyScanDevice           *device,
                                              time, info, data))
     {
       g_warning ("HyScanControl: can't add acoustic data for %s",
-                 hyscan_source_get_name_by_type (source));
+                 hyscan_source_get_id_by_type (source));
     }
 
   g_signal_emit_by_name (control, "sonar-acoustic-data",

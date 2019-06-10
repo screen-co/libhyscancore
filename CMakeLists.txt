@@ -52,9 +52,10 @@ if (NOT CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
   set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 endif ()
 
+pkg_check_modules (ZLIB REQUIRED zlib)
 pkg_check_modules (GLIB2 REQUIRED glib-2.0 gobject-2.0 gthread-2.0 gio-2.0)
-add_definitions (${GLIB2_CFLAGS})
-link_directories (${GLIB2_LIBRARY_DIRS})
+add_definitions (${GLIB2_CFLAGS} ${ZLIB_CFLAGS})
+link_directories (${GLIB2_LIBRARY_DIRS} ${ZLIB_LIBRARY_DIRS})
 
 if (HYSCAN_USE_SYS_LIBS)
   pkg_check_modules (HYSCAN REQUIRED "hyscandriver-${HYSCAN_MAJOR_VERSION}"
@@ -87,5 +88,6 @@ endif ()
 include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/hyscancore")
 
 add_definitions (-DG_LOG_DOMAIN="HyScanCore")
+add_definitions (-DGETTEXT_PACKAGE="hyscancore")
 add_subdirectory (hyscancore)
 add_subdirectory (tests)

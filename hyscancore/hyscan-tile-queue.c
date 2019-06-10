@@ -1053,12 +1053,6 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
                               header_size, priv->header, priv->data);
   if (status && header.magic == TILE_QUEUE_MAGIC)
     {
-      // gfloat *tmp;
-      guint32 data_size = header.size - header_size;
-
-      // tmp = g_malloc0 (data_size * sizeof (gfloat));
-      // hyscan_buffer_wrap_data (priv->data, HYSCAN_DATA_BLOB, tmp, data_size);
-
       *buffer = hyscan_buffer_get (priv->data, NULL, size);
       *cached_tile = header.tile;
     }

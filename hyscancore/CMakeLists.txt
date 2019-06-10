@@ -1,4 +1,3 @@
-
 find_program (RESOURCE_COMPILER glib-compile-resources)
 if (${RESOURCE_COMPILER} STREQUAL RESOURCE_COMPILER-NOTFOUND)
   message (FATAL_ERROR "GLib resource compiler not found.")
@@ -52,6 +51,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-depthometer.c
              hyscan-depth-factory.c
              hyscan-control.c
+             hyscan-control-proxy.c
              hyscan-projector.c
              hyscan-tile-common.c
              hyscan-tile-color.c
@@ -64,6 +64,11 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-mark-model.c
              hyscan-mloc.c
              hyscan-hw-connector.c
+             hyscan-profile.c
+             hyscan-profile-db.c
+             hyscan-profile-hw-device.c
+             hyscan-profile-hw.c
+             hyscan-profile-offset.c
              hyscan-geo-projection.c
              hyscan-mercator.c
              hyscan-pseudo-mercator.c
@@ -76,7 +81,11 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
-target_link_libraries (${HYSCAN_CORE_LIBRARY} ${GLIB2_LIBRARIES} ${MATH_LIBRARIES} ${HYSCAN_LIBRARIES})
+target_link_libraries (${HYSCAN_CORE_LIBRARY}
+                       ${GLIB2_LIBRARIES}
+                       ${MATH_LIBRARIES}
+                       ${HYSCAN_LIBRARIES}
+                       ${ZLIB_LIBRARIES})
 
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES SOVERSION ${HYSCAN_CORE_VERSION})
@@ -109,6 +118,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-nmea-parser.h
                hyscan-depthometer.h
                hyscan-control.h
+               hyscan-control-proxy.h
                hyscan-amplitude-factory.h
                hyscan-depth-factory.h
                hyscan-projector.h
@@ -123,6 +133,11 @@ install (FILES hyscan-core-schemas.h
                hyscan-mark-data-waterfall.h
                hyscan-mark-model.h
                hyscan-hw-connector.h
+               hyscan-profile.h
+               hyscan-profile-db.h
+               hyscan-profile-hw-device.h
+               hyscan-profile-hw.h
+               hyscan-profile-offset.h
                hyscan-geo-projection.h
                hyscan-mercator.h
                hyscan-pseudo-mercator.h
