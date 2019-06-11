@@ -441,12 +441,14 @@ HyScanMark *
 hyscan_mark_data_get (HyScanMarkData *data,
                       const gchar    *id)
 {
+  HyScanMarkDataClass *klass;
   gboolean status;
   HyScanMark *mark = NULL;
 
   g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), FALSE);
+  klass = HYSCAN_MARK_DATA_GET_CLASS (data);
 
-  mark = hyscan_mark_new ();
+  mark = hyscan_mark_new (klass->mark_type);
 
   status = hyscan_mark_data_get_internal (data, id, mark);
 

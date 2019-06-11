@@ -67,6 +67,7 @@ hyscan_mark_data_waterfall_class_init (HyScanMarkDataWaterfallClass *klass)
 {
   HyScanMarkDataClass *data_class = HYSCAN_MARK_DATA_CLASS (klass);
 
+  data_class->mark_type = HYSCAN_MARK_WATERFALL;
   data_class->schema_id = WATERFALL_MARK_SCHEMA;
   data_class->param_sid = WATERFALL_MARK_SCHEMA_ID;
   data_class->param_sver = WATERFALL_MARK_SCHEMA_VERSION;

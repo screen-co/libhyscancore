@@ -174,7 +174,7 @@ union _HyScanMark
 };
 
 HYSCAN_API
-HyScanMark            *hyscan_mark_new                              (void);
+HyScanMark            *hyscan_mark_new                              (HyScanMarkType         type);
 
 HYSCAN_API
 HyScanMark            *hyscan_mark_copy                             (HyScanMark            *mark);

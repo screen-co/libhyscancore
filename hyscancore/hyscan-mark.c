@@ -39,10 +39,11 @@ G_DEFINE_BOXED_TYPE (HyScanMark, hyscan_mark,
                      hyscan_mark_copy, hyscan_mark_free)
 
 HyScanMark*
-hyscan_mark_new (void)
+hyscan_mark_new (HyScanMarkType type)
 {
   HyScanMark* mark;
   mark = g_slice_new0 (HyScanMark);
+  mark->type = type;
   return mark;
 }
 
@@ -55,7 +56,7 @@ hyscan_mark_copy (HyScanMark *mark)
   if (mark == NULL)
     return NULL;
 
-  copy = hyscan_mark_new ();
+  copy = hyscan_mark_new (mark->type);
 
   switch (mark->type)
     {
@@ -74,6 +75,7 @@ hyscan_mark_copy (HyScanMark *mark)
     }
 
   /* Копируем общие поля. */
+  copy->type = mark->type;
   hyscan_mark_set_text (copy, any->name,
                               any->description,
                               any->operator_name);

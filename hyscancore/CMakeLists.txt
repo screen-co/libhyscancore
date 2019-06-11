@@ -61,6 +61,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-mark.c
              hyscan-mark-data.c
              hyscan-mark-data-waterfall.c
+             hyscan-mark-data-geo.c
              hyscan-mark-model.c
              hyscan-mloc.c
              hyscan-hw-connector.c
@@ -131,6 +132,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-mark.h
                hyscan-mark-data.h
                hyscan-mark-data-waterfall.h
+               hyscan-mark-data-geo.h
                hyscan-mark-model.h
                hyscan-hw-connector.h
                hyscan-profile.h

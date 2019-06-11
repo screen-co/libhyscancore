@@ -62,6 +62,7 @@ struct _HyScanMarkData
 
 /**
  * HyScanMarkDataClass:
+ * @mark_type: тип метки
  * @schema_id: идентификатор схемы меток
  * @param_sid: значение параметра /schema/id для метки
  * @param_sver: значение параметра /schema/version для метки
@@ -73,6 +74,7 @@ struct _HyScanMarkDataClass
 {
   GObjectClass   parent_class;
 
+  HyScanMarkType mark_type;
   const gchar   *schema_id;
   gint64         param_sid;
   gint64         param_sver;

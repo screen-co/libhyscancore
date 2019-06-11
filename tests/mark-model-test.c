@@ -224,7 +224,7 @@ HyScanMarkWaterfall*
 make_mark (gint   seed,
            gint   seed2)
 {
-  HyScanMarkWaterfall *mark = (HyScanMarkWaterfall*)hyscan_mark_new ();
+  HyScanMarkWaterfall *mark = (HyScanMarkWaterfall*)hyscan_mark_new (HYSCAN_MARK_WATERFALL);
   mark->track = g_strdup_printf ("TrackID%05i%05i", seed, seed2);
   mark->name = g_strdup_printf ("Mark %05i%05i", seed, seed2);
   mark->description = g_strdup_printf ("description %i", seed);

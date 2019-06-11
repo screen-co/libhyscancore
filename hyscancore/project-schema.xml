@@ -54,4 +54,29 @@
       <key id="height" name="Mark height" type="integer"/>
     </node>
   </schema>
+
+  <schema id="geo-mark">
+    <node id="schema">
+      <key id="id" name="Geo mark schema id" type="integer" access="readonly">
+        <default>7450483674131360627</default>
+      </key>
+      <key id="version" name="Geo mark schema version" type="integer" access="readonly">
+        <default>20180100</default>
+      </key>
+    </node>
+    <key id="name" name="Mark short name" type="string"/>
+    <key id="description" name="Detailed description" type="string"/>
+    <key id="label" name="Applied labels" type="integer"/>
+    <key id="operator" name="Operator name" type="string"/>
+    <node id="time" name="Mark timings">
+      <key id="creation" name="Time of creation" type="integer"/>
+      <key id="modification" name="Time of last modification" type="integer"/>
+    </node>
+    <node id="coordinates" name="Mark coordinates">
+      <key id="lat" name="Latitude (center)" type="double"/>
+      <key id="lon" name="Longitude (center)" type="double"/>
+      <key id="width" name="Mark width" type="integer"/>
+      <key id="height" name="Mark height" type="integer"/>
+    </node>
+  </schema>
 </schemalist>
