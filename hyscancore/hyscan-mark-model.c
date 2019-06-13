@@ -9,6 +9,8 @@
  */
 
 #include "hyscan-mark-model.h"
+#include "hyscan-mark-data-waterfall.h"
+#include "hyscan-mark-data-geo.h"
 
 #define DELAY (250 * G_TIME_SPAN_MILLISECOND)
 
@@ -49,7 +51,7 @@ typedef struct
 
 struct _HyScanMarkModelPrivate
 {
-  GType                    data_type;        /* Тип класса работы с метками. */
+  HyScanMarkType           mark_type;        /* Тип меток. */
   HyScanMarkModelState     cur_state;        /* Текущее состояние. */
   HyScanMarkModelState     new_state;        /* Желаемое состояние. */
   GMutex                   state_lock;       /* Блокировка состояния. */
@@ -106,9 +108,10 @@ hyscan_mark_model_class_init (HyScanMarkModelClass *klass)
   object_class->set_property = hyscan_mark_model_set_property;
 
   g_object_class_install_property (object_class, PROP_DATA_TYPE,
-      g_param_spec_gtype ("data-type", "Mark data type",
-                          "The GType of HyScanMarkData inheritor", HYSCAN_TYPE_MARK_DATA,
-                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+      g_param_spec_int ("mark-type", "Type of marks to process",
+                        "HyScanMarkType of marks to process",
+                        HYSCAN_MARK_INVALID, HYSCAN_MARK_LAST - 1, HYSCAN_MARK_INVALID,
+                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   hyscan_mark_model_signals[SIGNAL_CHANGED] =
     g_signal_new ("changed", HYSCAN_TYPE_MARK_MODEL,
@@ -177,7 +180,7 @@ hyscan_mark_model_set_property (GObject      *object,
   switch (prop_id)
     {
     case PROP_DATA_TYPE:
-      priv->data_type = g_value_get_gtype (value);
+      priv->mark_type = g_value_get_int (value);
       break;
 
     default:
@@ -362,7 +365,18 @@ hyscan_mark_model_processing (gpointer data)
            * Если не получилось (например потому, что проект ещё не создан),
            * повторим через некоторое время. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
-            mdata = g_object_new (priv->data_type, "db", priv->cur_state.db, "project", priv->cur_state.project, NULL);
+            {
+              GType type;
+              if (priv->mark_type == HYSCAN_MARK_WATERFALL)
+                type = HYSCAN_TYPE_MARK_DATA_WATERFALL;
+              else if (priv->mark_type == HYSCAN_MARK_GEO)
+                type = HYSCAN_TYPE_MARK_DATA_GEO;
+              else
+                g_assert_not_reached ();
+
+              mdata = g_object_new (type, "db", priv->cur_state.db,
+                                    "project", priv->cur_state.project, NULL);
+            }
 
           if (mdata == NULL)
             {
@@ -431,10 +445,10 @@ hyscan_mark_model_signaller (gpointer data)
 
 /* Функция создает новый объект HyScanMarkModel. */
 HyScanMarkModel*
-hyscan_mark_model_new (GType data_type)
+hyscan_mark_model_new (HyScanMarkType mark_type)
 {
   return g_object_new (HYSCAN_TYPE_MARK_MODEL,
-                       "data-type", data_type, NULL);
+                       "mark-type", mark_type, NULL);
 }
 
 /* Функция устанавливает проект. */

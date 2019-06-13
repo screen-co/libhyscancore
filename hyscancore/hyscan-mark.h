@@ -55,8 +55,10 @@ typedef struct _HyScanMarkGeo HyScanMarkGeo;
  */
 enum _HyScanMarkType
 {
-  HYSCAN_MARK_WATERFALL,
-  HYSCAN_MARK_GEO,
+  HYSCAN_MARK_INVALID = -1,
+  HYSCAN_MARK_WATERFALL = 0,
+  HYSCAN_MARK_GEO,  
+  HYSCAN_MARK_LAST
 };
 
 /**

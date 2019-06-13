@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
- * This file is part of HyScanModel.
+ * This file is part of HyScanCore.
  *
- * HyScanModel is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanModel is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,9 +21,9 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanModel имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanModel на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
@@ -58,14 +58,17 @@ struct _HyScanProfile
   HyScanProfilePrivate *priv;
 };
 
+/**
+ * HyScanProfileClass:
+ * @parent_class: Базовый интерфейс.
+ * @read: Функция разбора GKeyFile с профилем.
+ */
 struct _HyScanProfileClass
 {
   GObjectClass   parent_class;
 
   gboolean     (*read)      (HyScanProfile *self,
                              GKeyFile      *file);
-
-  void         (*use)       (HyScanProfile *self);
 };
 
 HYSCAN_API
@@ -79,10 +82,6 @@ void                   hyscan_profile_set_name         (HyScanProfile *profile,
                                                         const gchar   *file);
 HYSCAN_API
 const gchar *          hyscan_profile_get_name         (HyScanProfile *self);
-
-HYSCAN_API
-void                   hyscan_profile_use              (HyScanProfile *profile);
-
 
 G_END_DECLS
 

@@ -1,13 +1,35 @@
-/**
- * \file hyscan-profile-db.h
+/* hyscan-profile-db.h
  *
- * \brief Заголовочный файл класса HyScanProfileDB - профиля БД.
- * \author Vladimir Maximov (vmakxs@gmail.com)
- * \date 2018
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
- * \defgroup HyScanProfileDB HyScanProfileDB - профиль БД.
+ * This file is part of HyScanCore.
  *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #ifndef __HYSCAN_PROFILE_DB_H__
@@ -45,27 +67,8 @@ struct _HyScanProfileDBClass
 HYSCAN_API
 GType              hyscan_profile_db_get_type            (void);
 
-/* Создаёт объект HyScanProfileDB. */
 HYSCAN_API
 HyScanProfileDB*   hyscan_profile_db_new                 (const gchar       *file);
-
-/* Получает имя системы хранения. */
-HYSCAN_API
-const gchar*       hyscan_profile_db_get_name            (HyScanProfileDB   *profile);
-
-/* Получает URI системы хранения. */
-HYSCAN_API
-const gchar*       hyscan_profile_db_get_uri             (HyScanProfileDB   *profile);
-
-/* Задаёт имя системы хранения. */
-HYSCAN_API
-void               hyscan_profile_db_set_name            (HyScanProfileDB   *profile,
-                                                          const gchar       *name);
-
-/* Задаёт URI системы хранения. */
-HYSCAN_API
-void               hyscan_profile_db_set_uri             (HyScanProfileDB   *profile,
-                                                          const gchar       *uri);
 
 HYSCAN_API
 HyScanDB *         hyscan_profile_db_connect             (HyScanProfileDB   *profile);

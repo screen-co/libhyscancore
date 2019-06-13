@@ -1,11 +1,54 @@
-/*
- * \file hyscan-db-profile.c
+/* hyscan-profile-offset.c
  *
- * \brief Исходный файл класса HyScanProfileOffset - профиля БД.
- * \author Vladimir Maximov (vmakxs@gmail.com)
- * \date 2018
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-profile-offset
+ * @Short_description: профиль местоположения антенн
+ * @Title: HyScanProfileOffset
+ *
+ * Класс HyScanProfileOffset реализует профили местоположения антенн.
+ * Профиль оборудования содержит группу "_" с информацией о профиле:
+ * "name" - человекочитаемое название профиля.
+ *
+ * Все остальные группы относятся к конкретному оборудованию (локаторам и
+ * датчикам). Если название группы соответствует строке, возвращаемой функцией
+ * #hyscan_source_get_id_by_type, то это считается местоположением приемной
+ * антенны локатора, иначе -- местоположением датчика.
+ *
+ * Каждая группа может содержать следующие поля:
+ * "x", "y", "z", "psi", "gamma", "theta" для соответствующих полей
+ * #HyScanAntennaOffset.
  */
 
 #include <gio/gio.h>
@@ -23,7 +66,7 @@
 
 struct _HyScanProfileOffsetPrivate
 {
-  GHashTable *sonars;  /* Таблица смещений для локаторов. {HyScanSourceType : HyScanAntennaOffset} */
+  GHashTable *sources;  /* Таблица смещений для локаторов. {HyScanSourceType : HyScanAntennaOffset} */
   GHashTable *sensors; /* Таблица смещений для антенн. {gchar* : HyScanAntennaOffset} */
 };
 
@@ -63,30 +106,22 @@ hyscan_profile_offset_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_offset_parent_class)->finalize (object);
 }
 
+/* Функция очищает профиль. */
 static void
 hyscan_profile_offset_clear (HyScanProfileOffset *profile)
 {
   HyScanProfileOffsetPrivate *priv = profile->priv;
 
-  g_clear_pointer (&priv->sonars, g_hash_table_unref);
+  g_clear_pointer (&priv->sources, g_hash_table_unref);
   g_clear_pointer (&priv->sensors, g_hash_table_unref);
 
-  priv->sonars = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+  priv->sources = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                         NULL, (GDestroyNotify)hyscan_antenna_offset_free);
   priv->sensors = g_hash_table_new_full (g_str_hash, g_str_equal,
                                          g_free, (GDestroyNotify)hyscan_antenna_offset_free);
 }
 
-/* Создаёт объект HyScanProfileOffset. */
-HyScanProfileOffset *
-hyscan_profile_offset_new (const gchar *file)
-{
-  return g_object_new (HYSCAN_TYPE_PROFILE_OFFSET,
-                       "file", file,
-                       NULL);
-}
-
-/* Десериализация из INI-файла. */
+/* Функция парсинга профиля. */
 static gboolean
 hyscan_profile_offset_read (HyScanProfile *profile,
                             GKeyFile      *file)
@@ -120,7 +155,7 @@ hyscan_profile_offset_read (HyScanProfile *profile,
       /* Если название группы совпадает с названием того или иного
        * HyScanSourceType, то это локатор. Иначе -- датчик. */
       if (hyscan_channel_get_types_by_id (*iter, &source, &type, &channel))
-        g_hash_table_insert (priv->sonars, GINT_TO_POINTER (source), hyscan_antenna_offset_copy (&offset));
+        g_hash_table_insert (priv->sources, GINT_TO_POINTER (source), hyscan_antenna_offset_copy (&offset));
       else
         g_hash_table_insert (priv->sensors, g_strdup (*iter), hyscan_antenna_offset_copy (&offset));
     }
@@ -130,6 +165,7 @@ hyscan_profile_offset_read (HyScanProfile *profile,
   return TRUE;
 }
 
+/* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
 static gboolean
 hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
                                   GKeyFile            *kf,
@@ -147,14 +183,49 @@ hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
   return TRUE;
 }
 
+
+/**
+ * hyscan_profile_offset_new:
+ * @file: полный путь к файлу профиля
+ *
+ * Функция создает объект работы с профилем местоположения антенн.
+ *
+ * Returns: (transfer full): #HyScanProfileOffset.
+ */
+HyScanProfileOffset *
+hyscan_profile_offset_new (const gchar *file)
+{
+  return g_object_new (HYSCAN_TYPE_PROFILE_OFFSET,
+                       "file", file,
+                       NULL);
+}
+
+/**
+ * hyscan_profile_offset_get_sources:
+ * @profile: #HyScanProfileOffset
+ *
+ * Функция возвращает список #HyScanAntennaOffset для локаторов.
+ *
+ * Returns: (transfer full) (element-type HyScanSourceType HyScanAntennaOffset):
+ * таблица смещений для локаторов.
+ */
 GHashTable *
-hyscan_profile_offset_get_sonars (HyScanProfileOffset *profile)
+hyscan_profile_offset_get_sources (HyScanProfileOffset *profile)
 {
   g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), NULL);
 
-  return g_hash_table_ref (profile->priv->sonars);
+  return g_hash_table_ref (profile->priv->sources);
 }
 
+/**
+ * hyscan_profile_offset_get_sensors:
+ * @profile: #HyScanProfileOffset
+ *
+ * Функция возвращает список #HyScanAntennaOffset для датчиков.
+ *
+ * Returns: (transfer full) (element-type utf8 HyScanAntennaOffset):
+ * таблица смещений для датчиков.
+ */
 GHashTable *
 hyscan_profile_offset_get_sensors (HyScanProfileOffset *profile)
 {
@@ -163,6 +234,16 @@ hyscan_profile_offset_get_sensors (HyScanProfileOffset *profile)
   return g_hash_table_ref (profile->priv->sensors);
 }
 
+/**
+ * hyscan_profile_offset_apply:
+ * @profile: #HyScanProfileOff
+ * @control: #HyScanControlset
+ *
+ * Функция задает местоположения антенн. Если какое-то значение задать не
+ * удалось, функция вернет FALSE.
+ *
+ * Returns: TRUE, если удалось задать все смещения.
+ */
 gboolean
 hyscan_profile_offset_apply (HyScanProfileOffset *profile,
                              HyScanControl       *control)
@@ -175,7 +256,7 @@ hyscan_profile_offset_apply (HyScanProfileOffset *profile,
   g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), FALSE);
   priv = profile->priv;
 
-  g_hash_table_iter_init (&iter, priv->sonars);
+  g_hash_table_iter_init (&iter, priv->sources);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_sonar_antenna_set_offset (HYSCAN_SONAR (control), (HyScanSourceType)k, v))
@@ -192,6 +273,17 @@ hyscan_profile_offset_apply (HyScanProfileOffset *profile,
   return TRUE;
 }
 
+/**
+ * hyscan_profile_offset_apply_default:
+ * @profile: #HyScanProfileOffset
+ * @control: #HyScanControl
+ *
+ * Функция ведет себя аналогично #hyscan_profile_offset_apply, но задает
+ * местоположения антенн по-умолчанию, то есть такие, которые невозможно
+ * изменить после вызова функции #hyscan_control_device_bind.
+ *
+ * Returns: TRUE, если удалось задать все смещения.
+ */
 gboolean
 hyscan_profile_offset_apply_default (HyScanProfileOffset *profile,
                                      HyScanControl       *control)
@@ -204,7 +296,7 @@ hyscan_profile_offset_apply_default (HyScanProfileOffset *profile,
   g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), FALSE);
   priv = profile->priv;
 
-  g_hash_table_iter_init (&iter, priv->sonars);
+  g_hash_table_iter_init (&iter, priv->sources);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_control_source_set_default_offset (control, (HyScanSourceType)k, v))

@@ -1,4 +1,37 @@
-// TODO: this naming sucks
+/* hyscan-profile-hw-device.h
+ *
+ * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
 #ifndef __HYSCAN_PROFILE_HW_DEVICE_H__
 #define __HYSCAN_PROFILE_HW_DEVICE_H__
 
@@ -18,7 +51,6 @@ typedef struct _HyScanProfileHWDevice HyScanProfileHWDevice;
 typedef struct _HyScanProfileHWDevicePrivate HyScanProfileHWDevicePrivate;
 typedef struct _HyScanProfileHWDeviceClass HyScanProfileHWDeviceClass;
 
-/* TODO: Change GObject to type of the base class. */
 struct _HyScanProfileHWDevice
 {
   GObject parent_instance;
@@ -26,7 +58,6 @@ struct _HyScanProfileHWDevice
   HyScanProfileHWDevicePrivate *priv;
 };
 
-/* TODO: Change GObjectClass to type of the base class. */
 struct _HyScanProfileHWDeviceClass
 {
   GObjectClass parent_class;
@@ -43,23 +74,6 @@ void                    hyscan_profile_hw_device_read             (HyScanProfile
                                                                    GKeyFile              *kf);
 gboolean                hyscan_profile_hw_device_check            (HyScanProfileHWDevice *hw_device);
 HyScanDevice *          hyscan_profile_hw_device_connect          (HyScanProfileHWDevice *hw_device);
-
-//gchar *                 hyscan_profile_hw_device_get_uri          (HyScanProfileHWDevice *hw_device);
-//gchar *                 hyscan_profile_hw_device_get_driver       (HyScanProfileHWDevice *hw_device);
-//HyScanParamList *       hyscan_profile_hw_device_get_params       (HyScanProfileHWDevice *hw_device,
-//                                                                   HyScanDataSchema      *schema);
-
-// void                    hyscan_profile_hw_device_set_uri          (HyScanProfileHWDevice *hw_device,
-//                                                                    gchar                 *uri);
-// void                    hyscan_profile_hw_device_set_driver       (HyScanProfileHWDevice *hw_device,
-//                                                                    gchar                 *driver);
-// void                    hyscan_profile_hw_device_set_params       (HyScanProfileHWDevice *hw_device,
-//                                                                    HyScanParamList       *params);
-
-// void                    hyscan_profile_hw_device_write            (HyScanProfileHWDevice *hw_device);
-// void                    hyscan_profile_hw_device_read             (HyScanProfileHWDevice *hw_device);
-
-
 
 G_END_DECLS
 

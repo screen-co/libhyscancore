@@ -27,8 +27,8 @@
 #ifndef __HYSCAN_MARK_MODEL_H__
 #define __HYSCAN_MARK_MODEL_H__
 
-#include <hyscan-mark-data.h>
-#include <hyscan-mark.h>
+#include "hyscan-mark-data.h"
+#include "hyscan-mark.h"
 
 G_BEGIN_DECLS
 
@@ -66,7 +66,7 @@ GType                   hyscan_mark_model_get_type        (void);
  * \return объект HyScanMarkModel.
  */
 HYSCAN_API
-HyScanMarkModel*        hyscan_mark_model_new             (GType data_type);
+HyScanMarkModel*        hyscan_mark_model_new             (HyScanMarkType             mark_type);
 
 /**
  * Функция устанавливает проект.

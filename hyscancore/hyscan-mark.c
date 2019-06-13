@@ -131,7 +131,6 @@ hyscan_mark_set_text (HyScanMark  *mark,
   any->name = g_strdup (name);
   any->description = g_strdup (description);
   any->operator_name = g_strdup (oper);
-
 }
 
 void
@@ -144,8 +143,8 @@ hyscan_mark_set_labels (HyScanMark *mark,
 }
 
 void
-hyscan_mark_set_ctime (HyScanMark   *mark,
-                       gint64        creation)
+hyscan_mark_set_ctime (HyScanMark *mark,
+                       gint64      creation)
 {
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 
@@ -153,8 +152,8 @@ hyscan_mark_set_ctime (HyScanMark   *mark,
 }
 
 void
-hyscan_mark_set_mtime (HyScanMark   *mark,
-                       gint64        modification)
+hyscan_mark_set_mtime (HyScanMark *mark,
+                       gint64      modification)
 {
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 

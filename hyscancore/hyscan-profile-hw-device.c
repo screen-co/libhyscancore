@@ -1,3 +1,41 @@
+/* hyscan-profile-hw-device.h
+ *
+ * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/*
+ * Этот парень пока нестабилен, так что к нему документации нема.
+ * Я, возможно, переработаю его.
+ */
 #include "hyscan-profile-hw-device.h"
 #include <hyscan-driver.h>
 
@@ -39,17 +77,21 @@ hyscan_profile_hw_device_init (HyScanProfileHWDevice *profile_hw_device)
 static void
 hyscan_profile_hw_device_object_constructed (GObject *object)
 {
-  // HyScanProfileHWDevice *profile_hw_device = HYSCAN_PROFILE_HW_DEVICE (object);
-  // HyScanProfileHWDevicePrivate *priv = profile_hw_device->priv;
-
   G_OBJECT_CLASS (hyscan_profile_hw_device_parent_class)->constructed (object);
 }
 
 static void
 hyscan_profile_hw_device_object_finalize (GObject *object)
 {
-  // HyScanProfileHWDevice *profile_hw_device = HYSCAN_PROFILE_HW_DEVICE (object);
-  // HyScanProfileHWDevicePrivate *priv = profile_hw_device->priv;
+  HyScanProfileHWDevice *profile_hw_device = HYSCAN_PROFILE_HW_DEVICE (object);
+  HyScanProfileHWDevicePrivate *priv = profile_hw_device->priv;
+
+  g_clear_pointer (&priv->group, g_free);
+  g_clear_pointer (&priv->uri, g_free);
+  g_clear_pointer (&priv->paths, g_strfreev);
+
+  g_clear_object (&priv->discover);
+  g_clear_object (&priv->params);
 
   G_OBJECT_CLASS (hyscan_profile_hw_device_parent_class)->finalize (object);
 }
@@ -189,8 +231,6 @@ hyscan_profile_hw_device_read (HyScanProfileHWDevice *hw_device,
 
   g_return_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (hw_device));
   priv = hw_device->priv;
-
-  // TODO: add error handling.
 
   /* Определяем название драйвера и путь к устройству. */
   driver = g_key_file_get_string (kf, priv->group, HYSCAN_PROFILE_HW_DEVICE_DRIVER, NULL);

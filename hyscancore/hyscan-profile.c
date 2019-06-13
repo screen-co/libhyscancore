@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
- * This file is part of HyScanModel.
+ * This file is part of HyScanCore.
  *
- * HyScanModel is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanModel is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,15 +21,31 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanModel имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanModel на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
  *
  * Во-вторых, этот программный код можно использовать по коммерческой
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-profile
+ * @Short_description: базовый класс профилей
+ * @Title: HyScanProfile
+ *
+ * Класс HyScanProfile является виртуальным базовым классом, реализующим
+ * общую функциональность: на данный момент это чтение профиля и получение
+ * названия. За дальнейшей информацией следует обратиться к документации
+ * дочерних классов.
+ *
+ * Между тем, общий алгоритм работы такой: создать объект работы с профилем,
+ * полностью настроить его, прочитать с помощью #hyscan_profile_read,
+ * отобразить с помощью #hyscan_profile_get_name, применить с помощью
+ * соответствующей функции дочернего класса.
  */
 
 #include "hyscan-profile.h"
@@ -42,9 +58,9 @@ enum
 
 struct _HyScanProfilePrivate
 {
-  gchar    *file;
-  GKeyFile *kf;
-  gchar    *name;
+  gchar    *file;   /* Путь к файлу с профилем. */
+  GKeyFile *kf;     /* GKeyFile с профилем. */
+  gchar    *name;   /* Название профиля. */
 };
 
 static void     hyscan_profile_set_property       (GObject               *object,
@@ -111,6 +127,7 @@ hyscan_profile_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_parent_class)->finalize (object);
 }
 
+/* Функция чтения профиля. */
 static gboolean
 hyscan_profile_read_real (HyScanProfile *profile,
                           const gchar   *file)
@@ -136,6 +153,16 @@ hyscan_profile_read_real (HyScanProfile *profile,
   return klass->read (profile, priv->kf);
 }
 
+/**
+ * hyscan_profile_read:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция производит чтение профиля. Текущая реализация запрещает читать
+ * профиль более одного раза. Объект профиля должен быть полностью настроен
+ * перед вызовом этой функции.
+ *
+ * Returns: результат чтения профиля.
+ */
 gboolean
 hyscan_profile_read (HyScanProfile *self)
 {
@@ -148,6 +175,13 @@ hyscan_profile_read (HyScanProfile *self)
   return hyscan_profile_read_real (self, self->priv->file);
 }
 
+/**
+ * hyscan_profile_set_name:
+ * @self: указатель на #HyScanProfile
+ * @name: название профиля
+ *
+ * Функция задает название профиля.
+ */
 void
 hyscan_profile_set_name (HyScanProfile *self,
                          const gchar   *name)
@@ -161,24 +195,18 @@ hyscan_profile_set_name (HyScanProfile *self,
   priv->name = g_strdup (name);
 }
 
+/**
+ * hyscan_profile_get_name:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция возвращает название профиля.
+ *
+ * Returns: (transfer none): название профиля.
+ */
 const gchar *
 hyscan_profile_get_name (HyScanProfile *self)
 {
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), NULL);
 
   return self->priv->name;
-}
-
-void
-hyscan_profile_use (HyScanProfile *self)
-{
-  HyScanProfileClass * klass = HYSCAN_PROFILE_GET_CLASS (self);
-
-  if (klass->use == NULL)
-    {
-      g_warning ("not implemented yet");
-      return;
-    }
-
-  klass->use (self);
 }

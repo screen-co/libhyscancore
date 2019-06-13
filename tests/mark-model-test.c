@@ -1,6 +1,5 @@
 #include <hyscan-data-writer.h>
 #include <hyscan-mark-model.h>
-#include <hyscan-mark-data-waterfall.h>
 
 #define if_verbose(...) if (verbose) g_print (__VA_ARGS__);
 #define SEED g_rand_int_range (grand, 0, 65536)
@@ -109,7 +108,7 @@ main (int argc, char **argv)
   loop = g_main_loop_new (NULL, TRUE);
   g_timeout_add (interval, mark_model_test, loop);
 
-  model = hyscan_mark_model_new (HYSCAN_TYPE_MARK_DATA_WATERFALL);
+  model = hyscan_mark_model_new (HYSCAN_MARK_WATERFALL);
   hyscan_mark_model_set_project (model, db, name);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
 

@@ -1,11 +1,50 @@
-/*
- * \file hyscan-profile-db.c
+/* hyscan-profile-db.c
  *
- * \brief Исходный файл класса HyScanProfileDB - профиля БД.
- * \author Vladimir Maximov (vmakxs@gmail.com)
- * \date 2018
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-profile-db
+ * @Short_description: профиль БД
+ * @Title: HyScanProfileDB
+ *
+ * Класс HyScanProfileDB реализует профили БД. Профиль БД содержит следующие
+ * поля:
+ * "uri" - путь к БД
+ * "name" - человекочитаемое название профиля.
+ * Все поля должны быть в группе "db".
+ *
+ * После чтения профиля можно подключиться к БД с помощью функции
+ * #hyscan_profile_db_connect
  */
 
 #include "hyscan-profile-db.h"
@@ -28,14 +67,6 @@ struct _HyScanProfileDBPrivate
   gchar *uri;    /* Идентификатор БД.*/
 };
 
-static void   hyscan_profile_db_set_property    (GObject                      *object,
-                                                 guint                         prop_id,
-                                                 const GValue                 *value,
-                                                 GParamSpec                   *pspec);
-static void   hyscan_profile_db_get_property    (GObject                      *object,
-                                                 guint                         prop_id,
-                                                 GValue                       *value,
-                                                 GParamSpec                   *pspec);
 static void   hyscan_profile_db_object_finalize (GObject                      *object);
 static void   hyscan_profile_db_clear           (HyScanProfileDB              *profile);
 static gboolean hyscan_profile_db_read          (HyScanProfile                *profile,
@@ -50,74 +81,15 @@ hyscan_profile_db_class_init (HyScanProfileDBClass *klass)
   GObjectClass *oclass = G_OBJECT_CLASS (klass);
   HyScanProfileClass *pklass = HYSCAN_PROFILE_CLASS (klass);
 
-  oclass->set_property = hyscan_profile_db_set_property;
-  oclass->get_property = hyscan_profile_db_get_property;
   oclass->finalize = hyscan_profile_db_object_finalize;
 
   pklass->read = hyscan_profile_db_read;
-
-  g_object_class_install_property (oclass, PROP_URI,
-    g_param_spec_string ("uri", "URI", "Database URI",
-                         NULL, G_PARAM_READWRITE));
-
-  g_object_class_install_property (oclass, PROP_NAME,
-    g_param_spec_string ("name", "Name", "Database name",
-                         NULL, G_PARAM_READWRITE));
 }
 
 static void
 hyscan_profile_db_init (HyScanProfileDB *profile)
 {
   profile->priv = hyscan_profile_db_get_instance_private (profile);
-}
-
-static void
-hyscan_profile_db_set_property (GObject      *object,
-                                guint         prop_id,
-                                const GValue *value,
-                                GParamSpec   *pspec)
-{
-  HyScanProfileDB *profile = HYSCAN_PROFILE_DB (object);
-
-  switch (prop_id)
-    {
-    case PROP_URI:
-      hyscan_profile_db_set_uri (profile, g_value_get_string (value));
-      break;
-
-    case PROP_NAME:
-      hyscan_profile_db_set_name (profile, g_value_get_string (value));
-      break;
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      break;
-    }
-}
-
-static void
-hyscan_profile_db_get_property (GObject    *object,
-                                guint       prop_id,
-                                GValue     *value,
-                                GParamSpec *pspec)
-{
-  HyScanProfileDB *profile = HYSCAN_PROFILE_DB (object);
-  HyScanProfileDBPrivate *priv = profile->priv;
-
-  switch (prop_id)
-    {
-    case PROP_URI:
-      g_value_set_string (value, priv->uri);
-      break;
-
-    case PROP_NAME:
-      g_value_set_string (value, priv->name);
-      break;
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      break;
-    }
 }
 
 static void
@@ -139,16 +111,7 @@ hyscan_profile_db_clear (HyScanProfileDB *profile)
   g_clear_pointer (&priv->name, g_free);
 }
 
-/* Создаёт объект HyScanProfileDB. */
-HyScanProfileDB *
-hyscan_profile_db_new (const gchar *file)
-{
-  return g_object_new (HYSCAN_TYPE_PROFILE_DB,
-                       "file", file,
-                       NULL);
-}
-
-/* Десериализация из INI-файла. */
+/* Функция парсинга профиля. */
 static gboolean
 hyscan_profile_db_read (HyScanProfile *profile,
                         GKeyFile      *file)
@@ -172,46 +135,32 @@ hyscan_profile_db_read (HyScanProfile *profile,
   return TRUE;
 }
 
-/* Получает имя системы хранения. */
-const gchar *
-hyscan_profile_db_get_name (HyScanProfileDB *profile)
+/**
+ * hyscan_profile_db_new:
+ * @file: полный путь к файлу профиля
+ *
+ * Функция создает объект работы с профилем БД.
+ *
+ * Returns: (transfer full): #HyScanProfileDB.
+ */
+HyScanProfileDB *
+hyscan_profile_db_new (const gchar *file)
 {
-  g_return_val_if_fail (HYSCAN_IS_PROFILE_DB (profile), NULL);
-
-  return profile->priv->name;
+  return g_object_new (HYSCAN_TYPE_PROFILE_DB,
+                       "file", file,
+                       NULL);
 }
 
-/* Получает URI. */
-const gchar *
-hyscan_profile_db_get_uri (HyScanProfileDB *profile)
-{
-  g_return_val_if_fail (HYSCAN_IS_PROFILE_DB (profile), NULL);
-
-  return profile->priv->uri;
-}
-
-/* Задаёт имя системы хранения. */
-void
-hyscan_profile_db_set_name (HyScanProfileDB *profile,
-                            const gchar     *name)
-{
-  g_return_if_fail (HYSCAN_IS_PROFILE_DB (profile));
-
-  g_free (profile->priv->name);
-  profile->priv->name = g_strdup (name);
-}
-
-/* Задаёт URI. */
-void
-hyscan_profile_db_set_uri (HyScanProfileDB *profile,
-                           const gchar     *uri)
-{
-  g_return_if_fail (HYSCAN_IS_PROFILE_DB (profile));
-
-  g_free (profile->priv->uri);
-  profile->priv->uri = g_strdup (uri);
-}
-
+/**
+ * hyscan_profile_read:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция производит чтение профиля. Текущая реализация запрещает читать
+ * профиль более одного раза. Объект профиля должен быть полностью настроен
+ * перед вызовом этой функции.
+ *
+ * Returns: (transfer full): #HyScanDB или NULL в случае ошибки.
+ */
 HyScanDB *
 hyscan_profile_db_connect (HyScanProfileDB *profile)
 {

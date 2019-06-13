@@ -1,3 +1,54 @@
+/* hyscan-profile-hw.c
+ *
+ * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-profile-hw
+ * @Short_description: профиль оборудования
+ * @Title: HyScanProfileHW
+ *
+ * Класс HyScanProfileHW реализует профили оборудования.
+ * Профиль оборудования содержит группу "_" с информацией о профиле:
+ * "name" - человекочитаемое название профиля.
+ *
+ * Все остальные группы относятся к конкретному оборудованию (локаторам и
+ * датчикам).
+ *
+ * Перед чтением профиля необходимо задать пути к драйверам устройств функцией
+ * #hyscan_profile_hw_set_driver_paths. После чтения #hyscan_profile_hw_connect
+ * создает объект #HyScanControl и добавляет в него оборудование профиля.
+ */
+
 #include "hyscan-profile-hw.h"
 #include <hyscan-profile-hw-device.h>
 #include <hyscan-driver.h>
@@ -7,14 +58,14 @@
 
 typedef struct
 {
-  gchar                 *group;
-  HyScanProfileHWDevice *device;
+  gchar                 *group;  /* Название группы. */
+  HyScanProfileHWDevice *device; /* Указатель на объект девайса. */
 } HyScanProfileHWItem;
 
 struct _HyScanProfileHWPrivate
 {
-  gchar    **drivers;
-  GList     *devices;
+  gchar    **drivers; /* Список путей с драйверами. */
+  GList     *devices; /* Список оборудования {HyScanProfileHWItem}. */
 };
 
 static void     hyscan_profile_hw_object_finalize         (GObject               *object);
@@ -56,6 +107,7 @@ hyscan_profile_hw_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_hw_parent_class)->finalize (object);
 }
 
+/* Функция освобождает HyScanProfileHWItem. */
 static void
 hyscan_profile_hw_item_free (gpointer data)
 {
@@ -69,6 +121,7 @@ hyscan_profile_hw_item_free (gpointer data)
   g_free (item);
 }
 
+/* Функция очищает профиль. */
 static void
 hyscan_profile_hw_clear (HyScanProfileHW *profile)
 {
@@ -77,6 +130,7 @@ hyscan_profile_hw_clear (HyScanProfileHW *profile)
   g_list_free_full (priv->devices, hyscan_profile_hw_item_free);
 }
 
+/* Функция парсинга профиля. */
 static gboolean
 hyscan_profile_hw_read (HyScanProfile *profile,
                         GKeyFile      *file)
@@ -114,6 +168,7 @@ hyscan_profile_hw_read (HyScanProfile *profile,
   return TRUE;
 }
 
+/* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
 static gboolean
 hyscan_profile_hw_info_group (HyScanProfile *profile,
                               GKeyFile      *kf,
@@ -131,6 +186,14 @@ hyscan_profile_hw_info_group (HyScanProfile *profile,
   return TRUE;
 }
 
+/**
+ * hyscan_profile_hw_new:
+ * @file: полный путь к файлу профиля
+ *
+ * Функция создает объект работы с профилем оборудования.
+ *
+ * Returns: (transfer full): #HyScanProfileHW.
+ */
 HyScanProfileHW *
 hyscan_profile_hw_new (const gchar *file)
 {
@@ -139,6 +202,13 @@ hyscan_profile_hw_new (const gchar *file)
                        NULL);
 }
 
+/**
+ * hyscan_profile_hw_set_driver_paths:
+ * @self: #HyScanProfileHW
+ * @driver_paths: NULL-терминированный список путей с драйверами
+ *
+ * Функция задает пути к драйверам.
+ */
 void
 hyscan_profile_hw_set_driver_paths (HyScanProfileHW  *self,
                                     gchar           **driver_paths)
@@ -149,29 +219,14 @@ hyscan_profile_hw_set_driver_paths (HyScanProfileHW  *self,
   self->priv->drivers = g_strdupv (driver_paths);
 }
 
-GList *
-hyscan_profile_hw_list (HyScanProfileHW *self)
-{
-  GList *list = NULL;
-  GList *link;
-  HyScanProfileHWPrivate *priv;
-
-  g_return_val_if_fail (HYSCAN_IS_PROFILE_HW (self), NULL);
-  priv = self->priv;
-
-  for (link = priv->devices; link != NULL; link = link->next)
-    {
-      HyScanProfileHWItem *src = link->data;
-      HyScanProfileHWItem *dst = g_new0 (HyScanProfileHWItem, 1);
-      dst->group = g_strdup (src->group);
-      dst->device = g_object_ref (src->device);
-
-      list = g_list_append (list, dst);
-    }
-
-  return list;
-}
-
+/**
+ * hyscan_profile_hw_check:
+ * @self: #HyScanProfileHW
+ *
+ * Функция проверяет возможность подключения ко всем единицам оборудования.
+ *
+ * Returns: TRUE, если подключение возможно.
+ */
 gboolean
 hyscan_profile_hw_check (HyScanProfileHW *self)
 {
@@ -194,6 +249,15 @@ hyscan_profile_hw_check (HyScanProfileHW *self)
   return st;
 }
 
+/**
+ * hyscan_profile_hw_connect:
+ * @self: #HyScanProfileHW
+ *
+ * Функция проверяет возможность подключения ко всем единицам оборудования.
+ *
+ * Returns: (transfer full): #HyScanControl со всем оборудованием, NULL в
+ * случае ошибки.
+ */
 HyScanControl *
 hyscan_profile_hw_connect (HyScanProfileHW *self)
 {
@@ -227,15 +291,29 @@ hyscan_profile_hw_connect (HyScanProfileHW *self)
         {
           g_warning ("couldn't add device");
           g_clear_object (&control);
+          g_object_unref (device);
           break;
         }
+
+      g_object_unref (device);
     }
 
   return control;
 }
 
+/**
+ * hyscan_profile_hw_connect_simple:
+ * @file: полный путь к файлу профиля
+ * @driver_paths: NULL-терминированный список путей с драйверами
+ *
+ * Функция для подключения к оборудованию в автоматическом режиме.
+ *
+ * Returns: (transfer full): #HyScanControl аналогично
+ * #hyscan_profile_hw_connect
+ */
 HyScanControl *
-hyscan_profile_hw_connect_simple (const gchar *file)
+hyscan_profile_hw_connect_simple (const gchar  *file,
+                                  gchar       **driver_paths)
 {
   HyScanProfileHW * profile;
   HyScanControl * control;
@@ -245,6 +323,9 @@ hyscan_profile_hw_connect_simple (const gchar *file)
     {
       return NULL;
     }
+
+  hyscan_profile_hw_set_driver_paths (profile, driver_paths);
+  hyscan_profile_read (HYSCAN_PROFILE (profile));
 
   if (!hyscan_profile_hw_check (profile))
     {
