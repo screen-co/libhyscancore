@@ -81,6 +81,9 @@ void                   hyscan_list_model_remove           (HyScanListModel      
                                                            const gchar          *key);
 
 HYSCAN_API
+void                   hyscan_list_model_remove_all       (HyScanListModel      *list_model);
+
+HYSCAN_API
 gboolean               hyscan_list_model_has              (HyScanListModel      *list_model,
                                                            const gchar          *key);
 

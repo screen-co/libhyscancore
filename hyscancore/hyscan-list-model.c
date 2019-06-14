@@ -196,6 +196,19 @@ hyscan_list_model_remove (HyScanListModel *list_model,
   g_signal_emit (list_model, hyscan_list_model_signals[SIGNAL_CHANGED], 0);
 }
 
+void
+hyscan_list_model_remove_all (HyScanListModel *list_model)
+{
+  HyScanListModelPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_LIST_MODEL (list_model));
+  priv = list_model->priv;
+
+  g_hash_table_remove_all (priv->table);
+
+  g_signal_emit (list_model, hyscan_list_model_signals[SIGNAL_CHANGED], 0);
+}
+
 /**
  * hyscan_list_model_has:
  * @list_model: указатель на #HyScanListModel
