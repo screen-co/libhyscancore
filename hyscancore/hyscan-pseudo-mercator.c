@@ -131,7 +131,7 @@ hyscan_pseudo_mercator_object_constructed (GObject *object)
 
   G_OBJECT_CLASS (hyscan_pseudo_mercator_parent_class)->constructed (object);
 
-  priv->equator_length = 2.0 * M_PI * EARTH_RADIUS;
+  priv->equator_length = 2.0 * G_PI * EARTH_RADIUS;
 }
 
 /* Переводит географические координаты @coords в координаты (@x, @y) проекции. */
@@ -147,7 +147,7 @@ hyscan_pseudo_mercator_geo_to_value (HyScanGeoProjection  *projection,
   lat_rad = DEG2RAD (coords.lat);
 
   c2d->x = (coords.lon + 180.0) / 360.0;
-  c2d->y = 1.0 - (1.0 - log (tan (lat_rad) + 1.0 / cos (lat_rad)) / M_PI) / 2.0;
+  c2d->y = 1.0 - (1.0 - log (tan (lat_rad) + 1.0 / cos (lat_rad)) / G_PI) / 2.0;
 }
 
 /* Переводит координаты на карте (@x, @y) в географические координаты @coords. */
@@ -163,7 +163,7 @@ hyscan_pseudo_mercator_value_to_geo (HyScanGeoProjection *projection,
   y = 1.0 - y;
 
   coords->lon = x * 360.0 - 180.0 ;
-  coords->lat = RAD2DEG (atan (sinh (M_PI * (1.0 - 2.0 * y))));
+  coords->lat = RAD2DEG (atan (sinh (G_PI * (1.0 - 2.0 * y))));
 }
 
 /* Определяет границы проекции. */
