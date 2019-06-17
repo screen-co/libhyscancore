@@ -221,6 +221,9 @@ hyscan_mark_data_object_finalize (GObject *object)
 
   g_clear_object (&priv->db);
 
+  g_clear_object (&priv->read_plist);
+  g_clear_object (&priv->write_plist);
+
   G_OBJECT_CLASS (hyscan_mark_data_parent_class)->finalize (object);
 }
 
@@ -296,22 +299,14 @@ hyscan_mark_data_set_internal (HyScanMarkData    *data,
   HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 
-  hyscan_param_list_set (priv->write_plist, "/name",
-                         g_variant_new_string (any->name));
-  hyscan_param_list_set (priv->write_plist, "/description",
-                         g_variant_new_string (any->description));
-  hyscan_param_list_set (priv->write_plist, "/label",
-                         g_variant_new_int64  (any->labels));
-  hyscan_param_list_set (priv->write_plist, "/operator",
-                         g_variant_new_string (any->operator_name));
-  hyscan_param_list_set (priv->write_plist, "/time/creation",
-                         g_variant_new_int64  (any->creation_time));
-  hyscan_param_list_set (priv->write_plist, "/time/modification",
-                         g_variant_new_int64  (any->modification_time));
-  hyscan_param_list_set (priv->write_plist, "/coordinates/width",
-                         g_variant_new_int64  (any->width));
-  hyscan_param_list_set (priv->write_plist, "/coordinates/height",
-                         g_variant_new_int64  (any->height));
+  hyscan_param_list_set_string (priv->write_plist, "/name", any->name);
+  hyscan_param_list_set_string (priv->write_plist, "/description", any->description);
+  hyscan_param_list_set_integer (priv->write_plist, "/label", any->labels);
+  hyscan_param_list_set_string (priv->write_plist, "/operator", any->operator_name);
+  hyscan_param_list_set_integer (priv->write_plist, "/time/creation", any->creation_time);
+  hyscan_param_list_set_integer (priv->write_plist, "/time/modification", any->modification_time);
+  hyscan_param_list_set_integer (priv->write_plist, "/coordinates/width", any->width);
+  hyscan_param_list_set_integer (priv->write_plist, "/coordinates/height", any->height);
 
   if (klass->set != NULL)
     klass->set (data, priv->write_plist, mark);

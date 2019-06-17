@@ -91,6 +91,7 @@ static void     hyscan_mark_model_do_task                  (gpointer            
                                                             gpointer                   user_data);
 static void     hyscan_mark_model_do_all_tasks             (HyScanMarkModelPrivate    *priv,
                                                             HyScanMarkData            *data);
+static GHashTable * hyscan_mark_model_get_all_marks        (HyScanMarkData            *data);
 static gpointer hyscan_mark_model_processing               (gpointer                   data);
 static gboolean hyscan_mark_model_signaller                (gpointer                   data);
 
@@ -140,8 +141,6 @@ hyscan_mark_model_object_constructed (GObject *object)
   priv->stop = FALSE;
   priv->processing = g_thread_new ("wf-mark-process", hyscan_mark_model_processing, priv);
   priv->alerter = g_timeout_add (500, hyscan_mark_model_signaller, model);
-
-  priv->marks = hyscan_mark_model_make_ht ();
 }
 
 static void
@@ -163,7 +162,7 @@ hyscan_mark_model_object_finalize (GObject *object)
 
   hyscan_mark_model_clear_state (&priv->new_state);
   hyscan_mark_model_clear_state (&priv->cur_state);
-  g_hash_table_unref (priv->marks);
+  g_clear_pointer (&priv->marks, g_hash_table_unref);
 
   G_OBJECT_CLASS (hyscan_mark_model_parent_class)->finalize (object);
 }
@@ -310,19 +309,46 @@ hyscan_mark_model_do_all_tasks (HyScanMarkModelPrivate  *priv,
   g_slist_free_full (tasks, hyscan_mark_model_free_task);
 }
 
+/* Функция забирает метки из БД. */
+static GHashTable *
+hyscan_mark_model_get_all_marks (HyScanMarkData *data)
+{
+  HyScanMark * mark;
+  GHashTable * mark_list;
+  gchar **id_list;
+  guint len, i;
+
+  /* Считываем список идентификаторов. Прошу обратить внимание, что
+   * возврат хэш-таблицы с 0 элементов -- это нормальная ситуация, например,
+   * если раньше была 1 метка, а потом её удалили. */
+  mark_list = hyscan_mark_model_make_ht ();
+  id_list = hyscan_mark_data_get_ids (data, &len);
+
+  /* Поштучно копируем из БД в хэш-таблицу. */
+  for (i = 0; i < len; i++)
+    {
+      mark = hyscan_mark_data_get (data, id_list[i]);
+      if (mark == NULL)
+        continue;
+
+      g_hash_table_insert (mark_list, g_strdup (id_list[i]), mark);
+    }
+
+  g_strfreev (id_list);
+
+  return mark_list;
+}
+
 /* Поток асинхронной работы с БД. */
 static gpointer
 hyscan_mark_model_processing (gpointer data)
 {
   HyScanMarkModelPrivate *priv = data;
   HyScanMarkData *mdata = NULL; /* Объект работы с метками. */
-  gchar **id_list;                       /* Идентификаторы меток. */
-  GHashTable *mark_list;                 /* Метки из БД. */
-  GHashTable *temp;                      /* Для обмена списка меток. */
-  GMutex im_lock;                        /* Мьютекс нужен для GCond. */
-  HyScanMark *mark;
-  guint len, i;
-  guint32 oldmc, mc;                     /* Значения счетчика изменений. */
+  GHashTable *mark_list;        /* Метки из БД. */
+  GHashTable *temp;             /* Для обмена списка меток. */
+  GMutex im_lock;               /* Мьютекс нужен для GCond. */
+  guint32 oldmc, mc;            /* Значения счетчика изменений. */
 
   oldmc = mc = 0;
   g_mutex_init (&im_lock);
@@ -361,9 +387,7 @@ hyscan_mark_model_processing (gpointer data)
 
       if (mdata == NULL)
         {
-          /* Создаем объект работы с метками.
-           * Если не получилось (например потому, что проект ещё не создан),
-           * повторим через некоторое время. */
+          /* Создаем объект работы с метками. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
             {
               GType type;
@@ -378,6 +402,8 @@ hyscan_mark_model_processing (gpointer data)
                                     "project", priv->cur_state.project, NULL);
             }
 
+          /* Если не получилось (например потому, что проект ещё не создан),
+           * повторим через некоторое время. */
           if (mdata == NULL)
             {
               g_atomic_int_set (&priv->im_flag, 1);
@@ -391,20 +417,9 @@ hyscan_mark_model_processing (gpointer data)
       /* Выполняем все задания. */
       hyscan_mark_model_do_all_tasks (priv, mdata);
 
-      /* Забираем метки из БД во временную хэш-таблицу. */
-      mark_list = hyscan_mark_model_make_ht ();
-
-      /* Запоминаем мод_каунт, чтобы второй раз не приходилось сюда заходить. */
+      /* Запоминаем мод_каунт перед(!) забором меток. */
       oldmc = hyscan_mark_data_get_mod_count (mdata);
-
-      id_list = hyscan_mark_data_get_ids (mdata, &len);
-      for (i = 0; i < len; i++)
-        {
-          mark = hyscan_mark_data_get (mdata, id_list[i]);
-          if (mark != NULL)
-            g_hash_table_insert (mark_list, g_strdup (id_list[i]), mark);
-        }
-      g_strfreev (id_list);
+      mark_list = hyscan_mark_model_get_all_marks (mdata);
 
       /* Воруем хэш-таблицу из привата, помещаем туда свежесозданную,
        * инициируем отправление сигнала. */
@@ -414,7 +429,7 @@ hyscan_mark_model_processing (gpointer data)
       priv->marks_changed = TRUE;
       g_mutex_unlock (&priv->marks_lock);
 
-      /* Очищаем все хэш-таблицы. */
+      /* Убираем свои ссылки на хэш-таблицы. */
       g_clear_pointer (&temp, g_hash_table_unref);
       g_clear_pointer (&mark_list, g_hash_table_unref);
     }

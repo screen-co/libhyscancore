@@ -124,12 +124,8 @@ hyscan_mark_data_waterfall_set_internal (HyScanMarkData   *data,
   g_return_if_fail (mark->type == HYSCAN_MARK_WATERFALL);
   mark_wf = (HyScanMarkWaterfall *) mark;
 
-  hyscan_param_list_set (write_plist,       "/track",
-                         g_variant_new_string (mark_wf->track));
-  hyscan_param_list_set (write_plist,       "/coordinates/source0",
-                         g_variant_new_int64  (mark_wf->source0));
-  hyscan_param_list_set (write_plist,       "/coordinates/index0",
-                         g_variant_new_int64  (mark_wf->index0));
-  hyscan_param_list_set (write_plist,       "/coordinates/count0",
-                         g_variant_new_int64  (mark_wf->count0));
+  hyscan_param_list_set_string (write_plist, "/track", mark_wf->track);
+  hyscan_param_list_set_integer (write_plist, "/coordinates/source0", mark_wf->source0);
+  hyscan_param_list_set_integer (write_plist, "/coordinates/index0", mark_wf->index0);
+  hyscan_param_list_set_integer (write_plist, "/coordinates/count0", mark_wf->count0);
 }

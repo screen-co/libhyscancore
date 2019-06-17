@@ -72,8 +72,6 @@ hyscan_mark_data_geo_set (HyScanMarkData   *data,
   g_return_if_fail (mark->type == HYSCAN_MARK_GEO);
   mark_geo = (HyScanMarkGeo *) mark;
 
-  hyscan_param_list_set (write_plist,          "/coordinates/lat",
-                         g_variant_new_double  (mark_geo->center.lat));
-  hyscan_param_list_set (write_plist,          "/coordinates/lon",
-                         g_variant_new_double  (mark_geo->center.lon));
+  hyscan_param_list_set_double (write_plist, "/coordinates/lat", mark_geo->center.lat);
+  hyscan_param_list_set_double (write_plist, "/coordinates/lon", mark_geo->center.lon);
 }

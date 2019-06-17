@@ -2,7 +2,8 @@
 #include <hyscan-mark-model.h>
 
 #define if_verbose(...) if (verbose) g_print (__VA_ARGS__);
-#define SEED g_rand_int_range (grand, 0, 65536)
+#define MARK_RAND 10000
+#define RANDOM(max) g_random_int_range (0, max)
 typedef gint (*compfunc) (gconstpointer a, gconstpointer b);
 
 typedef enum
@@ -15,14 +16,7 @@ typedef enum
 
 void                 changed_cb        (HyScanMarkModel     *model,
                                         gpointer             data);
-
-gboolean             make_track        (HyScanDB            *db,
-                                        gchar               *name);
-
-guint                hash_table_len    (GHashTable          *ht);
-HyScanMarkWaterfall *make_mark         (gint                 seed,
-                                        gint                 seed2);
-gboolean             mark_model_test   (gpointer             data);
+void                 test_function     (void);
 
 gboolean             final_check       (GSList              *expect,
                                         GHashTable          *real);
@@ -30,6 +24,11 @@ gboolean             final_check       (GSList              *expect,
 void                 update_list       (HyScanMarkWaterfall *cur,
                                         HyScanMarkWaterfall *prev,
                                         Actions              action);
+
+gboolean             make_track        (HyScanDB            *db,
+                                        gchar               *name);
+
+HyScanMarkWaterfall *make_mark         (void);
 
 static gint        count = 10;
 static gboolean    verbose = FALSE;
@@ -46,7 +45,6 @@ main (int argc, char **argv)
   gchar *db_uri = g_strdup ("file://./"); /* Путь к БД. */
   gchar *name = "test";                   /* Проект и галс. */
   GMainLoop *loop = NULL;
-  guint interval = 500;
 
   gboolean status = FALSE;
 
@@ -57,7 +55,6 @@ main (int argc, char **argv)
     GOptionEntry entries[] =
       {
         { "iterations", 'n', 0, G_OPTION_ARG_INT,  &count,    "How many times to receive data", NULL },
-        { "timeout",    't', 0, G_OPTION_ARG_INT,  &interval, "How often send data (in ms)", NULL },
         { "verbose",    'v', 0, G_OPTION_ARG_NONE, &verbose,  "Show sent and received marks", NULL },
         { NULL }
       };
@@ -106,14 +103,13 @@ main (int argc, char **argv)
     }
 
   loop = g_main_loop_new (NULL, TRUE);
-  g_timeout_add (interval, mark_model_test, loop);
 
   model = hyscan_mark_model_new (HYSCAN_MARK_WATERFALL);
-  hyscan_mark_model_set_project (model, db, name);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
+  hyscan_mark_model_set_project (model, db, name);
 
   g_main_loop_run (loop);
-  g_usleep (2 * G_TIME_SPAN_SECOND);
+  // g_usleep (2 * G_TIME_SPAN_SECOND);
 
   status = final_check (performed, final_marks);
 
@@ -147,17 +143,17 @@ changed_cb (HyScanMarkModel *model,
   GHashTableIter iter;
   gpointer key, value;
 
+  ht = hyscan_mark_model_get (model);
+
   if (count)
     {
       g_print ("%i iterations left...\n", count);
-      ht = hyscan_mark_model_get (model);
     }
   else
     {
       g_print ("Performing final checks...\n");
       g_main_loop_quit (loop);
-      final_marks = hyscan_mark_model_get (model);
-      ht = g_hash_table_ref (final_marks);
+      final_marks = g_hash_table_ref (ht);
     }
 
   if_verbose ("+-------- Actual mark list: --------+\n");
@@ -176,74 +172,16 @@ changed_cb (HyScanMarkModel *model,
   if_verbose ("+-----------------------------------+\n");
 
   g_hash_table_unref (ht);
+
+  /* Добавляем/удаляем метки. */
+  test_function ();
   count--;
 }
 
-gboolean
-make_track (HyScanDB *db,
-            gchar    *name)
+
+void
+test_function (void)
 {
-  HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0};
-  HyScanDataWriter *writer = hyscan_data_writer_new ();
-  HyScanBuffer *buffer = hyscan_buffer_new ();
-  gint i;
-
-  hyscan_data_writer_set_db (writer, db);
-  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
-    g_error ("Couldn't start data writer.");
-
-  /* Запишем что-то в галс. */
-  for (i = 0; i < 2; i++)
-    {
-      gfloat vals = {0};
-      hyscan_buffer_wrap_float (buffer, &vals, 1);
-      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT,
-                                            1, FALSE, 1 + i, &info, buffer);
-    }
-
-  g_object_unref (writer);
-  g_object_unref (buffer);
-  return TRUE;
-}
-
-guint
-hash_table_len (GHashTable *ht)
-{
-  gint len = 0;
-  GHashTableIter iter;
-  g_hash_table_iter_init (&iter, ht);
-
-  while (g_hash_table_iter_next (&iter, NULL, NULL))
-    len++;
-
-  return len;
-}
-
-HyScanMarkWaterfall*
-make_mark (gint   seed,
-           gint   seed2)
-{
-  HyScanMarkWaterfall *mark = (HyScanMarkWaterfall*)hyscan_mark_new (HYSCAN_MARK_WATERFALL);
-  mark->track = g_strdup_printf ("TrackID%05i%05i", seed, seed2);
-  mark->name = g_strdup_printf ("Mark %05i%05i", seed, seed2);
-  mark->description = g_strdup_printf ("description %i", seed);
-  mark->operator_name = g_strdup_printf ("Operator %i", seed2);
-  mark->labels = seed;
-  mark->creation_time = seed * 1000;
-  mark->modification_time = seed * 10;
-  mark->source0 = seed;
-  mark->index0 = seed;
-  mark->count0 = seed;
-  mark->width = seed * 2;
-  mark->height = seed * 5;
-
-  return mark;
-}
-
-gboolean
-mark_model_test (gpointer data)
-{
-  GRand *grand = g_rand_new ();
   gint action;
   GHashTable *ht;
   GHashTableIter iter;
@@ -252,17 +190,14 @@ mark_model_test (gpointer data)
   HyScanMarkWaterfall *mark = NULL;
 
   if (!count)
-    {
-      g_rand_free (grand);
-      return G_SOURCE_REMOVE;
-    }
+    return G_SOURCE_REMOVE;
 
   ht = hyscan_mark_model_get (model);
-  len = hash_table_len (ht);
+  len = g_hash_table_size (ht);
 
-  action = (len < 5) ? ADD : g_rand_int_range (grand, 0, LAST);
+  action = (len < 5) ? ADD : RANDOM (LAST);
 
-  mark = make_mark (SEED, SEED);
+  mark = make_mark ();
 
   if (action == ADD)
     {
@@ -272,7 +207,7 @@ mark_model_test (gpointer data)
   else
     {
       gpointer key = NULL;
-      gint32 index = g_rand_int_range (grand, 0, len);
+      gint32 index = RANDOM (len);
 
       g_hash_table_iter_init (&iter, ht);
       while (g_hash_table_iter_next (&iter, &key, &value))
@@ -298,8 +233,6 @@ mark_model_test (gpointer data)
   hyscan_mark_free ((HyScanMark*)mark);
   g_hash_table_unref (ht);
 
-  g_rand_free (grand);
-
   return G_SOURCE_CONTINUE;
 }
 
@@ -313,12 +246,12 @@ final_check (GSList     *expect,
   gboolean res;
   GSList *link;
 
-  res = hash_table_len (final_marks) == g_slist_length (performed);
+  res = g_hash_table_size (final_marks) == g_slist_length (performed);
 
   if (!res)
     verbose = TRUE;
 
-  if_verbose ("Total marks in DB: %u\n", hash_table_len (final_marks));
+  if_verbose ("Total marks in DB: %u\n", g_hash_table_size (final_marks));
   if_verbose ("Total expected marks: %u\n", g_slist_length (performed));
 
   /* Сравниваем содержимое конечной хэш-таблицы и списка. */
@@ -351,7 +284,7 @@ final_check (GSList     *expect,
 
   if (res)
     {
-      if (0 != hash_table_len (real) || 0 != g_slist_length (expect))
+      if (0 != g_hash_table_size (real) || 0 != g_slist_length (expect))
         res = FALSE;
     }
 
@@ -381,4 +314,54 @@ update_list (HyScanMarkWaterfall *cur,
     performed = g_slist_delete_link (performed, link);
   else if (action == MODIFY)
     link->data = g_strdup (cur->name);
+}
+
+gboolean
+make_track (HyScanDB *db,
+            gchar    *name)
+{
+  HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0};
+  HyScanDataWriter *writer = hyscan_data_writer_new ();
+  HyScanBuffer *buffer = hyscan_buffer_new ();
+  gint i;
+
+  hyscan_data_writer_set_db (writer, db);
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
+    g_error ("Couldn't start data writer.");
+
+  /* Запишем что-то в галс. */
+  for (i = 0; i < 2; i++)
+    {
+      gfloat vals = {0};
+      hyscan_buffer_wrap_float (buffer, &vals, 1);
+      hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT,
+                                            1, FALSE, 1 + i, &info, buffer);
+    }
+
+  g_object_unref (writer);
+  g_object_unref (buffer);
+  return TRUE;
+}
+
+HyScanMarkWaterfall*
+make_mark (void)
+{
+  gint seed = RANDOM (MARK_RAND);
+  gint seed2 = RANDOM (MARK_RAND);
+  HyScanMarkWaterfall *mark = (HyScanMarkWaterfall*)hyscan_mark_new (HYSCAN_MARK_WATERFALL);
+
+  mark->track = g_strdup_printf ("TrackID%05i%05i", seed, seed2);
+  mark->name = g_strdup_printf ("Mark %05i%05i", seed, seed2);
+  mark->description = g_strdup_printf ("description %i", seed);
+  mark->operator_name = g_strdup_printf ("Operator %i", seed2);
+  mark->labels = seed;
+  mark->creation_time = seed * 1000;
+  mark->modification_time = seed * 10;
+  mark->source0 = seed;
+  mark->index0 = seed;
+  mark->count0 = seed;
+  mark->width = seed * 2;
+  mark->height = seed * 5;
+
+  return mark;
 }
