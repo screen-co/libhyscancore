@@ -142,14 +142,18 @@ gchar **
 hyscan_list_model_get (HyScanListModel *list_model)
 {
   HyScanListModelPrivate *priv;
+  gchar ** keys;
   gchar **list;
 
   g_return_val_if_fail (HYSCAN_IS_LIST_MODEL (list_model), NULL);
   priv = list_model->priv;
 
-  list = (gchar **) g_hash_table_get_keys_as_array (priv->table, NULL);
+  keys = (gchar **) g_hash_table_get_keys_as_array (priv->table, NULL);
+  list = g_strdupv (keys);
 
-  return g_strdupv (list);
+  g_free (keys);
+
+  return list;
 }
 
 /**
