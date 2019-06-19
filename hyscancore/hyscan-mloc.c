@@ -203,7 +203,6 @@ hyscan_mloc_get (HyScanmLoc            *self,
   hyscan_nav_data_get (priv->trk, index, NULL, &origin.h);
 
   /* Устанавливаем в эту точку (и с этим углом) начало топоцентрической СК. */
-  origin.h = 0;
   hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
   /* Сдвигаю куда следует. Тут небольшой костыль, т.к. система координат в гео
