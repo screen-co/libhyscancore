@@ -186,7 +186,7 @@ hyscan_mercator_ellipsoid_y (HyScanMercatorPrivate *priv,
   lat_rad = DEG2RAD (lat);
   con = e * sin (lat_rad);
   con = pow ((1.0 - con) / (1.0 + con), 0.5 * e);
-  ts = tan (0.5 * (M_PI * 0.5 - lat_rad)) / con;
+  ts = tan (0.5 * (G_PI * 0.5 - lat_rad)) / con;
 
   return 0 - priv->ellipsoid.a * log (ts);
 }
@@ -205,14 +205,14 @@ hyscan_mercator_ellipsoid_lat (HyScanMercatorPrivate *priv,
 
   e = priv->ellipsoid.e;
   ts = exp (-y / priv->ellipsoid.a);
-  lat = M_PI_2 - 2 * atan (ts);
+  lat = G_PI_2 - 2 * atan (ts);
   d_lat = 1.0;
 
   for (i = 0; fabs (d_lat) > 1e-8 && i < 15; i++)
     {
       gdouble con = e * sin (lat);
 
-      d_lat = M_PI_2 - 2.0 * atan (ts * pow ((1.0 - con) / (1.0 + con), e * 0.5)) - lat;
+      d_lat = G_PI_2 - 2.0 * atan (ts * pow ((1.0 - con) / (1.0 + con), e * 0.5)) - lat;
       lat += d_lat;
     }
 
