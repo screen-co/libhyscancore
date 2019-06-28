@@ -172,7 +172,27 @@ hyscan_profile_read (HyScanProfile *self)
   if (self->priv->kf != NULL)
     return FALSE;
 
+  /* Если файл не задан, выходим. */
+  if (self->priv->file == NULL)
+    return FALSE;
+
   return hyscan_profile_read_real (self, self->priv->file);
+}
+
+/**
+ * hyscan_profile_get_file:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция возвращает путь к файлу профиля.
+ *
+ * Returns: путь к файлу профиля.
+ */
+const gchar *
+hyscan_profile_get_file (HyScanProfile *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), NULL);
+
+  return self->priv->file;
 }
 
 /**
