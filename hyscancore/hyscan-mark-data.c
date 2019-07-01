@@ -147,12 +147,12 @@ hyscan_mark_data_object_constructed (GObject *object)
   gint32 project_id = 0;      /* Идентификатор проекта. */
   const gchar *param_names[] = {"/name",
                                 "/description",
-                                "/label",
                                 "/operator",
-                                "/time/creation",
-                                "/time/modification",
-                                "/coordinates/width",
-                                "/coordinates/height",
+                                "/label",
+                                "/ctime",
+                                "/mtime",
+                                "/width",
+                                "/height",
                                 NULL};
 
   HyScanMarkData *data = HYSCAN_MARK_DATA (object);
@@ -275,12 +275,12 @@ hyscan_mark_data_get_internal (HyScanMarkData *data,
       hyscan_mark_set_labels (mark,
                               hyscan_param_list_get_integer (priv->read_plist, "/label"));
       hyscan_mark_set_ctime  (mark,
-                              hyscan_param_list_get_integer (priv->read_plist, "/time/creation"));
+                              hyscan_param_list_get_integer (priv->read_plist, "/ctime"));
       hyscan_mark_set_mtime  (mark,
-                              hyscan_param_list_get_integer (priv->read_plist, "/time/modification"));
+                              hyscan_param_list_get_integer (priv->read_plist, "/mtime"));
       hyscan_mark_set_size   (mark,
-                              hyscan_param_list_get_integer (priv->read_plist, "/coordinates/width"),
-                              hyscan_param_list_get_integer (priv->read_plist, "/coordinates/height"));
+                              hyscan_param_list_get_double (priv->read_plist, "/width"),
+                              hyscan_param_list_get_double (priv->read_plist, "/height"));
 
       if (klass->get != NULL)
         klass->get (data, priv->read_plist, mark);
@@ -303,10 +303,10 @@ hyscan_mark_data_set_internal (HyScanMarkData    *data,
   hyscan_param_list_set_string (priv->write_plist, "/description", any->description);
   hyscan_param_list_set_integer (priv->write_plist, "/label", any->labels);
   hyscan_param_list_set_string (priv->write_plist, "/operator", any->operator_name);
-  hyscan_param_list_set_integer (priv->write_plist, "/time/creation", any->creation_time);
-  hyscan_param_list_set_integer (priv->write_plist, "/time/modification", any->modification_time);
-  hyscan_param_list_set_integer (priv->write_plist, "/coordinates/width", any->width);
-  hyscan_param_list_set_integer (priv->write_plist, "/coordinates/height", any->height);
+  hyscan_param_list_set_integer (priv->write_plist, "/ctime", any->ctime);
+  hyscan_param_list_set_integer (priv->write_plist, "/mtime", any->mtime);
+  hyscan_param_list_set_double (priv->write_plist, "/width", any->width);
+  hyscan_param_list_set_double (priv->write_plist, "/height", any->height);
 
   if (klass->set != NULL)
     klass->set (data, priv->write_plist, mark);
