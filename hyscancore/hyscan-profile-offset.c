@@ -176,7 +176,7 @@ hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
   if (!g_str_equal (group, HYSCAN_PROFILE_OFFSET_INFO_GROUP))
     return FALSE;
 
-  name = g_key_file_get_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL);
+  name = g_key_file_get_locale_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL, NULL);
   hyscan_profile_set_name (HYSCAN_PROFILE (profile), name);
 
   g_free (name);

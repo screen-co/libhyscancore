@@ -122,8 +122,10 @@ hyscan_profile_db_read (HyScanProfile *profile,
   /* Очистка профиля. */
   hyscan_profile_db_clear (self);
 
-  priv->name = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME, HYSCAN_PROFILE_DB_NAME_KEY, NULL);
-  priv->uri = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME, HYSCAN_PROFILE_DB_URI_KEY, NULL);
+  priv->name = g_key_file_get_locale_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+                                             HYSCAN_PROFILE_DB_NAME_KEY, NULL, NULL);
+  priv->uri = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+                                     HYSCAN_PROFILE_DB_URI_KEY, NULL);
   if (priv->uri == NULL)
     {
       g_warning ("HyScanProfileDB: %s", "uri not found.");
