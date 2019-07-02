@@ -158,7 +158,7 @@ int main (int     argc,
     guint i;
     gdouble equator_l;
 
-    equator_l = (2 * M_PI * RADIUS_EARTH);
+    equator_l = (2 * G_PI * RADIUS_EARTH);
     for (i = 0; i < G_N_ELEMENTS (data_sphere); ++i)
       {
         data_sphere[i].x = data_sphere[i].x / equator_l + 0.5;
