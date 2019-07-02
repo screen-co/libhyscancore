@@ -114,7 +114,7 @@ main (int argc, char **argv)
   status = final_check (performed, final_marks);
 
 exit:
-  if (db != NULL)
+  if (db != NULL && status)
     hyscan_db_project_remove (db, name);
 
   g_free (db_uri);
@@ -190,7 +190,7 @@ test_function (void)
   HyScanMarkWaterfall *mark = NULL;
 
   if (!count)
-    return G_SOURCE_REMOVE;
+    return;
 
   ht = hyscan_mark_model_get (model);
   len = g_hash_table_size (ht);
@@ -232,8 +232,6 @@ test_function (void)
 
   hyscan_mark_free ((HyScanMark*)mark);
   g_hash_table_unref (ht);
-
-  return G_SOURCE_CONTINUE;
 }
 
 gboolean
@@ -355,11 +353,11 @@ make_mark (void)
   mark->description = g_strdup_printf ("description %i", seed);
   mark->operator_name = g_strdup_printf ("Operator %i", seed2);
   mark->labels = seed;
-  mark->creation_time = seed * 1000;
-  mark->modification_time = seed * 10;
-  mark->source0 = seed;
-  mark->index0 = seed;
-  mark->count0 = seed;
+  mark->ctime = seed * 1000;
+  mark->mtime = seed * 10;
+  mark->source = seed;
+  mark->index = seed;
+  mark->count = seed;
   mark->width = seed * 2;
   mark->height = seed * 5;
 

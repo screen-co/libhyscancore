@@ -371,6 +371,9 @@ hyscan_track_rect_watcher (gpointer data)
               hyscan_projector_count_to_coord (pj, nvals, &across, dpt);
 
               width_max = MAX (across, width_max);
+
+              if (i != index1)
+                i = index1-1;
             }
 
           /* Длина. */

@@ -40,8 +40,8 @@ static void
 hyscan_mark_data_geo_init_plist (HyScanMarkData  *data,
                                  HyScanParamList *plist)
 {
-  hyscan_param_list_add (plist, "/coordinates/lat");
-  hyscan_param_list_add (plist, "/coordinates/lon");
+  hyscan_param_list_add (plist, "/lat");
+  hyscan_param_list_add (plist, "/lon");
 }
 
 /* Функция считывает содержимое объекта. */
@@ -56,8 +56,8 @@ hyscan_mark_data_geo_get (HyScanMarkData  *data,
   g_return_if_fail (mark->type == HYSCAN_MARK_GEO);
   mark_geo = (HyScanMarkGeo *) mark;
 
-  coord.lat = hyscan_param_list_get_double (read_plist, "/coordinates/lat");
-  coord.lon = hyscan_param_list_get_double (read_plist, "/coordinates/lon");
+  coord.lat = hyscan_param_list_get_double (read_plist, "/lat");
+  coord.lon = hyscan_param_list_get_double (read_plist, "/lon");
   hyscan_mark_geo_set_center (mark_geo, coord);
 }
 
@@ -72,6 +72,6 @@ hyscan_mark_data_geo_set (HyScanMarkData   *data,
   g_return_if_fail (mark->type == HYSCAN_MARK_GEO);
   mark_geo = (HyScanMarkGeo *) mark;
 
-  hyscan_param_list_set_double (write_plist, "/coordinates/lat", mark_geo->center.lat);
-  hyscan_param_list_set_double (write_plist, "/coordinates/lon", mark_geo->center.lon);
+  hyscan_param_list_set_double (write_plist, "/lat", mark_geo->center.lat);
+  hyscan_param_list_set_double (write_plist, "/lon", mark_geo->center.lon);
 }

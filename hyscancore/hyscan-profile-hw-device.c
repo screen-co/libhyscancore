@@ -260,7 +260,6 @@ hyscan_profile_hw_device_check (HyScanProfileHWDevice *hw_device)
 
   if (priv->discover == NULL)
     return FALSE;
-
   return hyscan_discover_check (priv->discover, priv->uri, priv->params);
 }
 
