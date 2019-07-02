@@ -31,52 +31,44 @@
   <schema id="waterfall-mark">
     <node id="schema">
       <key id="id" name="Waterfall mark schema id" type="integer" access="readonly">
-        <default>3822111782476410098</default>
+        <default>1315931457526726065</default>
       </key>
       <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
-    <key id="track" name="Track id" type="string"/>
     <key id="name" name="Mark short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
     <key id="operator" name="Operator name" type="string"/>
-    <node id="time" name="Mark timings">
-      <key id="creation" name="Time of creation" type="integer"/>
-      <key id="modification" name="Time of last modification" type="integer"/>
-    </node>
-    <node id="coordinates" name="Mark coordinates">
-      <key id="source0" name="Source type (center)" type="integer"/>
-      <key id="index0" name="Index number (center)" type="integer"/>
-      <key id="count0" name="Count number (center)" type="integer"/>
-      <key id="width" name="Mark width" type="integer"/>
-      <key id="height" name="Mark height" type="integer"/>
-    </node>
+    <key id="label" name="Applied labels" type="integer"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+    <key id="track" name="Track id" type="string"/>
+    <key id="source" name="Source type (center)" type="integer"/>
+    <key id="index" name="Index number (center)" type="integer"/>
+    <key id="count" name="Count number (center)" type="integer"/>
+    <key id="width" name="Mark width" type="double"/>
+    <key id="height" name="Mark height" type="double"/>
   </schema>
 
   <schema id="geo-mark">
     <node id="schema">
       <key id="id" name="Geo mark schema id" type="integer" access="readonly">
-        <default>7450483674131360627</default>
+        <default>9456681891968778252</default>
       </key>
       <key id="version" name="Geo mark schema version" type="integer" access="readonly">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
     <key id="name" name="Mark short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
     <key id="operator" name="Operator name" type="string"/>
-    <node id="time" name="Mark timings">
-      <key id="creation" name="Time of creation" type="integer"/>
-      <key id="modification" name="Time of last modification" type="integer"/>
-    </node>
-    <node id="coordinates" name="Mark coordinates">
-      <key id="lat" name="Latitude (center)" type="double"/>
-      <key id="lon" name="Longitude (center)" type="double"/>
-      <key id="width" name="Mark width" type="integer"/>
-      <key id="height" name="Mark height" type="integer"/>
-    </node>
+    <key id="label" name="Applied labels" type="integer"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+    <key id="lat" name="Latitude (center)" type="double"/>
+    <key id="lon" name="Longitude (center)" type="double"/>
+    <key id="width" name="Mark width" type="double"/>
+    <key id="height" name="Mark height" type="double"/>
   </schema>
 </schemalist>

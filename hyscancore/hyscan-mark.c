@@ -62,8 +62,8 @@ hyscan_mark_copy (HyScanMark *mark)
     {
     case HYSCAN_MARK_WATERFALL:
       hyscan_mark_waterfall_set_track (&copy->waterfall, mark->waterfall.track);
-      hyscan_mark_waterfall_set_center (&copy->waterfall, mark->waterfall.source0,
-                                        mark->waterfall.index0, mark->waterfall.count0);
+      hyscan_mark_waterfall_set_center (&copy->waterfall, mark->waterfall.source,
+                                        mark->waterfall.index, mark->waterfall.count);
       break;
 
     case HYSCAN_MARK_GEO:
@@ -80,8 +80,8 @@ hyscan_mark_copy (HyScanMark *mark)
                               any->description,
                               any->operator_name);
   hyscan_mark_set_labels (copy, any->labels);
-  hyscan_mark_set_ctime (copy, any->creation_time);
-  hyscan_mark_set_mtime (copy, any->modification_time);
+  hyscan_mark_set_ctime (copy, any->ctime);
+  hyscan_mark_set_mtime (copy, any->mtime);
   hyscan_mark_set_size (copy, any->width, any->height);
 
   return copy;
@@ -148,7 +148,7 @@ hyscan_mark_set_ctime (HyScanMark *mark,
 {
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 
-  any->creation_time = creation;
+  any->ctime = creation;
 }
 
 void
@@ -157,7 +157,7 @@ hyscan_mark_set_mtime (HyScanMark *mark,
 {
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 
-  any->modification_time = modification;
+  any->mtime = modification;
 }
 
 void
@@ -166,15 +166,15 @@ hyscan_mark_waterfall_set_center (HyScanMarkWaterfall *mark,
                                   guint32              index,
                                   guint32              count)
 {
-  mark->source0 = source;
-  mark->index0 = index;
-  mark->count0 = count;
+  mark->source = source;
+  mark->index = index;
+  mark->count = count;
 }
 
 void
 hyscan_mark_set_size (HyScanMark *mark,
-                      guint32     width,
-                      guint32     height)
+                      gdouble     width,
+                      gdouble     height)
 {
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 

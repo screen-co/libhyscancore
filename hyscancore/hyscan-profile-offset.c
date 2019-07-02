@@ -260,14 +260,14 @@ hyscan_profile_offset_apply (HyScanProfileOffset *profile,
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_sonar_antenna_set_offset (HYSCAN_SONAR (control), (HyScanSourceType)k, v))
-        return FALSE;
+        g_message ("HyScanProfileOffset: sonar %s failed", hyscan_source_get_id_by_type((HyScanSourceType)k));//return FALSE;
     }
 
   g_hash_table_iter_init (&iter, priv->sensors);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_sensor_antenna_set_offset (HYSCAN_SENSOR (control), (const gchar*)k, v))
-        return FALSE;
+        g_message ("HyScanProfileOffset: sensor %s failed", k);//return FALSE;
     }
 
   return TRUE;
@@ -300,14 +300,14 @@ hyscan_profile_offset_apply_default (HyScanProfileOffset *profile,
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_control_source_set_default_offset (control, (HyScanSourceType)k, v))
-        return FALSE;
+        g_message ("HyScanProfileOffset: sonar %s failed", hyscan_source_get_id_by_type((HyScanSourceType)k));//return FALSE;
     }
 
   g_hash_table_iter_init (&iter, priv->sensors);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_control_sensor_set_default_offset (control, (const gchar*)k, v))
-        return FALSE;
+        g_message ("HyScanProfileOffset: sensor %s failed", k);//return FALSE;
     }
 
   return TRUE;

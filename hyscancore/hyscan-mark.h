@@ -84,10 +84,10 @@ struct _HyScanMarkAny
   gchar            *description;
   gchar            *operator_name;
   guint64           labels;
-  gint64            creation_time;
-  gint64            modification_time;
-  guint32           width;
-  guint32           height;
+  gint64            ctime;
+  gint64            mtime;
+  gdouble           width;
+  gdouble           height;
 };
 
 /**
@@ -115,15 +115,15 @@ struct _HyScanMarkWaterfall
   gchar            *description;
   gchar            *operator_name;
   guint64           labels;
-  gint64            creation_time;
-  gint64            modification_time;
-  guint32           width;
-  guint32           height;
+  gint64            ctime;
+  gint64            mtime;
+  gdouble           width;
+  gdouble           height;
 
   gchar            *track;
-  HyScanSourceType  source0;
-  guint32           index0;
-  guint32           count0;
+  HyScanSourceType  source;
+  guint32           index;
+  guint32           count;
 };
 
 /**
@@ -148,10 +148,10 @@ struct _HyScanMarkGeo
   gchar            *description;
   gchar            *operator_name;
   guint64           labels;
-  gint64            creation_time;
-  gint64            modification_time;
-  guint32           width;
-  guint32           height;
+  gint64            ctime;
+  gint64            mtime;
+  gdouble           width;
+  gdouble           height;
 
   HyScanGeoGeodetic center;
 };
@@ -201,8 +201,8 @@ void                   hyscan_mark_set_mtime                        (HyScanMark 
                                                                      gint64                 modification);
 HYSCAN_API
 void                   hyscan_mark_set_size                         (HyScanMark            *mark,
-                                                                     guint32                width,
-                                                                     guint32                height);
+                                                                     gdouble                width,
+                                                                     gdouble                height);
 HYSCAN_API
 void                   hyscan_mark_waterfall_set_track              (HyScanMarkWaterfall   *mark,
                                                                      const gchar           *track);

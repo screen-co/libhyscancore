@@ -59,11 +59,11 @@
 #define TVG_CHANNEL_SCHEMA_ID                  8911020404930317035
 #define TVG_CHANNEL_SCHEMA_VERSION             20180100
 
-#define WATERFALL_MARK_SCHEMA_ID               3822111782476410098
-#define WATERFALL_MARK_SCHEMA_VERSION          20180100
+#define WATERFALL_MARK_SCHEMA_ID               1315931457526726065
+#define WATERFALL_MARK_SCHEMA_VERSION          20190100
 
-#define GEO_MARK_SCHEMA_ID                     7450483674131360627
-#define GEO_MARK_SCHEMA_VERSION                20180100
+#define GEO_MARK_SCHEMA_ID                     4566818919687782529
+#define GEO_MARK_SCHEMA_VERSION                20190100
 
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"

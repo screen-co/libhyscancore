@@ -126,17 +126,17 @@ mark_lookup (HyScanMarkWaterfall *mark)
   for (i = 0; i < N_MARKS; i++)
     {
       HyScanMarkWaterfall *wf_mark = (HyScanMarkWaterfall *) &test_marks[i];
-      if (0 == g_strcmp0 (mark->name,             wf_mark->name) &&
-          0 == g_strcmp0 (mark->description,      wf_mark->description) &&
-          0 == g_strcmp0 (mark->operator_name,    wf_mark->operator_name) &&
-          mark->labels                         == wf_mark->labels &&
-          mark->creation_time                  == wf_mark->creation_time &&
-          mark->modification_time              == wf_mark->modification_time &&
-          mark->source0                        == wf_mark->source0 &&
-          mark->index0                         == wf_mark->index0 &&
-          mark->count0                         == wf_mark->count0 &&
-          mark->width                          == wf_mark->width &&
-          mark->height                         == wf_mark->height)
+      if (0 == g_strcmp0 (mark->name,          wf_mark->name) &&
+          0 == g_strcmp0 (mark->description,   wf_mark->description) &&
+          0 == g_strcmp0 (mark->operator_name, wf_mark->operator_name) &&
+          mark->labels == wf_mark->labels &&
+          mark->ctime  == wf_mark->ctime &&
+          mark->mtime  == wf_mark->mtime &&
+          mark->source == wf_mark->source &&
+          mark->index  == wf_mark->index &&
+          mark->count  == wf_mark->count &&
+          mark->width  == wf_mark->width &&
+          mark->height == wf_mark->height)
         {
           return TRUE;
         }

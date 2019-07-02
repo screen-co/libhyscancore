@@ -88,9 +88,9 @@ hyscan_mark_data_waterfall_init_plist (HyScanMarkData  *data,
 {
   /* Добавляем названия параметров в списки. */
   hyscan_param_list_add (plist, "/track");
-  hyscan_param_list_add (plist, "/coordinates/source0");
-  hyscan_param_list_add (plist, "/coordinates/index0");
-  hyscan_param_list_add (plist, "/coordinates/count0");
+  hyscan_param_list_add (plist, "/source");
+  hyscan_param_list_add (plist, "/index");
+  hyscan_param_list_add (plist, "/count");
 }
 
 /* Функция считывает содержимое объекта. */
@@ -108,9 +108,9 @@ hyscan_mark_data_waterfall_get_internal (HyScanMarkData  *data,
                                     hyscan_param_list_get_string (read_plist,  "/track"));
 
   hyscan_mark_waterfall_set_center (mark_wf,
-                                    hyscan_param_list_get_integer (read_plist, "/coordinates/source0"),
-                                    hyscan_param_list_get_integer (read_plist, "/coordinates/index0"),
-                                    hyscan_param_list_get_integer (read_plist, "/coordinates/count0"));
+                                    hyscan_param_list_get_integer (read_plist, "/source"),
+                                    hyscan_param_list_get_integer (read_plist, "/index"),
+                                    hyscan_param_list_get_integer (read_plist, "/count"));
 }
 
 /* Функция записывает значения в существующий объект. */
@@ -125,7 +125,7 @@ hyscan_mark_data_waterfall_set_internal (HyScanMarkData   *data,
   mark_wf = (HyScanMarkWaterfall *) mark;
 
   hyscan_param_list_set_string (write_plist, "/track", mark_wf->track);
-  hyscan_param_list_set_integer (write_plist, "/coordinates/source0", mark_wf->source0);
-  hyscan_param_list_set_integer (write_plist, "/coordinates/index0", mark_wf->index0);
-  hyscan_param_list_set_integer (write_plist, "/coordinates/count0", mark_wf->count0);
+  hyscan_param_list_set_integer (write_plist, "/source", mark_wf->source);
+  hyscan_param_list_set_integer (write_plist, "/index", mark_wf->index);
+  hyscan_param_list_set_integer (write_plist, "/count", mark_wf->count);
 }

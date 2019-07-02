@@ -99,8 +99,7 @@ hyscan_mloc_object_constructed (GObject *object)
   HyScanmLoc *self = HYSCAN_MLOC (object);
   HyScanmLocPrivate *priv = self->priv;
   HyScanNMEAParser *plat, *plon, *ptrk;
-  HyScanGeoGeodetic origin;
-  guint32 first;
+  HyScanGeoGeodetic origin = {0, 0, 0};
 
   plat = hyscan_nmea_parser_new (priv->db, priv->cache,
                                  priv->project, priv->track,
@@ -121,10 +120,6 @@ hyscan_mloc_object_constructed (GObject *object)
   priv->lat = HYSCAN_NAV_DATA (plat);
   priv->lon = HYSCAN_NAV_DATA (plon);
   priv->trk = HYSCAN_NAV_DATA (ptrk);
-
-  hyscan_nav_data_get_range (priv->lat, &first, NULL);
-  hyscan_nav_data_get (priv->lat, first, NULL, &origin.lat);
-  hyscan_nav_data_get (priv->lon, first, NULL, &origin.lon);
 
   priv->geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
@@ -182,7 +177,7 @@ hyscan_mloc_get (HyScanmLoc            *self,
 {
   HyScanmLocPrivate *priv;
   HyScanGeoCartesian3D topo;
-  HyScanGeoGeodetic origin;
+  HyScanGeoGeodetic origin = {0, 0, 0};
   HyScanDBFindStatus fstatus;
   guint32 lindex, rindex, index;
 
@@ -198,12 +193,14 @@ hyscan_mloc_get (HyScanmLoc            *self,
 
   index = lindex;
 
-  hyscan_nav_data_get (priv->lat, index, NULL, &origin.lat);
-  hyscan_nav_data_get (priv->lon, index, NULL, &origin.lon);
-  hyscan_nav_data_get (priv->trk, index, NULL, &origin.h);
+  if (!hyscan_nav_data_get (priv->lat, index, NULL, &origin.lat) ||
+      !hyscan_nav_data_get (priv->lon, index, NULL, &origin.lon) ||
+      !hyscan_nav_data_get (priv->trk, index, NULL, &origin.h))
+    {
+      return FALSE;
+    }
 
   /* Устанавливаем в эту точку (и с этим углом) начало топоцентрической СК. */
-  origin.h = 0;
   hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
   /* Сдвигаю куда следует. Тут небольшой костыль, т.к. система координат в гео
