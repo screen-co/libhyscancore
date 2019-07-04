@@ -26,8 +26,11 @@ struct _HyScanMarkDataGeoClass
 };
 
 HYSCAN_API
-GType                  hyscan_mark_data_geo_get_type         (void);
+GType                  hyscan_mark_data_geo_get_type    (void);
 
+HYSCAN_API
+HyScanMarkData *       hyscan_mark_data_geo_new         (HyScanDB    *db,
+                                                         const gchar *project);
 G_END_DECLS
 
 #endif /* __HYSCAN_MARK_DATA_GEO_H__ */

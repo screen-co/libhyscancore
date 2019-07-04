@@ -129,3 +129,20 @@ hyscan_mark_data_waterfall_set_internal (HyScanMarkData   *data,
   hyscan_param_list_set_integer (write_plist, "/index", mark_wf->index);
   hyscan_param_list_set_integer (write_plist, "/count", mark_wf->count);
 }
+
+HyScanMarkData *
+hyscan_mark_data_waterfall_new (HyScanDB    * db,
+                                const gchar * project)
+{
+  HyScanMarkData * data;
+
+  data = g_object_new (HYSCAN_TYPE_MARK_DATA_WATERFALL,
+                       "db", db,
+                       "project", project,
+                       NULL);
+
+  if (!hyscan_mark_data_is_ready (data))
+    g_clear_object (&data);
+
+  return data;
+}

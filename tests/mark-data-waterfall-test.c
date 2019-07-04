@@ -59,7 +59,7 @@ main (int argc, char **argv)
   make_track (db, name);
 
   /* Начинаем тестирование объекта. */
-  data = g_object_new (HYSCAN_TYPE_MARK_DATA_WATERFALL, "db", db, "project", name, NULL);
+  data = hyscan_mark_data_waterfall_new (db, name);
 
   /* Отправим несколько меток. */
   g_message ("Adding marks...");

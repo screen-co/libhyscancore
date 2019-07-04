@@ -63,6 +63,10 @@ struct _HyScanMarkDataWaterfallClass
 HYSCAN_API
 GType                           hyscan_mark_data_waterfall_get_type          (void);
 
+HYSCAN_API
+HyScanMarkData *                hyscan_mark_data_waterfall_new               (HyScanDB    *db,
+                                                                              const gchar *project);
+
 G_END_DECLS
 
 #endif /* __HYSCAN_MARK_DATA_WATERFALL_H__ */

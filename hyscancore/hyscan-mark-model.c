@@ -390,16 +390,12 @@ hyscan_mark_model_processing (gpointer data)
           /* Создаем объект работы с метками. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
             {
-              GType type;
               if (priv->mark_type == HYSCAN_MARK_WATERFALL)
-                type = HYSCAN_TYPE_MARK_DATA_WATERFALL;
+                mdata = hyscan_mark_data_waterfall_new (priv->cur_state.db, priv->cur_state.project);
               else if (priv->mark_type == HYSCAN_MARK_GEO)
-                type = HYSCAN_TYPE_MARK_DATA_GEO;
+                mdata = hyscan_mark_data_geo_new (priv->cur_state.db, priv->cur_state.project);
               else
                 g_assert_not_reached ();
-
-              mdata = g_object_new (type, "db", priv->cur_state.db,
-                                    "project", priv->cur_state.project, NULL);
             }
 
           /* Если не получилось (например потому, что проект ещё не создан),

@@ -95,6 +95,9 @@ HYSCAN_API
 GType                           hyscan_mark_data_get_type          (void);
 
 HYSCAN_API
+gboolean                        hyscan_mark_data_is_ready          (HyScanMarkData    *data);
+
+HYSCAN_API
 gboolean                        hyscan_mark_data_add               (HyScanMarkData    *data,
                                                                     HyScanMark        *mark);
 

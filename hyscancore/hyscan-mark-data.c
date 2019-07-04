@@ -315,6 +315,24 @@ hyscan_mark_data_set_internal (HyScanMarkData    *data,
 }
 
 /**
+ * hyscan_mark_data_is_ready:
+ * @data: указатель на объект #HyScanMarkData
+ *
+ * Проверяет, корректно ли проинициализировался объект. Если нет, то он будет
+ * неработоспособен
+ *
+ * Returns: %TRUE, если инициализация успешна.
+ */
+
+gboolean
+hyscan_mark_data_is_ready (HyScanMarkData *data)
+{
+  g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), FALSE);
+
+  return data->priv->param_id > 0;
+}
+
+/**
  * hyscan_mark_data_add:
  * @data: указатель на объект #HyScanMarkData
  * @mark: указатель на структуру #HyScanMark

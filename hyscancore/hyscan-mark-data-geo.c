@@ -75,3 +75,20 @@ hyscan_mark_data_geo_set (HyScanMarkData   *data,
   hyscan_param_list_set_double (write_plist, "/lat", mark_geo->center.lat);
   hyscan_param_list_set_double (write_plist, "/lon", mark_geo->center.lon);
 }
+
+HyScanMarkData *
+hyscan_mark_data_geo_new (HyScanDB    *db,
+                          const gchar *project)
+{
+  HyScanMarkData * data;
+
+  data = g_object_new (HYSCAN_TYPE_MARK_DATA_GEO,
+                       "db", db,
+                       "project", project,
+                       NULL);
+
+  if (!hyscan_mark_data_is_ready (data))
+    g_clear_object (&data);
+
+  return data;
+}
