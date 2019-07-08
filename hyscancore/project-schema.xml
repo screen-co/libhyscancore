@@ -54,7 +54,7 @@
   <schema id="geo-mark">
     <node id="schema">
       <key id="id" name="Geo mark schema id" type="integer" access="readonly">
-        <default>9456681891968778252</default>
+        <default>4566818919687782529</default>
       </key>
       <key id="version" name="Geo mark schema version" type="integer" access="readonly">
         <default>20190100</default>
