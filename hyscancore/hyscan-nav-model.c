@@ -184,8 +184,7 @@ hyscan_nav_model_class_init (HyScanNavModelClass *klass)
   /**
    * HyScanNavModel::changed:
    * @model: указатель на #HyScanNavModel
-   * @time: время фиксации нового положения, секунды
-   * @coord: координаты местоположения #HyScanGeoGeodetic
+   * @data: указатель на навигационные данные #HyScanNavModelData
    *
    * Сигнал сообщает об изменении текущего местоположения.
    */
