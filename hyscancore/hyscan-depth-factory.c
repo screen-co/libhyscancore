@@ -88,9 +88,9 @@ hyscan_depth_factory_object_finalize (GObject *object)
   HyScanDepthFactory *depth_factory = HYSCAN_DEPTH_FACTORY (object);
   HyScanDepthFactoryPrivate *priv = depth_factory->priv;
 
-  g_object_unref (priv->cache);
+  g_clear_object (&priv->cache);
 
-  g_object_unref (priv->db);
+  g_clear_object (&priv->db);
   g_free (priv->project);
   g_free (priv->track);
 
@@ -215,10 +215,7 @@ hyscan_depth_factory_produce (HyScanDepthFactory *self)
   g_mutex_unlock (&priv->lock);
 
   if (db == NULL || project == NULL || track == NULL)
-    {
-      depth = NULL;
-      goto fail;
-    }
+    goto fail;
 
   parser = hyscan_nmea_parser_new (priv->db, priv->cache,
                                    priv->project, priv->track, 1,
@@ -226,10 +223,7 @@ hyscan_depth_factory_produce (HyScanDepthFactory *self)
                                    HYSCAN_NMEA_FIELD_DEPTH);
 
   if (parser == NULL)
-    {
-      depth = NULL;
-      goto fail;
-    }
+    goto fail;
 
   depth = hyscan_depthometer_new (HYSCAN_NAV_DATA (parser), priv->cache);
 

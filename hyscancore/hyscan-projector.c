@@ -19,7 +19,7 @@ enum
 struct _HyScanProjectorPrivate
 {
   HyScanAmplitude      *dc;              /* Основной КД. */
-  HyScanAntennaOffset   offset;        /* Местоположение антенны. */
+  HyScanAntennaOffset   offset;          /* Местоположение антенны. */
 
   HyScanAcousticData  **addon_dc;        /* Дополнительные КД. */
 

@@ -157,6 +157,10 @@ hyscan_track_rect_object_finalize (GObject *object)
   HyScanTrackRect *self = HYSCAN_TRACK_RECT (object);
   HyScanTrackRectPrivate *priv = self->priv;
 
+  g_clear_object (&priv->cache);
+  g_clear_object (&priv->af);
+  g_clear_object (&priv->df);
+
   g_atomic_int_set (&priv->stop, TRUE);
   g_atomic_int_set (&priv->abort, TRUE);
   g_clear_pointer (&priv->watcher, g_thread_join);
@@ -410,6 +414,7 @@ next:
       g_mutex_unlock (&cond_lock);
     }
 
+  g_clear_object (&priv->dc);
   g_clear_object (&priv->pj);
   g_clear_object (&priv->depth);
 

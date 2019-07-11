@@ -88,9 +88,9 @@ hyscan_amplitude_factory_object_finalize (GObject *object)
   HyScanAmplitudeFactory *self = HYSCAN_AMPLITUDE_FACTORY (object);
   HyScanAmplitudeFactoryPrivate *priv = self->priv;
 
-  g_object_unref (priv->cache);
+  g_clear_object (&priv->cache);
 
-  g_object_unref (priv->db);
+  g_clear_object (&priv->db);
   g_free (priv->project);
   g_free (priv->track);
 

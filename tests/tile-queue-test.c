@@ -151,24 +151,22 @@ main (int argc, char **argv)
       found = hyscan_tile_queue_get (tq, &tile, &cached_tile, &image, &image_size);
       if (!found)
         FAIL ("Failed to get tile.");
-
-      // g_free (image);
     }
 
   status = TRUE;
   /* Третья стадия. Убираем за собой. */
 finish:
 
-  hyscan_db_project_remove	(db, name);
-
+  g_clear_object (&tq);
+  g_clear_object (&af);
+  g_clear_object (&df);
   g_clear_object (&buffer);
   g_clear_object (&writer);
   g_clear_object (&cache);
-  g_clear_object (&af);
-  g_clear_object (&db);
-  g_clear_object (&tq);
 
   g_clear_pointer (&db_uri, g_free);
+  hyscan_db_project_remove	(db, name);
+  g_clear_object (&db);
 
   g_printf ("test %s\n", status ? "passed" : "falled");
 
