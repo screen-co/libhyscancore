@@ -1,4 +1,4 @@
-/* hyscan-navigation-model.h
+/* hyscan-nav-model.h
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
@@ -32,24 +32,24 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#ifndef __HYSCAN_NAVIGATION_MODEL_H__
-#define __HYSCAN_NAVIGATION_MODEL_H__
+#ifndef __HYSCAN_NAV_MODEL_H__
+#define __HYSCAN_NAV_MODEL_H__
 
 #include <hyscan-sensor.h>
 #include <hyscan-geo.h>
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_NAVIGATION_MODEL             (hyscan_navigation_model_get_type ())
-#define HYSCAN_NAVIGATION_MODEL(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_NAVIGATION_MODEL, HyScanNavigationModel))
-#define HYSCAN_IS_NAVIGATION_MODEL(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_NAVIGATION_MODEL))
-#define HYSCAN_NAVIGATION_MODEL_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_NAVIGATION_MODEL, HyScanNavigationModelClass))
-#define HYSCAN_IS_NAVIGATION_MODEL_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_NAVIGATION_MODEL))
-#define HYSCAN_NAVIGATION_MODEL_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_NAVIGATION_MODEL, HyScanNavigationModelClass))
+#define HYSCAN_TYPE_NAV_MODEL             (hyscan_nav_model_get_type ())
+#define HYSCAN_NAV_MODEL(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_NAV_MODEL, HyScanNavModel))
+#define HYSCAN_IS_NAV_MODEL(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_NAV_MODEL))
+#define HYSCAN_NAV_MODEL_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_NAV_MODEL, HyScanNavModelClass))
+#define HYSCAN_IS_NAV_MODEL_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_NAV_MODEL))
+#define HYSCAN_NAV_MODEL_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_NAV_MODEL, HyScanNavModelClass))
 
-typedef struct _HyScanNavigationModel HyScanNavigationModel;
-typedef struct _HyScanNavigationModelPrivate HyScanNavigationModelPrivate;
-typedef struct _HyScanNavigationModelClass HyScanNavigationModelClass;
+typedef struct _HyScanNavModel HyScanNavModel;
+typedef struct _HyScanNavModelPrivate HyScanNavModelPrivate;
+typedef struct _HyScanNavModelClass HyScanNavModelClass;
 
 typedef struct
 {
@@ -60,43 +60,43 @@ typedef struct
   gboolean          true_heading; /* Истинный курс установлен по HDT. */
   gdouble           heading;      /* Истинный курс, радианы. */
   gdouble           speed;        /* Скорость, м/с. */
-} HyScanNavigationModelData;
+} HyScanNavModelData;
 
-struct _HyScanNavigationModel
+struct _HyScanNavModel
 {
   GObject parent_instance;
 
-  HyScanNavigationModelPrivate *priv;
+  HyScanNavModelPrivate *priv;
 };
 
-struct _HyScanNavigationModelClass
+struct _HyScanNavModelClass
 {
   GObjectClass parent_class;
 };
 
 HYSCAN_API
-GType                    hyscan_navigation_model_get_type         (void);
+GType                    hyscan_nav_model_get_type         (void);
 
 HYSCAN_API
-HyScanNavigationModel *  hyscan_navigation_model_new              (void);
+HyScanNavModel *         hyscan_nav_model_new              (void);
 
 HYSCAN_API
-void                     hyscan_navigation_model_set_sensor       (HyScanNavigationModel     *model,
-                                                                   HyScanSensor              *sensor);
+void                     hyscan_nav_model_set_sensor       (HyScanNavModel     *model,
+                                                            HyScanSensor       *sensor);
 
 HYSCAN_API
-void                     hyscan_navigation_model_set_sensor_name  (HyScanNavigationModel     *model,
+void                     hyscan_nav_model_set_sensor_name  (HyScanNavModel     *model,
                                                                    const gchar               *name);
 
 HYSCAN_API
-void                     hyscan_navigation_model_set_delay        (HyScanNavigationModel     *model,
+void                     hyscan_nav_model_set_delay        (HyScanNavModel     *model,
                                                                    gdouble                    delay);
 
 HYSCAN_API
-gboolean                 hyscan_navigation_model_get              (HyScanNavigationModel     *model,
-                                                                   HyScanNavigationModelData *data,
+gboolean                 hyscan_nav_model_get              (HyScanNavModel     *model,
+                                                                   HyScanNavModelData *data,
                                                                    gdouble                   *time_delta);
 
 G_END_DECLS
 
-#endif /* __HYSCAN_NAVIGATION_MODEL_H__ */
+#endif /* __HYSCAN_NAV_MODEL_H__ */

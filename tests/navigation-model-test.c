@@ -32,7 +32,7 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#include <hyscan-navigation-model.h>
+#include <hyscan-nav-model.h>
 #include <hyscan-nmea-file-device.h>
 
 #define DEVICE_NAME "nav-device"
@@ -44,7 +44,7 @@ int usage (const gchar *prg_name)
 }
 
 void
-on_model_changed (HyScanNavigationModel *model,
+on_model_changed (HyScanNavModel *model,
                   gdouble                time,
                   HyScanGeoGeodetic     *geo)
 {
@@ -57,7 +57,7 @@ int main (int    argc,
   GMainLoop *loop;
 
   HyScanNmeaFileDevice *device;
-  HyScanNavigationModel *model;
+  HyScanNavModel *model;
 
   const gchar *filename;
 
@@ -69,9 +69,9 @@ int main (int    argc,
   loop = g_main_loop_new (NULL, FALSE);
 
   device = hyscan_nmea_file_device_new (DEVICE_NAME, filename);
-  model = hyscan_navigation_model_new ();
-  hyscan_navigation_model_set_sensor (model, HYSCAN_SENSOR (device));
-  hyscan_navigation_model_set_sensor_name (model, DEVICE_NAME);
+  model = hyscan_nav_model_new ();
+  hyscan_nav_model_set_sensor (model, HYSCAN_SENSOR (device));
+  hyscan_nav_model_set_sensor_name (model, DEVICE_NAME);
 
   g_signal_connect_swapped (device, "finish", G_CALLBACK (g_main_loop_quit), loop);
   g_signal_connect (model, "changed", G_CALLBACK (on_model_changed), NULL);

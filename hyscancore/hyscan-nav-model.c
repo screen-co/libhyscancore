@@ -1,4 +1,4 @@
-/* hyscan-navigation-model.c
+/* hyscan-nav-model.c
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
@@ -33,16 +33,16 @@
  */
 
 /**
- * SECTION: hyscan-navigation-model
+ * SECTION: hyscan-nav-model
  * @Short_description: модель навигационных данных
- * @Title: HyScanNavigationModel
+ * @Title: HyScanNavModel
  *
  * Класс хранит информацию о местоположении и курсе движения некоторого объекта,
  * полученную из GPS-приёмника или другого навигационного датчика.
  *
  * Используемый датчик указывается при помощи функций:
- * - hyscan_navigation_model_set_sensor()
- * - hyscan_navigation_model_set_sensor_name()
+ * - hyscan_nav_model_set_sensor()
+ * - hyscan_nav_model_set_sensor_name()
  *
  * При изменении состояния модель эмитирует сигнал "changed" с информацией о
  * текущем местоположении и времени его фиксации. Частоту изменения состояния
@@ -55,11 +55,11 @@
  *   о местоположении, делая перещемение более гладким.
  *
  * Для выбора режима работы (последние данные/интерполяция) следует воспользоваться
- * функцией hyscan_navigation_model_set_delay().
+ * функцией hyscan_nav_model_set_delay().
  *
  */
 
-#include "hyscan-navigation-model.h"
+#include "hyscan-nav-model.h"
 #include "hyscan-geo.h"
 #include "hyscan-nmea-data.h"
 #include "hyscan-nmea-parser.h"
@@ -102,7 +102,7 @@ typedef struct
   gdouble c;
   gdouble d;
   gdouble c_speed;
-} HyScanNavigationModelInParams;
+} HyScanNavModelInParams;
 
 typedef struct
 {
@@ -117,11 +117,11 @@ typedef struct
   /* Параметры интерполяции. */
   gdouble                       params_set;         /* Признак того, что параметры интерполяции установлены. */
   gdouble                       time1;              /* Время, до которого возможно интерполяция. */
-  HyScanNavigationModelInParams lat_params;         /* Параметры интерполяции широты. */
-  HyScanNavigationModelInParams lon_params;         /* Параметры интерполяции долготы. */
-} HyScanNavigationModelFix;
+  HyScanNavModelInParams lat_params;         /* Параметры интерполяции широты. */
+  HyScanNavModelInParams lon_params;         /* Параметры интерполяции долготы. */
+} HyScanNavModelFix;
 
-struct _HyScanNavigationModelPrivate
+struct _HyScanNavModelPrivate
 {
   HyScanSensor                *sensor;         /* Система датчиков HyScanSensor. */
   gchar                       *sensor_name;    /* Название датчика GPS-приёмника. */
@@ -149,30 +149,30 @@ struct _HyScanNavigationModelPrivate
   gboolean                     interpolate;    /* Стратегия получения актальных данных (интерполировать или нет). */
 };
 
-static void    hyscan_navigation_model_set_property             (GObject               *object,
-                                                                 guint                  prop_id,
-                                                                 const GValue          *value,
-                                                                 GParamSpec            *pspec);
-static void    hyscan_navigation_model_object_constructed       (GObject               *object);
-static void    hyscan_navigation_model_object_finalize          (GObject               *object);
-static void    hyscan_navigation_model_update_params            (HyScanNavigationModel *model);
-static gdouble hyscan_navigation_model_interpolate_value        (HyScanNavigationModelInParams *params,
-                                                                 gdouble                        dt,
-                                                                 gdouble                       *v);
+static void    hyscan_nav_model_set_property             (GObject                *object,
+                                                          guint                   prop_id,
+                                                          const GValue           *value,
+                                                          GParamSpec             *pspec);
+static void    hyscan_nav_model_object_constructed       (GObject                *object);
+static void    hyscan_nav_model_object_finalize          (GObject                *object);
+static void    hyscan_nav_model_update_params            (HyScanNavModel         *model);
+static gdouble hyscan_nav_model_interpolate_value        (HyScanNavModelInParams *params,
+                                                         gdouble                  dt,
+                                                         gdouble                 *v);
 
-static guint hyscan_navigation_model_signals[SIGNAL_LAST] = {0};
+static guint hyscan_nav_model_signals[SIGNAL_LAST] = {0};
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanNavigationModel, hyscan_navigation_model, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanNavModel, hyscan_nav_model, G_TYPE_OBJECT)
 
 static void
-hyscan_navigation_model_class_init (HyScanNavigationModelClass *klass)
+hyscan_nav_model_class_init (HyScanNavModelClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->set_property = hyscan_navigation_model_set_property;
+  object_class->set_property = hyscan_nav_model_set_property;
 
-  object_class->constructed = hyscan_navigation_model_object_constructed;
-  object_class->finalize = hyscan_navigation_model_object_finalize;
+  object_class->constructed = hyscan_nav_model_object_constructed;
+  object_class->finalize = hyscan_nav_model_object_finalize;
 
   g_object_class_install_property (object_class, PROP_SENSOR,
     g_param_spec_object ("sensor", "Navigation Sensor", "HyScanSensor", HYSCAN_TYPE_SENSOR,
@@ -182,15 +182,15 @@ hyscan_navigation_model_class_init (HyScanNavigationModelClass *klass)
                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   /**
-   * HyScanNavigationModel::changed:
-   * @model: указатель на #HyScanNavigationModel
+   * HyScanNavModel::changed:
+   * @model: указатель на #HyScanNavModel
    * @time: время фиксации нового положения, секунды
    * @coord: координаты местоположения #HyScanGeoGeodetic
    *
    * Сигнал сообщает об изменении текущего местоположения.
    */
-  hyscan_navigation_model_signals[SIGNAL_CHANGED] =
-    g_signal_new ("changed", HYSCAN_TYPE_NAVIGATION_MODEL,
+  hyscan_nav_model_signals[SIGNAL_CHANGED] =
+    g_signal_new ("changed", HYSCAN_TYPE_NAV_MODEL,
                   G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE,
@@ -198,19 +198,19 @@ hyscan_navigation_model_class_init (HyScanNavigationModelClass *klass)
 }
 
 static void
-hyscan_navigation_model_init (HyScanNavigationModel *navigation_model)
+hyscan_nav_model_init (HyScanNavModel *nav_model)
 {
-  navigation_model->priv = hyscan_navigation_model_get_instance_private (navigation_model);
+  nav_model->priv = hyscan_nav_model_get_instance_private (nav_model);
 }
 
 static void
-hyscan_navigation_model_set_property (GObject      *object,
-                                      guint         prop_id,
-                                      const GValue *value,
-                                      GParamSpec   *pspec)
+hyscan_nav_model_set_property (GObject      *object,
+                               guint         prop_id,
+                               const GValue *value,
+                               GParamSpec   *pspec)
 {
-  HyScanNavigationModel *navigation_model = HYSCAN_NAVIGATION_MODEL (object);
-  HyScanNavigationModelPrivate *priv = navigation_model->priv;
+  HyScanNavModel *nav_model = HYSCAN_NAV_MODEL (object);
+  HyScanNavModelPrivate *priv = nav_model->priv;
 
   switch (prop_id)
     {
@@ -228,43 +228,43 @@ hyscan_navigation_model_set_property (GObject      *object,
     }
 }
 
-/* Копирует структуру HyScanNavigationModelFix. */
-static HyScanNavigationModelFix *
-hyscan_navigation_model_fix_copy (HyScanNavigationModelFix *fix)
+/* Копирует структуру HyScanNavModelFix. */
+static HyScanNavModelFix *
+hyscan_nav_model_fix_copy (HyScanNavModelFix *fix)
 {
-  HyScanNavigationModelFix *copy;
+  HyScanNavModelFix *copy;
 
-  copy = g_slice_new (HyScanNavigationModelFix);
+  copy = g_slice_new (HyScanNavModelFix);
   *copy = *fix;
 
   return copy;
 }
 
-/* Освобождает память, занятую структурой HyScanNavigationModelFix. */
+/* Освобождает память, занятую структурой HyScanNavModelFix. */
 static void
-hyscan_navigation_model_fix_free (HyScanNavigationModelFix *fix)
+hyscan_nav_model_fix_free (HyScanNavModelFix *fix)
 {
-  g_slice_free (HyScanNavigationModelFix, fix);
+  g_slice_free (HyScanNavModelFix, fix);
 }
 
 static void
-hyscan_navigation_model_remove_all (HyScanNavigationModel *model)
+hyscan_nav_model_remove_all (HyScanNavModel *model)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
 
-  g_list_free_full (priv->fixes, (GDestroyNotify) hyscan_navigation_model_fix_free);
+  g_list_free_full (priv->fixes, (GDestroyNotify) hyscan_nav_model_fix_free);
   priv->fixes_len = 0;
   priv->fixes = NULL;
 }
 
 /* Добавляет новый фикс в список. */
 static void
-hyscan_navigation_model_add_fix (HyScanNavigationModel    *model,
-                                 HyScanNavigationModelFix *fix)
+hyscan_nav_model_add_fix (HyScanNavModel    *model,
+                          HyScanNavModelFix *fix)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
   GList *last_fix_l;
-  HyScanNavigationModelFix *last_fix;
+  HyScanNavModelFix *last_fix;
 
   g_mutex_lock (&priv->fixes_lock);
 
@@ -278,14 +278,14 @@ hyscan_navigation_model_add_fix (HyScanNavigationModel    *model,
   /* Обрыв: удаляем из списка старые данные. */
   if (last_fix != NULL && fix->time - last_fix->time > SIGNAL_LOST_DELTA)
     {
-      hyscan_navigation_model_remove_all (model);
+      hyscan_nav_model_remove_all (model);
       last_fix = NULL;
     }
 
   /* Фиксируем данные только если они для нового момента времени. */
   if (last_fix == NULL || fix->time - last_fix->time > FIX_MIN_DELTA)
     {
-      priv->fixes = g_list_append (priv->fixes, hyscan_navigation_model_fix_copy (fix));
+      priv->fixes = g_list_append (priv->fixes, hyscan_nav_model_fix_copy (fix));
       priv->fixes_len++;
 
       /* Если timer_offset не инициализирован, делаем это. */
@@ -302,21 +302,21 @@ hyscan_navigation_model_add_fix (HyScanNavigationModel    *model,
       priv->fixes = g_list_remove_link (priv->fixes, first_fix_l);
       priv->fixes_len--;
 
-      hyscan_navigation_model_fix_free (first_fix_l->data);
+      hyscan_nav_model_fix_free (first_fix_l->data);
       g_list_free (first_fix_l);
     }
 
-  hyscan_navigation_model_update_params (model);
+  hyscan_nav_model_update_params (model);
   g_mutex_unlock (&priv->fixes_lock);
 }
 
 /* Парсит NMEA-строку. */
 static gboolean
-hyscan_navigation_model_read_sentence (HyScanNavigationModel    *model,
-                                       const gchar              *sentence,
-                                       HyScanNavigationModelFix *fix)
+hyscan_nav_model_read_sentence (HyScanNavModel    *model,
+                                const gchar       *sentence,
+                                HyScanNavModelFix *fix)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
 
   gboolean parsed;
   gdouble fix_time, fix_date;
@@ -355,14 +355,14 @@ hyscan_navigation_model_read_sentence (HyScanNavigationModel    *model,
 /* Обработчик сигнала "sensor-data".
  * Парсит полученное от датчика @sensor сообщение. Может выполняться не в MainLoop. */
 static void
-hyscan_navigation_model_sensor_data (HyScanSensor          *sensor,
-                                     const gchar           *name,
-                                     HyScanSourceType       source,
-                                     gint64                 time,
-                                     HyScanBuffer          *data,
-                                     HyScanNavigationModel *model)
+hyscan_nav_model_sensor_data (HyScanSensor     *sensor,
+                              const gchar      *name,
+                              HyScanSourceType  source,
+                              gint64            time,
+                              HyScanBuffer     *data,
+                              HyScanNavModel   *model)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
 
   const gchar *msg;
   guint32 msg_size;
@@ -383,9 +383,9 @@ hyscan_navigation_model_sensor_data (HyScanSensor          *sensor,
   sentences = hyscan_nmea_data_split_sentence (msg, msg_size);
   for (i = 0; sentences[i] != NULL; i++)
     {
-      HyScanNavigationModelFix fix;
+      HyScanNavModelFix fix;
 
-      if (hyscan_navigation_model_read_sentence (model, sentences[i], &fix))
+      if (hyscan_nav_model_read_sentence (model, sentences[i], &fix))
         {
           fix.heading = fix.coord.h;
           fix.true_heading = FALSE;
@@ -399,7 +399,7 @@ hyscan_navigation_model_sensor_data (HyScanSensor          *sensor,
               fix.true_heading = TRUE;
           }
 
-          hyscan_navigation_model_add_fix (model, &fix);
+          hyscan_nav_model_add_fix (model, &fix);
         }
     }
 
@@ -408,12 +408,12 @@ hyscan_navigation_model_sensor_data (HyScanSensor          *sensor,
 
 /* Рассчитывает значения параметров экстраполяции. */
 static void
-hyscan_navigation_model_update_expn_params (HyScanNavigationModelInParams *params0,
-                                            gdouble                        value0,
-                                            gdouble                        d_value0,
-                                            gdouble                        value_next,
-                                            gdouble                        d_value_next,
-                                            gdouble                        dt)
+hyscan_nav_model_update_expn_params (HyScanNavModelInParams *params0,
+                                     gdouble                 value0,
+                                     gdouble                 d_value0,
+                                     gdouble                 value_next,
+                                     gdouble                 d_value_next,
+                                     gdouble                 dt)
 {
   params0->a = value0;
   params0->b = d_value0;
@@ -426,9 +426,9 @@ hyscan_navigation_model_update_expn_params (HyScanNavigationModelInParams *param
 /* Экстраполирует значение ex_params на время dt.
  * В переменную v передается скорость изменения значения. */
 static gdouble
-hyscan_navigation_model_interpolate_value (HyScanNavigationModelInParams *params,
-                                           gdouble                        dt,
-                                           gdouble                       *v)
+hyscan_nav_model_interpolate_value (HyScanNavModelInParams *params,
+                                    gdouble                 dt,
+                                    gdouble                *v)
 {
   gdouble s;
 
@@ -443,13 +443,13 @@ hyscan_navigation_model_interpolate_value (HyScanNavigationModelInParams *params
 
 /* Возвращает последние полученные данные. */
 static gboolean
-hyscan_navigation_model_latest (HyScanNavigationModel     *model,
-                                HyScanNavigationModelData *data,
-                                gdouble                   *time_delta)
+hyscan_nav_model_latest (HyScanNavModel     *model,
+                         HyScanNavModelData *data,
+                         gdouble            *time_delta)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
   GList *last_fix_l;
-  HyScanNavigationModelFix *last_fix;
+  HyScanNavModelFix *last_fix;
 
   g_mutex_lock (&priv->fixes_lock);
 
@@ -481,16 +481,16 @@ hyscan_navigation_model_latest (HyScanNavigationModel     *model,
 /* Находит параметры интреполяции для момента времени time_.
  * Вызывать за мьютексом g_mutex_lock (&priv->fixes_lock). */
 static gboolean
-hyscan_navigation_model_find_params (HyScanNavigationModel     *model,
-                                     gdouble                    time_,
-                                     HyScanNavigationModelFix  *found_fix)
+hyscan_nav_model_find_params (HyScanNavModel    *model,
+                              gdouble            time_,
+                              HyScanNavModelFix *found_fix)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
   GList *fix_l;
 
   for (fix_l = g_list_last (priv->fixes); fix_l != NULL; fix_l = fix_l->prev)
     {
-      HyScanNavigationModelFix *fix = fix_l->data;
+      HyScanNavModelFix *fix = fix_l->data;
 
       /* Если фикс слишком старый для интерполяции, то завершаем поиск. */
       if (fix->time1 < time_)
@@ -510,32 +510,32 @@ hyscan_navigation_model_find_params (HyScanNavigationModel     *model,
 
 /* Интерполирует реальные данные на указанный момент времени. */
 static gboolean
-hyscan_navigation_model_interpolate (HyScanNavigationModel     *model,
-                                     HyScanNavigationModelData *data,
-                                     gdouble                   *time_delta)
+hyscan_nav_model_interpolate (HyScanNavModel     *model,
+                              HyScanNavModelData *data,
+                              gdouble            *time_delta)
 {
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelPrivate *priv = model->priv;
 
   gdouble v_lat, v_lon;
   gdouble dt;
 
-  HyScanNavigationModelFix params_fix;
+  HyScanNavModelFix params_fix;
   gboolean params_found;
 
   /* Ищём подходящие параметры модели. */
   g_mutex_lock (&priv->fixes_lock);
-  params_found = hyscan_navigation_model_find_params (model, data->time, &params_fix);
+  params_found = hyscan_nav_model_find_params (model, data->time, &params_fix);
   g_mutex_unlock (&priv->fixes_lock);
 
   /* Если параметры не найдены, то делаем fallback к последним данным. */
   if (!params_found)
-    return hyscan_navigation_model_latest (model, data, time_delta);
+    return hyscan_nav_model_latest (model, data, time_delta);
 
   /* При относительно малых расстояниях (V * dt << R_{Земли}), чтобы облегчить вычисления,
    * можем использовать (lon, lat) в качестве декартовых координат (x, y). */
   dt = data->time - params_fix.time;
-  data->coord.lat = hyscan_navigation_model_interpolate_value (&params_fix.lat_params, dt, &v_lat);
-  data->coord.lon = hyscan_navigation_model_interpolate_value (&params_fix.lon_params, dt, &v_lon);
+  data->coord.lat = hyscan_nav_model_interpolate_value (&params_fix.lat_params, dt, &v_lat);
+  data->coord.lon = hyscan_nav_model_interpolate_value (&params_fix.lon_params, dt, &v_lon);
   data->coord.h = atan2 (v_lon, v_lat / cos (DEG2RAD (data->coord.lat)));
 
   data->heading = DEG2RAD (params_fix.heading);
@@ -549,26 +549,26 @@ hyscan_navigation_model_interpolate (HyScanNavigationModel     *model,
 
 /* Эмитирует сигналы "changed" через равные промежутки времени. */
 static gboolean
-hyscan_navigation_model_process (HyScanNavigationModel *model)
+hyscan_nav_model_process (HyScanNavModel *model)
 {
-  HyScanNavigationModelData data;
+  HyScanNavModelData data;
 
   gdouble time_delta;
 
-  hyscan_navigation_model_get (model, &data, &time_delta);
+  hyscan_nav_model_get (model, &data, &time_delta);
   if (data.loaded || time_delta > SIGNAL_LOST_DELTA)
-    g_signal_emit (model, hyscan_navigation_model_signals[SIGNAL_CHANGED], 0, &data);
+    g_signal_emit (model, hyscan_nav_model_signals[SIGNAL_CHANGED], 0, &data);
 
   return TRUE;
 }
 
 /* Вызывать за мьютексом fix_lock! */
 static void
-hyscan_navigation_model_update_params (HyScanNavigationModel *model)
+hyscan_nav_model_update_params (HyScanNavModel *model)
 {
   GList *fix_l;
-  HyScanNavigationModelFix *fix_next, *fix0;
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModelFix *fix_next, *fix0;
+  HyScanNavModelPrivate *priv = model->priv;
 
   gdouble dt;
 
@@ -584,13 +584,13 @@ hyscan_navigation_model_update_params (HyScanNavigationModel *model)
   fix0->time1 = fix_next->time;
 
   dt = fix0->time1 - fix0->time;
-  hyscan_navigation_model_update_expn_params (&fix0->lat_params,
+  hyscan_nav_model_update_expn_params (&fix0->lat_params,
                                               fix0->coord.lat,
                                               fix0->speed_lat,
                                               fix_next->coord.lat,
                                               fix_next->speed_lat,
                                               dt);
-  hyscan_navigation_model_update_expn_params (&fix0->lon_params,
+  hyscan_nav_model_update_expn_params (&fix0->lon_params,
                                               fix0->coord.lon,
                                               fix0->speed_lon,
                                               fix_next->coord.lon,
@@ -600,17 +600,17 @@ hyscan_navigation_model_update_params (HyScanNavigationModel *model)
 }
 
 static void
-hyscan_navigation_model_object_constructed (GObject *object)
+hyscan_nav_model_object_constructed (GObject *object)
 {
-  HyScanNavigationModel *model = HYSCAN_NAVIGATION_MODEL (object);
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModel *model = HYSCAN_NAV_MODEL (object);
+  HyScanNavModelPrivate *priv = model->priv;
 
-  G_OBJECT_CLASS (hyscan_navigation_model_parent_class)->constructed (object);
+  G_OBJECT_CLASS (hyscan_nav_model_parent_class)->constructed (object);
 
   g_mutex_init (&priv->sensor_lock);
   g_mutex_init (&priv->fixes_lock);
   priv->timer = g_timer_new ();
-  hyscan_navigation_model_set_delay (model, DELAY_TIME);
+  hyscan_nav_model_set_delay (model, DELAY_TIME);
 
   priv->parser_time = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TIME);
   priv->parser_date = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_DATE);
@@ -620,21 +620,21 @@ hyscan_navigation_model_object_constructed (GObject *object)
   priv->parser_heading = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_HDT, HYSCAN_NMEA_FIELD_HEADING);
   priv->parser_speed = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_SPEED);
 
-  priv->process_tag = g_timeout_add (priv->interval, (GSourceFunc) hyscan_navigation_model_process, model);
+  priv->process_tag = g_timeout_add (priv->interval, (GSourceFunc) hyscan_nav_model_process, model);
 }
 
 static void
-hyscan_navigation_model_object_finalize (GObject *object)
+hyscan_nav_model_object_finalize (GObject *object)
 {
-  HyScanNavigationModel *model = HYSCAN_NAVIGATION_MODEL (object);
-  HyScanNavigationModelPrivate *priv = model->priv;
+  HyScanNavModel *model = HYSCAN_NAV_MODEL (object);
+  HyScanNavModelPrivate *priv = model->priv;
 
   g_signal_handlers_disconnect_by_data (priv->sensor, model);
 
   g_source_remove (priv->process_tag);
 
   g_mutex_lock (&priv->fixes_lock);
-  g_list_free_full (priv->fixes, (GDestroyNotify) hyscan_navigation_model_fix_free);
+  g_list_free_full (priv->fixes, (GDestroyNotify) hyscan_nav_model_fix_free);
   g_mutex_unlock (&priv->fixes_lock);
   g_mutex_clear (&priv->fixes_lock);
 
@@ -654,46 +654,46 @@ hyscan_navigation_model_object_finalize (GObject *object)
   g_object_unref (priv->parser_heading);
   g_object_unref (priv->parser_speed);
 
-  G_OBJECT_CLASS (hyscan_navigation_model_parent_class)->finalize (object);
+  G_OBJECT_CLASS (hyscan_nav_model_parent_class)->finalize (object);
 }
 
 /**
- * hyscan_navigation_model_new:
+ * hyscan_nav_model_new:
  *
  * Создает модель навигационных данных, которая обрабатывает NMEA-строки
  * из GPS-датчика. Установить целевой датчик можно функциями
- * hyscan_navigation_model_set_sensor() и hyscan_navigation_model_set_sensor_name().
+ * hyscan_nav_model_set_sensor() и hyscan_nav_model_set_sensor_name().
  *
- * Returns: указатель на #HyScanNavigationModel. Для удаления g_object_unref()
+ * Returns: указатель на #HyScanNavModel. Для удаления g_object_unref()
  */
-HyScanNavigationModel *
-hyscan_navigation_model_new ()
+HyScanNavModel *
+hyscan_nav_model_new ()
 {
-  return g_object_new (HYSCAN_TYPE_NAVIGATION_MODEL, NULL);
+  return g_object_new (HYSCAN_TYPE_NAV_MODEL, NULL);
 }
 
 /**
- * hyscan_navigation_model_set_sensor:
- * @model: указатель на #HyScanNavigationModel
+ * hyscan_nav_model_set_sensor:
+ * @model: указатель на #HyScanNavModel
  * @sensor: указатель на #HyScanSensor
  *
  * Устанавливает используемую систему датчиков #HyScanSensor. Чтобы установить
- * имя датчика используйте hyscan_navigation_model_set_sensor_name().
+ * имя датчика используйте hyscan_nav_model_set_sensor_name().
  */
 void
-hyscan_navigation_model_set_sensor (HyScanNavigationModel *model,
-                                    HyScanSensor          *sensor)
+hyscan_nav_model_set_sensor (HyScanNavModel *model,
+                             HyScanSensor   *sensor)
 {
-  HyScanNavigationModelPrivate *priv;
+  HyScanNavModelPrivate *priv;
 
-  g_return_if_fail (HYSCAN_IS_NAVIGATION_MODEL (model));
+  g_return_if_fail (HYSCAN_IS_NAV_MODEL (model));
   priv = model->priv;
 
   g_mutex_lock (&priv->sensor_lock);
 
   /* Отключаемся от старого датчика. */
   if (priv->sensor != NULL)
-    g_signal_handlers_disconnect_by_func (priv->sensor, hyscan_navigation_model_sensor_data, model);
+    g_signal_handlers_disconnect_by_func (priv->sensor, hyscan_nav_model_sensor_data, model);
 
   g_clear_object (&priv->sensor);
 
@@ -701,27 +701,27 @@ hyscan_navigation_model_set_sensor (HyScanNavigationModel *model,
   if (sensor != NULL)
     {
       priv->sensor = g_object_ref (sensor);
-      g_signal_connect (priv->sensor, "sensor-data", G_CALLBACK (hyscan_navigation_model_sensor_data), model);
+      g_signal_connect (priv->sensor, "sensor-data", G_CALLBACK (hyscan_nav_model_sensor_data), model);
     }
 
   g_mutex_unlock (&priv->sensor_lock);
 }
 
 /**
- * hyscan_navigation_model_set_sensor_name:
- * @model: указатель на #HyScanNavigationModel
+ * hyscan_nav_model_set_sensor_name:
+ * @model: указатель на #HyScanNavModel
  * @name: имя датчика
  *
  * Устанавливает имя используемого датчика текущей системы датчиков. Чтобы
- * установить другую систему используйте hyscan_navigation_model_set_sensor().
+ * установить другую систему используйте hyscan_nav_model_set_sensor().
  */
 void
-hyscan_navigation_model_set_sensor_name (HyScanNavigationModel *model,
-                                         const gchar           *name)
+hyscan_nav_model_set_sensor_name (HyScanNavModel *model,
+                                  const gchar    *name)
 {
-  HyScanNavigationModelPrivate *priv;
+  HyScanNavModelPrivate *priv;
 
-  g_return_if_fail (HYSCAN_IS_NAVIGATION_MODEL (model));
+  g_return_if_fail (HYSCAN_IS_NAV_MODEL (model));
   priv = model->priv;
 
   g_mutex_lock (&priv->sensor_lock);
@@ -731,8 +731,8 @@ hyscan_navigation_model_set_sensor_name (HyScanNavigationModel *model,
 }
 
 /**
- * hyscan_navigation_model_set_delay:
- * @model: указатель на #HyScanNavigationModel
+ * hyscan_nav_model_set_delay:
+ * @model: указатель на #HyScanNavModel
  * @delay: время задержки выдачи данных, секунды
  *
  * Устанавливает время задержки @delay между получением данных от датчика и выдачей
@@ -749,12 +749,12 @@ hyscan_navigation_model_set_sensor_name (HyScanNavigationModel *model,
  * В этом случае пользователь получит актуальные данные, а сглаживание будет отключено.
  */
 void
-hyscan_navigation_model_set_delay (HyScanNavigationModel *model,
-                                   gdouble                delay)
+hyscan_nav_model_set_delay (HyScanNavModel *model,
+                            gdouble         delay)
 {
-  HyScanNavigationModelPrivate *priv;
+  HyScanNavModelPrivate *priv;
 
-  g_return_if_fail (HYSCAN_IS_NAVIGATION_MODEL (model));
+  g_return_if_fail (HYSCAN_IS_NAV_MODEL (model));
   priv = model->priv;
 
   g_mutex_lock (&priv->fixes_lock);
@@ -763,15 +763,15 @@ hyscan_navigation_model_set_delay (HyScanNavigationModel *model,
   priv->interpolate = (priv->delay_time > 0);
 
   g_atomic_int_set (&priv->timer_set, FALSE);
-  hyscan_navigation_model_remove_all (model);
+  hyscan_nav_model_remove_all (model);
 
   g_mutex_unlock (&priv->fixes_lock);
 }
 
 /**
- * hyscan_navigation_model_get:
- * @model: указатель на #HyScanNavigationModel
- * @data: (out): данные модели #HyScanNavigationModelData
+ * hyscan_nav_model_get:
+ * @model: указатель на #HyScanNavModel
+ * @data: (out): данные модели #HyScanNavModelData
  * @time_delta: (out): (nullable): возраст данных @data в секундах
  *
  * Записывает текущие данные модели в @data. Возраст @time_delta показывает
@@ -781,21 +781,21 @@ hyscan_navigation_model_set_delay (HyScanNavigationModel *model,
  * Returns: %TRUE, если данные получены успешно.
  */
 gboolean
-hyscan_navigation_model_get (HyScanNavigationModel     *model,
-                             HyScanNavigationModelData *data,
-                             gdouble                   *time_delta)
+hyscan_nav_model_get (HyScanNavModel     *model,
+                      HyScanNavModelData *data,
+                      gdouble            *time_delta)
 {
-  HyScanNavigationModelPrivate *priv;
+  HyScanNavModelPrivate *priv;
   gdouble time_delta_ret = 0;
 
-  g_return_val_if_fail (HYSCAN_IS_NAVIGATION_MODEL (model), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_NAV_MODEL (model), FALSE);
   priv = model->priv;
 
   data->time = g_timer_elapsed (priv->timer, NULL) + priv->timer_offset;
   if (priv->interpolate)
-    data->loaded = hyscan_navigation_model_interpolate (model, data, &time_delta_ret);
+    data->loaded = hyscan_nav_model_interpolate (model, data, &time_delta_ret);
   else
-    data->loaded = hyscan_navigation_model_latest (model, data, &time_delta_ret);
+    data->loaded = hyscan_nav_model_latest (model, data, &time_delta_ret);
 
   if (time_delta != NULL)
     *time_delta = time_delta_ret;
