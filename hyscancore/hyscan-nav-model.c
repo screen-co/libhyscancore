@@ -52,7 +52,7 @@
  *   в этом случае при низкой частоте работы датчика (f < 15 Гц) движение будет рывками;
  * - интерполяция: модель задерживает передачу данных от датчика к пользователю
  *   на delay секунд, и если delay > 1/f, то модель будет интерполировать данные
- *   о местоположении, делая перещемение более гладким.
+ *   о местоположении, делая движение более гладким.
  *
  * Для выбора режима работы (последние данные/интерполяция) следует воспользоваться
  * функцией hyscan_nav_model_set_delay().
@@ -94,14 +94,14 @@ enum
   SIGNAL_LAST,
 };
 
-/* Параметры интерполяции. */
+/* Параметры интерполяции для модели
+ * s(t) = a + bt + ct² + dt³. */
 typedef struct
 {
   gdouble a;
   gdouble b;
   gdouble c;
   gdouble d;
-  gdouble c_speed;
 } HyScanNavModelInParams;
 
 typedef struct
@@ -117,8 +117,8 @@ typedef struct
   /* Параметры интерполяции. */
   gdouble                       params_set;         /* Признак того, что параметры интерполяции установлены. */
   gdouble                       time1;              /* Время, до которого возможно интерполяция. */
-  HyScanNavModelInParams lat_params;         /* Параметры интерполяции широты. */
-  HyScanNavModelInParams lon_params;         /* Параметры интерполяции долготы. */
+  HyScanNavModelInParams        lat_params;         /* Параметры интерполяции широты. */
+  HyScanNavModelInParams        lon_params;         /* Параметры интерполяции долготы. */
 } HyScanNavModelFix;
 
 struct _HyScanNavModelPrivate
@@ -157,8 +157,8 @@ static void    hyscan_nav_model_object_constructed       (GObject               
 static void    hyscan_nav_model_object_finalize          (GObject                *object);
 static void    hyscan_nav_model_update_params            (HyScanNavModel         *model);
 static gdouble hyscan_nav_model_interpolate_value        (HyScanNavModelInParams *params,
-                                                         gdouble                  dt,
-                                                         gdouble                 *v);
+                                                          gdouble                 dt,
+                                                          gdouble                *v);
 
 static guint hyscan_nav_model_signals[SIGNAL_LAST] = {0};
 
@@ -418,8 +418,6 @@ hyscan_nav_model_update_expn_params (HyScanNavModelInParams *params0,
   params0->b = d_value0;
   params0->d = dt * dt * (d_value0 + d_value_next) - 2 * dt * (value_next - value0);
   params0->c = 1 / (dt * dt) * (value_next - value0 - d_value0 * dt) - params0->d * dt;
-
-  params0->c_speed = (d_value_next - params0->b) / (2 * dt);
 }
 
 /* Экстраполирует значение ex_params на время dt.
@@ -435,7 +433,6 @@ hyscan_nav_model_interpolate_value (HyScanNavModelInParams *params,
 
   if (v != NULL)
     *v = params->b + 2 * params->c * dt + 3 * params->d * pow (dt, 2);
-    // *v = ex_params->b + 2 * ex_params->c_speed * dt;
 
   return s;
 }

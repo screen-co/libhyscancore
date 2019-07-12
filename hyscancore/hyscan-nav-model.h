@@ -51,15 +51,26 @@ typedef struct _HyScanNavModel HyScanNavModel;
 typedef struct _HyScanNavModelPrivate HyScanNavModelPrivate;
 typedef struct _HyScanNavModelClass HyScanNavModelClass;
 
+/**
+ * HyScanNavModelData:
+ * @loaded: признак того, что навигационные данные присутствуют
+ * @time: текущее время, с
+ * @coord: положение объекта: широта и долгота; поле h содержит путевой угол (COG) в радианах
+ * @speed: скорость движения, м/с
+ * @true_heading: признак того, что указан истинный курс (HDT)
+ * @heading: истинный курс, если @true_heading = %TRUE, иначе путевой угол, радианы
+ *
+ * Навигационные данные
+ */
 typedef struct
 {
   gboolean          loaded;
 
   gdouble           time;
   HyScanGeoGeodetic coord;
-  gboolean          true_heading; /* Истинный курс установлен по HDT. */
-  gdouble           heading;      /* Истинный курс, радианы. */
-  gdouble           speed;        /* Скорость, м/с. */
+  gboolean          true_heading;
+  gdouble           heading;
+  gdouble           speed;
 } HyScanNavModelData;
 
 struct _HyScanNavModel
@@ -86,16 +97,16 @@ void                     hyscan_nav_model_set_sensor       (HyScanNavModel     *
 
 HYSCAN_API
 void                     hyscan_nav_model_set_sensor_name  (HyScanNavModel     *model,
-                                                                   const gchar               *name);
+                                                            const gchar        *name);
 
 HYSCAN_API
 void                     hyscan_nav_model_set_delay        (HyScanNavModel     *model,
-                                                                   gdouble                    delay);
+                                                            gdouble             delay);
 
 HYSCAN_API
 gboolean                 hyscan_nav_model_get              (HyScanNavModel     *model,
-                                                                   HyScanNavModelData *data,
-                                                                   gdouble                   *time_delta);
+                                                            HyScanNavModelData *data,
+                                                            gdouble            *time_delta);
 
 G_END_DECLS
 
