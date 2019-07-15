@@ -1,7 +1,49 @@
+/* hyscan-amplitude-factory.c
+ *
+ * Copyright 2018-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-amplitude-factory
+ * @Short_description: фабрика объектов доступа к амплитудным данным
+ * @Title: HyScanAmplitudeFactory
+ * @see_also: HyScanAmplitude
+ *
+ * Объект является фабрикой объектов доступа к амплитудным данным.
+ */
+
 #include "hyscan-amplitude-factory.h"
 #include <hyscan-acoustic-data.h>
 #include <string.h>
-#include <zlib.h> /* crc32 */
 
 enum
 {
@@ -17,7 +59,6 @@ struct _HyScanAmplitudeFactoryPrivate
   gchar        *track;
 
   GMutex        lock;
-  guint32       hash;
   gchar        *token;
 };
 
@@ -111,23 +152,24 @@ hyscan_amplitude_factory_updated (HyScanAmplitudeFactory *self)
   g_clear_pointer (&priv->token, g_free);
 
   if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
-    {
-      priv->token = NULL;
-      priv->hash = 0;
-      return;
-    }
+    return;
 
   uri = hyscan_db_get_uri (priv->db);
 
   priv->token = g_strdup_printf ("AmplitudeFactory.%s.%s.%s",
                                  uri, priv->project, priv->track);
 
-  priv->hash = crc32 (0L, (gpointer)(priv->token), strlen (priv->token));
-
   g_free (uri);
 }
 
-/* */
+/**
+ * hyscan_amplitude_factory_new:
+ * @cache: (nullable): объект #HyScanCache
+ *
+ * Создает новый объект #HyScanAmplitudeFactory.
+ *
+ * Returns: (transfer full): #HyScanAmplitudeFactory
+ */
 HyScanAmplitudeFactory *
 hyscan_amplitude_factory_new (HyScanCache *cache)
 {
@@ -135,6 +177,14 @@ hyscan_amplitude_factory_new (HyScanCache *cache)
                        "cache", cache, NULL);
 }
 
+/**
+ * hyscan_amplitude_factory_get_token:
+ * @self: объект #HyScanAmplitudeFactory
+ *
+ * Функция возвращает токен объекта (строка, описывающее его внутреннее состояние).
+ *
+ * Returns: (transfer full): токен.
+ */
 gchar *
 hyscan_amplitude_factory_get_token (HyScanAmplitudeFactory *self)
 {
@@ -152,22 +202,15 @@ hyscan_amplitude_factory_get_token (HyScanAmplitudeFactory *self)
   return token;
 }
 
-guint32
-hyscan_amplitude_factory_get_hash (HyScanAmplitudeFactory *self)
-{
-  HyScanAmplitudeFactoryPrivate *priv;
-  guint32 hash;
-
-  g_return_val_if_fail (HYSCAN_IS_AMPLITUDE_FACTORY (self), 0);
-  priv = self->priv;
-
-  g_mutex_lock (&priv->lock);
-  hash = priv->hash;
-  g_mutex_unlock (&priv->lock);
-
-  return hash;
-}
-
+/**
+ * hyscan_amplitude_factory_set_track:
+ * @self: объект #HyScanAmplitudeFactory
+ * @db: база данных
+ * @project: проект
+ * @track: галс
+ *
+ * Функция задает БД, проект и галс.
+ */
 void
 hyscan_amplitude_factory_set_track (HyScanAmplitudeFactory *self,
                                     HyScanDB               *db,
@@ -194,6 +237,15 @@ hyscan_amplitude_factory_set_track (HyScanAmplitudeFactory *self,
   g_mutex_unlock (&priv->lock);
 }
 
+/**
+ * hyscan_amplitude_factory_produce:
+ * @self: объект #HyScanAmplitudeFactory
+ * @source: тип источника данных #HyScanSourceType
+ *
+ * Функция создает новый объект доступа к акустическим данным.
+ *
+ * Returns: (transfer full): объект, реализующий #HyScanAmplitude
+ */
 HyScanAmplitude *
 hyscan_amplitude_factory_produce (HyScanAmplitudeFactory *self,
                                   HyScanSourceType        source)

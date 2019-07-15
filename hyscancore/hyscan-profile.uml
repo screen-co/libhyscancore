@@ -1,0 +1,45 @@
+HyScanProfile<|--HyScanProfileHW
+HyScanProfile<|--HyScanProfileOffset 
+HyScanProfile<|--HyScanProfileDB
+HyScanProfileHW "1" *-- "1..*" HyScanProfileHWDevice
+
+class HyScanProfile
+{
+	{field} name
+	{abstract} read()
+	{method} get_name()
+}
+
+class HyScanProfileHW
+{
+	{field} HyScanProfileHWDevice *devices
+	{method} read()
+	{method} bool check()
+	{method} HyScanControl* connect()
+}
+
+class HyScanProfileHWDevice
+{
+	{method} read()
+	{method} bool check()
+	{method} HyScanDevice* connect() {sdsd; sdsd}
+}
+
+class HyScanProfileOffset
+{
+	{method} read()
+	{method} void apply (HyScanControl *control)
+}
+
+class HyScanProfileDB
+{
+	{method} read()
+	{method} HyScanDB* connect()
+}
+
+note as HyScanProfileHWConnect
+  foreach device in devices:
+    connect(device)
+end note 
+
+HyScanProfileHW::connect .. HyScanProfileHWConnect

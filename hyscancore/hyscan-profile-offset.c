@@ -240,9 +240,10 @@ hyscan_profile_offset_get_sensors (HyScanProfileOffset *profile)
  * @control: #HyScanControlset
  *
  * Функция задает местоположения антенн. Если какое-то значение задать не
- * удалось, функция вернет FALSE.
+ * удалось, функция выведет предупреждение в лог. #HyScanControl, передаваемый
+ * методу должен быть связан (#hyscan_control_device_bind).
  *
- * Returns: TRUE, если удалось задать все смещения.
+ * Returns: TRUE, всегда.
  */
 gboolean
 hyscan_profile_offset_apply (HyScanProfileOffset *profile,
@@ -260,14 +261,14 @@ hyscan_profile_offset_apply (HyScanProfileOffset *profile,
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_sonar_antenna_set_offset (HYSCAN_SONAR (control), (HyScanSourceType)k, v))
-        g_message ("HyScanProfileOffset: sonar %s failed", hyscan_source_get_id_by_type((HyScanSourceType)k));//return FALSE;
+        g_message ("HyScanProfileOffset: sonar %s failed", hyscan_source_get_id_by_type ((HyScanSourceType)k));
     }
 
   g_hash_table_iter_init (&iter, priv->sensors);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_sensor_antenna_set_offset (HYSCAN_SENSOR (control), (const gchar*)k, v))
-        g_message ("HyScanProfileOffset: sensor %s failed", k);//return FALSE;
+        g_message ("HyScanProfileOffset: sensor %s failed", (gchar*)k);
     }
 
   return TRUE;
@@ -279,10 +280,10 @@ hyscan_profile_offset_apply (HyScanProfileOffset *profile,
  * @control: #HyScanControl
  *
  * Функция ведет себя аналогично #hyscan_profile_offset_apply, но задает
- * местоположения антенн по-умолчанию, то есть такие, которые невозможно
+ * местоположения антенн по умолчанию, то есть такие, которые невозможно
  * изменить после вызова функции #hyscan_control_device_bind.
  *
- * Returns: TRUE, если удалось задать все смещения.
+ * Returns: TRUE, всегда.
  */
 gboolean
 hyscan_profile_offset_apply_default (HyScanProfileOffset *profile,
@@ -300,14 +301,14 @@ hyscan_profile_offset_apply_default (HyScanProfileOffset *profile,
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_control_source_set_default_offset (control, (HyScanSourceType)k, v))
-        g_message ("HyScanProfileOffset: sonar %s failed", hyscan_source_get_id_by_type((HyScanSourceType)k));//return FALSE;
+        g_message ("HyScanProfileOffset: sonar %s failed", hyscan_source_get_id_by_type ((HyScanSourceType)k));
     }
 
   g_hash_table_iter_init (&iter, priv->sensors);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (!hyscan_control_sensor_set_default_offset (control, (const gchar*)k, v))
-        g_message ("HyScanProfileOffset: sensor %s failed", k);//return FALSE;
+        g_message ("HyScanProfileOffset: sensor %s failed", (gchar*)k);
     }
 
   return TRUE;

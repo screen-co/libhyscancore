@@ -1,7 +1,50 @@
+/* hyscan-depth-factory.c
+ *
+ * Copyright 2018-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-depth-factory
+ * @Short_description: фабрика объектов доступа к данным глубины
+ * @Title: HyScanDepthFactory
+ * @see_also: HyScanDepthometer
+ *
+ * Объект является фабрикой объектов доступа к данным глубины.
+ */
+
+
 #include "hyscan-depth-factory.h"
 #include <hyscan-nmea-parser.h>
 #include <string.h>
-#include <zlib.h>
 
 enum
 {
@@ -18,7 +61,6 @@ struct _HyScanDepthFactoryPrivate
   gchar        *track;
 
   GMutex        lock;
-  guint32       hash;
   gchar        *token;
 };
 
@@ -111,22 +153,24 @@ hyscan_depth_factory_updated (HyScanDepthFactory *self)
   g_clear_pointer (&priv->token, g_free);
 
   if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
-    {
-      priv->token = NULL;
-      priv->hash = 0;
-      return;
-    }
+    return;
 
   uri = hyscan_db_get_uri (priv->db);
 
   priv->token = g_strdup_printf ("DepthFactory.%s.%s.%s",
                                  uri, priv->project, priv->track);
 
-  priv->hash = crc32 (0L, (gpointer)(priv->token), strlen (priv->token));
-
   g_free (uri);
 }
 
+/**
+ * hyscan_depth_factory_new:
+ * @cache: (nullable): объект #HyScanCache
+ *
+ * Создает новый объект #HyScanDepthFactory.
+ *
+ * Returns: (transfer full): #HyScanDepthFactory
+ */
 HyScanDepthFactory *
 hyscan_depth_factory_new (HyScanCache *cache)
 {
@@ -135,6 +179,14 @@ hyscan_depth_factory_new (HyScanCache *cache)
                        NULL);
 }
 
+/**
+ * hyscan_depth_factory_get_token:
+ * @self: объект #HyScanDepthfactory
+ *
+ * Функция возвращает токен объекта (строка, описывающее его внутреннее состояние).
+ *
+ * Returns: (transfer full): токен.
+ */
 gchar *
 hyscan_depth_factory_get_token (HyScanDepthFactory *self)
 {
@@ -152,28 +204,20 @@ hyscan_depth_factory_get_token (HyScanDepthFactory *self)
   return token;
 }
 
-guint32
-hyscan_depth_factory_get_hash (HyScanDepthFactory *self)
-{
-  HyScanDepthFactoryPrivate *priv;
-  guint32 hash;
-
-  g_return_val_if_fail (HYSCAN_IS_DEPTH_FACTORY (self), 0);
-  priv = self->priv;
-
-  g_mutex_lock (&priv->lock);
-  hash = priv->hash;
-  g_mutex_unlock (&priv->lock);
-
-  return hash;
-}
-
-
+/**
+ * hyscan_depth_factory_set_track:
+ * @self: объект #HyScanDepthfactory
+ * @db: база данных
+ * @project: проект
+ * @track: галс
+ *
+ * Функция задает БД, проект и галс.
+ */
 void
 hyscan_depth_factory_set_track (HyScanDepthFactory *self,
                                 HyScanDB           *db,
-                                const gchar        *project_name,
-                                const gchar        *track_name)
+                                const gchar        *project,
+                                const gchar        *track)
 {
   HyScanDepthFactoryPrivate *priv;
 
@@ -187,14 +231,22 @@ hyscan_depth_factory_set_track (HyScanDepthFactory *self,
   g_clear_pointer (&priv->track, g_free);
 
   priv->db = g_object_ref (db);
-  priv->project = g_strdup (project_name);
-  priv->track = g_strdup (track_name);
+  priv->project = g_strdup (project);
+  priv->track = g_strdup (track);
 
   hyscan_depth_factory_updated (self);
 
   g_mutex_unlock (&priv->lock);
 }
 
+/**
+ * hyscan_depth_factory_produce:
+ * @self: объект #HyScanDepthfactory
+ *
+ * Функция создает новый объект доступа к данным глубины.
+ *
+ * Returns: (transfer full): #HyScanDepthometer
+ */
 HyScanDepthometer *
 hyscan_depth_factory_produce (HyScanDepthFactory *self)
 {

@@ -1,10 +1,74 @@
-/*
- * \file hyscan-tile-queue.c
+/* hyscan-tile-queue.c
  *
- * \brief Исходный файл класса очереди тайлов.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2016-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ *
+ * This file is part of HyScanCore.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+/**
+ * SECTION: hyscan-tile-queue
+ * @Short_description: асинхронная генерация тайлов водопада
+ * @Title: HyScanTileQueue
+ *
+ * Данный класс выступает прослойкой между потребителем и отдельными генераторами тайлов.
+ * При создании объекта передается максимальное число генераторов, которые создаст класс.
+ *
+ * Пользователь отдает список тайлов, которые надо сгенерировать, в два этапа: сначала с помощью
+ * помощью функции #hyscan_tile_queue_add тайлы записываются в предварительный список,
+ * а потом с помощью функции #hyscan_tile_queue_add_finished тайлы переписываются в "рабочую" очередь.
+ * При этом класс сам определяет, какие тайлы из уже генерирующихся надо оставить, какие удалить,
+ * а какие добавить.
+ *
+ * На вход #hyscan_tile_queue_add подается структура #HyScanTile.
+ * В ней должны быть заданы следующие поля:
+ * \code
+ *   gint32               across_start; // Начальная координата поперек оси движения (мм).
+ *   gint32               along_start;  // Начальная координата вдоль оси движения (мм).
+ *   gint32               across_end;   // Конечная координата поперек оси движения (мм).
+ *   gint32               along_end;    // Конечная координата вдоль оси движения (мм).
+ *   gfloat               scale;        // Масштаб.
+ *   gfloat               ppi;          // PPI.
+ *   guint                upsample;     // Величина передискретизации.
+ *   HyScanTileType       type;         // Тип отображения.
+ *   gboolean             rotate;       // Поворот тайла.
+ *   HyScanSourceType     source;       // Канал данных для тайла.
+ * \endcode
+ *
+ * Методы класса потокобезопасны, однако не предвидится ситуация, когда
+ * два потока будут работать с одним и тем же генератором тайлов.
+ * Все функции заточены под то, что они будут вызываны из главного потока.
+ *
+ * Класс эмиттирует 3 сигнала: "tile-queue-image", "tile-queue-ready" и "tile-queue-sync".
+ * "tile-queue-image"
+ */
+
+/* Для разработчика.
  *
  * === Таски (задачи) ===
  * Это ключевое понятие. Эта структура хранит информацию
@@ -113,7 +177,7 @@ typedef struct
   gboolean                speed_changed;         /* Флаг на смену скорости движения. */
   gboolean                velocity_changed;      /* Флаг на смену скорости звука. */
 
-  guint32                 hash;                  /* Хэш состояния. Перед тем, как менять порядок переменных
+  gulong                  hash;                  /* Хэш состояния. Перед тем, как менять порядок переменных
                                                   * в этой структуре, посмотри, как считается хэш. */
 } HyScanTileQueueState;
 
@@ -201,25 +265,53 @@ hyscan_tile_queue_class_init (HyScanTileQueueClass *klass)
   object_class->constructed = hyscan_tile_queue_object_constructed;
   object_class->finalize = hyscan_tile_queue_object_finalize;
 
-  /* Инициализируем сигналы. */
+  /**
+   * HyScanTileQueue::tile-queue-ready:
+   * @tilequeue: объект, получивший сигнал
+   * @user_data: данные, определенные в момент подключения к сигналу
+   *
+   * Сообщает, что поток генерации тайла гарантированно завершён.
+   */
   hyscan_tile_queue_signals[SIGNAL_READY] =
     g_signal_new ("tile-queue-ready", HYSCAN_TYPE_TILE_QUEUE, G_SIGNAL_RUN_LAST, 0,
                   NULL, NULL,
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE,
                   0);
+  /**
+   * HyScanTileQueue::tile-queue-image:
+   * @tilequeue: объект, получивший сигнал
+   * @tile: (TYPE HyScanTile): тайл
+   * @image: сгенерированное изображение
+   * @image_size: размер изображения в байтах
+   * @user_data: данные, определенные в момент подключения к сигналу
+   *
+   * Эмиттируется из потока генерации тайла сразу же после успешной генерации
+   * тайла, то есть если генерация не была прервана досрочно. Этот сигнал можно
+   * использовать для того, чтобы использовать тот поток, в котором он
+   * сгенерирован, например, для раскрашивания тайла.
+   */
   hyscan_tile_queue_signals[SIGNAL_IMAGE] =
     g_signal_new ("tile-queue-image", HYSCAN_TYPE_TILE_QUEUE, G_SIGNAL_RUN_LAST, 0,
                   NULL, NULL,
                   hyscan_core_marshal_VOID__POINTER_POINTER_INT_ULONG,
                   G_TYPE_NONE,
                   4, G_TYPE_POINTER, G_TYPE_POINTER, G_TYPE_INT, G_TYPE_ULONG);
+  /**
+   * HyScanTileQueue::tile-queue-hash:
+   * @tilequeue: объект, получивший сигнал
+   * @hash: хэш состояния
+   * @user_data: данные, определенные в момент подключения к сигналу
+   *
+   * Передает хэш желаемого состояния. Ничего не говорит о том, когда это
+   * состояние действительно будет установлено (спойлер: довольно скоро).
+   */
   hyscan_tile_queue_signals[SIGNAL_HASH] =
     g_signal_new ("tile-queue-hash", HYSCAN_TYPE_TILE_QUEUE, G_SIGNAL_RUN_LAST, 0,
                   NULL, NULL,
-                  g_cclosure_marshal_VOID__ULONG,
+                  g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE,
-                  1, G_TYPE_ULONG);
+                  1, G_TYPE_POINTER);
 
   g_object_class_install_property (object_class, PROP_MAX_GENERATORS,
     g_param_spec_uint ("max_generators", "MaxGenerators",
@@ -808,7 +900,7 @@ hyscan_tile_queue_state_hash (HyScanAmplitudeFactory *af,
 {
   gchar *af_token, *df_token;
   gchar *str;
-  guint32 hash;
+  gulong hash;
 
   af_token = hyscan_amplitude_factory_get_token (af);
   df_token = hyscan_depth_factory_get_token (df);
@@ -856,7 +948,15 @@ hyscan_tile_queue_cache_key (const HyScanTile *tile,
   return key;
 }
 
-/* Функция создает новый объект HyScanTileQueue. */
+/**
+ * hyscan_tile_queue_new:
+ * @max_generators: число потоков генерации
+ * @cache: указатель на систему кэширования
+ *
+ * Функция создает новый объект \link HyScanTileQueue \endlink.
+ *
+ * Returns: (transfer full): объект #HyScanTileQueue.
+ */
 HyScanTileQueue*
 hyscan_tile_queue_new (gint                    max_generators,
                        HyScanCache            *cache,
@@ -871,7 +971,14 @@ hyscan_tile_queue_new (gint                    max_generators,
                        NULL);
 }
 
-/* Функция устанавливает скорости. */
+/**
+ * hyscan_tile_queue_set_ship_speed:
+ * @tilequeue: объект #HyScanTileQueue
+ * @speed:  скорость судна в м/с
+ *
+ * Функция задания скорости судна.
+ *
+ */
 void
 hyscan_tile_queue_set_ship_speed (HyScanTileQueue *self,
                                   gfloat           ship)
@@ -896,7 +1003,13 @@ hyscan_tile_queue_set_ship_speed (HyScanTileQueue *self,
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция устанавливает скорости. */
+/**
+ * hyscan_tile_queue_set_sound_velocity:
+ * @tilequeue: объект #HyScanTileQueue
+ * @velocity: профиль скорости звука. См. \link HyScanSoundVelocity \endlink
+ *
+ * Функция задания профиля скорости звука.
+ */
 void
 hyscan_tile_queue_set_sound_velocity (HyScanTileQueue *self,
                                       GArray          *sound)
@@ -937,6 +1050,13 @@ hyscan_tile_queue_set_sound_velocity (HyScanTileQueue *self,
   g_mutex_unlock (&priv->state_lock);
 }
 
+/**
+ * hyscan_tile_queue_amp_changed:
+ * @tilequeue: объект #HyScanTileQueue
+ *
+ * Функция уведомляет объект, что изменились параметры каналов данных
+ * и их требуется переоткрыть.
+ */
 void
 hyscan_tile_queue_amp_changed (HyScanTileQueue *self)
 {
@@ -958,6 +1078,13 @@ hyscan_tile_queue_amp_changed (HyScanTileQueue *self)
   g_mutex_unlock (&priv->state_lock);
 }
 
+/**
+ * hyscan_tile_queue_dpt_changed:
+ * @tilequeue: объект #HyScanTileQueue
+ *
+ * Функция уведомляет объект, что изменились параметры измерения глубины и такие
+ * объекты требуется переоткрыть.
+ */
 void
 hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
 {
@@ -979,7 +1106,18 @@ hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция ищет тайл в кэше. */
+/**
+ * hyscan_tile_queue_check:
+ * @tilequeue: объект #HyScanTileQueue
+ * @requested_tile: (not nullable): запрошенный тайл
+ * @cached_tile: (not nullable): тайл в системе кэширования
+ * @regenerate: (nullable): флаг, показывающий, требуется ли перегенерировать этот тайл
+ *
+ * Функция ищет тайл в кэше, сравнивает его параметры генерации с запрошенными и
+ * определяет, нужно ли перегенерировать этот тайл.
+ *
+ * Returns: TRUE, если тайл есть в кэше.
+ */
 gboolean
 hyscan_tile_queue_check (HyScanTileQueue *self,
                          HyScanTile      *requested_tile,
@@ -1022,7 +1160,18 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   return found;
 }
 
-/* Функция забирает тайл из кэша. */
+/**
+ * hyscan_tile_queue_get:
+ * @tilequeue: объект #HyScanTileQueue
+ * @requested_tile: (not nullable): запрошенный тайл
+ * @cached_tile: (not nullable): тайл в системе кэширования
+ * @buffer: (not nullable): буффер для тайла из системы кэширования (память будет выделена внутри функции)
+ * @size: (not nullable):  размер считанных данных
+ *
+ * Функция отдает тайл из кэша.
+ *
+ * Returns: TRUE, если тайл успешно получен из кэша, иначе FALSE.
+ */
 gboolean
 hyscan_tile_queue_get (HyScanTileQueue  *self,
                        HyScanTile       *requested_tile,
@@ -1066,7 +1215,13 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
   return status;
 }
 
-/* Функция добавляет тайл во временный кэш. */
+/**
+ * hyscan_tile_queue_add:
+ * @tilequeue: объект #HyScanTileQueue
+ * @tile: (not nullable): тайл
+ *
+ * Функция добавляет новый тайл во временную очередь.
+ */
 void
 hyscan_tile_queue_add (HyScanTileQueue *self,
                        HyScanTile      *tile)
@@ -1076,7 +1231,17 @@ hyscan_tile_queue_add (HyScanTileQueue *self,
   g_array_append_val (self->priv->prequeue, *tile);
 }
 
-/* Функция копирует тайлы из временного кэша в реальный. */
+/**
+ * hyscan_tile_queue_add_finished:
+ * @tilequeue: объект #HyScanTileQueue
+ * @view_id: идентификатор текущего отображения
+ *
+ * Функция копирует тайлы из временной очереди в реальную.
+ * При этом она сама определяет, какие тайлы уже генерируются, а какие
+ * можно больше не генерировать. Для определения старых и новых тайлов
+ * используется переменная view_id, значение которой не важно, а важен
+ * только сам факт отличия от предыдущего значения.
+ */
 void
 hyscan_tile_queue_add_finished (HyScanTileQueue *self,
                                 guint64          view_id)
