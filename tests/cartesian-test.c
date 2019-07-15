@@ -45,11 +45,127 @@ static HyScanGeoCartesian2D points_outside[][2] = {
   {{  -1.0,  0.0}, { -2.0, 2.0}},
 };
 
+void
+test_distance (void)
+{
+  struct
+  {
+    HyScanGeoCartesian2D p1;
+    HyScanGeoCartesian2D p2;
+    gdouble distance;
+  } data[] = {{ {0.0, 0.0}, {1.0, 0.0}, 1.0 },
+              { {3.0, 3.0}, {3.0, 3.0}, 0.0 },
+              { {0.0, 3.0}, {4.0, 0.0}, 5.0 }};
+
+  gsize i;
+
+  for (i = 0; i < G_N_ELEMENTS (data); ++i)
+    {
+      gdouble distance;
+
+      distance = hyscan_cartesian_distance (&data[i].p1, &data[i].p2);
+      g_assert_cmpfloat (ABS (data[i].distance - distance), <, 1e-6);
+    }
+
+  g_message ("Distance test done!");
+}
+
+void
+test_distance_to_line (void)
+{
+  struct
+  {
+    HyScanGeoCartesian2D line1;
+    HyScanGeoCartesian2D line2;
+    HyScanGeoCartesian2D point;
+    gdouble              distance;
+    HyScanGeoCartesian2D nearest;
+  } data[] = {{ {0.0, 0.0}, {1.0, 0.0}, {0.0, 2.0}, 2.0,         {0.0, 0.0} },
+              { {3.0, 3.0}, {1.0, 1.0}, {0.0, 0.0}, 0.0,         {0.0, 0.0} },
+              { {3.0, 3.0}, {1.0, 1.0}, {0.0, 1.0}, 0.707106781, {0.5, 0.5} }};
+
+  gsize i;
+
+  for (i = 0; i < G_N_ELEMENTS (data); ++i)
+    {
+      HyScanGeoCartesian2D nearest;
+      gdouble distance;
+
+      distance = hyscan_cartesian_distance_to_line (&data[i].line1, &data[i].line2, &data[i].point, &nearest);
+      g_assert_cmpfloat (ABS (data[i].distance - distance), <, 1e-6);
+      g_assert_cmpfloat (ABS (data[i].nearest.x - nearest.x), <, 1e-6);
+      g_assert_cmpfloat (ABS (data[i].nearest.y - nearest.y), <, 1e-6);
+    }
+
+  g_message ("Distance test done!");
+}
+
+void
+test_rotate (void)
+{
+ struct
+  {
+    HyScanGeoCartesian2D point;
+    HyScanGeoCartesian2D center;
+    gdouble              angle;
+    HyScanGeoCartesian2D rotated;
+  } data[] = {{ {1.0, 0.0}, {0.0, 0.0}, G_PI / 2.0, { 0.0,   1.0} },
+              { {3.0, 3.0}, {3.0, 3.0}, G_PI / 1.2, { 3.0,   3.0} },
+              { {3.0, 3.0}, {0.0, 0.0}, G_PI,       { -3.0, -3.0} },
+              { {3.0, 3.0}, {1.0, 0.0}, G_PI,       { -1.0, -3.0} }};
+
+  gsize i;
+
+  for (i = 0; i < G_N_ELEMENTS (data); ++i)
+    {
+      HyScanGeoCartesian2D rotated;
+
+      hyscan_cartesian_rotate (&data[i].point, &data[i].center, data[i].angle, &rotated);
+      g_assert_cmpfloat (ABS (data[i].rotated.x - rotated.x), <, 1e-6);
+      g_assert_cmpfloat (ABS (data[i].rotated.y - rotated.y), <, 1e-6);
+    }
+
+  g_message ("Rotate test done!");
+}
+
+void
+test_rotate_area (void)
+{
+ struct
+  {
+    HyScanGeoCartesian2D area_from;
+    HyScanGeoCartesian2D area_to;
+    HyScanGeoCartesian2D center;
+    gdouble              angle;
+    HyScanGeoCartesian2D rotated_from;
+    HyScanGeoCartesian2D rotated_to;
+  } data[] = {{ {1.0, 1.0}, {0.0, 0.0}, {1.0, 1.0},  G_PI / 2.0, {1.0, 0.0}, {2.0, 1.0} },
+              { {3.0, 3.0}, {2.0, 1.0}, {2.0, 2.0}, -G_PI / 2.0, {1.0, 1.0}, {3.0, 2.0} } };
+
+  gsize i;
+
+  for (i = 0; i < G_N_ELEMENTS (data); ++i)
+    {
+      HyScanGeoCartesian2D rotated_from;
+      HyScanGeoCartesian2D rotated_to;
+
+      hyscan_cartesian_rotate_area (&data[i].area_from, &data[i].area_to,
+                                    &data[i].center, data[i].angle,
+                                    &rotated_from, &rotated_to);
+      g_assert_cmpfloat (ABS (data[i].rotated_from.x - rotated_from.x), <, 1e-6);
+      g_assert_cmpfloat (ABS (data[i].rotated_from.y - rotated_from.y), <, 1e-6);
+      g_assert_cmpfloat (ABS (data[i].rotated_to.x - rotated_to.x), <, 1e-6);
+      g_assert_cmpfloat (ABS (data[i].rotated_to.y - rotated_to.y), <, 1e-6);
+    }
+
+  g_message ("Rotate test done!");
+}
+
 int
 main (int    argc,
       char **argv)
 {
-  guint i;
+  gsize i;
 
   HyScanGeoCartesian2D from = {.x = 0.0, .y = 0.0 };
   HyScanGeoCartesian2D   to = {.x = 1.0, .y = 1.0 };
@@ -69,6 +185,11 @@ main (int    argc,
       g_assert_false (hyscan_cartesian_is_inside (&points_outside[i][0], &points_outside[i][1], &to, &from));
       g_assert_false (hyscan_cartesian_is_inside (&points_outside[i][1], &points_outside[i][0], &to, &from));
     }
+
+  test_distance ();
+  test_distance_to_line ();
+  test_rotate ();
+  test_rotate_area ();
 
   g_message ("Test done successfully");
 

@@ -36,7 +36,7 @@
 #define __HYSCAN_PLANNER_H__
 
 #include <hyscan-geo.h>
-#include <hyscan-navigation-model.h>
+#include <hyscan-nav-model.h>
 
 G_BEGIN_DECLS
 
@@ -99,7 +99,7 @@ HyScanPlannerTrack *   hyscan_planner_track_copy       (const HyScanPlannerTrack
 
 HYSCAN_API
 void                   hyscan_planner_set_nav_model    (HyScanPlanner            *planner,
-                                                        HyScanNavigationModel    *model);
+                                                        HyScanNavModel           *model);
 
 HYSCAN_API
 void                   hyscan_planner_create           (HyScanPlanner            *planner,

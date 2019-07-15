@@ -200,6 +200,12 @@ hyscan_list_model_remove (HyScanListModel *list_model,
   g_signal_emit (list_model, hyscan_list_model_signals[SIGNAL_CHANGED], 0);
 }
 
+/**
+ * hyscan_list_model_remove_all:
+ * @list_model: указатель на #HyScanListModel
+ *
+ * Удаляет все элементы из списка.
+ */
 void
 hyscan_list_model_remove_all (HyScanListModel *list_model)
 {
