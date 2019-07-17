@@ -84,8 +84,18 @@ HyScanTaskQueue *      hyscan_task_queue_new              (HyScanTaskQueueFunc  
                                                            GCompareFunc          cmp_func);
 
 HYSCAN_API
+HyScanTaskQueue *      hyscan_task_queue_new_full         (HyScanTaskQueueFunc   task_func,
+                                                           gpointer              user_data,
+                                                           GCompareFunc          cmp_func,
+                                                           GDestroyNotify        destroy_func);
+
+HYSCAN_API
 void                   hyscan_task_queue_push             (HyScanTaskQueue      *queue,
                                                            GObject              *task);
+
+HYSCAN_API
+void                   hyscan_task_queue_push_full        (HyScanTaskQueue      *queue,
+                                                           gpointer              task);
 
 HYSCAN_API
 void                   hyscan_task_queue_push_end         (HyScanTaskQueue      *queue);

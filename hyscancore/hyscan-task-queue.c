@@ -66,13 +66,15 @@ enum
   PROP_O,
   PROP_TASK_FUNC,
   PROP_USER_DATA,
-  PROP_CMP_FUNC
+  PROP_CMP_FUNC,
+  PROP_DESTROY_FUNC
 };
 
 /* Обертка для пользовательской задачи. */
 typedef struct {
   GObject            *task;                 /* Объект задачи. */
   GCompareFunc        cmp_func;             /* Функция для сравнения двух объектов. */
+  GDestroyNotify      destroy_func;         /* Функция удаления данных задачи. */
   GCancellable       *cancellable;          /* Объект для отмены этой задачи. */
 } HyScanTaskQueueWrap;
 
@@ -80,6 +82,7 @@ struct _HyScanTaskQueuePrivate
 {
   HyScanTaskQueueFunc task_func;            /* Функция выполнения задачи. */
   GCompareFunc        cmp_func;             /* Функция сравнения двух задач. */
+  GDestroyNotify      destroy_func;         /* Функция удаления данных задачи. */
   guint               max_concurrent;       /* Максимальное количество задач, выполняемых одновременно. */
 
   /* Состояние очереди задач. */
@@ -120,6 +123,9 @@ hyscan_task_queue_class_init (HyScanTaskQueueClass *klass)
   g_object_class_install_property (object_class, PROP_TASK_FUNC,
                                    g_param_spec_pointer ("task-func", "Task function", "GFunc",
                                    G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class, PROP_DESTROY_FUNC,
+                                   g_param_spec_pointer ("destroy-func", "Task destruction function", "GDestroyNotify",
+                                   G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
   g_object_class_install_property (object_class, PROP_USER_DATA,
                                    g_param_spec_pointer ("task-data", "User data", "",
                                    G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
@@ -147,6 +153,10 @@ hyscan_task_queue_set_property (GObject      *object,
     {
     case PROP_TASK_FUNC:
       priv->task_func = g_value_get_pointer (value);
+      break;
+
+    case PROP_DESTROY_FUNC:
+      priv->destroy_func = g_value_get_pointer (value);
       break;
 
     case PROP_USER_DATA:
@@ -211,7 +221,8 @@ hyscan_task_queue_free_wrap (gpointer data)
 {
   HyScanTaskQueueWrap *wrap = data;
 
-  g_object_unref (wrap->task);
+  if (wrap->destroy_func != NULL)
+    wrap->destroy_func (wrap->task);
   g_object_unref (wrap->cancellable);
   g_free (wrap);
 }
@@ -289,7 +300,36 @@ hyscan_task_queue_cmp (HyScanTaskQueueWrap *a,
 }
 
 /**
- * hyscan_task_queue_push:
+ * hyscan_task_queue_new_full:
+ * @task_func: функция обработки задачи
+ * @user_data: пользовательские данные
+ * @cmp_func: функция сравнения задач
+ * @destroy_func: функция удаления задачи
+ *
+ * Создает новый объект #HyScanTaskQueue. Очередь будет использовать функцию
+ * @task_func для обработки поступающих задач, передавая ей в качестве параметров
+ * задачу и пользовательские данные @user_data. Функция @cmp_func позволяет
+ * не добавлять повторно в очередь задачу, которая там уже есть.
+ *
+ * Returns: #HyScanTaskQueue. Перед удалением необходимо завершить работу очереди
+ * с помощью #hyscan_task_queue_shutdown.
+ */
+HyScanTaskQueue *
+hyscan_task_queue_new_full (HyScanTaskQueueFunc task_func,
+                            gpointer            user_data,
+                            GCompareFunc        cmp_func,
+                            GDestroyNotify      destroy_func)
+{
+  return g_object_new (HYSCAN_TYPE_TASK_QUEUE,
+                       "task-func", task_func,
+                       "destroy-func", destroy_func,
+                       "task-data", user_data,
+                       "cmp-func", cmp_func,
+                       NULL);
+}
+
+/**
+ * hyscan_task_queue_new:
  * @task_func: функция обработки задачи
  * @user_data: пользовательские данные
  * @cmp_func: функция сравнения задач
@@ -299,8 +339,8 @@ hyscan_task_queue_cmp (HyScanTaskQueueWrap *a,
  * задачу и пользовательские данные @user_data. Функция @cmp_func позволяет
  * не добавлять повторно в очередь задачу, которая там уже есть.
  *
- * Returns: Перед удалением необходимо завершить работу очереди с помощью
- *    hyscan_task_queue_shutdown() и затем удалить через g_object_unref().
+ * Returns: #HyScanTaskQueue. Перед удалением необходимо завершить работу очереди
+ * с помощью #hyscan_task_queue_shutdown.
  */
 HyScanTaskQueue *
 hyscan_task_queue_new (HyScanTaskQueueFunc task_func,
@@ -308,6 +348,7 @@ hyscan_task_queue_new (HyScanTaskQueueFunc task_func,
                        GCompareFunc        cmp_func)
 {
   return g_object_new (HYSCAN_TYPE_TASK_QUEUE,
+                       "destroy-func", g_object_unref,
                        "task-func", task_func,
                        "task-data", user_data,
                        "cmp-func", cmp_func,
@@ -379,6 +420,22 @@ void
 hyscan_task_queue_push (HyScanTaskQueue *queue,
                         GObject         *task)
 {
+  g_return_if_fail (HYSCAN_IS_TASK_QUEUE (queue));
+
+  hyscan_task_queue_push_full (queue, g_object_ref (task));
+}
+
+/**
+ * hyscan_task_queue_push_full:
+ * @queue: указатель на #HyScanTaskQueue
+ * @task: указатель на объект задачи
+ *
+ * Добавляет задачу в предварительную очередь.
+ */
+void
+hyscan_task_queue_push_full (HyScanTaskQueue *queue,
+                             gpointer         task)
+{
   HyScanTaskQueueWrap *wrapper;
   HyScanTaskQueuePrivate *priv;
 
@@ -388,7 +445,8 @@ hyscan_task_queue_push (HyScanTaskQueue *queue,
   wrapper = g_new (HyScanTaskQueueWrap, 1);
   wrapper->cancellable = g_cancellable_new ();
   wrapper->cmp_func = priv->cmp_func;
-  wrapper->task = g_object_ref (task);
+  wrapper->destroy_func = priv->destroy_func;
+  wrapper->task = task;
 
   g_queue_push_tail (queue->priv->prequeue, wrapper);
 }

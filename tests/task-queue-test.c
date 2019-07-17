@@ -3,6 +3,8 @@
 static gchar *test_user_data = "user data";
 static guint  created_tasks = 0;
 
+/* Специально оставляю это здесь, чтобы понимать, как пользоваться
+ * в случае GObject-тасков
 void
 task_func (GObject      *task,
            gpointer      user_data,
@@ -31,6 +33,30 @@ new_task (gint i)
 
   return task;
 }
+*/
+
+void
+task_func (gpointer      task,
+           gpointer      user_data,
+           GCancellable *cancellable)
+{
+  g_assert_true (test_user_data == user_data);
+  g_message ("Processing task %s", (gchar *) task);
+}
+
+void
+del_task (gpointer task)
+{
+  g_atomic_int_add (&created_tasks, -1);
+  g_free (task);
+}
+
+gpointer
+new_task (gint i)
+{
+  ++created_tasks;
+  return g_strdup_printf ("task %d", i);
+}
 
 int
 main (int    argc,
@@ -40,14 +66,13 @@ main (int    argc,
   gint i;
   gint n = 1000;
 
-  queue = hyscan_task_queue_new (task_func, test_user_data, (GCompareFunc) g_strcmp0);
+  queue = hyscan_task_queue_new_full (task_func, test_user_data, (GCompareFunc) g_strcmp0, del_task);
 
   for (i = 0; i < n; ++i) {
-      GObject *task;
+      gpointer task;
 
       task = new_task (i);
-      hyscan_task_queue_push (queue, task);
-      g_object_unref (task);
+      hyscan_task_queue_push_full (queue, task);
   }
 
   hyscan_task_queue_push_end (queue);
