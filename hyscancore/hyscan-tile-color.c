@@ -285,8 +285,9 @@ hyscan_tile_color_set_levels_internal (HyScanTileColor *color,
   HyScanTileColorPrivate *priv = color->priv;
   HyScanTileColorInfo *link;
 
-  if (black >= white ||
-      black < 0.0 || black > 1.0 ||
+  if (//black >= white ||
+      // black < 0.0 || black > 1.0 ||
+      black < -1.0 || black > 1.0 ||
       white < 0.0 || white > 1.0 ||
       gamma <= 0.0)
     {
@@ -610,6 +611,11 @@ hyscan_tile_color_add (HyScanTileColor   *color,
 
   g_mutex_unlock (&priv->lock);
 
+  float c = white * 99;
+  float b = black * 99;
+  c = 1023.0 - c * 10;
+  float x = log(pow(10.0, 0.27512 + b / 100.0)) / log(0.5);
+
   /* Уровни и цвет. */
   for (i = 0; i < height; i++)
     {
@@ -618,12 +624,27 @@ hyscan_tile_color_add (HyScanTileColor   *color,
           gfloat point = input[i * width + j];
 
           /* Преобразование уровней. */
-          if (point >= white)
+          /*if (point >= white)
             point = 1.0;
           else if (point <= black && point >= 0.0)
             point = 0.0;
-          else if (point >= 0)
-            point = pow((point - black) / (white - black), gamma);
+          else if (point >= 0) */
+
+          point = CLAMP (point, 0.0, 1.0);
+            //point = pow((point - black) / (white - black), gamma);
+            {
+              // ¯\_(ツ)_/¯
+              // white->contrast; 0..99
+              // black->shrink; -99..99
+              // gamma->/dev/null/
+
+              point *= 2046;
+              if (c < 1.0) c = 1.0;
+
+              point = log (10.0) / log (c + 1.0) * log (point + 1.0) / log (2.0 + 8.0 * pow (point / c, x));
+              point = CLAMP (point, 0.0, 1.0);
+
+            }
 
           /* Складываем в выходной массив. */
           if (G_LIKELY (point >= 0))
