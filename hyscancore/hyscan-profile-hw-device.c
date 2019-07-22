@@ -240,7 +240,10 @@ hyscan_profile_hw_device_read (HyScanProfileHWDevice *hw_device,
   priv->discover = hyscan_profile_hw_device_find_driver (priv->paths, driver);
 
   if (priv->discover == NULL)
-    return;
+    {
+      g_warning ("Couldn't find driver <%s> for device <%s>", driver, priv->group);
+      return;
+    }
 
   schema = hyscan_discover_config (priv->discover, priv->uri);
 
