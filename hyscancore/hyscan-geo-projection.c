@@ -41,7 +41,7 @@
  *
  * Для перевода географических координат (широта, долгота) в координаты на
  * плоскости проекции (x, y) и обратно используются функции
- * hyscan_geo_projection_geo_to_value()  и hyscan_geo_projection_value_to_geo()
+ * hyscan_geo_projection_geo_to_value() и hyscan_geo_projection_value_to_geo()
  * соответственно.
  *
  * Чтобы получить значение масштаба в опредленной точке используйте
@@ -119,7 +119,7 @@ hyscan_geo_projection_geo_to_value (HyScanGeoProjection  *geo_projection,
  * @max_y: (out): максимальное значение y проекции
  *
  * Определяет границы проекции. Может быть использована для реализации
- * функции get_limits в #GtkCifroAreaClass.
+ * функции #GtkCifroAreaClass.get_limits
  */
 void
 hyscan_geo_projection_get_limits (HyScanGeoProjection *geo_projection,
@@ -144,8 +144,6 @@ hyscan_geo_projection_get_limits (HyScanGeoProjection *geo_projection,
  *
  * Определяет масштаб проекции в указнной точке @coords. Масштаб показывает,
  * сколько метров местности соответствует единичному отрезку на проекции.
- *
- * todo: scale_x, scale_y
  *
  * Returns: масштаб проекции (метры/единичный отрезок)
  */

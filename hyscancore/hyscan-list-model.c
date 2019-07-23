@@ -34,16 +34,17 @@
 
 /**
  * SECTION: hyscan-list-model
- * @Short_description: Модель списка активных элементов
+ * @Short_description: Модель множества активных элементов
  * @Title: HyScanListModel
  *
- * Модель хранит список строк (например, идентификаторы активных элементов)
- * и оповещает своих подписчиков о любых изменения в этом списке.
+ * Модель хранит множество строк (например, идентификаторы активных элементов)
+ * и оповещает своих подписчиков о любых изменения в этом множестве. По сути класс
+ * является обёрткой над хэш-таблицей.
  *
  * - hyscan_list_model_new() - создание модели;
- * - hyscan_list_model_get() - получение таблицы активных элементов;
- * - hyscan_list_model_add() - добавление элемента в список;
- * - hyscan_list_model_remove() - удаление элемента из списка;
+ * - hyscan_list_model_get() - получение списка активных элементов;
+ * - hyscan_list_model_add() - добавление элемента в множества;
+ * - hyscan_list_model_remove() - удаление элемента из множества;
  * - hyscan_list_model_has() - получение статуса элемента.
  *
  * Для подписки на события изменения используется сигнал #HyScanListModel::changed.
@@ -124,7 +125,9 @@ hyscan_list_model_object_finalize (GObject *object)
 /**
  * hyscan_list_model_new:
  *
- * Returns: новый объект #HyScanListModel
+ * Создаёт новый объект #HyScanListModel.
+ *
+ * Returns: новый объект #HyScanListModel, для удаления g_object_unref().
  */
 HyScanListModel *
 hyscan_list_model_new (void)
@@ -136,13 +139,15 @@ hyscan_list_model_new (void)
  * hyscan_list_model_get:
  * @list_model: указатель на #HyScanListModel
  *
- * Returns: NULL-терминированный массив элементов списка. Для удаления g_strfreev()
+ * Возвращает список элементов множества.
+ *
+ * Returns: NULL-терминированный массив элементов списка. Для удаления g_strfreev().
  */
 gchar **
 hyscan_list_model_get (HyScanListModel *list_model)
 {
   HyScanListModelPrivate *priv;
-  gchar ** keys;
+  gchar **keys;
   gchar **list;
 
   g_return_val_if_fail (HYSCAN_IS_LIST_MODEL (list_model), NULL);
@@ -159,21 +164,21 @@ hyscan_list_model_get (HyScanListModel *list_model)
 /**
  * hyscan_list_model_add:
  * @list_model: указатель на #HyScanListModel
- * @key: имя элемента
- * @active: признак активности элемента
+ * @item: строка
  *
- * Устанавливает элемент с именем @key активным или неактивным.
+ * Добавляет строку @item в множество. Если такой элемент уже существует,
+ * то он будет заменён новым элементом.
  */
 void
 hyscan_list_model_add (HyScanListModel *list_model,
-                       const gchar     *key)
+                       const gchar     *item)
 {
   HyScanListModelPrivate *priv;
 
   g_return_if_fail (HYSCAN_IS_LIST_MODEL (list_model));
   priv = list_model->priv;
 
-  g_hash_table_insert (priv->table, g_strdup (key), GINT_TO_POINTER (TRUE));
+  g_hash_table_insert (priv->table, g_strdup (item), GINT_TO_POINTER (TRUE));
 
   g_signal_emit (list_model, hyscan_list_model_signals[SIGNAL_CHANGED], 0);
 }
@@ -181,21 +186,20 @@ hyscan_list_model_add (HyScanListModel *list_model,
 /**
  * hyscan_list_model_remove:
  * @list_model: указатель на #HyScanListModel
- * @key: имя элемента
- * @active: признак активности элемента
+ * @item: строка
  *
- * Добавляет элемент @key в список.
+ * Удаляет строку @item из множества элементов.
  */
 void
 hyscan_list_model_remove (HyScanListModel *list_model,
-                          const gchar     *key)
+                          const gchar     *item)
 {
   HyScanListModelPrivate *priv;
 
   g_return_if_fail (HYSCAN_IS_LIST_MODEL (list_model));
   priv = list_model->priv;
 
-  g_hash_table_remove (priv->table, key);
+  g_hash_table_remove (priv->table, item);
 
   g_signal_emit (list_model, hyscan_list_model_signals[SIGNAL_CHANGED], 0);
 }
@@ -204,7 +208,7 @@ hyscan_list_model_remove (HyScanListModel *list_model,
  * hyscan_list_model_remove_all:
  * @list_model: указатель на #HyScanListModel
  *
- * Удаляет все элементы из списка.
+ * Удаляет все элементы из множества.
  */
 void
 hyscan_list_model_remove_all (HyScanListModel *list_model)
@@ -222,18 +226,18 @@ hyscan_list_model_remove_all (HyScanListModel *list_model)
 /**
  * hyscan_list_model_has:
  * @list_model: указатель на #HyScanListModel
- * @key: имя элемента
+ * @item: строка
  *
- * Returns: возвращает %TRUE, если @key есть в списке; иначе %FALSE.
+ * Returns: возвращает %TRUE, если @item есть в множестве; иначе %FALSE.
  */
 gboolean
 hyscan_list_model_has (HyScanListModel *list_model,
-                       const gchar          *key)
+                       const gchar     *item)
 {
   HyScanListModelPrivate *priv;
 
   g_return_val_if_fail (HYSCAN_IS_LIST_MODEL (list_model), FALSE);
   priv = list_model->priv;
 
-  return GPOINTER_TO_INT (g_hash_table_lookup (priv->table, key));
+  return GPOINTER_TO_INT (g_hash_table_lookup (priv->table, item));
 }

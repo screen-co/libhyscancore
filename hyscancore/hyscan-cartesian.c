@@ -193,13 +193,12 @@ hyscan_cartesian_distance_to_line (HyScanGeoCartesian2D *p1,
   return dist;
 }
 
-
 /**
  * hyscan_cartesian_distance:
  * @p1: координаты первой точки
  * @p2: координаты второй точки
  *
- * Returns: расстояние между точками p1 и p2
+ * Returns: расстояние между точками @p1 и @p2
  */
 gdouble
 hyscan_cartesian_distance (HyScanGeoCartesian2D *p1,

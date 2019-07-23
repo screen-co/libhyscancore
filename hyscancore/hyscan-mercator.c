@@ -57,11 +57,6 @@
 #define RAD2DEG(x) ((x) * 180.0 / G_PI)
 #define LAT_OUT_OF_RANGE(x) (fabs (x) > 180.0)
 
-enum
-{
-  PROP_O,
-};
-
 struct _HyScanMercatorPrivate
 {
   HyScanGeoEllipsoidParam      ellipsoid;  /* Референц эллипсоид. */

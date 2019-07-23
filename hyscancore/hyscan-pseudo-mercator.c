@@ -111,7 +111,6 @@ hyscan_pseudo_mercator_hash (HyScanGeoProjection *geo_projection)
   return g_str_hash ("pseudo_mercator");
 }
 
-
 /* Реализация интерфейса HyScanGeoProjectionInterface. */
 static void
 hyscan_pseudo_mercator_interface_init (HyScanGeoProjectionInterface *iface)

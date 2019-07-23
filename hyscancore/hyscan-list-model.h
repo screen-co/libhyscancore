@@ -74,18 +74,18 @@ gchar **               hyscan_list_model_get              (HyScanListModel      
 
 HYSCAN_API
 void                   hyscan_list_model_add              (HyScanListModel      *list_model,
-                                                           const gchar          *key);
+                                                           const gchar          *item);
 
 HYSCAN_API
 void                   hyscan_list_model_remove           (HyScanListModel      *list_model,
-                                                           const gchar          *key);
+                                                           const gchar          *item);
 
 HYSCAN_API
 void                   hyscan_list_model_remove_all       (HyScanListModel      *list_model);
 
 HYSCAN_API
 gboolean               hyscan_list_model_has              (HyScanListModel      *list_model,
-                                                           const gchar          *key);
+                                                           const gchar          *item);
 
 
 G_END_DECLS

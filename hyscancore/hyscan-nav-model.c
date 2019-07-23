@@ -67,13 +67,13 @@
 #include <math.h>
 #include <stdio.h>
 
-#define FIX_MIN_DELTA              0.01      /* Минимальное время между двумя фиксациями положения. */
-#define SIGNAL_LOST_DELTA          2.0       /* Время между двумя фиксами, которое считается обрывом. */
-#define DELAY_TIME                 1.0       /* Время задержки вывода данных по умолчанию. */
-#define FIXES_N                    10        /* Количество последних хранимых фиксов. */
+#define FIX_MIN_DELTA              0.01        /* Минимальное время между двумя фиксациями положения. */
+#define SIGNAL_LOST_DELTA          2.0         /* Время между двумя фиксами, которое считается обрывом. */
+#define DELAY_TIME                 1.0         /* Время задержки вывода данных по умолчанию. */
+#define FIXES_N                    10          /* Количество последних хранимых фиксов. */
 
-#define MERIDIAN_LENGTH            20003930  /* Длина меридиана, метры. */
-#define NAUTICAL_MILE              1852      /* Морская миля, метры. */
+#define MERIDIAN_LENGTH            20003930.0  /* Длина меридиана, метры. */
+#define NAUTICAL_MILE              1852.0      /* Морская миля, метры. */
 
 #define DEG2RAD(deg)             (deg / 180.0 * G_PI)
 #define KNOTS2METER(knots)       ((knots) * NAUTICAL_MILE / 3600)

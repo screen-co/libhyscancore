@@ -47,6 +47,16 @@ G_BEGIN_DECLS
 typedef struct _HyScanGeoProjection HyScanGeoProjection;
 typedef struct _HyScanGeoProjectionInterface HyScanGeoProjectionInterface;
 
+/**
+ * HyScanGeoProjectionInterface:
+ * @g_iface: Базовый интерфейс.
+ * @value_to_geo: Переводит координаты на плоскости в географические координаты.
+ * @geo_to_value: Переводит географически координаты в координаты на плоскости.
+ * @get_limits: Определяет границы проекции на плоскости.
+ * @get_scale: Возвращает масштаб проекции в точке с указанными координатами.
+ * @hash: Возвращает хэш проекции. Хэш должен быть различным для разных проекций,
+ *   и совпадать у одинаковых проекций.
+ */
 struct _HyScanGeoProjectionInterface
 {
   GTypeInterface       g_iface;
