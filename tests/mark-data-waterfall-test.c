@@ -14,13 +14,17 @@ gboolean  make_track  (HyScanDB *db,
 HyScanMark test_marks[N_MARKS] =
 {
   {.waterfall = {HYSCAN_MARK_WATERFALL, "test-mark", "this mark is for testing purposes", "tester", 12345678,
-                 100, 10, 1, 10, "gals", HYSCAN_SOURCE_SIDE_SCAN_PORT, 0}},
+                 100, 10, 1, 10, "gals",
+                 "HYSCAN_SOURCE_SIDE_SCAN_PORT", 0}},
   {.waterfall = {HYSCAN_MARK_WATERFALL, "ac dc", "i've got some rock'n'roll thunder", "rocker", 87654321,
-                 200, 20, 3, 32, "gals", HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 2}},
+                 200, 20, 3, 32, "gals",
+                 "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 2}},
   {.waterfall = {HYSCAN_MARK_WATERFALL, "rolling stones", "all i hear is doom and gloom", "rocker", 2468,
-                 300, 30, 5, 54, "gals", HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 4}},
+                 300, 30, 5, 54, "gals",
+                 "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 4}},
   {.waterfall = {HYSCAN_MARK_WATERFALL, "modified mark", "this mark was modified", "modder", 1357,
-                 400, 40, 7, 76, "gals", HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 6}}
+                 400, 40, 7, 76, "gals",
+                 "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 6}}
 };
 
 int
@@ -129,10 +133,10 @@ mark_lookup (HyScanMarkWaterfall *mark)
       if (0 == g_strcmp0 (mark->name,          wf_mark->name) &&
           0 == g_strcmp0 (mark->description,   wf_mark->description) &&
           0 == g_strcmp0 (mark->operator_name, wf_mark->operator_name) &&
+          0 == g_strcmp0 (mark->source,        wf_mark->source) &&
           mark->labels == wf_mark->labels &&
           mark->ctime  == wf_mark->ctime &&
           mark->mtime  == wf_mark->mtime &&
-          mark->source == wf_mark->source &&
           mark->index  == wf_mark->index &&
           mark->count  == wf_mark->count &&
           mark->width  == wf_mark->width &&

@@ -102,9 +102,9 @@ struct _HyScanMarkAny
  * @width: ширина
  * @height: высота
  * @track: идентификатор галса
- * @source0: источник данных
- * @index0: индекс данных
- * @count0: отсчёт в строке
+ * @source: источник данных
+ * @index: индекс данных
+ * @count: отсчёт в строке
  *
  * Метка режима "водопад"
  */
@@ -121,7 +121,7 @@ struct _HyScanMarkWaterfall
   gdouble           height;
 
   gchar            *track;
-  HyScanSourceType  source;
+  gchar            *source;
   guint32           index;
   guint32           count;
 };
@@ -208,6 +208,11 @@ void                   hyscan_mark_waterfall_set_track              (HyScanMarkW
                                                                      const gchar           *track);
 HYSCAN_API
 void                   hyscan_mark_waterfall_set_center             (HyScanMarkWaterfall   *mark,
+                                                                     const gchar           *source,
+                                                                     guint32                index,
+                                                                     guint32                count);
+HYSCAN_API
+void                   hyscan_mark_waterfall_set_center_by_type     (HyScanMarkWaterfall   *mark,
                                                                      HyScanSourceType       source,
                                                                      guint32                index,
                                                                      guint32                count);

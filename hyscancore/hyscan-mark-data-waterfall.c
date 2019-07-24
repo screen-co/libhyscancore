@@ -108,7 +108,7 @@ hyscan_mark_data_waterfall_get_internal (HyScanMarkData  *data,
                                     hyscan_param_list_get_string (read_plist,  "/track"));
 
   hyscan_mark_waterfall_set_center (mark_wf,
-                                    hyscan_param_list_get_integer (read_plist, "/source"),
+                                    hyscan_param_list_get_string (read_plist, "/source"),
                                     hyscan_param_list_get_integer (read_plist, "/index"),
                                     hyscan_param_list_get_integer (read_plist, "/count"));
 }
@@ -125,7 +125,7 @@ hyscan_mark_data_waterfall_set_internal (HyScanMarkData   *data,
   mark_wf = (HyScanMarkWaterfall *) mark;
 
   hyscan_param_list_set_string (write_plist, "/track", mark_wf->track);
-  hyscan_param_list_set_integer (write_plist, "/source", mark_wf->source);
+  hyscan_param_list_set_string (write_plist, "/source", mark_wf->source);
   hyscan_param_list_set_integer (write_plist, "/index", mark_wf->index);
   hyscan_param_list_set_integer (write_plist, "/count", mark_wf->count);
 }

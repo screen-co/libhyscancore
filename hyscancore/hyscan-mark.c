@@ -102,7 +102,10 @@ hyscan_mark_free (HyScanMark *mark)
   g_free (any->operator_name);
 
   if (mark->type == HYSCAN_MARK_WATERFALL)
-    g_free (mark->waterfall.track);
+    {
+      g_free (mark->waterfall.track);
+      g_free (mark->waterfall.source);
+    }
 
   g_slice_free (HyScanMark, mark);
 }
@@ -162,13 +165,23 @@ hyscan_mark_set_mtime (HyScanMark *mark,
 
 void
 hyscan_mark_waterfall_set_center (HyScanMarkWaterfall *mark,
-                                  HyScanSourceType     source,
+                                  const gchar         *source,
                                   guint32              index,
                                   guint32              count)
 {
-  mark->source = source;
+  mark->source = g_strdup (source);
   mark->index = index;
   mark->count = count;
+}
+
+void
+hyscan_mark_waterfall_set_center_by_type (HyScanMarkWaterfall *mark,
+                                          HyScanSourceType     source,
+                                          guint32              index,
+                                          guint32              count)
+{
+  hyscan_mark_waterfall_set_center (mark, hyscan_source_get_id_by_type (source),
+                                    index, count);
 }
 
 void

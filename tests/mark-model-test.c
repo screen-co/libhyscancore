@@ -355,7 +355,7 @@ make_mark (void)
   mark->labels = seed;
   mark->ctime = seed * 1000;
   mark->mtime = seed * 10;
-  mark->source = seed;
+  mark->source = g_strdup_printf ("Source%i", seed);
   mark->index = seed;
   mark->count = seed;
   mark->width = seed * 2;
