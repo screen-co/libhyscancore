@@ -53,13 +53,13 @@ typedef struct _HyScanTaskQueueClass HyScanTaskQueueClass;
 
 /**
  * HyScanTaskQueueFunc:
- * @task: указатель на объект задачи
+ * @task: указатель на задачу
  * @user_data: пользовательские данные
  * @cancellable: объект для отмены задачи
  *
  * Функция обработки задачи.
  */
-typedef void (*HyScanTaskQueueFunc) (GObject      *task,
+typedef void (*HyScanTaskQueueFunc) (gpointer      task,
                                      gpointer      user_data,
                                      GCancellable *cancellable);
 
