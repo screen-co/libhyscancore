@@ -35,8 +35,9 @@
 #ifndef __HYSCAN_DUMMY_DEVICE_H__
 #define __HYSCAN_DUMMY_DEVICE_H__
 
-#include <hyscan-sonar-schema.h>
-#include <hyscan-sensor-schema.h>
+#include <hyscan-device-driver.h>
+#include <hyscan-sonar-driver.h>
+#include <hyscan-sensor-driver.h>
 
 G_BEGIN_DECLS
 

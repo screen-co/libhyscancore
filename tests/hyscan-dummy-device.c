@@ -694,7 +694,7 @@ hyscan_dummy_device_change_state (HyScanDummyDevice *dummy)
   g_snprintf (key_id, sizeof (key_id), "/state/%s/status", priv->device_id);
   g_hash_table_replace (priv->params, g_strdup (key_id), GINT_TO_POINTER (HYSCAN_DEVICE_STATUS_OK));
 
-  g_signal_emit_by_name (dummy, "device-state", priv->device_id);
+  hyscan_device_driver_send_state (dummy, priv->device_id);
 }
 
 /**
@@ -725,7 +725,7 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       sdata = hyscan_dummy_device_get_sensor_data (sensor, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_STRING, sdata, strlen (sdata) + 1);
 
-      g_signal_emit_by_name (dummy, "sensor-data", sensor, HYSCAN_SOURCE_NMEA, time, data);
+      hyscan_sensor_driver_send_data (dummy, sensor, HYSCAN_SOURCE_NMEA, time, data);
 
       g_free (sdata);
     }
@@ -744,12 +744,12 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
 
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
-      g_signal_emit_by_name (dummy, "sonar-signal", source, 1, time, data);
-      g_signal_emit_by_name (dummy, "sonar-acoustic-data", source, 1, FALSE, time, info, data);
+      hyscan_sonar_driver_send_signal (dummy, source, 1, time, data);
+      hyscan_sonar_driver_send_acoustic_data (dummy, source, 1, FALSE, time, info, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
-      g_signal_emit_by_name (dummy, "sonar-tvg", source, 1, time, data);
+      hyscan_sonar_driver_send_tvg (dummy, source, 1, time, data);
 
       hyscan_acoustic_data_info_free (info);
       g_free (cdata);
@@ -759,14 +759,14 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   if (dummy->priv->type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
     {
       gint64 time = 0;
-      g_signal_emit_by_name (dummy, "device-log", "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
-      g_signal_emit_by_name (dummy, "device-log", "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
+      hyscan_device_driver_send_log (dummy, "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
+      hyscan_device_driver_send_log (dummy, "side-scan", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
     }
   else if (dummy->priv->type == HYSCAN_DUMMY_DEVICE_PROFILER)
     {
       gint64 time = 0;
-      g_signal_emit_by_name (dummy, "device-log", "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
-      g_signal_emit_by_name (dummy, "device-log", "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
+      hyscan_device_driver_send_log (dummy, "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sonar-log");
+      hyscan_device_driver_send_log (dummy, "profiler", time, HYSCAN_LOG_LEVEL_INFO, "sensor-log");
     }
 
   dummy->priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
