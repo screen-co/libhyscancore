@@ -38,8 +38,7 @@
  * @Title: HyScanNmeaFileDevice
  *
  * Класс реализует интерфейсы #HyScanDevice и #HyScanSensor и может быть использован
- * для имитации работы GPS-приёмника, проигрывая NMEA-строки из файла. Поддерживаются
- * строки GNRMC и GPGGA.
+ * для имитации работы GPS-приёмника, проигрывая NMEA-строки из файла.
  *
  * Созданный объект класса читает из файла NMEA-строки, парсит время их фиксации,
  * и эмитирует сигналы #HyScanSensor::sensor-data с этими строками каждую секунду.
@@ -57,6 +56,7 @@
  */
 
 #include "hyscan-nmea-file-device.h"
+#include "hyscan-nmea-parser.h"
 #include <hyscan-buffer.h>
 #include <glib/gstdio.h>
 #include <math.h>
@@ -85,8 +85,8 @@ struct _HyScanNmeaFileDevicePrivate
   GThread              *thread;             /* Поток, в котором читаются NMEA-строки. */
 
   GTimer               *timer;              /* Таймер. */
-  gdouble               tick_step;          /* Время между двумя тиками. */
   gdouble               timer_offset;       /* Момент времени в файле, соответсвующий запуску таймера. */
+  gdouble               tick_step;          /* Период времени, в течение которого строки отправляются одновременно. */
   gdouble               next_tick;          /* Время следующего чтения файла. */
 
   FILE                 *fp;                 /* Дескриптор файла с NMEA-строками. */
@@ -95,6 +95,8 @@ struct _HyScanNmeaFileDevicePrivate
   gsize                 line_length;        /* Размер строки line. */
   GString              *sensor_data;        /* Буфер для сбора NMEA-строк в рамках одного сигнала "sensor-data". */
   HyScanBuffer         *data_buffer;        /* Буфер, отправляемый сигналом "sensor-data". */
+  HyScanNMEAParser     *parser_time;        /* Парсер времени из NMEA-строк. */
+  HyScanNMEAParser     *parser_date;        /* Парсер даты из NMEA-строк. */
 };
 
 static void     hyscan_nmea_file_device_sensor_interface_init    (HyScanSensorInterface  *iface);
@@ -181,8 +183,10 @@ hyscan_nmea_file_device_object_constructed (GObject *object)
 
   G_OBJECT_CLASS (hyscan_nmea_file_device_parent_class)->constructed (object);
 
+  priv->parser_time = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TIME);
+  priv->parser_date = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_DATE);
   priv->tick_step = 0.01;
-  priv->thread = g_thread_new ("nmea-device-virtual", (GThreadFunc) hyscan_nmea_file_device_process, device);
+  priv->thread = g_thread_new ("nmea-file-device", (GThreadFunc) hyscan_nmea_file_device_process, device);
 }
 
 static void
@@ -199,38 +203,27 @@ hyscan_nmea_file_device_object_finalize (GObject *object)
 
   g_free (priv->filename);
   g_free (priv->name);
+  g_object_unref (priv->parser_date);
+  g_object_unref (priv->parser_time);
 
   G_OBJECT_CLASS (hyscan_nmea_file_device_parent_class)->finalize (object);
 }
 
 static gboolean
-hyscan_nmea_file_device_parse_time (const gchar *sentence,
-                                    gdouble     *_val)
+hyscan_nmea_file_device_parse_time (HyScanNmeaFileDevice *device,
+                                    const gchar          *sentence,
+                                    gdouble              *_val)
 {
-  gboolean result = FALSE;
+  HyScanNmeaFileDevicePrivate *priv = device->priv;
+  gdouble date_val, time_val;
 
-  gint hour, min;
-  gdouble sec;
+  if (!hyscan_nmea_parser_parse_string (priv->parser_time, sentence, &time_val) ||
+      !hyscan_nmea_parser_parse_string (priv->parser_date, sentence, &date_val))
+    return FALSE;
 
-  gchar **words;
-  words = g_strsplit (sentence, ",", -1);
+  *_val = date_val + time_val;
 
-  if (g_strv_length (words) < 2)
-    goto exit;
-
-  if (!g_str_equal (words[0], "$GPGGA") && !g_str_equal (words[0], "$GNRMC"))
-    goto exit;
-
-  if (sscanf (words[1], "%2d%2d%lf", &hour, &min, &sec) != 3)
-    goto exit;
-
-  result = TRUE;
-  *_val = 3600 * hour + 60 * min + sec;
-
-exit:
-  g_strfreev (words);
-
-  return result;
+  return TRUE;
 }
 
 /* Читает из файла строки до текущего момента времени. */
@@ -254,27 +247,18 @@ hyscan_nmea_file_device_read (HyScanNmeaFileDevice *device)
   /* Считываем следующие строки, пока они проходят по времени: line_time < next_tick + priv->tick_step. */
   while (fgets (priv->line, priv->line_length, priv->fp) != NULL)
     {
-      hyscan_nmea_file_device_parse_time (priv->line, &priv->line_time);
+      hyscan_nmea_file_device_parse_time (device, priv->line, &priv->line_time);
       if (priv->line_time >= priv->next_tick + priv->tick_step)
         break;
 
       g_string_append (priv->sensor_data, priv->line);
     }
 
-  /* Вносим помехи в данные. */
-  // GRand *rand;
-  // gint rand_i;
-  // rand = g_rand_new ();
-  // rand_i = g_rand_int_range (rand, 0, priv->sensor_data->len * 2);
-  // if ((gint) priv->sensor_data->len > rand_i)
-  //   g_string_overwrite (priv->sensor_data, rand_i, "0");
-  // g_rand_free (rand);
-
   /* Отправляем сигнал с данными. */
   hyscan_buffer_wrap (priv->data_buffer, HYSCAN_DATA_STRING, priv->sensor_data->str, priv->sensor_data->len);
   g_signal_emit_by_name (device, "sensor-data", priv->name, HYSCAN_SOURCE_NMEA, (gint64) (time * 1e6), priv->data_buffer);
 
-  /* Если дошли до конца файла, то по-тихому завершаем свою работу. */
+  /* Если дошли до конца файла, то завершаем свою работу. */
   if (feof (priv->fp))
     {
       g_signal_emit (device, hyscan_nmea_file_device_signals[SIGNAL_FINISH], 0);
@@ -292,7 +276,6 @@ hyscan_nmea_file_device_process (HyScanNmeaFileDevice *device)
 
   /* Инициализируем вспомогательные переменные. */
   priv->line_length = 255;
-  priv->line_time = -1;
   priv->line = g_new (gchar, priv->line_length);
   priv->sensor_data = g_string_new (NULL);
   priv->data_buffer = hyscan_buffer_new ();
@@ -304,10 +287,11 @@ hyscan_nmea_file_device_process (HyScanNmeaFileDevice *device)
     goto exit;
 
   /* Определяем начальную метку времени. */
-  while (priv->line_time < 0 && fgets (priv->line, priv->line_length, priv->fp) != NULL)
-    hyscan_nmea_file_device_parse_time (priv->line, &priv->line_time);
+  priv->line_time = G_MINDOUBLE;
+  while (priv->line_time == G_MINDOUBLE && fgets (priv->line, priv->line_length, priv->fp) != NULL)
+    hyscan_nmea_file_device_parse_time (device, priv->line, &priv->line_time);
 
-  if (priv->line_time < 0)
+  if (priv->line_time == G_MINDOUBLE)
     goto exit;
 
   priv->next_tick = ceil (priv->line_time);

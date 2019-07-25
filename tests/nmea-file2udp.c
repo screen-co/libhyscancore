@@ -82,9 +82,9 @@ main (int    argc,
     GOptionContext *context;
     GOptionEntry entries[] =
       {
-        { "filename", 'f', 0, G_OPTION_ARG_STRING, &filename,  "Path to nmea file",      NULL },
-        { "host",     'h', 0, G_OPTION_ARG_STRING, &host,      "Destination ip address", NULL },
-        { "port",     'p', 0, G_OPTION_ARG_INT,    &port,      "Destination udp port",   NULL },
+        { "filename", 'f', 0, G_OPTION_ARG_STRING, &filename,  "Path to NMEA file",      NULL },
+        { "host",     'h', 0, G_OPTION_ARG_STRING, &host,      "Destination IP address", NULL },
+        { "port",     'p', 0, G_OPTION_ARG_INT,    &port,      "Destination UDP port",   NULL },
         { NULL }
       };
 
@@ -95,6 +95,9 @@ main (int    argc,
 #endif
 
     context = g_option_context_new ("");
+    g_option_context_set_description (context,
+                                      "Program reads NMEA-sentences from the given file "
+                                      "and sends each sentence using UDP at the appropriate time.");
     g_option_context_set_help_enabled (context, TRUE);
     g_option_context_add_main_entries (context, entries, NULL);
     g_option_context_set_ignore_unknown_options (context, FALSE);

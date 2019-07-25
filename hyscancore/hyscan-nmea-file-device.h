@@ -64,11 +64,11 @@ struct _HyScanNmeaFileDeviceClass
 };
 
 HYSCAN_API
-GType hyscan_nmea_file_device_get_type (void);
+GType                  hyscan_nmea_file_device_get_type (void);
 
 HYSCAN_API
-HyScanNmeaFileDevice * hyscan_nmea_file_device_new (const gchar *name,
-                                                    const gchar *filename);
+HyScanNmeaFileDevice * hyscan_nmea_file_device_new      (const gchar *name,
+                                                         const gchar *filename);
 
 
 G_END_DECLS

@@ -1,4 +1,4 @@
-/* nmea-device-virtual-test.c
+/* nmea-file-device-test.c
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *

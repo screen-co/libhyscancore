@@ -350,7 +350,7 @@ hyscan_nmea_parser_parse_time (const gchar *sentence,
 
   hour = (sentence[0]-'0') * 10 + (sentence[1]-'0');
   min =  (sentence[2]-'0') * 10 + (sentence[3]-'0');
-  sec = g_strtod (sentence + 4, NULL);
+  sec = g_ascii_strtod (sentence + 4, NULL);
 
   dt = g_date_time_new_utc (1970, 1, 1, hour, min, sec);
   if (dt == NULL)
