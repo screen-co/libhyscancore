@@ -67,6 +67,13 @@ test_hash (void)
   g_assert_cmpint (hyscan_geo_projection_hash (proj_pseudo_1), ==, hyscan_geo_projection_hash (proj_pseudo_2));
   g_assert_cmpint (hyscan_geo_projection_hash (proj_wgs84_1), !=, hyscan_geo_projection_hash (proj_sphere_2));
   g_assert_cmpint (hyscan_geo_projection_hash (proj_pseudo_1), !=, hyscan_geo_projection_hash (proj_sphere_2));
+
+  g_object_unref (proj_wgs84_1);
+  g_object_unref (proj_wgs84_2);
+  g_object_unref (proj_sphere_1);
+  g_object_unref (proj_sphere_2);
+  g_object_unref (proj_pseudo_1);
+  g_object_unref (proj_pseudo_2);
 }
 
 void
@@ -189,7 +196,7 @@ int main (int     argc,
   projection = HYSCAN_GEO_PROJECTION (hyscan_pseudo_mercator_new ());
   /* В HyScanPseudoMercator границы от 0 до 1, поэтому немного меняем сферические данные. */
   {
-    guint i;
+    gsize i;
     gdouble equator_l;
 
     equator_l = (2 * G_PI * RADIUS_EARTH);
