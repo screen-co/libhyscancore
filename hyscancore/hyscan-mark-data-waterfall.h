@@ -48,11 +48,14 @@ G_BEGIN_DECLS
 #define HYSCAN_MARK_DATA_WATERFALL_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_MARK_DATA_WATERFALL, HyScanMarkDataWaterfallClass))
 
 typedef struct _HyScanMarkDataWaterfall HyScanMarkDataWaterfall;
+typedef struct _HyScanMarkDataWaterfallPrivate HyScanMarkDataWaterfallPrivate;
 typedef struct _HyScanMarkDataWaterfallClass HyScanMarkDataWaterfallClass;
 
 struct _HyScanMarkDataWaterfall
 {
   HyScanMarkData parent_instance;
+  
+  HyScanMarkDataWaterfallPrivate *priv;
 };
 
 struct _HyScanMarkDataWaterfallClass

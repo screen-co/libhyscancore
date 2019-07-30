@@ -69,6 +69,8 @@ struct _HyScanMarkData
  * @init_plist: функция добавляет в список параметров дополнительные ключи
  * @get: функция считывает содержимое объекта
  * @set: функция записывает значения в существующий объект
+ * @get_full: функция считывает содержимое объекта
+ * @set_full: функция записывает значения в существующий объект
  */
 struct _HyScanMarkDataClass
 {
@@ -79,14 +81,26 @@ struct _HyScanMarkDataClass
   gint64         param_sid;
   gint64         param_sver;
 
+  void           (*init_obj)     (HyScanMarkData    *data,
+                                  gint32             param_id,
+                                  HyScanDB          *db);
+  
   void           (*init_plist)   (HyScanMarkData    *data,
                                   HyScanParamList   *plist);
 
   void           (*get)          (HyScanMarkData    *data,
                                   HyScanParamList   *read_plist,
                                   HyScanMark        *mark);
-
+  
   void           (*set)          (HyScanMarkData    *data,
+                                  HyScanParamList   *write_plist,
+                                  const HyScanMark  *mark);
+
+  gboolean       (*get_full)     (HyScanMarkData    *data,
+                                  HyScanParamList   *read_plist,
+                                  HyScanMark        *mark);
+
+  gboolean       (*set_full)     (HyScanMarkData    *data,
                                   HyScanParamList   *write_plist,
                                   const HyScanMark  *mark);
 };
