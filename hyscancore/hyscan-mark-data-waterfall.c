@@ -309,7 +309,7 @@ hyscan_mark_data_waterfall_set_full (HyScanMarkData   *data,
       guint i;
       for (i = 0; i < G_N_ELEMENTS (type_table); ++i)
         {
-          if (!g_str_equal (mark_wf->source, hyscan_source_get_id_by_type (type_table[i])))
+          if (0 != g_strcmp0 (mark_wf->source, hyscan_source_get_id_by_type (type_table[i])))
             continue;
 
           hyscan_param_list_set_integer (write_plist, "/source", i);
