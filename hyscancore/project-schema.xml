@@ -71,4 +71,19 @@
     <key id="width" name="Mark width" type="double"/>
     <key id="height" name="Mark height" type="double"/>
   </schema>
+
+  <schema id="planner-zone">
+    <node id="schema">
+      <key id="id" name="Planner schema id" type="integer" access="readonly">
+        <default>2298441576805697181</default>
+      </key>
+      <key id="version" name="Planner schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="name" name="Zone short name" type="string"/>
+    <key id="vertices" name="Coordinates of zone vertices" type="string"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
 </schemalist>

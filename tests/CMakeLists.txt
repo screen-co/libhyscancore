@@ -28,6 +28,7 @@ add_executable (nmea-file-device-test nmea-file-device-test.c)
 add_executable (nav-model-test nav-model-test.c)
 add_executable (nmea-file2udp nmea-file2udp.c)
 add_executable (list-model-test list-model-test.c)
+add_executable (planner-test planner-test.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -54,6 +55,7 @@ target_link_libraries (nmea-file-device-test ${TEST_LIBRARIES})
 target_link_libraries (nav-model-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
 target_link_libraries (list-model-test ${TEST_LIBRARIES})
+target_link_libraries (planner-test ${TEST_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
@@ -83,6 +85,8 @@ add_test (NAME NavModelTest COMMAND nav-model-test --default-data
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ListModelTest COMMAND list-model-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME PlannerTest COMMAND planner-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 install (TARGETS data-writer-test
                  acoustic-data-test
@@ -107,6 +111,7 @@ install (TARGETS data-writer-test
                  nmea-file-device-test
                  nav-model-test
                  nmea-file2udp
+                 planner-test
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
