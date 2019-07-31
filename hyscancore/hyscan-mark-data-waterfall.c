@@ -51,7 +51,6 @@
 #include "hyscan-mark-data-waterfall.h"
 #include "hyscan-core-schemas.h"
 
-#define WATERFALL_MARK_SCHEMA_ID_OLD               1315931457526726065
 #define WATERFALL_MARK_SCHEMA_VERSION_OLD          20190100
 
 static  HyScanSourceType type_table[] =
@@ -236,7 +235,6 @@ hyscan_mark_data_waterfall_get_full (HyScanMarkData  *data,
       /* new */
       if (sver == WATERFALL_MARK_SCHEMA_VERSION)
         {
-          g_message("get NEW");
           hyscan_mark_waterfall_set_center (mark_wf,
                                             hyscan_param_list_get_string (read_plist, "/source"),
                                             hyscan_param_list_get_integer (read_plist, "/index"),
@@ -280,7 +278,6 @@ hyscan_mark_data_waterfall_set_full (HyScanMarkData   *data,
                                      const HyScanMark *mark)
 {
   HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (data)->priv;
-  // HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
   const HyScanMarkWaterfall *mark_wf = (const HyScanMarkWaterfall*)(&mark->waterfall);
 
@@ -301,7 +298,6 @@ hyscan_mark_data_waterfall_set_full (HyScanMarkData   *data,
 
   if (priv->schema_version == WATERFALL_MARK_SCHEMA_VERSION)
     {
-      g_message("set NEW");
       hyscan_param_list_set_string (write_plist, "/source", mark_wf->source);
     }
   else if (priv->schema_version == WATERFALL_MARK_SCHEMA_VERSION_OLD)
