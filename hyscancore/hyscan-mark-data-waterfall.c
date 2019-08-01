@@ -206,7 +206,6 @@ hyscan_mark_data_waterfall_get_full (HyScanMarkData  *data,
   HyScanMarkWaterfall *mark_wf = (HyScanMarkWaterfall *) mark;
   gint64 sid, sver;
 
-  g_return_val_if_fail (mark->type == HYSCAN_MARK_WATERFALL, FALSE);
 
   sid = hyscan_param_list_get_integer (read_plist, "/schema/id");
   sver = hyscan_param_list_get_integer (read_plist, "/schema/version");
@@ -216,6 +215,8 @@ hyscan_mark_data_waterfall_get_full (HyScanMarkData  *data,
 
   if (mark != NULL)
     {
+      g_return_val_if_fail (mark->type == HYSCAN_MARK_WATERFALL, FALSE);
+
       hyscan_mark_set_text   (mark,
                               hyscan_param_list_get_string (read_plist,  "/name"),
                               hyscan_param_list_get_string (read_plist,  "/description"),
