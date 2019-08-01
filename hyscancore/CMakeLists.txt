@@ -75,7 +75,6 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-pseudo-mercator.c
              hyscan-cartesian.c
              hyscan-task-queue.c
-             hyscan-list-model.c
              hyscan-nav-model.c
              hyscan-nmea-file-device.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
@@ -144,7 +143,6 @@ install (FILES hyscan-core-schemas.h
                hyscan-pseudo-mercator.h
                hyscan-cartesian.h
                hyscan-task-queue.h
-               hyscan-list-model.h
                hyscan-nav-model.h
                hyscan-nmea-file-device.h
          COMPONENT development
