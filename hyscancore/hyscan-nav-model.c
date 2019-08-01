@@ -311,9 +311,9 @@ hyscan_nav_model_add_fix (HyScanNavModel    *model,
 
 /* Парсит NMEA-строку. */
 static gboolean
-hyscan_nav_model_read_sentence (HyScanNavModel    *model,
-                                const gchar       *sentence,
-                                HyScanNavModelFix *fix)
+hyscan_nav_model_read_rmc (HyScanNavModel    *model,
+                           const gchar       *sentence,
+                           HyScanNavModelFix *fix)
 {
   HyScanNavModelPrivate *priv = model->priv;
 
@@ -348,6 +348,32 @@ hyscan_nav_model_read_sentence (HyScanNavModel    *model,
       fix->speed_lon = 0;
     }
 
+  fix->heading = fix->coord.h;
+  fix->true_heading = FALSE;
+  fix->params_set = FALSE;
+
+  return TRUE;
+}
+
+static inline gboolean
+hyscan_nav_model_is_rmc (HyScanNavModel *model,
+                         const gchar    *sentence)
+{
+  return hyscan_nmea_parser_parse_string (model->priv->parser_time, sentence, NULL);
+}
+
+static inline gboolean
+hyscan_nav_model_read_hdt (HyScanNavModel    *model,
+                           const gchar       *sentence,
+                           HyScanNavModelFix *fix)
+{
+  HyScanNavModelPrivate *priv = model->priv;
+
+  if (!hyscan_nmea_parser_parse_string (priv->parser_heading, sentence, &fix->heading))
+    return FALSE;
+
+  fix->true_heading = TRUE;
+
   return TRUE;
 }
 
@@ -378,28 +404,33 @@ hyscan_nav_model_sensor_data (HyScanSensor     *sensor,
     return;
 
   msg = hyscan_buffer_get (data, NULL, &msg_size);
-
   sentences = hyscan_nmea_data_split_sentence (msg, msg_size);
+
+  /* Читаем строки, полагая, что они приходят в следующем порядке:
+   *
+   * RMC - считываем время, положение, скорость
+   * ...
+   * HDT - считываем истинный курс
+   * ...
+   */
   for (i = 0; sentences[i] != NULL; i++)
     {
       HyScanNavModelFix fix;
 
-      if (hyscan_nav_model_read_sentence (model, sentences[i], &fix))
-        {
-          fix.heading = fix.coord.h;
-          fix.true_heading = FALSE;
-          fix.params_set = FALSE;
+      if (!hyscan_nav_model_read_rmc (model, sentences[i], &fix))
+        continue;
 
-          /* Пробуем считать истинный курс. */
-          while (sentences[i + 1] != NULL &&
-                 !hyscan_nmea_parser_parse_string (priv->parser_time, sentences[i + 1], NULL))
-          {
-            if (hyscan_nmea_parser_parse_string (priv->parser_heading, sentences[++i], &fix.heading))
-              fix.true_heading = TRUE;
-          }
+      /* Пробуем считать истинный курс: парсим следующие строки, пока опять не попадётся RMC. */
+      for (; sentences[i + 1] != NULL; i++)
+      {
+        if (hyscan_nav_model_is_rmc (model, sentences[i + 1]))
+          break;
 
-          hyscan_nav_model_add_fix (model, &fix);
-        }
+        if (hyscan_nav_model_read_hdt (model, sentences[i + 1], &fix))
+          break;
+      }
+
+      hyscan_nav_model_add_fix (model, &fix);
     }
 
   g_strfreev (sentences);
