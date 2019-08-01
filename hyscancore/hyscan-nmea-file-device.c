@@ -108,6 +108,10 @@ static void     hyscan_nmea_file_device_set_property             (GObject       
 static void     hyscan_nmea_file_device_object_constructed       (GObject                *object);
 static void     hyscan_nmea_file_device_object_finalize          (GObject                *object);
 static gpointer hyscan_nmea_file_device_process                  (HyScanNmeaFileDevice   *device);
+static gboolean hyscan_nmea_file_device_parse_time               (HyScanNmeaFileDevice   *device,
+                                                                  const gchar            *sentence,
+                                                                  gdouble                *_val);
+static void     hyscan_nmea_file_device_read                     (HyScanNmeaFileDevice   *device);
 
 static guint hyscan_nmea_file_device_signals[SIGNAL_LAST] = {0};
 

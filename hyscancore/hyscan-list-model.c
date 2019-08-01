@@ -71,7 +71,6 @@ static void    hyscan_list_model_object_finalize          (GObject              
 
 static guint   hyscan_list_model_signals[SIGNAL_LAST] = { 0 };
 
-
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanListModel, hyscan_list_model, G_TYPE_OBJECT)
 
 static void
@@ -239,5 +238,5 @@ hyscan_list_model_has (HyScanListModel *list_model,
   g_return_val_if_fail (HYSCAN_IS_LIST_MODEL (list_model), FALSE);
   priv = list_model->priv;
 
-  return GPOINTER_TO_INT (g_hash_table_lookup (priv->table, item));
+  return g_hash_table_contains (priv->table, item);
 }

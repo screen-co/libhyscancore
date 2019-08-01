@@ -59,6 +59,14 @@
 #include "hyscan-cartesian.h"
 #include <math.h>
 
+static inline gboolean   hyscan_cartesian_is_between     (gdouble    val1,
+                                                          gdouble    val2,
+                                                          gdouble    boundary);
+
+static inline gboolean   hyscan_cartesian_is_cross       (gdouble    val1,
+                                                          gdouble    val2,
+                                                          gdouble    boundary);
+
 static inline gboolean
 hyscan_cartesian_is_cross (gdouble val1,
                            gdouble val2,
@@ -242,8 +250,8 @@ hyscan_cartesian_rotate (HyScanGeoCartesian2D *point,
  * @area_to: противоположная вершина прямоугольника
  * @center: ось вращения
  * @angle: угол поворота прямоугльника, радианы
- * @extent_from: координаты вершины повёрнутого прямоугольника
- * @extent_to: координаты противоположной вершины повёрнутого прямоугольника
+ * @rotated_from: координаты вершины повёрнутого прямоугольника
+ * @rotated_to: координаты противоположной вершины повёрнутого прямоугольника
  *
  * Определяет область extent, внутри которой находится прямоугольник с вершинами
  * @area_from и @area_to после поворота на угол @angle вокруг точки @center.

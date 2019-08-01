@@ -75,24 +75,6 @@ static gdouble       hyscan_mercator_ellipsoid_y          (HyScanMercatorPrivate
 static gdouble       hyscan_mercator_ellipsoid_lat        (HyScanMercatorPrivate        *priv,
                                                            gdouble                       y);
 
-static void          hyscan_mercator_value_to_geo         (HyScanGeoProjection          *mercator,
-                                                           HyScanGeoGeodetic            *coords,
-                                                           gdouble                       x,
-                                                           gdouble                       y);
-
-static void          hyscan_mercator_geo_to_value         (HyScanGeoProjection          *mercator,
-                                                           HyScanGeoGeodetic             coords,
-                                                           HyScanGeoCartesian2D         *c2d);
-
-static void          hyscan_mercator_get_limits           (HyScanGeoProjection          *mercator,
-                                                           gdouble                      *min_x,
-                                                           gdouble                      *max_x,
-                                                           gdouble                      *min_y,
-                                                           gdouble                      *max_y);
-
-static gdouble       hyscan_mercator_get_scale            (HyScanGeoProjection          *mercator,
-                                                           HyScanGeoGeodetic             coords);
-
 G_DEFINE_TYPE_WITH_CODE (HyScanMercator, hyscan_mercator, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanMercator)
                          G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_GEO_PROJECTION, hyscan_mercator_interface_init))
@@ -106,32 +88,6 @@ static void
 hyscan_mercator_init (HyScanMercator *mercator)
 {
   mercator->priv = hyscan_mercator_get_instance_private (mercator);
-}
-
-static guint
-hyscan_mercator_hash (HyScanGeoProjection *geo_projection)
-{
-  HyScanMercator *mercator = HYSCAN_MERCATOR (geo_projection);
-  HyScanMercatorPrivate *priv = mercator->priv;
-  gchar *hash_str;
-  guint hash;
-
-  hash_str = g_strdup_printf ("mercator.%.6e.%.6e", priv->ellipsoid.a, priv->ellipsoid.b);
-  hash = g_str_hash (hash_str);
-
-  g_free (hash_str);
-
-  return hash;
-}
-
-static void
-hyscan_mercator_interface_init (HyScanGeoProjectionInterface  *iface)
-{
-  iface->geo_to_value = hyscan_mercator_geo_to_value;
-  iface->value_to_geo = hyscan_mercator_value_to_geo;
-  iface->get_limits = hyscan_mercator_get_limits;
-  iface->get_scale = hyscan_mercator_get_scale;
-  iface->hash = hyscan_mercator_hash;
 }
 
 /* Установка парметров эллипсоида проекции. */
@@ -263,6 +219,32 @@ hyscan_mercator_get_scale (HyScanGeoProjection *mercator,
   (void) mercator;
 
   return cos (DEG2RAD (coords.lat));
+}
+
+static guint
+hyscan_mercator_hash (HyScanGeoProjection *geo_projection)
+{
+  HyScanMercator *mercator = HYSCAN_MERCATOR (geo_projection);
+  HyScanMercatorPrivate *priv = mercator->priv;
+  gchar *hash_str;
+  guint hash;
+
+  hash_str = g_strdup_printf ("mercator.%.6e.%.6e", priv->ellipsoid.a, priv->ellipsoid.b);
+  hash = g_str_hash (hash_str);
+
+  g_free (hash_str);
+
+  return hash;
+}
+
+static void
+hyscan_mercator_interface_init (HyScanGeoProjectionInterface  *iface)
+{
+  iface->geo_to_value = hyscan_mercator_geo_to_value;
+  iface->value_to_geo = hyscan_mercator_value_to_geo;
+  iface->get_limits = hyscan_mercator_get_limits;
+  iface->get_scale = hyscan_mercator_get_scale;
+  iface->hash = hyscan_mercator_hash;
 }
 
 /**

@@ -149,16 +149,51 @@ struct _HyScanNavModelPrivate
   gboolean                     interpolate;    /* Стратегия получения актальных данных (интерполировать или нет). */
 };
 
-static void    hyscan_nav_model_set_property             (GObject                *object,
-                                                          guint                   prop_id,
-                                                          const GValue           *value,
-                                                          GParamSpec             *pspec);
-static void    hyscan_nav_model_object_constructed       (GObject                *object);
-static void    hyscan_nav_model_object_finalize          (GObject                *object);
-static void    hyscan_nav_model_update_params            (HyScanNavModel         *model);
-static gdouble hyscan_nav_model_interpolate_value        (HyScanNavModelInParams *params,
-                                                          gdouble                 dt,
-                                                          gdouble                *v);
+static void                hyscan_nav_model_set_property        (GObject                *object,
+                                                                 guint                   prop_id,
+                                                                 const GValue           *value,
+                                                                 GParamSpec             *pspec);
+static void                hyscan_nav_model_object_constructed  (GObject                *object);
+static void                hyscan_nav_model_object_finalize     (GObject                *object);
+static void                hyscan_nav_model_update_params       (HyScanNavModel         *model);
+static gdouble             hyscan_nav_model_interpolate_value   (HyScanNavModelInParams *params,
+                                                                 gdouble                 dt,
+                                                                 gdouble                *v);
+static HyScanNavModelFix * hyscan_nav_model_fix_copy            (HyScanNavModelFix      *fix);
+static void                hyscan_nav_model_fix_free            (HyScanNavModelFix      *fix);
+static void                hyscan_nav_model_remove_all          (HyScanNavModel         *model);
+static void                hyscan_nav_model_add_fix             (HyScanNavModel         *model,
+                                                                 HyScanNavModelFix      *fix);
+static void                hyscan_nav_model_sensor_data         (HyScanSensor           *sensor,
+                                                                 const gchar            *name,
+                                                                 HyScanSourceType        source,
+                                                                 gint64                  time,
+                                                                 HyScanBuffer           *data,
+                                                                 HyScanNavModel         *model);
+static gboolean            hyscan_nav_model_read_rmc            (HyScanNavModel         *model,
+                                                                 const gchar            *sentence,
+                                                                 HyScanNavModelFix      *fix);
+static inline gboolean     hyscan_nav_model_is_rmc              (HyScanNavModel         *model,
+                                                                 const gchar            *sentence);
+static inline gboolean     hyscan_nav_model_read_hdt            (HyScanNavModel         *model,
+                                                                 const gchar            *sentence,
+                                                                 HyScanNavModelFix      *fix);
+static void                hyscan_nav_model_update_expn_params  (HyScanNavModelInParams *params0,
+                                                                 gdouble                 value0,
+                                                                 gdouble                 d_value0,
+                                                                 gdouble                 value_next,
+                                                                 gdouble                 d_value_next,
+                                                                 gdouble                 dt);
+static gboolean            hyscan_nav_model_latest              (HyScanNavModel         *model,
+                                                                 HyScanNavModelData     *data,
+                                                                 gdouble                *time_delta);
+static gboolean            hyscan_nav_model_find_params         (HyScanNavModel         *model,
+                                                                 gdouble                 time_,
+                                                                 HyScanNavModelFix      *found_fix);
+static gboolean            hyscan_nav_model_interpolate         (HyScanNavModel         *model,
+                                                                 HyScanNavModelData     *data,
+                                                                 gdouble                *time_delta);
+static gboolean            hyscan_nav_model_process             (HyScanNavModel         *model);
 
 static guint hyscan_nav_model_signals[SIGNAL_LAST] = {0};
 
@@ -175,7 +210,7 @@ hyscan_nav_model_class_init (HyScanNavModelClass *klass)
   object_class->finalize = hyscan_nav_model_object_finalize;
 
   g_object_class_install_property (object_class, PROP_SENSOR,
-    g_param_spec_object ("sensor", "Navigation Sensor", "HyScanSensor", HYSCAN_TYPE_SENSOR,
+    g_param_spec_object ("sensor", "HyScanSensor", "Navigation Sensor", HYSCAN_TYPE_SENSOR,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
   g_object_class_install_property (object_class, PROP_INTERVAL,
     g_param_spec_uint ("interval", "Interval", "Interval in milliseconds", 0, G_MAXUINT, 40,
@@ -225,6 +260,64 @@ hyscan_nav_model_set_property (GObject      *object,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
     }
+}
+
+static void
+hyscan_nav_model_object_constructed (GObject *object)
+{
+  HyScanNavModel *model = HYSCAN_NAV_MODEL (object);
+  HyScanNavModelPrivate *priv = model->priv;
+
+  G_OBJECT_CLASS (hyscan_nav_model_parent_class)->constructed (object);
+
+  g_mutex_init (&priv->sensor_lock);
+  g_mutex_init (&priv->fixes_lock);
+  priv->timer = g_timer_new ();
+  hyscan_nav_model_set_delay (model, DELAY_TIME);
+
+  priv->parser_time = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TIME);
+  priv->parser_date = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_DATE);
+  priv->parser_lat = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT);
+  priv->parser_lon = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LON);
+  priv->parser_track = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TRACK);
+  priv->parser_heading = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_HDT, HYSCAN_NMEA_FIELD_HEADING);
+  priv->parser_speed = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_SPEED);
+
+  priv->process_tag = g_timeout_add (priv->interval, (GSourceFunc) hyscan_nav_model_process, model);
+}
+
+static void
+hyscan_nav_model_object_finalize (GObject *object)
+{
+  HyScanNavModel *model = HYSCAN_NAV_MODEL (object);
+  HyScanNavModelPrivate *priv = model->priv;
+
+  g_signal_handlers_disconnect_by_data (priv->sensor, model);
+
+  g_source_remove (priv->process_tag);
+
+  g_mutex_lock (&priv->fixes_lock);
+  g_list_free_full (priv->fixes, (GDestroyNotify) hyscan_nav_model_fix_free);
+  g_mutex_unlock (&priv->fixes_lock);
+  g_mutex_clear (&priv->fixes_lock);
+
+  g_mutex_lock (&priv->sensor_lock);
+  g_clear_object (&priv->sensor);
+  g_free (priv->sensor_name);
+  g_mutex_unlock (&priv->sensor_lock);
+  g_mutex_clear (&priv->sensor_lock);
+
+  g_timer_destroy (priv->timer);
+
+  g_object_unref (priv->parser_time);
+  g_object_unref (priv->parser_date);
+  g_object_unref (priv->parser_lat);
+  g_object_unref (priv->parser_lon);
+  g_object_unref (priv->parser_track);
+  g_object_unref (priv->parser_heading);
+  g_object_unref (priv->parser_speed);
+
+  G_OBJECT_CLASS (hyscan_nav_model_parent_class)->finalize (object);
 }
 
 /* Копирует структуру HyScanNavModelFix. */
@@ -624,64 +717,6 @@ hyscan_nav_model_update_params (HyScanNavModel *model)
                                               fix_next->speed_lon,
                                               dt);
   fix0->params_set = TRUE;
-}
-
-static void
-hyscan_nav_model_object_constructed (GObject *object)
-{
-  HyScanNavModel *model = HYSCAN_NAV_MODEL (object);
-  HyScanNavModelPrivate *priv = model->priv;
-
-  G_OBJECT_CLASS (hyscan_nav_model_parent_class)->constructed (object);
-
-  g_mutex_init (&priv->sensor_lock);
-  g_mutex_init (&priv->fixes_lock);
-  priv->timer = g_timer_new ();
-  hyscan_nav_model_set_delay (model, DELAY_TIME);
-
-  priv->parser_time = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TIME);
-  priv->parser_date = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_DATE);
-  priv->parser_lat = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT);
-  priv->parser_lon = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LON);
-  priv->parser_track = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TRACK);
-  priv->parser_heading = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_HDT, HYSCAN_NMEA_FIELD_HEADING);
-  priv->parser_speed = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_SPEED);
-
-  priv->process_tag = g_timeout_add (priv->interval, (GSourceFunc) hyscan_nav_model_process, model);
-}
-
-static void
-hyscan_nav_model_object_finalize (GObject *object)
-{
-  HyScanNavModel *model = HYSCAN_NAV_MODEL (object);
-  HyScanNavModelPrivate *priv = model->priv;
-
-  g_signal_handlers_disconnect_by_data (priv->sensor, model);
-
-  g_source_remove (priv->process_tag);
-
-  g_mutex_lock (&priv->fixes_lock);
-  g_list_free_full (priv->fixes, (GDestroyNotify) hyscan_nav_model_fix_free);
-  g_mutex_unlock (&priv->fixes_lock);
-  g_mutex_clear (&priv->fixes_lock);
-
-  g_mutex_lock (&priv->sensor_lock);
-  g_clear_object (&priv->sensor);
-  g_free (priv->sensor_name);
-  g_mutex_unlock (&priv->sensor_lock);
-  g_mutex_clear (&priv->sensor_lock);
-
-  g_timer_destroy (priv->timer);
-
-  g_object_unref (priv->parser_time);
-  g_object_unref (priv->parser_date);
-  g_object_unref (priv->parser_lat);
-  g_object_unref (priv->parser_lon);
-  g_object_unref (priv->parser_track);
-  g_object_unref (priv->parser_heading);
-  g_object_unref (priv->parser_speed);
-
-  G_OBJECT_CLASS (hyscan_nav_model_parent_class)->finalize (object);
 }
 
 /**
