@@ -75,6 +75,10 @@ static void     hyscan_mark_data_set_property            (GObject               
                                                           guint                   prop_id,
                                                           const GValue           *value,
                                                           GParamSpec             *pspec);
+static void     hyscan_mark_data_get_property            (GObject                *object,
+                                                          guint                   prop_id,
+                                                          GValue                 *value,
+                                                          GParamSpec             *pspec);
 static void     hyscan_mark_data_object_constructed      (GObject                *object);
 static void     hyscan_mark_data_object_finalize         (GObject                *object);
 
@@ -95,17 +99,18 @@ hyscan_mark_data_class_init (HyScanMarkDataClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->set_property = hyscan_mark_data_set_property;
+  object_class->get_property = hyscan_mark_data_get_property;
 
   object_class->constructed = hyscan_mark_data_object_constructed;
   object_class->finalize = hyscan_mark_data_object_finalize;
 
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (object_class, PROP_PROJECT,
       g_param_spec_string ("project", "ProjectName", "Project name", NULL,
-                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 }
 
@@ -132,6 +137,31 @@ hyscan_mark_data_set_property (GObject      *object,
 
     case PROP_PROJECT:
       priv->project = g_value_dup_string (value);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+    }
+}
+
+static void
+hyscan_mark_data_get_property (GObject    *object,
+                               guint       prop_id,
+                               GValue     *value,
+                               GParamSpec *pspec)
+{
+  HyScanMarkData *data = HYSCAN_MARK_DATA (object);
+  HyScanMarkDataPrivate *priv = data->priv;
+
+  switch (prop_id)
+    {
+    case PROP_DB:
+      g_value_set_object (value, priv->db);
+      break;
+
+    case PROP_PROJECT:
+      g_value_set_string (value, priv->project);
       break;
 
     default:
@@ -203,6 +233,9 @@ hyscan_mark_data_object_constructed (GObject *object)
   hyscan_param_list_add (priv->read_plist, "/schema/id");
   hyscan_param_list_add (priv->read_plist, "/schema/version");
 
+  if (klass->init_obj != NULL)
+    klass->init_obj (data, priv->param_id, priv->db);
+
 exit:
   if (project_id > 0)
     hyscan_db_close (priv->db, project_id);
@@ -260,6 +293,9 @@ hyscan_mark_data_get_internal (HyScanMarkData *data,
   if (!hyscan_db_param_get (priv->db, priv->param_id, id, priv->read_plist))
     return FALSE;
 
+  if (klass->get_full != NULL)
+    return klass->get_full (data, priv->read_plist, mark);
+
   sid = hyscan_param_list_get_integer (priv->read_plist, "/schema/id");
   sver = hyscan_param_list_get_integer (priv->read_plist, "/schema/version");
 
@@ -299,17 +335,24 @@ hyscan_mark_data_set_internal (HyScanMarkData    *data,
   HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
 
-  hyscan_param_list_set_string (priv->write_plist, "/name", any->name);
-  hyscan_param_list_set_string (priv->write_plist, "/description", any->description);
-  hyscan_param_list_set_integer (priv->write_plist, "/label", any->labels);
-  hyscan_param_list_set_string (priv->write_plist, "/operator", any->operator_name);
-  hyscan_param_list_set_integer (priv->write_plist, "/ctime", any->ctime);
-  hyscan_param_list_set_integer (priv->write_plist, "/mtime", any->mtime);
-  hyscan_param_list_set_double (priv->write_plist, "/width", any->width);
-  hyscan_param_list_set_double (priv->write_plist, "/height", any->height);
+  if (klass->set_full != NULL)
+    {
+      klass->set_full (data, priv->write_plist, mark);
+    }
+  else
+    {
+      hyscan_param_list_set_string (priv->write_plist, "/name", any->name);
+      hyscan_param_list_set_string (priv->write_plist, "/description", any->description);
+      hyscan_param_list_set_integer (priv->write_plist, "/label", any->labels);
+      hyscan_param_list_set_string (priv->write_plist, "/operator", any->operator_name);
+      hyscan_param_list_set_integer (priv->write_plist, "/ctime", any->ctime);
+      hyscan_param_list_set_integer (priv->write_plist, "/mtime", any->mtime);
+      hyscan_param_list_set_double (priv->write_plist, "/width", any->width);
+      hyscan_param_list_set_double (priv->write_plist, "/height", any->height);
 
-  if (klass->set != NULL)
-    klass->set (data, priv->write_plist, mark);
+      if (klass->set != NULL)
+        klass->set (data, priv->write_plist, mark);
+    }
 
   return hyscan_db_param_set (priv->db, priv->param_id, id, priv->write_plist);
 }
