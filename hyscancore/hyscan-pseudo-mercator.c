@@ -52,85 +52,31 @@
 #include "hyscan-pseudo-mercator.h"
 #include <math.h>
 
-#define EARTH_RADIUS 6378137.0
+#define EQUATOR_LENGTH 40075016.7
 #define DEG2RAD(x) ((x) * G_PI / 180.0)
 #define RAD2DEG(x) ((x) * 180.0 / G_PI)
 
-enum
-{
-  PROP_O,
-};
-
-struct _HyScanPseudoMercatorPrivate
-{
-  gdouble                      equator_length;             /* Длина экватора. */
-};
-
 static void    hyscan_pseudo_mercator_interface_init     (HyScanGeoProjectionInterface *iface);
-static void    hyscan_pseudo_mercator_object_constructed (GObject                      *object);
 
-static void    hyscan_pseudo_mercator_value_to_geo       (HyScanGeoProjection          *projection,
-                                                          HyScanGeoGeodetic            *coords,
-                                                          gdouble                       x,
-                                                          gdouble                       y);
-
-static void    hyscan_pseudo_mercator_geo_to_value       (HyScanGeoProjection          *projection,
-                                                          HyScanGeoGeodetic             coords,
-                                                          HyScanGeoCartesian2D         *c2d);
-
-static void    hyscan_pseudo_mercator_get_limits         (HyScanGeoProjection          *projection,
-                                                          gdouble                      *min_x,
-                                                          gdouble                      *max_x,
-                                                          gdouble                      *min_y,
-                                                          gdouble                      *max_y);
-
-static gdouble hyscan_pseudo_mercator_get_scale          (HyScanGeoProjection          *projection,
-                                                          HyScanGeoGeodetic             coords);
-
-G_DEFINE_TYPE_WITH_CODE (HyScanPseudoMercator, hyscan_pseudo_mercator, G_TYPE_OBJECT,                                        
-                         G_ADD_PRIVATE (HyScanPseudoMercator)                                                         
+G_DEFINE_TYPE_WITH_CODE (HyScanPseudoMercator, hyscan_pseudo_mercator, G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_GEO_PROJECTION, hyscan_pseudo_mercator_interface_init))
 
 static void
 hyscan_pseudo_mercator_class_init (HyScanPseudoMercatorClass *klass)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->constructed = hyscan_pseudo_mercator_object_constructed;
 }
 
 static void
 hyscan_pseudo_mercator_init (HyScanPseudoMercator *pseudo_mercator)
 {
-  pseudo_mercator->priv = hyscan_pseudo_mercator_get_instance_private (pseudo_mercator);
+
 }
 
 static guint
 hyscan_pseudo_mercator_hash (HyScanGeoProjection *geo_projection)
 {
   return g_str_hash ("pseudo_mercator");
-}
-
-/* Реализация интерфейса HyScanGeoProjectionInterface. */
-static void
-hyscan_pseudo_mercator_interface_init (HyScanGeoProjectionInterface *iface)
-{
-  iface->geo_to_value = hyscan_pseudo_mercator_geo_to_value;
-  iface->value_to_geo = hyscan_pseudo_mercator_value_to_geo;
-  iface->get_limits = hyscan_pseudo_mercator_get_limits;
-  iface->get_scale = hyscan_pseudo_mercator_get_scale;
-  iface->hash = hyscan_pseudo_mercator_hash;
-}
-
-static void
-hyscan_pseudo_mercator_object_constructed (GObject *object)
-{
-  HyScanPseudoMercator *pseudo_mercator = HYSCAN_PSEUDO_MERCATOR (object);
-  HyScanPseudoMercatorPrivate *priv = pseudo_mercator->priv;
-
-  G_OBJECT_CLASS (hyscan_pseudo_mercator_parent_class)->constructed (object);
-
-  priv->equator_length = 2.0 * G_PI * EARTH_RADIUS;
 }
 
 /* Переводит географические координаты @coords в координаты (@x, @y) проекции. */
@@ -186,15 +132,24 @@ static gdouble
 hyscan_pseudo_mercator_get_scale (HyScanGeoProjection *projection,
                                   HyScanGeoGeodetic    coords)
 {
-  HyScanPseudoMercatorPrivate *priv = HYSCAN_PSEUDO_MERCATOR (projection)->priv;
+  return cos (DEG2RAD (coords.lat)) * EQUATOR_LENGTH;
+}
 
-  return cos (DEG2RAD (coords.lat)) * priv->equator_length;
+/* Реализация интерфейса HyScanGeoProjectionInterface. */
+static void
+hyscan_pseudo_mercator_interface_init (HyScanGeoProjectionInterface *iface)
+{
+  iface->geo_to_value = hyscan_pseudo_mercator_geo_to_value;
+  iface->value_to_geo = hyscan_pseudo_mercator_value_to_geo;
+  iface->get_limits = hyscan_pseudo_mercator_get_limits;
+  iface->get_scale = hyscan_pseudo_mercator_get_scale;
+  iface->hash = hyscan_pseudo_mercator_hash;
 }
 
 /**
  * hyscan_pseudo_mercator_new:
  *
- * Создаёт псевдопроекцию Мерктора
+ * Создаёт проекцию Меркатора для сферы
  *
  * Returns: указатель на #HyScanPseudoMercator. Для удаления g_object_unref()
  */
