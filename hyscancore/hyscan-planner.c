@@ -63,12 +63,27 @@ struct _HyScanPlannerPrivate
   gint32       param_id;            /* Идентификатор группы параметров плановых галсов. */
 };
 
-static void         hyscan_planner_set_property             (GObject               *object,
-                                                             guint                  prop_id,
-                                                             const GValue          *value,
-                                                             GParamSpec            *pspec);
-static void         hyscan_planner_object_constructed       (GObject               *object);
-static void         hyscan_planner_object_finalize          (GObject               *object);
+static void                hyscan_planner_set_property             (GObject                  *object,
+                                                                    guint                     prop_id,
+                                                                    const GValue             *value,
+                                                                    GParamSpec               *pspec);
+static void                hyscan_planner_object_constructed       (GObject                  *object);
+static void                hyscan_planner_object_finalize          (GObject                  *object);
+static gchar *             hyscan_planner_points_to_string         (HyScanGeoGeodetic        *points,
+                                                                    gsize                     points_len);
+static gchar **            hyscan_planner_object_list              (HyScanPlanner            *planner,
+                                                                    const gchar              *prefix);
+static HyScanGeoGeodetic * hyscan_planner_string_to_points         (const gchar              *string,
+                                                                    gsize                    *points_len);
+static gboolean            hyscan_planner_zone_set_internal        (HyScanPlanner            *planner,
+                                                                    const gchar              *zone_id,
+                                                                    const HyScanPlannerZone  *zone);
+static gboolean            hyscan_planner_track_set_internal       (HyScanPlanner            *planner,
+                                                                    const gchar              *track_id,
+                                                                    const HyScanPlannerTrack *track);
+static inline gboolean     hyscan_planner_zone_validate_id         (const gchar              *zone_id);
+static inline gboolean     hyscan_planner_track_validate_id        (const gchar              *track_id);
+static inline gchar *      hyscan_planner_track_prefix_create      (const gchar              *zone_id);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanPlanner, hyscan_planner, G_TYPE_OBJECT)
 
@@ -155,23 +170,24 @@ static gchar *
 hyscan_planner_create_id (const gchar *prefix)
 {
   static gchar dict[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  guint i;
   gchar *id;
+  gsize i;
   gsize id_size, prefix_len;
 
   prefix_len = strlen (prefix);
   id_size = prefix_len + TRACK_ID_LEN + 1;
+  
   id = g_new (gchar, id_size);
-
   g_strlcpy (id, prefix, id_size);
-  for (i = prefix_len; i < TRACK_ID_LEN; i++)
+  
+  for (i = prefix_len; i < id_size; i++)
     {
       gint rnd;
 
       rnd = g_random_int_range (0, sizeof (dict) - 1);
       id[i] = dict[rnd];
     }
-  id[TRACK_ID_LEN] = '\0';
+  id[i] = '\0';
 
   return id;
 }
@@ -206,6 +222,43 @@ hyscan_planner_points_to_string (HyScanGeoGeodetic *points,
   return vertices;
 }
 
+/* Возвращает список объектов с указанным префиксом. */
+static gchar **
+hyscan_planner_object_list (HyScanPlanner *planner,
+                            const gchar   *prefix)
+{
+  HyScanPlannerPrivate *priv = planner->priv;
+  gchar **buffer;
+  gint i;
+  gint n_tracks;
+  gchar **objects, **prefixed_objects;
+  
+  objects = hyscan_db_param_object_list (priv->db, priv->param_id);
+  if (objects == NULL)
+    return NULL;
+
+  /* Складываем в буфер объекты с нужным префиксом. */
+  buffer = g_new (gchar *, g_strv_length (objects) + 1);
+  n_tracks = 0;
+  for (i = 0; objects[i] != NULL; ++i)
+    {
+      if (g_str_has_prefix (objects[i], prefix))
+        buffer[n_tracks++] = objects[i];
+    }
+  buffer[n_tracks] = NULL;
+
+  /* Если искомые объекты найдены, то копируем их. Иначе просто NULL. */
+  if (n_tracks != 0)
+    prefixed_objects = g_strdupv (buffer);
+  else
+    prefixed_objects = NULL;
+
+  g_free (buffer);
+  g_strfreev (objects);
+
+  return prefixed_objects;
+}
+
 static HyScanGeoGeodetic *
 hyscan_planner_string_to_points (const gchar *string,
                                  gsize       *points_len)
@@ -238,6 +291,24 @@ hyscan_planner_string_to_points (const gchar *string,
   return (HyScanGeoGeodetic *) g_array_free (array, FALSE);
 }
 
+static inline gboolean
+hyscan_planner_zone_validate_id (const gchar *zone_id)
+{
+  return zone_id != NULL && g_str_has_prefix (zone_id, PREFIX_ZONE);
+}
+
+static inline gboolean
+hyscan_planner_track_validate_id (const gchar *track_id)
+{
+  return track_id != NULL && g_str_has_prefix (track_id, PREFIX_TRACK);
+}
+
+static inline gchar *
+hyscan_planner_track_prefix_create (const gchar *zone_id)
+{
+  return g_strconcat (PREFIX_TRACK, zone_id + strlen (PREFIX_ZONE), "/", NULL);
+}
+
 static gboolean
 hyscan_planner_zone_set_internal (HyScanPlanner           *planner,
                                   const gchar             *zone_id,
@@ -246,6 +317,8 @@ hyscan_planner_zone_set_internal (HyScanPlanner           *planner,
   HyScanPlannerPrivate *priv = planner->priv;
   HyScanParamList *param_list;
   gchar *vertices;
+
+  g_return_val_if_fail (hyscan_planner_zone_validate_id (zone_id), FALSE);
 
   param_list = hyscan_param_list_new ();
   hyscan_param_list_set_string (param_list, "/name", zone->name);
@@ -260,6 +333,36 @@ hyscan_planner_zone_set_internal (HyScanPlanner           *planner,
   if (!hyscan_db_param_set (priv->db, priv->param_id, zone_id, param_list))
     {
       g_message ("HyScanPlanner: failed to set zone: %s", zone_id);
+
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_planner_track_set_internal (HyScanPlanner            *planner,
+                                   const gchar              *track_id,
+                                   const HyScanPlannerTrack *track)
+{
+  HyScanPlannerPrivate *priv = planner->priv;
+  HyScanParamList *param_list;
+
+  g_return_val_if_fail (hyscan_planner_track_validate_id (track_id), FALSE);
+
+  param_list = hyscan_param_list_new ();
+  hyscan_param_list_set_string (param_list, "/zone-id", track->zone_id);
+  hyscan_param_list_set_integer (param_list, "/number", track->number);
+  hyscan_param_list_set_double (param_list, "/speed", track->speed);
+  hyscan_param_list_set_string (param_list, "/name", track->name);
+  hyscan_param_list_set_double (param_list, "/start-lat", track->start.lat);
+  hyscan_param_list_set_double (param_list, "/start-lon", track->start.lon);
+  hyscan_param_list_set_double (param_list, "/end-lat", track->end.lat);
+  hyscan_param_list_set_double (param_list, "/end-lon", track->end.lon);
+
+  if (!hyscan_db_param_set (priv->db, priv->param_id, track_id, param_list))
+    {
+      g_message ("HyScanPlanner: failed to set track: %s", track_id);
 
       return FALSE;
     }
@@ -298,39 +401,13 @@ hyscan_planner_new (HyScanDB    *db,
 gchar **
 hyscan_planner_zone_list (HyScanPlanner *planner)
 {
-  HyScanPlannerPrivate *priv;
-  gchar **objects;
-  gchar **buffer;
-  gchar **zones;
-  gsize i, n_zones;
-
   g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), NULL);
-  priv = planner->priv;
 
-  objects = hyscan_db_param_object_list (priv->db, priv->param_id);
-  if (objects == NULL)
-    return NULL;
-
-  /* Складываем в буфер объекты с нужным префиксом. */
-  buffer = g_new (gchar *, g_strv_length (objects) + 1);
-  n_zones = 0;
-  for (i = 0; objects[i] != NULL; ++i)
-    {
-      if (g_str_has_prefix (objects[i], PREFIX_ZONE))
-        buffer[n_zones++] = objects[i];
-    }
-  buffer[n_zones] = NULL;
-
-  zones = g_strdupv (buffer);
-
-  g_free (buffer);
-  g_strfreev (objects);
-
-  return zones;
+  return hyscan_planner_object_list (planner, PREFIX_ZONE);
 }
 
 /**
- *
+ * hyscan_planner_zone_create:
  * @planner: указатель на #HyScanPlanner
  * @zone: зона полигона
  *
@@ -351,15 +428,16 @@ hyscan_planner_zone_create (HyScanPlanner           *planner,
 
   zone_id = hyscan_planner_create_id (PREFIX_ZONE);
   if (!hyscan_db_param_object_create (priv->db, priv->param_id, zone_id, PLANNER_ZONE_SCHEMA))
-    {
-      g_free (zone_id);
-      g_message ("HyScanPlanner: failed to create zone: %s", zone_id);
+    goto error;
 
-      return NULL;
-    }
+  if (!hyscan_planner_zone_set_internal (planner, zone_id, zone))
+    goto error;
 
-  if (hyscan_planner_zone_set_internal (planner, zone_id, zone))
-    return zone_id;
+  return zone_id;
+
+error:
+  g_free (zone_id);
+  g_message ("HyScanPlanner: failed to create zone: %s", zone_id);
 
   return NULL;
 }
@@ -404,6 +482,7 @@ hyscan_planner_zone_get (HyScanPlanner *planner,
   gint64 schema_id, schema_version;
   
   g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), NULL);
+  g_return_val_if_fail (hyscan_planner_zone_validate_id (zone_id), NULL);
   priv = planner->priv;
 
   param_list = hyscan_param_list_new ();
@@ -420,7 +499,7 @@ hyscan_planner_zone_get (HyScanPlanner *planner,
   schema_id = hyscan_param_list_get_integer (param_list, "/schema/id");
   schema_version = hyscan_param_list_get_integer (param_list, "/schema/version");
 
-  if (schema_id != PLANNER_SCHEMA_ID || schema_version != PLANNER_SCHEMA_VERSION)
+  if (schema_id != PLANNER_ZONE_SCHEMA_ID || schema_version != PLANNER_ZONE_SCHEMA_VERSION)
     return FALSE;
 
   zone = g_slice_new (HyScanPlannerZone);
@@ -451,10 +530,22 @@ hyscan_planner_zone_remove (HyScanPlanner *planner,
                             const gchar   *zone_id)
 {
   HyScanPlannerPrivate *priv;
+  gchar **tracks;
+  gint i;
 
   g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), FALSE);
+  g_return_val_if_fail (hyscan_planner_zone_validate_id (zone_id), FALSE);
   priv = planner->priv;
 
+  /* Удаляем все галсы в этой зоне. */
+  tracks = hyscan_planner_track_list (planner, zone_id);
+  if (tracks != NULL)
+    {
+      for (i = 0; tracks[i] != NULL; ++i)
+        hyscan_planner_track_remove (planner, tracks[i]);
+    }
+
+  /* Удаляем саму зону. */
   if (!hyscan_db_param_object_remove (priv->db, priv->param_id, zone_id))
     return FALSE;
 
@@ -474,4 +565,192 @@ hyscan_planner_zone_free (HyScanPlannerZone *zone)
   g_free (zone->name);
   g_free (zone->id);
   g_slice_free (HyScanPlannerZone, zone);
+}
+
+/**
+ * hyscan_planner_track_list:
+ * @planner: указатель на #HyScanPlanner
+ * @zone_id: идентификатор зоны
+ *
+ * Возращает схему галсов в зоне с идентфикатором @zone_id.
+ *
+ * Returns: нуль-терминированный список идентфикаторов галсов или %NULL, если нет
+ *   ни одного галса.
+ */
+gchar **
+hyscan_planner_track_list (HyScanPlanner *planner,
+                           const gchar   *zone_id)
+{
+  gchar **tracks;
+  gchar *prefix;
+
+  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), NULL);
+  g_return_val_if_fail (hyscan_planner_zone_validate_id (zone_id), NULL);
+
+  prefix = hyscan_planner_track_prefix_create (zone_id);
+  tracks = hyscan_planner_object_list (planner, prefix);
+  g_free (prefix);
+
+  return tracks;
+}
+
+/**
+ * hyscan_planner_track_create:
+ * @planner: указатель на #HyScanPlanner
+ * @track: параметры планового галса
+ *
+ * Создаёт плановый галс и устанавливает его параметры, указанные в структуре @track.
+ * В случае успеха функция возвращает идентификатор созданного галса; иначе - %NULL.
+ *
+ * Returns: идентификатор созданной зоны
+ */
+gchar *
+hyscan_planner_track_create (HyScanPlanner           *planner,
+                             const HyScanPlannerTrack *track)
+{
+  HyScanPlannerPrivate *priv;
+  gchar *track_id;
+  gchar *prefix;
+
+  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), NULL);
+  g_return_val_if_fail (hyscan_planner_zone_validate_id (track->zone_id), NULL);
+
+  priv = planner->priv;
+
+  prefix = hyscan_planner_track_prefix_create (track->zone_id);
+  track_id = hyscan_planner_create_id (prefix);
+  g_free (prefix);
+
+  if (!hyscan_db_param_object_create (priv->db, priv->param_id, track_id, PLANNER_TRACK_SCHEMA))
+    goto error;
+
+  if (!hyscan_planner_track_set_internal (planner, track_id, track))
+    goto error;
+
+  return track_id;
+
+error:
+  g_message ("HyScanPlanner: failed to create track: %s", track_id);
+  g_free (track_id);
+
+  return NULL;
+}
+
+/**
+ * hyscan_planner_track_set:
+ * @planner: указатель на #HyScanPlanner
+ * @track: структура #HyScanPlannerTrack с параметрами зоны
+ *
+ * Сохраняет параметры зоны в параметрах проекта, считывая их из структуры @track.
+ *
+ * Returns: %TRUE, если параметры были установлены
+ */
+gboolean
+hyscan_planner_track_set (HyScanPlanner            *planner,
+                          const HyScanPlannerTrack *track)
+{
+  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), FALSE);
+  g_return_val_if_fail (track->id != NULL, FALSE);
+
+  return hyscan_planner_track_set_internal (planner, track->id, track);
+}
+
+/**
+ * hyscan_planner_track_get:
+ * @planner: указатель на #HyScanPlanner
+ * @track_id: идентификатор планового галса
+ *
+ * Загружает из параметров проекта плановый галс с идентификатором @track_id.
+ *
+ * Returns: указатель на структуру #HyScanPlannerTrack, для удаления hyscan_planner_track_free().
+ */
+HyScanPlannerTrack *
+hyscan_planner_track_get (HyScanPlanner *planner,
+                          const gchar   *track_id)
+{
+  HyScanPlannerPrivate *priv;
+  HyScanPlannerTrack *track = NULL;
+  HyScanParamList *param_list;
+
+  gint64 schema_id, schema_version;
+  
+  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), NULL);
+  priv = planner->priv;
+
+  param_list = hyscan_param_list_new ();
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/zone-id");
+  hyscan_param_list_add (param_list, "/number");
+  hyscan_param_list_add (param_list, "/speed");
+  hyscan_param_list_add (param_list, "/name");
+  hyscan_param_list_add (param_list, "/start-lat");
+  hyscan_param_list_add (param_list, "/start-lon");
+  hyscan_param_list_add (param_list, "/end-lat");
+  hyscan_param_list_add (param_list, "/end-lon");
+
+  if (!hyscan_db_param_get (priv->db, priv->param_id, track_id, param_list))
+    goto exit;
+
+  schema_id = hyscan_param_list_get_integer (param_list, "/schema/id");
+  schema_version = hyscan_param_list_get_integer (param_list, "/schema/version");
+
+  if (schema_id != PLANNER_TRACK_SCHEMA_ID || schema_version != PLANNER_TRACK_SCHEMA_VERSION)
+    goto exit;
+
+  track = g_slice_new (HyScanPlannerTrack);
+  track->id = g_strdup (track_id);
+  track->zone_id = hyscan_param_list_dup_string (param_list, "/zone-id");
+  track->number = hyscan_param_list_get_integer (param_list, "/number");
+  track->speed = hyscan_param_list_get_double (param_list, "/speed");
+  track->name = hyscan_param_list_dup_string (param_list, "/name");
+  track->start.lat = hyscan_param_list_get_double (param_list, "/start-lat");
+  track->start.lon = hyscan_param_list_get_double (param_list, "/start-lon");
+  track->end.lat = hyscan_param_list_get_double (param_list, "/end-lat");
+  track->end.lon = hyscan_param_list_get_double (param_list, "/end-lon");
+
+exit:
+  g_object_unref (param_list);
+
+  return track;
+}
+
+/**
+ * hyscan_planner_track_remove:
+ * @planner: указатель на #HyScanPlanner
+ * @track_id: идентификатор галса
+ *
+ * Удаляет из проекта плановый галс с идентификатором @track_id.
+ *
+ * Returns: %TRUE, если галс был удалён успешно
+ */
+gboolean
+hyscan_planner_track_remove (HyScanPlanner *planner,
+                             const gchar   *track_id)
+{
+  HyScanPlannerPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), FALSE);
+  g_return_val_if_fail (hyscan_planner_track_validate_id (track_id), FALSE);
+  priv = planner->priv;
+
+  if (!hyscan_db_param_object_remove (priv->db, priv->param_id, track_id))
+    return FALSE;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_planner_track_free:
+ * @track: указатель на структуру #HyScanPlannerTrack
+ *
+ * Освобождает память, занятую структурой #HyScanPlannerTrack
+ */
+void
+hyscan_planner_track_free (HyScanPlannerTrack *track)
+{
+  g_free (track->id);
+  g_free (track->zone_id);
+  g_free (track->name);
+  g_slice_free (HyScanPlannerTrack, track);
 }

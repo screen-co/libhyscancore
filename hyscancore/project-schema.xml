@@ -74,10 +74,10 @@
 
   <schema id="planner-zone">
     <node id="schema">
-      <key id="id" name="Planner schema id" type="integer" access="readonly">
+      <key id="id" name="Planner zone schema id" type="integer" access="readonly">
         <default>2298441576805697181</default>
       </key>
-      <key id="version" name="Planner schema version" type="integer" access="readonly">
+      <key id="version" name="Planner zone schema version" type="integer" access="readonly">
         <default>20190100</default>
       </key>
     </node>
@@ -86,4 +86,26 @@
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
   </schema>
+
+  <schema id="planner-track">
+    <node id="schema">
+      <key id="id" name="Planner track schema id" type="integer" access="readonly">
+        <default>1788376350812305657</default>
+      </key>
+      <key id="version" name="Planner track schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="zone-id" name="The identifier of the zone containing track" type="string"/>
+    <key id="number" name="Index number of the track inside its zone" type="integer"/>
+    <key id="speed" name="Ship speed along the track, m/s" type="double"/>
+    <key id="name" name="Track short name" type="string"/>
+    <key id="start-lat" name="Latitude of the start of the track" type="double"/>
+    <key id="start-lon" name="Longitude of the start of the track" type="double"/>
+    <key id="end-lat" name="Latitude of the end of the track" type="double"/>
+    <key id="end-lon" name="Longitude of the end of the track" type="double"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
 </schemalist>

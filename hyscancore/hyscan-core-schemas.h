@@ -65,8 +65,11 @@
 #define GEO_MARK_SCHEMA_ID                     4566818919687782529
 #define GEO_MARK_SCHEMA_VERSION                20190100
 
-#define PLANNER_SCHEMA_ID                      2298441576805697181
-#define PLANNER_SCHEMA_VERSION                 20190100
+#define PLANNER_ZONE_SCHEMA_ID                 2298441576805697181
+#define PLANNER_ZONE_SCHEMA_VERSION            20190100
+
+#define PLANNER_TRACK_SCHEMA_ID                1788376350812305657
+#define PLANNER_TRACK_SCHEMA_VERSION           20190100
 
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"

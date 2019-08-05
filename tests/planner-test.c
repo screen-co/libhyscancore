@@ -147,6 +147,74 @@ test_zones (HyScanDB *db,
   g_object_unref (planner);
 }
 
+void
+test_tracks (HyScanDB *db,
+             gchar    *project_name)
+{
+  HyScanPlanner *planner;
+  gboolean status;
+  gchar *track_id;
+  gchar **tracks;
+  HyScanGeoGeodetic *points;
+  HyScanPlannerTrack *track;
+  HyScanPlannerTrack track_new;
+  HyScanPlannerZone zone;
+
+  gsize points_len = 10;
+
+  planner = hyscan_planner_new (db, project_name);
+
+  zone.name = "Тест";
+  zone.points = NULL;
+  zone.points_len = 0;
+  zone.id = hyscan_planner_zone_create (planner, &zone);
+
+  /* Добавляем плановый галс. */
+  track_new.start.lat = 55.312;
+  track_new.start.lon = 38.452;
+  track_new.end.lat = 55.313;
+  track_new.end.lon = 38.453;
+  track_new.name = "Track 1";
+  track_new.number = 0;
+  track_new.speed = 1.3;
+  track_new.zone_id = zone.id;
+  track_id = hyscan_planner_track_create (planner, &track_new);
+  g_assert (track_id != NULL);
+
+  /* Проверяем, что галс добавлен. */
+  tracks = hyscan_planner_track_list (planner, zone.id);
+  g_assert_cmpint (g_strv_length (tracks), ==, 1);
+  g_assert (g_str_equal (track_id, tracks[0]));
+  g_strfreev (tracks);
+
+  /* Меняем параметры галса. */
+  track = hyscan_planner_track_get (planner, track_id);
+  g_assert (track != NULL);
+  points = create_points_array (points_len);
+  track->speed = 1.0;
+  hyscan_planner_track_set (planner, track);
+  hyscan_planner_track_free (track);
+
+  /* Проверяем, что параметры обновились. */
+  track = hyscan_planner_track_get (planner, track_id);
+  g_assert (track != NULL);
+  g_assert (ABS (track->speed - 1.0) < 1e-4);
+  hyscan_planner_track_free (track);
+
+  /* Проверяем несуществующие галсы. */
+  track = hyscan_planner_track_get (planner, "nonexistent_id");
+  g_assert (track == NULL);
+
+  /* Удаляем галс. */
+  status = hyscan_planner_track_remove (planner, track_id);
+  g_assert (status != FALSE);
+  tracks = hyscan_planner_track_list (planner, zone.id);
+  g_assert (tracks == NULL);
+
+  g_free (zone.id);
+  g_free (points);
+  g_object_unref (planner);
+}
 
 int
 main (int    argc,
@@ -203,6 +271,7 @@ main (int    argc,
   /* Проводим тесты. */
   project_name = create_project (db);
   test_zones (db, project_name);
+  test_tracks (db, project_name);
 
   /* Удаляем после себя проект. */
   hyscan_db_project_remove (db, project_name);

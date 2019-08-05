@@ -59,6 +59,7 @@ typedef struct _HyScanPlannerClass HyScanPlannerClass;
  * @id: уникальный идентификатор
  * @zone_id: идентификатор зоны, в котрой находится галс
  * @number: порядковый номер галса
+ * @speed: скокрость движения судна, м/с
  * @name: название
  * @start: геокоординаты начала
  * @start: геокоординаты конца
@@ -70,6 +71,7 @@ struct _HyScanPlannerTrack
   gchar             *id;
   gchar             *zone_id;
   guint              number;
+  gdouble            speed;
   gchar             *name;
   HyScanGeoGeodetic  start;
   HyScanGeoGeodetic  end;
@@ -114,24 +116,6 @@ HyScanPlanner *        hyscan_planner_new              (HyScanDB                
                                                         const gchar              *project_name);
 
 HYSCAN_API
-void                   hyscan_planner_load_ini         (HyScanPlanner            *planner,
-                                                        const gchar              *file_name);
-
-HYSCAN_API
-void                   hyscan_planner_track_free       (HyScanPlannerTrack       *track);
-
-HYSCAN_API
-HyScanPlannerTrack *   hyscan_planner_track_copy       (const HyScanPlannerTrack *track);
-
-HYSCAN_API
-void                   hyscan_planner_update           (HyScanPlanner            *planner,
-                                                        const HyScanPlannerTrack *track);
-
-HYSCAN_API
-void                   hyscan_planner_delete           (HyScanPlanner            *planner,
-                                                        const gchar              *id);
-
-HYSCAN_API
 gchar **               hyscan_planner_zone_list        (HyScanPlanner            *planner);
 
 HYSCAN_API
@@ -154,15 +138,27 @@ HYSCAN_API
 void                   hyscan_planner_zone_free        (HyScanPlannerZone        *zone);
 
 HYSCAN_API
-gchar **               hyscan_planner_track_list       (HyScanPlanner            *planner);
+gchar *                hyscan_planner_track_create     (HyScanPlanner            *planner,
+                                                        const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+gboolean               hyscan_planner_track_set        (HyScanPlanner            *planner,
+                                                        const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+gchar **               hyscan_planner_track_list       (HyScanPlanner            *planner,
+                                                        const gchar              *zone_id);
 
 HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_get        (HyScanPlanner            *planner,
                                                         const gchar              *track_id);
 
 HYSCAN_API
-void                   hyscan_planner_save_ini         (HyScanPlanner            *planner,
-                                                        const gchar              *file_name);
+gboolean               hyscan_planner_track_remove     (HyScanPlanner            *planner,
+                                                        const gchar              *track_id);
+
+HYSCAN_API
+void                   hyscan_planner_track_free       (HyScanPlannerTrack        *track);
 
 G_END_DECLS
 
