@@ -44,6 +44,13 @@
  * - hyscan_nav_model_set_sensor()
  * - hyscan_nav_model_set_sensor_name()
  *
+ * Класс обрабатывает строки двух типов:
+ * - RMC - используются для получения текущих координат и скорости движения,
+ * - HDT - если есть, для получения истинного курса.
+ *
+ * Каждому фиксу #HyScanNavModelData соответствуют данные из строки RMC. При
+ * поступлении данных HDT фиксы дополняются истинным курсом.
+ *
  * При изменении состояния модель эмитирует сигнал "changed" с информацией о
  * текущем местоположении и времени его фиксации. Частоту изменения состояния
  * можно установить с помощью свойства "interval" при создании объекта. Модель
@@ -68,6 +75,7 @@
 #include <stdio.h>
 
 #define FIX_MIN_DELTA              0.01        /* Минимальное время между двумя фиксациями положения. */
+#define HDT_WAIT_TIME              5.0         /* Время, в течение которого истинный курс (HDT) считается актуальным. */
 #define SIGNAL_LOST_DELTA          2.0         /* Время между двумя фиксами, которое считается обрывом. */
 #define DELAY_TIME                 1.0         /* Время задержки вывода данных по умолчанию. */
 #define FIXES_N                    10          /* Количество последних хранимых фиксов. */
@@ -145,7 +153,10 @@ struct _HyScanNavModelPrivate
 
   GList                       *fixes;          /* Список последних положений объекта, зафиксированных датчиком. */
   guint                        fixes_len;      /* Количество элементов в списке. */
-  GMutex                       fixes_lock;     /* Блокировка доступа к перемееным этой группы. */
+  GMutex                       fixes_lock;     /* Блокировка доступа к переменным этой группы. */
+  gdouble                      heading;        /* Последний полученный истинный курс. */
+  gboolean                     heading_set;    /* Признак наличия истинного курса. */
+  gdouble                      heading_time;   /* Время получения истинного курса. */
   gboolean                     interpolate;    /* Стратегия получения актальных данных (интерполировать или нет). */
 };
 
@@ -164,6 +175,10 @@ static void                hyscan_nav_model_fix_free            (HyScanNavModelF
 static void                hyscan_nav_model_remove_all          (HyScanNavModel         *model);
 static void                hyscan_nav_model_add_fix             (HyScanNavModel         *model,
                                                                  HyScanNavModelFix      *fix);
+static inline void         hyscan_nav_model_fix_set_heading     (HyScanNavModel         *model,
+                                                                 HyScanNavModelFix      *fix);
+static void                hyscan_nav_model_set_heading         (HyScanNavModel         *model,
+                                                                 gdouble                 heading);
 static void                hyscan_nav_model_sensor_data         (HyScanSensor           *sensor,
                                                                  const gchar            *name,
                                                                  HyScanSourceType        source,
@@ -173,11 +188,9 @@ static void                hyscan_nav_model_sensor_data         (HyScanSensor   
 static gboolean            hyscan_nav_model_read_rmc            (HyScanNavModel         *model,
                                                                  const gchar            *sentence,
                                                                  HyScanNavModelFix      *fix);
-static inline gboolean     hyscan_nav_model_is_rmc              (HyScanNavModel         *model,
-                                                                 const gchar            *sentence);
 static inline gboolean     hyscan_nav_model_read_hdt            (HyScanNavModel         *model,
                                                                  const gchar            *sentence,
-                                                                 HyScanNavModelFix      *fix);
+                                                                 gdouble                *heading);
 static void                hyscan_nav_model_update_expn_params  (HyScanNavModelInParams *params0,
                                                                  gdouble                 value0,
                                                                  gdouble                 d_value0,
@@ -349,6 +362,47 @@ hyscan_nav_model_remove_all (HyScanNavModel *model)
   priv->fixes = NULL;
 }
 
+/* Устанавливает истинный курс в указанный фикс.
+ * Вызывать за мьютексом g_mutex_lock (&priv->fixes_lock). */
+static inline void
+hyscan_nav_model_fix_set_heading (HyScanNavModel    *model,
+                                  HyScanNavModelFix *fix)
+{
+  HyScanNavModelPrivate *priv = model->priv;
+
+  if (fix->true_heading || !priv->heading_set)
+    return;
+
+  if (ABS (priv->heading_time - fix->time) > HDT_WAIT_TIME)
+    return;
+
+  fix->true_heading = TRUE;
+  fix->heading = priv->heading;
+}
+
+/* Устанавливает истинный курс. */
+static void
+hyscan_nav_model_set_heading (HyScanNavModel *model,
+                              gdouble         heading)
+{
+  HyScanNavModelPrivate *priv = model->priv;
+  GList *last_fix_l;
+
+  g_mutex_lock (&priv->fixes_lock);
+
+  /* Запоминаем текущий курс и соответствующее ему время. */
+  priv->heading_set = TRUE;
+  priv->heading = heading;
+  priv->heading_time = g_timer_elapsed (priv->timer, NULL) + priv->timer_offset;
+
+  /* Устанавливаем текуший курс в последний фикс. */
+  last_fix_l = g_list_last (priv->fixes);
+  if (last_fix_l != NULL)
+    hyscan_nav_model_fix_set_heading (model, last_fix_l->data);
+
+  g_mutex_unlock (&priv->fixes_lock);
+}
+
 /* Добавляет новый фикс в список. */
 static void
 hyscan_nav_model_add_fix (HyScanNavModel    *model,
@@ -377,6 +431,9 @@ hyscan_nav_model_add_fix (HyScanNavModel    *model,
   /* Фиксируем данные только если они для нового момента времени. */
   if (last_fix == NULL || fix->time - last_fix->time > FIX_MIN_DELTA)
     {
+      /* Устанавливаем для нового фикса истинный курс, если он есть и акутален. */
+      hyscan_nav_model_fix_set_heading (model, fix);
+
       priv->fixes = g_list_append (priv->fixes, hyscan_nav_model_fix_copy (fix));
       priv->fixes_len++;
 
@@ -387,7 +444,7 @@ hyscan_nav_model_add_fix (HyScanNavModel    *model,
     }
 
   /* Удаляем из списка старые данные. */
-  if (priv->fixes_len >FIXES_N)
+  if (priv->fixes_len > FIXES_N)
     {
       GList *first_fix_l = priv->fixes;
 
@@ -449,25 +506,11 @@ hyscan_nav_model_read_rmc (HyScanNavModel    *model,
 }
 
 static inline gboolean
-hyscan_nav_model_is_rmc (HyScanNavModel *model,
-                         const gchar    *sentence)
+hyscan_nav_model_read_hdt (HyScanNavModel *model,
+                           const gchar    *sentence,
+                           gdouble        *heading)
 {
-  return hyscan_nmea_parser_parse_string (model->priv->parser_time, sentence, NULL);
-}
-
-static inline gboolean
-hyscan_nav_model_read_hdt (HyScanNavModel    *model,
-                           const gchar       *sentence,
-                           HyScanNavModelFix *fix)
-{
-  HyScanNavModelPrivate *priv = model->priv;
-
-  if (!hyscan_nmea_parser_parse_string (priv->parser_heading, sentence, &fix->heading))
-    return FALSE;
-
-  fix->true_heading = TRUE;
-
-  return TRUE;
+  return hyscan_nmea_parser_parse_string (model->priv->parser_heading, sentence, heading);
 }
 
 /* Обработчик сигнала "sensor-data".
@@ -499,31 +542,17 @@ hyscan_nav_model_sensor_data (HyScanSensor     *sensor,
   msg = hyscan_buffer_get (data, NULL, &msg_size);
   sentences = hyscan_nmea_data_split_sentence (msg, msg_size);
 
-  /* Читаем строки, полагая, что они приходят в следующем порядке:
-   *
-   * RMC - считываем время, положение, скорость
-   * ...
-   * HDT - считываем истинный курс
-   * ...
-   */
+  /* Читаем строки, которые пришли от устройства. */
   for (i = 0; sentences[i] != NULL; i++)
     {
       HyScanNavModelFix fix;
+      gdouble heading;
 
-      if (!hyscan_nav_model_read_rmc (model, sentences[i], &fix))
-        continue;
+      if (hyscan_nav_model_read_rmc (model, sentences[i], &fix))
+        hyscan_nav_model_add_fix (model, &fix);
 
-      /* Пробуем считать истинный курс: парсим следующие строки, пока опять не попадётся RMC. */
-      for (; sentences[i + 1] != NULL; i++)
-      {
-        if (hyscan_nav_model_is_rmc (model, sentences[i + 1]))
-          break;
-
-        if (hyscan_nav_model_read_hdt (model, sentences[i + 1], &fix))
-          break;
-      }
-
-      hyscan_nav_model_add_fix (model, &fix);
+      else if (hyscan_nav_model_read_hdt (model, sentences[i], &heading))
+        hyscan_nav_model_set_heading (model, heading);
     }
 
   g_strfreev (sentences);
@@ -705,17 +734,17 @@ hyscan_nav_model_update_params (HyScanNavModel *model)
 
   dt = fix0->time1 - fix0->time;
   hyscan_nav_model_update_expn_params (&fix0->lat_params,
-                                              fix0->coord.lat,
-                                              fix0->speed_lat,
-                                              fix_next->coord.lat,
-                                              fix_next->speed_lat,
-                                              dt);
+                                       fix0->coord.lat,
+                                       fix0->speed_lat,
+                                       fix_next->coord.lat,
+                                       fix_next->speed_lat,
+                                       dt);
   hyscan_nav_model_update_expn_params (&fix0->lon_params,
-                                              fix0->coord.lon,
-                                              fix0->speed_lon,
-                                              fix_next->coord.lon,
-                                              fix_next->speed_lon,
-                                              dt);
+                                       fix0->coord.lon,
+                                       fix0->speed_lon,
+                                       fix_next->coord.lon,
+                                       fix_next->speed_lon,
+                                       dt);
   fix0->params_set = TRUE;
 }
 
