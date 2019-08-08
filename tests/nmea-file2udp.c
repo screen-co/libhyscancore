@@ -49,6 +49,8 @@ on_data_received (HyScanNmeaFileDevice *device,
 {
   const gchar *nmea;
   guint size;
+  guint i;
+  gssize bytes_sent;
 
   GSocket *socket = user_data;
   gdouble dtime = time / 1000000.0;
@@ -56,11 +58,16 @@ on_data_received (HyScanNmeaFileDevice *device,
   nmea = hyscan_buffer_get (data, NULL, &size);
 
   /* Имитируем задержку в получении данных. */
-  g_usleep (g_random_int_range (0, 500) * G_TIME_SPAN_MILLISECOND);
+  bytes_sent = g_socket_send (socket, nmea, size, NULL, NULL);
 
-  g_socket_send (socket, nmea, size, NULL, NULL);
+  g_print ("Sent to UDP\n");
+  g_print ("Bytes sent: %ld\n", bytes_sent);
+  g_print ("Time: %.03fs\n", dtime);
 
-  g_print ("Send to UDP: time %.03fs\n%s\n", dtime, nmea);
+  g_print ("-- packet start --\n");
+  for (i = 0; i < size; ++i)
+    nmea[i] == '\0' ? g_print ("\\0") : g_print ("%c", nmea[i]);
+  g_print ("\n-- packet end --\n\n");
 }
 
 int
