@@ -82,7 +82,8 @@ static void     hyscan_mark_data_get_property            (GObject               
 static void     hyscan_mark_data_object_constructed      (GObject                *object);
 static void     hyscan_mark_data_object_finalize         (GObject                *object);
 
-static gchar *  hyscan_mark_data_generate_id             (void);
+static gchar *  hyscan_mark_data_generate_id             (HyScanMarkData         *data,
+                                                          gpointer                mark);
 
 static gboolean hyscan_mark_data_get_internal            (HyScanMarkData         *data,
                                                           const gchar            *id,
@@ -97,12 +98,15 @@ static void
 hyscan_mark_data_class_init (HyScanMarkDataClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  HyScanMarkDataClass *data_class = HYSCAN_MARK_DATA_CLASS (klass);
 
   object_class->set_property = hyscan_mark_data_set_property;
   object_class->get_property = hyscan_mark_data_get_property;
 
   object_class->constructed = hyscan_mark_data_object_constructed;
   object_class->finalize = hyscan_mark_data_object_finalize;
+
+  data_class->generate_id = hyscan_mark_data_generate_id;
 
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
@@ -204,11 +208,11 @@ hyscan_mark_data_object_constructed (GObject *object)
     }
 
   /* Открываем (или создаем) группу параметров. */
-  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, klass->schema_id);
+  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, klass->group_name);
   if (priv->param_id <= 0)
     {
       g_warning ("HyScanMarkData: can't open group %s (project '%s')",
-                 klass->schema_id, priv->project);
+                 klass->group_name, priv->project);
       goto exit;
     }
 
@@ -217,17 +221,7 @@ hyscan_mark_data_object_constructed (GObject *object)
 
   /* Добавляем названия параметров в списки. */
   for (i = 0; param_names[i] != NULL; ++i)
-    {
-      hyscan_param_list_add (priv->read_plist, param_names[i]);
-      hyscan_param_list_add (priv->write_plist, param_names[i]);
-    }
-
-  /* Добавляем названия параметров из наследников. */
-  if (klass->init_plist != NULL)
-    {
-      klass->init_plist (data, priv->read_plist);
-      klass->init_plist (data, priv->write_plist);
-    }
+    hyscan_param_list_add (priv->read_plist, param_names[i]);
 
   /* В список на чтение дополнительно запихиваем version и id. */
   hyscan_param_list_add (priv->read_plist, "/schema/id");
@@ -262,7 +256,8 @@ hyscan_mark_data_object_finalize (GObject *object)
 
 /* Функция генерирует идентификатор. */
 static gchar*
-hyscan_mark_data_generate_id (void)
+hyscan_mark_data_generate_id (HyScanMarkData *data,
+                              gpointer        mark)
 {
   static gchar dict[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   guint i;
@@ -288,41 +283,41 @@ hyscan_mark_data_get_internal (HyScanMarkData *data,
 {
   HyScanMarkDataPrivate *priv = data->priv;
   HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
-  gint64 sid, sver;
 
-  if (!hyscan_db_param_get (priv->db, priv->param_id, id, priv->read_plist))
-    return FALSE;
+  HyScanDataSchema *schema = NULL;
+  const gchar *schema_id;
+  HyScanParamList *read_plist = NULL;
+  gboolean read_status;
 
-  if (klass->get_full != NULL)
-    return klass->get_full (data, priv->read_plist, mark);
+  g_return_val_if_fail (klass->get_full != NULL, FALSE);
 
-  sid = hyscan_param_list_get_integer (priv->read_plist, "/schema/id");
-  sver = hyscan_param_list_get_integer (priv->read_plist, "/schema/version");
-
-  if (sid != klass->param_sid || sver != klass->param_sver)
-    return FALSE;
-
-  if (mark != NULL)
+  /* Определяем схему данных запрошенного объекта. */
+  schema = hyscan_db_param_object_get_schema (priv->db, priv->param_id, id);
+  if (schema == NULL)
     {
-      hyscan_mark_set_text   (mark,
-                              hyscan_param_list_get_string (priv->read_plist,  "/name"),
-                              hyscan_param_list_get_string (priv->read_plist,  "/description"),
-                              hyscan_param_list_get_string (priv->read_plist,  "/operator"));
-      hyscan_mark_set_labels (mark,
-                              hyscan_param_list_get_integer (priv->read_plist, "/label"));
-      hyscan_mark_set_ctime  (mark,
-                              hyscan_param_list_get_integer (priv->read_plist, "/ctime"));
-      hyscan_mark_set_mtime  (mark,
-                              hyscan_param_list_get_integer (priv->read_plist, "/mtime"));
-      hyscan_mark_set_size   (mark,
-                              hyscan_param_list_get_double (priv->read_plist, "/width"),
-                              hyscan_param_list_get_double (priv->read_plist, "/height"));
-
-      if (klass->get != NULL)
-        klass->get (data, priv->read_plist, mark);
+      g_warning ("HyScanMarkData: failed to determine schema of <%s>", id);
+      return FALSE;
     }
+  schema_id = hyscan_data_schema_get_id (schema);
 
-  return TRUE;
+  /* Получаем список параметров для чтения этой схемы. */
+  if (klass->get_read_plist != NULL)
+    read_plist = klass->get_read_plist (data, schema_id);
+  else
+    read_plist = g_object_ref (priv->read_plist);
+
+  /* Считываем параметры объекта и формируем из него структуру. */
+  read_status = hyscan_db_param_get (priv->db, priv->param_id, id, read_plist);
+  if (!read_status)
+    goto exit;
+
+  read_status = klass->get_full (data, read_plist, mark);
+
+exit:
+  g_clear_object (&schema);
+  g_clear_object (&read_plist);
+
+  return read_status;
 }
 
 /* Функция записывает значения в существующий объект. */
@@ -333,26 +328,11 @@ hyscan_mark_data_set_internal (HyScanMarkData    *data,
 {
   HyScanMarkDataPrivate *priv = data->priv;
   HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
+
+  hyscan_param_list_clear (priv->write_plist);
 
   if (klass->set_full != NULL)
-    {
-      klass->set_full (data, priv->write_plist, mark);
-    }
-  else
-    {
-      hyscan_param_list_set_string (priv->write_plist, "/name", any->name);
-      hyscan_param_list_set_string (priv->write_plist, "/description", any->description);
-      hyscan_param_list_set_integer (priv->write_plist, "/label", any->labels);
-      hyscan_param_list_set_string (priv->write_plist, "/operator", any->operator_name);
-      hyscan_param_list_set_integer (priv->write_plist, "/ctime", any->ctime);
-      hyscan_param_list_set_integer (priv->write_plist, "/mtime", any->mtime);
-      hyscan_param_list_set_double (priv->write_plist, "/width", any->width);
-      hyscan_param_list_set_double (priv->write_plist, "/height", any->height);
-
-      if (klass->set != NULL)
-        klass->set (data, priv->write_plist, mark);
-    }
+    klass->set_full (data, priv->write_plist, mark);
 
   return hyscan_db_param_set (priv->db, priv->param_id, id, priv->write_plist);
 }
@@ -385,21 +365,36 @@ hyscan_mark_data_is_ready (HyScanMarkData *data)
  * Returns: %TRUE, если удалось добавить метку, иначе %FALSE.
  */
 gboolean
-hyscan_mark_data_add (HyScanMarkData *data,
-                      HyScanMark     *mark)
+hyscan_mark_data_add (HyScanMarkData  *data,
+                      gpointer         mark,
+                      gchar          **given_id)
 {
   gchar *id;
-  gboolean status;
+  gboolean status = FALSE;
   HyScanMarkDataPrivate *priv;
   HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
+  const gchar *schema_id = NULL;
 
   g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), FALSE);
   priv = data->priv;
 
-  id = hyscan_mark_data_generate_id ();
+  id = klass->generate_id (data, mark);
+  if (id == NULL)
+    {
+      g_message ("HyScanMarkData: failed to generate object id");
+      goto exit;
+    }
 
-  status = hyscan_db_param_object_create (priv->db, priv->param_id,
-                                          id, klass->schema_id);
+  if (klass->get_schema_id != NULL)
+    schema_id = klass->get_schema_id (data, mark);
+
+  if (schema_id == NULL)
+    {
+      g_message ("HyScanMarkData: undefined schema of object %s", id);
+      goto exit;
+    }
+
+  status = hyscan_db_param_object_create (priv->db, priv->param_id, id, schema_id);
   if (!status)
     {
       g_info ("Failed to create object %s", id);
@@ -409,7 +404,11 @@ hyscan_mark_data_add (HyScanMarkData *data,
   status = hyscan_mark_data_set_internal (data, id, mark);
 
 exit:
-  g_free (id);
+  if (status && given_id != NULL)
+    *given_id = id;
+  else
+    g_free (id);
+
   return status;
 }
 
@@ -446,7 +445,7 @@ hyscan_mark_data_remove (HyScanMarkData *data,
 gboolean
 hyscan_mark_data_modify (HyScanMarkData *data,
                          const gchar    *id,
-                         HyScanMark     *mark)
+                         gconstpointer   mark)
 {
   g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), FALSE);
 
@@ -493,7 +492,7 @@ hyscan_mark_data_get_ids (HyScanMarkData *data,
  * Returns: указатель на структуру #HyScanMark, %NULL в случае ошибки. Для
  *   удаления hyscan_mark_free().
  */
-HyScanMark *
+gpointer
 hyscan_mark_data_get (HyScanMarkData *data,
                       const gchar    *id)
 {
@@ -504,12 +503,12 @@ hyscan_mark_data_get (HyScanMarkData *data,
   g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), FALSE);
   klass = HYSCAN_MARK_DATA_GET_CLASS (data);
 
-  mark = hyscan_mark_new (klass->mark_type);
+  mark = klass->object_new (data, id);
 
   status = hyscan_mark_data_get_internal (data, id, mark);
 
   if (!status)
-    g_clear_pointer (&mark, hyscan_mark_free);
+    g_clear_pointer (&mark, klass->object_destroy);
 
   return mark;
 }
@@ -529,4 +528,26 @@ hyscan_mark_data_get_mod_count (HyScanMarkData *data)
   g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), 0);
 
   return hyscan_db_get_mod_count (data->priv->db, data->priv->param_id);
+}
+
+gpointer
+hyscan_mark_data_copy (HyScanMarkData *data,
+                       gconstpointer   mark)
+{
+  HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
+
+  g_return_val_if_fail (HYSCAN_IS_MARK_DATA (data), NULL);
+
+  return klass->object_copy (mark);
+}
+
+void
+hyscan_mark_data_destroy (HyScanMarkData *data,
+                          gpointer        mark)
+{
+  HyScanMarkDataClass *klass = HYSCAN_MARK_DATA_GET_CLASS (data);
+
+  g_return_if_fail (HYSCAN_IS_MARK_DATA (data));
+
+  klass->object_destroy (mark);
 }

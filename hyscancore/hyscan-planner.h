@@ -49,10 +49,18 @@ G_BEGIN_DECLS
 #define HYSCAN_PLANNER_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_PLANNER, HyScanPlannerClass))
 
 typedef struct _HyScanPlanner HyScanPlanner;
+typedef union _HyScanPlannerObject HyScanPlannerObject;
 typedef struct _HyScanPlannerTrack HyScanPlannerTrack;
 typedef struct _HyScanPlannerZone HyScanPlannerZone;
 typedef struct _HyScanPlannerPrivate HyScanPlannerPrivate;
 typedef struct _HyScanPlannerClass HyScanPlannerClass;
+
+typedef enum
+{
+  HYSCAN_PLANNER_INVALID,
+  HYSCAN_PLANNER_ZONE,
+  HYSCAN_PLANNER_TRACK,
+} HyScanPlannerObjectType;
 
 /**
  * HyScanPlannerTrack:
@@ -68,13 +76,13 @@ typedef struct _HyScanPlannerClass HyScanPlannerClass;
  */
 struct _HyScanPlannerTrack
 {
-  gchar             *id;
-  gchar             *zone_id;
-  guint              number;
-  gdouble            speed;
-  gchar             *name;
-  HyScanGeoGeodetic  start;
-  HyScanGeoGeodetic  end;
+  HyScanPlannerObjectType  type;
+  gchar                   *zone_id;
+  guint                    number;
+  gdouble                  speed;
+  gchar                   *name;
+  HyScanGeoGeodetic        start;
+  HyScanGeoGeodetic        end;
 };
 
 /**
@@ -88,12 +96,19 @@ struct _HyScanPlannerTrack
  */
 struct _HyScanPlannerZone
 {
-  gchar             *id;
-  gchar             *name;
-  HyScanGeoGeodetic *points;
-  gsize              points_len;
-  gint64             mtime;
-  gint64             ctime;
+  HyScanPlannerObjectType  type;
+  gchar                   *name;
+  HyScanGeoGeodetic       *points;
+  gsize                    points_len;
+  gint64                   ctime;
+  gint64                   mtime;
+};
+
+union _HyScanPlannerObject
+{
+  HyScanPlannerObjectType type;
+  HyScanPlannerTrack      track;
+  HyScanPlannerZone       zone;
 };
 
 struct _HyScanPlanner
@@ -114,6 +129,33 @@ GType                  hyscan_planner_get_type         (void);
 HYSCAN_API
 HyScanPlanner *        hyscan_planner_new              (HyScanDB                 *db,
                                                         const gchar              *project_name);
+
+HYSCAN_API
+HyScanPlannerObject *  hyscan_planner_get              (HyScanPlanner            *planner,
+                                                        const gchar              *id);
+
+HYSCAN_API
+HyScanPlannerObject *  hyscan_planner_object_copy      (HyScanPlannerObject      *object);
+
+HYSCAN_API
+void                   hyscan_planner_object_free      (HyScanPlannerObject      *object);
+
+HYSCAN_API
+gchar **               hyscan_planner_get_ids          (HyScanPlanner            *planner,
+                                                        guint                    *len);
+
+HYSCAN_API
+gboolean               hyscan_planner_add              (HyScanPlanner            *planner,
+                                                        HyScanPlannerObject      *object);
+
+HYSCAN_API
+gboolean               hyscan_planner_modify           (HyScanPlanner            *planner,
+                                                        const gchar              *id,
+                                                        HyScanPlannerObject      *object);
+
+HYSCAN_API
+gboolean               hyscan_planner_remove           (HyScanPlanner            *planner,
+                                                        const gchar              *id);
 
 HYSCAN_API
 gchar **               hyscan_planner_zone_list        (HyScanPlanner            *planner);
@@ -159,6 +201,18 @@ gboolean               hyscan_planner_track_remove     (HyScanPlanner           
 
 HYSCAN_API
 void                   hyscan_planner_track_free       (HyScanPlannerTrack        *track);
+
+HYSCAN_API
+HyScanPlannerTrack *   hyscan_planner_track_copy       (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+HyScanPlannerZone *    hyscan_planner_zone_copy        (const HyScanPlannerZone   *zone);
+
+HYSCAN_API
+guint32                hyscan_planner_get_mod_count    (HyScanPlanner             *planner);
+
+HYSCAN_API
+HyScanPlannerObjectType hyscan_planner_object_type     (HyScanPlannerObject       *object);
 
 G_END_DECLS
 

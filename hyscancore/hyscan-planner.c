@@ -237,6 +237,9 @@ hyscan_planner_object_list (HyScanPlanner *planner,
   if (objects == NULL)
     return NULL;
 
+  if (prefix == NULL)
+    return objects;
+
   /* Складываем в буфер объекты с нужным префиксом. */
   buffer = g_new (gchar *, g_strv_length (objects) + 1);
   n_tracks = 0;
@@ -389,6 +392,93 @@ hyscan_planner_new (HyScanDB    *db,
                        NULL);
 }
 
+HyScanPlannerObject *
+hyscan_planner_get (HyScanPlanner *planner,
+                    const gchar   *id)
+{
+  if (hyscan_planner_zone_validate_id (id))
+    return (HyScanPlannerObject *) hyscan_planner_zone_get (planner, id);
+  else if (hyscan_planner_track_validate_id (id))
+    return (HyScanPlannerObject *) hyscan_planner_track_get (planner, id);
+  else
+    return NULL;
+}
+
+HyScanPlannerObject *
+hyscan_planner_object_copy (HyScanPlannerObject *object)
+{
+  HyScanPlannerObject *copy;
+
+  copy = g_slice_new (HyScanPlannerObject);
+
+  if (object->type == HYSCAN_PLANNER_TRACK)
+    {
+      HyScanPlannerTrack *track_copy, *track;
+
+      track_copy = &copy->track;
+      track = &object->track;
+
+      track_copy->type = track->type;
+      track_copy->zone_id = g_strdup (track->zone_id);
+      track_copy->number = track->number;
+      track_copy->speed = track->speed;
+      track_copy->name = g_strdup (track->name);
+      track_copy->start = track->start;
+      track_copy->end = track->end;
+
+      return copy;
+    }
+
+  else if (object->type == HYSCAN_PLANNER_ZONE)
+    {
+      HyScanPlannerZone *zone_copy, *zone;
+
+      zone_copy = &copy->zone;
+      zone = &object->zone;
+
+      zone_copy->type = zone->type;
+      zone_copy->name = g_strdup (zone->name);
+      zone_copy->points_len = zone->points_len;
+      zone_copy->points = g_new0 (HyScanGeoGeodetic, zone->points_len);
+      memcpy (zone_copy->points, zone->points, sizeof (HyScanGeoGeodetic) * zone->points_len);
+      zone_copy->ctime = zone->ctime;
+      zone_copy->mtime = zone->mtime;
+
+      return copy;
+    }
+
+  else
+    {
+      g_slice_free (HyScanPlannerObject, copy);
+      return NULL;
+    }
+}
+
+void
+hyscan_planner_object_free (HyScanPlannerObject *object)
+{
+  if (object->type == HYSCAN_PLANNER_ZONE)
+    hyscan_planner_zone_free (&object->zone);
+  else if (object->type == HYSCAN_PLANNER_TRACK)
+    hyscan_planner_track_free (&object->track);
+  else
+    g_warn_if_reached ();
+}
+
+gchar **
+hyscan_planner_get_ids (HyScanPlanner *planner,
+                        guint         *len)
+{
+  gchar **ids;
+
+  ids = hyscan_planner_object_list (planner, NULL);
+
+  if (len != NULL)
+    *len = (ids != NULL) ? g_strv_length (ids) : 0;
+
+  return ids;
+}
+
 /**
  * hyscan_planner_zone_list:
  * @planner: указатель на #HyScanPlanner
@@ -443,25 +533,6 @@ error:
 }
 
 /**
- * hyscan_planner_zone_set:
- * @planner: указатель на #HyScanPlanner
- * @zone: структура #HyScanPlannerZone с параметрами зоны
- *
- * Сохраняет параметры зоны в параметрах проекта, считывая их из структуры @zone.
- *
- * Returns: %TRUE, если параметры были установлены
- */
-gboolean
-hyscan_planner_zone_set (HyScanPlanner           *planner,
-                         const HyScanPlannerZone *zone)
-{
-  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), FALSE);
-  g_return_val_if_fail (zone->id != NULL, FALSE);
-
-  return hyscan_planner_zone_set_internal (planner, zone->id, zone);
-}
-
-/**
  * hyscan_planner_zone_get:
  * @planner: указатель на #HyScanPlanner
  * @zone_id: идентификатор зоны полигона
@@ -503,7 +574,7 @@ hyscan_planner_zone_get (HyScanPlanner *planner,
     return FALSE;
 
   zone = g_slice_new (HyScanPlannerZone);
-  zone->id = g_strdup (zone_id);
+  zone->type = HYSCAN_PLANNER_ZONE;
   zone->name = hyscan_param_list_dup_string (param_list, "/name");
   zone->mtime = hyscan_param_list_get_integer (param_list, "/mtime");
   zone->ctime = hyscan_param_list_get_integer (param_list, "/ctime");
@@ -563,7 +634,6 @@ hyscan_planner_zone_free (HyScanPlannerZone *zone)
 {
   g_free (zone->points);
   g_free (zone->name);
-  g_free (zone->id);
   g_slice_free (HyScanPlannerZone, zone);
 }
 
@@ -636,24 +706,6 @@ error:
   return NULL;
 }
 
-/**
- * hyscan_planner_track_set:
- * @planner: указатель на #HyScanPlanner
- * @track: структура #HyScanPlannerTrack с параметрами зоны
- *
- * Сохраняет параметры зоны в параметрах проекта, считывая их из структуры @track.
- *
- * Returns: %TRUE, если параметры были установлены
- */
-gboolean
-hyscan_planner_track_set (HyScanPlanner            *planner,
-                          const HyScanPlannerTrack *track)
-{
-  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), FALSE);
-  g_return_val_if_fail (track->id != NULL, FALSE);
-
-  return hyscan_planner_track_set_internal (planner, track->id, track);
-}
 
 /**
  * hyscan_planner_track_get:
@@ -699,7 +751,7 @@ hyscan_planner_track_get (HyScanPlanner *planner,
     goto exit;
 
   track = g_slice_new (HyScanPlannerTrack);
-  track->id = g_strdup (track_id);
+  track->type = HYSCAN_PLANNER_TRACK;
   track->zone_id = hyscan_param_list_dup_string (param_list, "/zone-id");
   track->number = hyscan_param_list_get_integer (param_list, "/number");
   track->speed = hyscan_param_list_get_double (param_list, "/speed");
@@ -749,8 +801,52 @@ hyscan_planner_track_remove (HyScanPlanner *planner,
 void
 hyscan_planner_track_free (HyScanPlannerTrack *track)
 {
-  g_free (track->id);
   g_free (track->zone_id);
   g_free (track->name);
   g_slice_free (HyScanPlannerTrack, track);
+}
+
+HyScanPlannerTrack *
+hyscan_planner_track_copy (const HyScanPlannerTrack *track)
+{
+  HyScanPlannerTrack *copy;
+
+  copy = g_slice_new (HyScanPlannerTrack);
+  copy->type = track->type;
+  copy->zone_id = g_strdup (track->zone_id);
+  copy->name = g_strdup (track->name);
+  copy->number = track->number;
+  copy->speed = track->speed;
+  copy->start = track->start;
+  copy->end = track->end;
+
+  return copy;
+}
+
+HyScanPlannerZone *
+hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
+{
+  HyScanPlannerZone *copy;
+
+  copy = g_slice_new (HyScanPlannerZone);
+  copy->type = zone->type;
+  copy->name = g_strdup (zone->name);
+  copy->ctime = zone->ctime;
+  copy->mtime = zone->mtime;
+  copy->points_len = zone->points_len;
+  copy->points = g_new0 (HyScanGeoGeodetic, zone->points_len);
+  memcpy (copy->points, zone->points, sizeof (HyScanGeoGeodetic) * zone->points_len);
+
+  return copy;
+}
+
+guint32
+hyscan_planner_get_mod_count (HyScanPlanner *planner)
+{
+  HyScanPlannerPrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_PLANNER (planner), 0);
+  priv = planner->priv;
+
+  return hyscan_db_get_mod_count (priv->db, priv->param_id);
 }

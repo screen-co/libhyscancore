@@ -62,47 +62,48 @@ struct _HyScanMarkData
 
 /**
  * HyScanMarkDataClass:
- * @mark_type: тип метки
- * @schema_id: идентификатор схемы меток
- * @param_sid: значение параметра /schema/id для метки
- * @param_sver: значение параметра /schema/version для метки
- * @init_plist: функция добавляет в список параметров дополнительные ключи
- * @get: функция считывает содержимое объекта
- * @set: функция записывает значения в существующий объект
+ * @group_name: названия группы параметров проекта
+ * @init_obj: функция выполняется при создании объекта класса #HyScanMarkData
+ * @object_new: функция создаёт структуру объекта, соответствующего указанному ID
+ * @object_copy: функция создаёт структуру с копией указанного объекта
+ * @object_destroy: освобождает память, выделенную функциями object_new и object_copy
+ * @get_read_plist: функция возвращает список параметров #HyScanParamList для чтения объекта с указанным ID
  * @get_full: функция считывает содержимое объекта
  * @set_full: функция записывает значения в существующий объект
  */
 struct _HyScanMarkDataClass
 {
-  GObjectClass   parent_class;
+  GObjectClass       parent_class;
 
-  HyScanMarkType mark_type;
-  const gchar   *schema_id;
-  gint64         param_sid;
-  gint64         param_sver;
+  const gchar       *group_name;
 
-  void           (*init_obj)     (HyScanMarkData    *data,
-                                  gint32             param_id,
-                                  HyScanDB          *db);
-  
-  void           (*init_plist)   (HyScanMarkData    *data,
-                                  HyScanParamList   *plist);
+  void               (*init_obj)         (HyScanMarkData    *data,
+                                          gint32             param_id,
+                                          HyScanDB          *db);
 
-  void           (*get)          (HyScanMarkData    *data,
-                                  HyScanParamList   *read_plist,
-                                  HyScanMark        *mark);
-  
-  void           (*set)          (HyScanMarkData    *data,
-                                  HyScanParamList   *write_plist,
-                                  const HyScanMark  *mark);
+  gpointer           (*object_new)       (HyScanMarkData    *data,
+                                          const gchar       *id);
 
-  gboolean       (*get_full)     (HyScanMarkData    *data,
-                                  HyScanParamList   *read_plist,
-                                  HyScanMark        *mark);
+  gpointer           (*object_copy)      (gconstpointer      object);
 
-  gboolean       (*set_full)     (HyScanMarkData    *data,
-                                  HyScanParamList   *write_plist,
-                                  const HyScanMark  *mark);
+  void               (*object_destroy)   (gpointer           object);
+
+  HyScanParamList *  (*get_read_plist)   (HyScanMarkData    *data,
+                                          const gchar       *schema_id);
+
+  gboolean           (*get_full)         (HyScanMarkData    *data,
+                                          HyScanParamList   *read_plist,
+                                          gpointer           mark);
+
+  gboolean           (*set_full)         (HyScanMarkData    *data,
+                                          HyScanParamList   *write_plist,
+                                          gconstpointer      mark);
+
+  gchar *            (*generate_id)      (HyScanMarkData    *data,
+                                          gpointer           mark);
+
+  const gchar *      (*get_schema_id)    (HyScanMarkData    *data,
+                                          gpointer           mark);
 };
 
 HYSCAN_API
@@ -113,23 +114,32 @@ gboolean                        hyscan_mark_data_is_ready          (HyScanMarkDa
 
 HYSCAN_API
 gboolean                        hyscan_mark_data_add               (HyScanMarkData    *data,
-                                                                    HyScanMark        *mark);
+                                                                    gpointer           mark,
+                                                                    gchar            **id);
 
 HYSCAN_API
 gboolean                        hyscan_mark_data_remove            (HyScanMarkData    *data,
                                                                     const gchar       *id);
 
 HYSCAN_API
+gpointer                        hyscan_mark_data_copy              (HyScanMarkData   *data,
+                                                                    gconstpointer     mark);
+
+HYSCAN_API
+void                            hyscan_mark_data_destroy           (HyScanMarkData   *data,
+                                                                    gpointer          mark);
+
+HYSCAN_API
 gboolean                        hyscan_mark_data_modify            (HyScanMarkData    *data,
                                                                     const gchar       *id,
-                                                                    HyScanMark        *mark);
+                                                                    gconstpointer      mark);
 
 HYSCAN_API
 gchar **                        hyscan_mark_data_get_ids           (HyScanMarkData    *data,
                                                                     guint             *len);
 
 HYSCAN_API
-HyScanMark *                    hyscan_mark_data_get               (HyScanMarkData    *data,
+gpointer                        hyscan_mark_data_get               (HyScanMarkData    *data,
                                                                     const gchar       *id);
 
 HYSCAN_API

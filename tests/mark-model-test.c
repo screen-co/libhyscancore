@@ -104,7 +104,7 @@ main (int argc, char **argv)
 
   loop = g_main_loop_new (NULL, TRUE);
 
-  model = hyscan_mark_model_new (HYSCAN_MARK_WATERFALL);
+  model = hyscan_mark_model_new (HYSCAN_TYPE_MARK_DATA_WATERFALL);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
   hyscan_mark_model_set_project (model, db, name);
 

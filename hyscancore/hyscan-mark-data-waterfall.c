@@ -83,28 +83,30 @@ static  HyScanSourceType type_table[] =
 
 struct _HyScanMarkDataWaterfallPrivate
 {
-  gint64 schema_id;
-  gint64 schema_version;
+  gint64           schema_id;
+  gint64           schema_version;
+  HyScanParamList *read_plist;
 };
 
-static void           hyscan_mark_data_waterfall_init_plist     (HyScanMarkData   *data,
-                                                                 HyScanParamList  *plist);
-static void           hyscan_mark_data_waterfall_get            (HyScanMarkData   *data,
-                                                                 HyScanParamList  *read_plist,
-                                                                 HyScanMark       *mark);
-static gboolean       hyscan_mark_data_waterfall_get_full       (HyScanMarkData   *data,
-                                                                 HyScanParamList  *read_plist,
-                                                                 HyScanMark       *mark);
-static void           hyscan_mark_data_waterfall_set            (HyScanMarkData   *data,
-                                                                 HyScanParamList  *write_plist,
-                                                                 const HyScanMark *mark);
-static gboolean       hyscan_mark_data_waterfall_set_full       (HyScanMarkData   *data,
-                                                                 HyScanParamList  *write_plist,
-                                                                 const HyScanMark *mark);
-static void
-hyscan_mark_data_waterfall_init_object (HyScanMarkData *data,
-                                        gint32          param_id,
-                                        HyScanDB       *db);
+static void              hyscan_mark_data_waterfall_object_constructed (GObject          *object);
+static void              hyscan_mark_data_waterfall_object_finalize    (GObject          *object);
+static gboolean          hyscan_mark_data_waterfall_get_full           (HyScanMarkData   *data,
+                                                                        HyScanParamList  *read_plist,
+                                                                        gpointer          object);
+static gboolean          hyscan_mark_data_waterfall_set_full           (HyScanMarkData   *data,
+                                                                        HyScanParamList  *write_plist,
+                                                                        gconstpointer     object);
+static gpointer          hyscan_mark_data_waterfall_object_new         (HyScanMarkData   *data,
+                                                                        const gchar      *id);
+static void              hyscan_mark_data_waterfall_object_destroy     (gpointer          object);
+static gpointer          hyscan_mark_data_waterfall_object_copy        (gconstpointer     object);
+static void              hyscan_mark_data_waterfall_init_object        (HyScanMarkData   *data,
+                                                                        gint32            param_id,
+                                                                        HyScanDB         *db);
+static HyScanParamList * hyscan_mark_data_waterfall_get_read_plist     (HyScanMarkData    *data,
+                                                                        const gchar       *schema_id);
+static const gchar *     hyscan_mark_data_waterfall_get_schema_id      (HyScanMarkData    *data,
+                                                                        gpointer           mark);
 
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkDataWaterfall, hyscan_mark_data_waterfall, HYSCAN_TYPE_MARK_DATA);
@@ -112,19 +114,21 @@ G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkDataWaterfall, hyscan_mark_data_waterfall,
 static void
 hyscan_mark_data_waterfall_class_init (HyScanMarkDataWaterfallClass *klass)
 {
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
   HyScanMarkDataClass *data_class = HYSCAN_MARK_DATA_CLASS (klass);
 
-  data_class->mark_type = HYSCAN_MARK_WATERFALL;
-  data_class->schema_id = WATERFALL_MARK_SCHEMA;
-  data_class->param_sid = WATERFALL_MARK_SCHEMA_ID;
-  data_class->param_sver = WATERFALL_MARK_SCHEMA_VERSION;
+  object_class->constructed = hyscan_mark_data_waterfall_object_constructed;
+  object_class->finalize = hyscan_mark_data_waterfall_object_finalize;
 
-  data_class->init_plist = hyscan_mark_data_waterfall_init_plist;
+  data_class->group_name = WATERFALL_MARK_SCHEMA;
+  data_class->get_schema_id = hyscan_mark_data_waterfall_get_schema_id;
+  data_class->object_new = hyscan_mark_data_waterfall_object_new;
+  data_class->object_destroy = hyscan_mark_data_waterfall_object_destroy;
+  data_class->object_copy = hyscan_mark_data_waterfall_object_copy;
   data_class->init_obj = hyscan_mark_data_waterfall_init_object;
-  data_class->set = hyscan_mark_data_waterfall_set;
   data_class->set_full = hyscan_mark_data_waterfall_set_full;
-  data_class->get = hyscan_mark_data_waterfall_get;
   data_class->get_full = hyscan_mark_data_waterfall_get_full;
+  data_class->get_read_plist = hyscan_mark_data_waterfall_get_read_plist;
 }
 
 static void
@@ -134,14 +138,72 @@ hyscan_mark_data_waterfall_init (HyScanMarkDataWaterfall *data)
 }
 
 static void
-hyscan_mark_data_waterfall_init_plist (HyScanMarkData  *data,
-                                       HyScanParamList *plist)
+hyscan_mark_data_waterfall_object_constructed (GObject *object)
 {
-  /* Добавляем названия параметров в списки. */
-  hyscan_param_list_add (plist, "/track");
-  hyscan_param_list_add (plist, "/source");
-  hyscan_param_list_add (plist, "/index");
-  hyscan_param_list_add (plist, "/count");
+  HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (object)->priv;
+
+  G_OBJECT_CLASS (hyscan_mark_data_waterfall_parent_class)->constructed (object);
+
+  /* Добавляем названия считываемых параметров. */
+  priv->read_plist = hyscan_param_list_new ();
+  hyscan_param_list_add (priv->read_plist, "/schema/id");
+  hyscan_param_list_add (priv->read_plist, "/schema/version");
+  hyscan_param_list_add (priv->read_plist, "/name");
+  hyscan_param_list_add (priv->read_plist, "/description");
+  hyscan_param_list_add (priv->read_plist, "/operator");
+  hyscan_param_list_add (priv->read_plist, "/label");
+  hyscan_param_list_add (priv->read_plist, "/ctime");
+  hyscan_param_list_add (priv->read_plist, "/mtime");
+  hyscan_param_list_add (priv->read_plist, "/width");
+  hyscan_param_list_add (priv->read_plist, "/height");
+  hyscan_param_list_add (priv->read_plist, "/track");
+  hyscan_param_list_add (priv->read_plist, "/source");
+  hyscan_param_list_add (priv->read_plist, "/index");
+  hyscan_param_list_add (priv->read_plist, "/count");
+}
+
+static void
+hyscan_mark_data_waterfall_object_finalize (GObject *object)
+{
+  HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (object)->priv;
+
+  g_object_unref (priv->read_plist);
+  G_OBJECT_CLASS (hyscan_mark_data_waterfall_parent_class)->finalize (object);
+}
+
+static HyScanParamList *
+hyscan_mark_data_waterfall_get_read_plist (HyScanMarkData *data,
+                                           const gchar    *schema_id)
+{
+  HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (data)->priv;
+
+  return g_object_ref (priv->read_plist);
+}
+
+static const gchar *
+hyscan_mark_data_waterfall_get_schema_id (HyScanMarkData *data,
+                                          gpointer        mark)
+{
+  return WATERFALL_MARK_SCHEMA;
+}
+
+static gpointer
+hyscan_mark_data_waterfall_object_new (HyScanMarkData *data,
+                                       const gchar    *id)
+{
+  return hyscan_mark_new (HYSCAN_MARK_WATERFALL);
+}
+
+static void
+hyscan_mark_data_waterfall_object_destroy (gpointer object)
+{
+  hyscan_mark_free (object);
+}
+
+static gpointer
+hyscan_mark_data_waterfall_object_copy (gconstpointer object)
+{
+  return hyscan_mark_copy ((HyScanMark *) object);
 }
 
 static void
@@ -177,32 +239,13 @@ hyscan_mark_data_waterfall_init_object (HyScanMarkData *data,
 }
 
 /* Функция считывает содержимое объекта. */
-static void
-hyscan_mark_data_waterfall_get (HyScanMarkData  *data,
-                                HyScanParamList *read_plist,
-                                HyScanMark      *mark)
-{
-  HyScanMarkWaterfall *mark_wf;
-
-  g_return_if_fail (mark->type == HYSCAN_MARK_WATERFALL);
-  mark_wf = (HyScanMarkWaterfall *) mark;
-
-  hyscan_mark_waterfall_set_track  (mark_wf,
-                                    hyscan_param_list_get_string (read_plist,  "/track"));
-
-  hyscan_mark_waterfall_set_center (mark_wf,
-                                    hyscan_param_list_get_string (read_plist, "/source"),
-                                    hyscan_param_list_get_integer (read_plist, "/index"),
-                                    hyscan_param_list_get_integer (read_plist, "/count"));
-}
-
-/* Функция считывает содержимое объекта. */
 static gboolean
 hyscan_mark_data_waterfall_get_full (HyScanMarkData  *data,
                                      HyScanParamList *read_plist,
-                                     HyScanMark      *mark)
+                                     gpointer         object)
 {
   HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (data)->priv;
+  HyScanMark *mark = object;
   HyScanMarkWaterfall *mark_wf = (HyScanMarkWaterfall *) mark;
   gint64 sid, sver;
 
@@ -256,29 +299,13 @@ hyscan_mark_data_waterfall_get_full (HyScanMarkData  *data,
 }
 
 /* Функция записывает значения в существующий объект. */
-static void
-hyscan_mark_data_waterfall_set (HyScanMarkData   *data,
-                                HyScanParamList  *write_plist,
-                                const HyScanMark *mark)
-{
-  HyScanMarkWaterfall *mark_wf;
-
-  g_return_if_fail (mark->type == HYSCAN_MARK_WATERFALL);
-  mark_wf = (HyScanMarkWaterfall *) mark;
-
-  hyscan_param_list_set_string (write_plist, "/track", mark_wf->track);
-  hyscan_param_list_set_string (write_plist, "/source", mark_wf->source);
-  hyscan_param_list_set_integer (write_plist, "/index", mark_wf->index);
-  hyscan_param_list_set_integer (write_plist, "/count", mark_wf->count);
-}
-
-/* Функция записывает значения в существующий объект. */
 static gboolean
 hyscan_mark_data_waterfall_set_full (HyScanMarkData   *data,
                                      HyScanParamList  *write_plist,
-                                     const HyScanMark *mark)
+                                     gconstpointer     object)
 {
   HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (data)->priv;
+  const HyScanMark *mark = object;
   HyScanMarkAny *any = (HyScanMarkAny *) mark;
   const HyScanMarkWaterfall *mark_wf = (const HyScanMarkWaterfall*)(&mark->waterfall);
 
@@ -318,21 +345,4 @@ hyscan_mark_data_waterfall_set_full (HyScanMarkData   *data,
     }
 
   return TRUE;
-}
-
-HyScanMarkData *
-hyscan_mark_data_waterfall_new (HyScanDB    * db,
-                                const gchar * project)
-{
-  HyScanMarkData * data;
-
-  data = g_object_new (HYSCAN_TYPE_MARK_DATA_WATERFALL,
-                       "db", db,
-                       "project", project,
-                       NULL);
-
-  if (!hyscan_mark_data_is_ready (data))
-    g_clear_object (&data);
-
-  return data;
 }

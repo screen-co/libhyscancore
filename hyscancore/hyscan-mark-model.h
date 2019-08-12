@@ -27,8 +27,11 @@
 #ifndef __HYSCAN_MARK_MODEL_H__
 #define __HYSCAN_MARK_MODEL_H__
 
-#include "hyscan-mark-data.h"
-#include "hyscan-mark.h"
+#include <hyscan-mark-data.h>
+#include <hyscan-mark.h>
+#include <hyscan-mark-data-geo.h>
+#include <hyscan-mark-data-waterfall.h>
+#include <hyscan-planner-data.h>
 
 G_BEGIN_DECLS
 
@@ -66,7 +69,7 @@ GType                   hyscan_mark_model_get_type        (void);
  * \return объект HyScanMarkModel.
  */
 HYSCAN_API
-HyScanMarkModel*        hyscan_mark_model_new             (HyScanMarkType             mark_type);
+HyScanMarkModel*        hyscan_mark_model_new             (GType             data_type);
 
 /**
  * Функция устанавливает проект.
@@ -98,7 +101,7 @@ void                    hyscan_mark_model_refresh         (HyScanMarkModel      
  */
 HYSCAN_API
 void                    hyscan_mark_model_add_mark        (HyScanMarkModel           *model,
-                                                           const HyScanMark          *mark);
+                                                           gconstpointer              mark);
 
 /**
  * Функция изменяет метку в базе данных.
@@ -140,7 +143,8 @@ GHashTable*             hyscan_mark_model_get             (HyScanMarkModel      
  * Вспомогательная функция для создания копии таблицы меток.
  */
 HYSCAN_API
-GHashTable*             hyscan_mark_model_copy            (GHashTable                *marks);
+GHashTable*             hyscan_mark_model_copy            (HyScanMarkModel           *model,
+                                                           GHashTable                *marks);
 
 G_END_DECLS
 

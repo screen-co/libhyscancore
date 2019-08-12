@@ -37,7 +37,7 @@ enum
 typedef struct
 {
   gchar               *id;        /* Идентификатор метки. */
-  HyScanMark          *mark;      /* Метка. */
+  gpointer             mark;      /* Метка. */
   gint                 action;    /* Требуемое действие. */
 } HyScanMarkModelTask;
 
@@ -51,7 +51,7 @@ typedef struct
 
 struct _HyScanMarkModelPrivate
 {
-  HyScanMarkType           mark_type;        /* Тип меток. */
+  GType                    data_type;        /* Класс работы с данными. */
   HyScanMarkModelState     cur_state;        /* Текущее состояние. */
   HyScanMarkModelState     new_state;        /* Желаемое состояние. */
   GMutex                   state_lock;       /* Блокировка состояния. */
@@ -81,17 +81,19 @@ static void     hyscan_mark_model_set_property             (GObject             
 static void     hyscan_mark_model_clear_state              (HyScanMarkModelState      *state);
 static gboolean hyscan_mark_model_track_sync               (HyScanMarkModelPrivate    *priv);
 
-static GHashTable * hyscan_mark_model_make_ht              (void);
-static void     hyscan_mark_model_add_task                 (HyScanMarkModelPrivate    *priv,
+static GHashTable * hyscan_mark_model_make_ht              (HyScanMarkModelPrivate    *priv);
+static void     hyscan_mark_model_add_task                 (HyScanMarkModel           *model,
                                                             const gchar               *id,
-                                                            const HyScanMark          *mark,
+                                                            gconstpointer              mark,
                                                             gint                       action);
-static void     hyscan_mark_model_free_task                (gpointer                   data);
+static void     hyscan_mark_model_free_task                (gpointer                   _task,
+                                                            gpointer                   _mdata);
 static void     hyscan_mark_model_do_task                  (gpointer                   data,
                                                             gpointer                   user_data);
 static void     hyscan_mark_model_do_all_tasks             (HyScanMarkModelPrivate    *priv,
                                                             HyScanMarkData            *data);
-static GHashTable * hyscan_mark_model_get_all_marks        (HyScanMarkData            *data);
+static GHashTable * hyscan_mark_model_get_all_marks        (HyScanMarkModelPrivate    *priv,
+                                                            HyScanMarkData            *data);
 static gpointer hyscan_mark_model_processing               (gpointer                   data);
 static gboolean hyscan_mark_model_signaller                (gpointer                   data);
 
@@ -109,9 +111,8 @@ hyscan_mark_model_class_init (HyScanMarkModelClass *klass)
   object_class->set_property = hyscan_mark_model_set_property;
 
   g_object_class_install_property (object_class, PROP_DATA_TYPE,
-      g_param_spec_int ("mark-type", "Type of marks to process",
-                        "HyScanMarkType of marks to process",
-                        HYSCAN_MARK_INVALID, HYSCAN_MARK_LAST - 1, HYSCAN_MARK_INVALID,
+    g_param_spec_gtype ("data-type", "Mark data type",
+                        "The GType of HyScanMarkData inheritor", HYSCAN_TYPE_MARK_DATA,
                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
   hyscan_mark_model_signals[SIGNAL_CHANGED] =
@@ -179,7 +180,7 @@ hyscan_mark_model_set_property (GObject      *object,
   switch (prop_id)
     {
     case PROP_DATA_TYPE:
-      priv->mark_type = g_value_get_int (value);
+      priv->data_type = g_value_get_gtype (value);
       break;
 
     default:
@@ -221,26 +222,38 @@ hyscan_mark_model_track_sync (HyScanMarkModelPrivate *priv)
 }
 
 static GHashTable *
-hyscan_mark_model_make_ht (void)
+hyscan_mark_model_make_ht (HyScanMarkModelPrivate *priv)
 {
-  return g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                                (GDestroyNotify)hyscan_mark_free);
+  HyScanMarkDataClass *data_class;
+  GDestroyNotify destroy_func;
+
+  data_class = g_type_class_ref (priv->data_type);
+  destroy_func = data_class->object_destroy;
+  g_type_class_unref (data_class);
+
+  return g_hash_table_new_full (g_str_hash, g_str_equal, g_free, destroy_func);
 }
 
 /* Функция создает новое задание. */
 static void
-hyscan_mark_model_add_task (HyScanMarkModelPrivate    *priv,
+hyscan_mark_model_add_task (HyScanMarkModel           *model,
                             const gchar               *id,
-                            const HyScanMark          *mark,
+                            gconstpointer              mark,
                             gint                       action)
 {
-  /* Создаем задание. */
+  HyScanMarkDataClass *klass;
+  HyScanMarkModelPrivate *priv = model->priv;
   HyScanMarkModelTask *task;
 
+  klass = g_type_class_ref (priv->data_type);
+
+  /* Создаем задание. */
   task = g_new (HyScanMarkModelTask, 1);
   task->action = action;
   task->id = (id != NULL) ? g_strdup (id) : NULL;
-  task->mark = hyscan_mark_copy ((HyScanMark*)mark);
+  task->mark = klass->object_copy (mark);
+
+  g_type_class_unref (klass);
 
   /* Отправляем задание в очередь. */
   g_mutex_lock (&priv->tasks_lock);
@@ -255,10 +268,13 @@ hyscan_mark_model_add_task (HyScanMarkModelPrivate    *priv,
 
 /* Функция освобождает задание. */
 static void
-hyscan_mark_model_free_task (gpointer data)
+hyscan_mark_model_free_task (gpointer _task,
+                             gpointer _mdata)
 {
-  HyScanMarkModelTask *task = data;
-  hyscan_mark_free (task->mark);
+  HyScanMarkModelTask *task = _task;
+  HyScanMarkData *mdata = _mdata;
+
+  hyscan_mark_data_destroy (mdata, task->mark);
   g_free (task->id);
   g_free (task);
 }
@@ -274,7 +290,7 @@ hyscan_mark_model_do_task (gpointer _task,
   switch (task->action)
     {
     case MARK_ADD:
-      if (!hyscan_mark_data_add (mdata, task->mark))
+      if (!hyscan_mark_data_add (mdata, task->mark, NULL))
         g_warning ("Failed to add mark");
       break;
 
@@ -306,12 +322,14 @@ hyscan_mark_model_do_all_tasks (HyScanMarkModelPrivate  *priv,
 
   /* Все задания отправляем в БД и очищаем наш временный список. */
   g_slist_foreach (tasks, hyscan_mark_model_do_task, data);
-  g_slist_free_full (tasks, hyscan_mark_model_free_task);
+  g_slist_foreach (tasks, hyscan_mark_model_free_task, data);
+  g_slist_free (tasks);
 }
 
 /* Функция забирает метки из БД. */
 static GHashTable *
-hyscan_mark_model_get_all_marks (HyScanMarkData *data)
+hyscan_mark_model_get_all_marks (HyScanMarkModelPrivate *priv,
+                                 HyScanMarkData         *data)
 {
   HyScanMark * mark;
   GHashTable * mark_list;
@@ -321,7 +339,7 @@ hyscan_mark_model_get_all_marks (HyScanMarkData *data)
   /* Считываем список идентификаторов. Прошу обратить внимание, что
    * возврат хэш-таблицы с 0 элементов -- это нормальная ситуация, например,
    * если раньше была 1 метка, а потом её удалили. */
-  mark_list = hyscan_mark_model_make_ht ();
+  mark_list = hyscan_mark_model_make_ht (priv);
   id_list = hyscan_mark_data_get_ids (data, &len);
 
   /* Поштучно копируем из БД в хэш-таблицу. */
@@ -390,12 +408,13 @@ hyscan_mark_model_processing (gpointer data)
           /* Создаем объект работы с метками. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
             {
-              if (priv->mark_type == HYSCAN_MARK_WATERFALL)
-                mdata = hyscan_mark_data_waterfall_new (priv->cur_state.db, priv->cur_state.project);
-              else if (priv->mark_type == HYSCAN_MARK_GEO)
-                mdata = hyscan_mark_data_geo_new (priv->cur_state.db, priv->cur_state.project);
-              else
-                g_assert_not_reached ();
+              mdata = g_object_new (priv->data_type,
+                                    "db", priv->cur_state.db,
+                                    "project", priv->cur_state.project,
+                                    NULL);
+
+              if (!hyscan_mark_data_is_ready (mdata))
+                g_clear_object (&mdata);
             }
 
           /* Если не получилось (например потому, что проект ещё не создан),
@@ -415,7 +434,7 @@ hyscan_mark_model_processing (gpointer data)
 
       /* Запоминаем мод_каунт перед(!) забором меток. */
       oldmc = hyscan_mark_data_get_mod_count (mdata);
-      mark_list = hyscan_mark_model_get_all_marks (mdata);
+      mark_list = hyscan_mark_model_get_all_marks (priv, mdata);
 
       /* Воруем хэш-таблицу из привата, помещаем туда свежесозданную,
        * инициируем отправление сигнала. */
@@ -456,10 +475,10 @@ hyscan_mark_model_signaller (gpointer data)
 
 /* Функция создает новый объект HyScanMarkModel. */
 HyScanMarkModel*
-hyscan_mark_model_new (HyScanMarkType mark_type)
+hyscan_mark_model_new (GType data_type)
 {
   return g_object_new (HYSCAN_TYPE_MARK_MODEL,
-                       "mark-type", mark_type, NULL);
+                       "data-type", data_type, NULL);
 }
 
 /* Функция устанавливает проект. */
@@ -504,11 +523,11 @@ hyscan_mark_model_refresh (HyScanMarkModel *model)
 /* Функция создает метку в базе данных. */
 void
 hyscan_mark_model_add_mark (HyScanMarkModel  *model,
-                            const HyScanMark *mark)
+                            gconstpointer     mark)
 {
   g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  hyscan_mark_model_add_task (model->priv, NULL, mark, MARK_ADD);
+  hyscan_mark_model_add_task (model, NULL, mark, MARK_ADD);
 }
 
 /* Функция изменяет метку в базе данных. */
@@ -519,7 +538,7 @@ hyscan_mark_model_modify_mark (HyScanMarkModel  *model,
 {
   g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  hyscan_mark_model_add_task (model->priv, id, mark, MARK_MODIFY);
+  hyscan_mark_model_add_task (model, id, mark, MARK_MODIFY);
 }
 
 /* Функция удаляет метку из базы данных. */
@@ -529,7 +548,7 @@ hyscan_mark_model_remove_mark (HyScanMarkModel *model,
 {
   g_return_if_fail (HYSCAN_IS_MARK_MODEL (model));
 
-  hyscan_mark_model_add_task (model->priv, id, NULL, MARK_REMOVE);
+  hyscan_mark_model_add_task (model, id, NULL, MARK_REMOVE);
 }
 
 /* Функция возвращает список меток из внутреннего буфера. */
@@ -552,28 +571,37 @@ hyscan_mark_model_get (HyScanMarkModel *model)
     }
 
   /* Копируем метки. */
-  marks = hyscan_mark_model_copy (priv->marks);
+  marks = hyscan_mark_model_copy (model, priv->marks);
   g_mutex_unlock (&priv->marks_lock);
 
   return marks;
 }
 
 GHashTable *
-hyscan_mark_model_copy (GHashTable *src)
+hyscan_mark_model_copy (HyScanMarkModel *model,
+                        GHashTable      *src)
 {
+  HyScanMarkModelPrivate *priv;
+  HyScanMarkDataClass *data_class;
   GHashTable *dst;
   GHashTableIter iter;
   gpointer k, v;
 
+  g_return_val_if_fail (HYSCAN_IS_MARK_MODEL (model), NULL);
+  priv = model->priv;
+
   if (src == NULL)
     return NULL;
 
-  dst = hyscan_mark_model_make_ht ();
+  dst = hyscan_mark_model_make_ht (priv);
+  data_class = g_type_class_ref (priv->data_type);
 
   /* Переписываем метки. */
   g_hash_table_iter_init (&iter, src);
   while (g_hash_table_iter_next (&iter, &k, &v))
-    g_hash_table_insert (dst, g_strdup (k), hyscan_mark_copy (v));
+    g_hash_table_insert (dst, g_strdup (k), data_class->object_copy (v));
+
+  g_type_class_unref (data_class);
 
   return dst;
 }

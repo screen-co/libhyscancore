@@ -13,11 +13,13 @@ G_BEGIN_DECLS
 #define HYSCAN_MARK_DATA_GEO_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_MARK_DATA_GEO, HyScanMarkDataGeoClass))
 
 typedef struct _HyScanMarkDataGeo HyScanMarkDataGeo;
+typedef struct _HyScanMarkDataGeoPrivate HyScanMarkDataGeoPrivate;
 typedef struct _HyScanMarkDataGeoClass HyScanMarkDataGeoClass;
 
 struct _HyScanMarkDataGeo
 {
-  HyScanMarkData parent_instance;
+  HyScanMarkData            parent_instance;
+  HyScanMarkDataGeoPrivate *priv;
 };
 
 struct _HyScanMarkDataGeoClass
@@ -28,9 +30,6 @@ struct _HyScanMarkDataGeoClass
 HYSCAN_API
 GType                  hyscan_mark_data_geo_get_type    (void);
 
-HYSCAN_API
-HyScanMarkData *       hyscan_mark_data_geo_new         (HyScanDB    *db,
-                                                         const gchar *project);
 G_END_DECLS
 
 #endif /* __HYSCAN_MARK_DATA_GEO_H__ */
