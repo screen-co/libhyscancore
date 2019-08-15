@@ -1,4 +1,4 @@
-/* hyscan-amplitude-factory.h
+/* hyscan-factory-amplitude.h
  *
  * Copyright 2018-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
@@ -32,62 +32,62 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#ifndef __HYSCAN_AMPLITUDE_FACTORY_H__
-#define __HYSCAN_AMPLITUDE_FACTORY_H__
+#ifndef __HYSCAN_FACTORY_AMPLITUDE_H__
+#define __HYSCAN_FACTORY_AMPLITUDE_H__
 
 #include <hyscan-types.h>
 #include "hyscan-amplitude.h"
-#include "hyscan-mother-factory.h"
+#include "hyscan-factory-mother.h"
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_AMPLITUDE_FACTORY             (hyscan_amplitude_factory_get_type ())
-#define HYSCAN_AMPLITUDE_FACTORY(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_AMPLITUDE_FACTORY, HyScanAmplitudeFactory))
-#define HYSCAN_IS_AMPLITUDE_FACTORY(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_AMPLITUDE_FACTORY))
-#define HYSCAN_AMPLITUDE_FACTORY_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_AMPLITUDE_FACTORY, HyScanAmplitudeFactoryClass))
-#define HYSCAN_IS_AMPLITUDE_FACTORY_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_AMPLITUDE_FACTORY))
-#define HYSCAN_AMPLITUDE_FACTORY_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_AMPLITUDE_FACTORY, HyScanAmplitudeFactoryClass))
+#define HYSCAN_TYPE_FACTORY_AMPLITUDE             (hyscan_factory_amplitude_get_type ())
+#define HYSCAN_FACTORY_AMPLITUDE(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_FACTORY_AMPLITUDE, HyScanFactoryAmplitude))
+#define HYSCAN_IS_FACTORY_AMPLITUDE(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_FACTORY_AMPLITUDE))
+#define HYSCAN_FACTORY_AMPLITUDE_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_FACTORY_AMPLITUDE, HyScanFactoryAmplitudeClass))
+#define HYSCAN_IS_FACTORY_AMPLITUDE_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_FACTORY_AMPLITUDE))
+#define HYSCAN_FACTORY_AMPLITUDE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_FACTORY_AMPLITUDE, HyScanFactoryAmplitudeClass))
 
-typedef struct _HyScanAmplitudeFactory HyScanAmplitudeFactory;
-typedef struct _HyScanAmplitudeFactoryPrivate HyScanAmplitudeFactoryPrivate;
-typedef struct _HyScanAmplitudeFactoryClass HyScanAmplitudeFactoryClass;
+typedef struct _HyScanFactoryAmplitude HyScanFactoryAmplitude;
+typedef struct _HyScanFactoryAmplitudePrivate HyScanFactoryAmplitudePrivate;
+typedef struct _HyScanFactoryAmplitudeClass HyScanFactoryAmplitudeClass;
 
-struct _HyScanAmplitudeFactory
+struct _HyScanFactoryAmplitude
 {
-  HyScanMotherFactory parent_instance;
+  HyScanFactoryMother parent_instance;
 
-  HyScanAmplitudeFactoryPrivate *priv;
+  HyScanFactoryAmplitudePrivate *priv;
 };
 
-struct _HyScanAmplitudeFactoryClass
+struct _HyScanFactoryAmplitudeClass
 {
-  HyScanMotherFactoryClass parent_class;
+  HyScanFactoryMotherClass parent_class;
 };
 
 HYSCAN_API
-GType                    hyscan_amplitude_factory_get_type        (void);
+GType                    hyscan_factory_amplitude_get_type        (void);
 
 HYSCAN_API
-HyScanAmplitudeFactory * hyscan_amplitude_factory_new             (HyScanCache            *cache);
+HyScanFactoryAmplitude * hyscan_factory_amplitude_new             (HyScanCache            *cache);
 
 HYSCAN_API
-gchar *                  hyscan_amplitude_factory_get_token       (HyScanAmplitudeFactory *factory);
+gchar *                  hyscan_factory_amplitude_get_token       (HyScanFactoryAmplitude *factory);
 
 HYSCAN_API
-guint32                  hyscan_amplitude_factory_get_hash        (HyScanAmplitudeFactory *factory);
+guint32                  hyscan_factory_amplitude_get_hash        (HyScanFactoryAmplitude *factory);
 
 HYSCAN_API
-void                     hyscan_amplitude_factory_set_track       (HyScanAmplitudeFactory *factory,
+void                     hyscan_factory_amplitude_set_track       (HyScanFactoryAmplitude *factory,
                                                                    HyScanDB               *db,
                                                                    const gchar            *project_name,
                                                                    const gchar            *track_name);
 
 HYSCAN_API
-HyScanAmplitude *        hyscan_amplitude_factory_produce         (HyScanAmplitudeFactory *factory,
+HyScanAmplitude *        hyscan_factory_amplitude_produce         (HyScanFactoryAmplitude *factory,
                                                                    HyScanSourceType        source);
 
 G_END_DECLS
 
-#endif /* __HYSCAN_AMPLITUDE_FACTORY_H__ */
+#endif /* __HYSCAN_FACTORY_AMPLITUDE_H__ */
 
 

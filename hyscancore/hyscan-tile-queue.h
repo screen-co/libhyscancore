@@ -36,8 +36,8 @@
 #define __HYSCAN_TILE_QUEUE_H__
 
 #include <hyscan-tile-common.h>
-#include <hyscan-amplitude-factory.h>
-#include <hyscan-depth-factory.h>
+#include <hyscan-factory-amplitude.h>
+#include <hyscan-factory-depth.h>
 
 G_BEGIN_DECLS
 
@@ -65,13 +65,13 @@ struct _HyScanTileQueueClass
 };
 
 HYSCAN_API
-GType                  hyscan_tile_queue_get_type              (void);
+GType                   hyscan_tile_queue_get_type             (void);
 
 HYSCAN_API
 HyScanTileQueue *       hyscan_tile_queue_new                  (gint                    max_generators,
                                                                 HyScanCache            *cache,
-                                                                HyScanAmplitudeFactory *amp_factory,
-                                                                HyScanDepthFactory     *dpt_factory);
+                                                                HyScanFactoryAmplitude *amp_factory,
+                                                                HyScanFactoryDepth     *dpt_factory);
 
 HYSCAN_API
 void                    hyscan_tile_queue_set_ship_speed       (HyScanTileQueue        *tilequeue,

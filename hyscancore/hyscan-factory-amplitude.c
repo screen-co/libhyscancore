@@ -1,4 +1,4 @@
-/* hyscan-amplitude-factory.c
+/* hyscan-factory-amplitude.c
  *
  * Copyright 2018-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
@@ -33,15 +33,15 @@
  */
 
 /**
- * SECTION: hyscan-amplitude-factory
+ * SECTION: hyscan-factory-amplitude
  * @Short_description: фабрика объектов доступа к амплитудным данным
- * @Title: HyScanAmplitudeFactory
+ * @Title: HyScanFactoryAmplitude
  * @see_also: HyScanAmplitude
  *
  * Объект является фабрикой объектов доступа к амплитудным данным.
  */
 
-#include "hyscan-amplitude-factory.h"
+#include "hyscan-factory-amplitude.h"
 #include <hyscan-acoustic-data.h>
 #include <string.h>
 
@@ -50,7 +50,7 @@ enum
   PROP_CACHE = 1
 };
 
-struct _HyScanAmplitudeFactoryPrivate
+struct _HyScanFactoryAmplitudePrivate
 {
   HyScanCache  *cache;   /* Кэш. */
 
@@ -62,25 +62,25 @@ struct _HyScanAmplitudeFactoryPrivate
   gchar        *token;
 };
 
-static void    hyscan_amplitude_factory_set_property             (GObject                *object,
+static void    hyscan_factory_amplitude_set_property             (GObject                *object,
                                                                   guint                   prop_id,
                                                                   const GValue           *value,
                                                                   GParamSpec             *pspec);
-static void    hyscan_amplitude_factory_object_constructed       (GObject                *object);
-static void    hyscan_amplitude_factory_object_finalize          (GObject                *object);
-static void    hyscan_amplitude_factory_updated                  (HyScanAmplitudeFactory *self);
+static void    hyscan_factory_amplitude_object_constructed       (GObject                *object);
+static void    hyscan_factory_amplitude_object_finalize          (GObject                *object);
+static void    hyscan_factory_amplitude_updated                  (HyScanFactoryAmplitude *self);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanAmplitudeFactory, hyscan_amplitude_factory, HYSCAN_TYPE_MOTHER_FACTORY);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanFactoryAmplitude, hyscan_factory_amplitude, HYSCAN_TYPE_FACTORY_MOTHER);
 
 static void
-hyscan_amplitude_factory_class_init (HyScanAmplitudeFactoryClass *klass)
+hyscan_factory_amplitude_class_init (HyScanFactoryAmplitudeClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->set_property = hyscan_amplitude_factory_set_property;
+  object_class->set_property = hyscan_factory_amplitude_set_property;
 
-  object_class->constructed = hyscan_amplitude_factory_object_constructed;
-  object_class->finalize = hyscan_amplitude_factory_object_finalize;
+  object_class->constructed = hyscan_factory_amplitude_object_constructed;
+  object_class->finalize = hyscan_factory_amplitude_object_finalize;
 
   g_object_class_install_property (object_class, PROP_CACHE,
     g_param_spec_object ("cache", "Cache", "HyScanCache interface",
@@ -89,19 +89,19 @@ hyscan_amplitude_factory_class_init (HyScanAmplitudeFactoryClass *klass)
 }
 
 static void
-hyscan_amplitude_factory_init (HyScanAmplitudeFactory *self)
+hyscan_factory_amplitude_init (HyScanFactoryAmplitude *self)
 {
-  self->priv = hyscan_amplitude_factory_get_instance_private (self);
+  self->priv = hyscan_factory_amplitude_get_instance_private (self);
 }
 
 static void
-hyscan_amplitude_factory_set_property (GObject      *object,
+hyscan_factory_amplitude_set_property (GObject      *object,
                                        guint         prop_id,
                                        const GValue *value,
                                        GParamSpec   *pspec)
 {
-  HyScanAmplitudeFactory *self = HYSCAN_AMPLITUDE_FACTORY (object);
-  HyScanAmplitudeFactoryPrivate *priv = self->priv;
+  HyScanFactoryAmplitude *self = HYSCAN_FACTORY_AMPLITUDE (object);
+  HyScanFactoryAmplitudePrivate *priv = self->priv;
 
   switch (prop_id)
     {
@@ -115,19 +115,19 @@ hyscan_amplitude_factory_set_property (GObject      *object,
 }
 
 static void
-hyscan_amplitude_factory_object_constructed (GObject *object)
+hyscan_factory_amplitude_object_constructed (GObject *object)
 {
-  HyScanAmplitudeFactory *self = HYSCAN_AMPLITUDE_FACTORY (object);
-  HyScanAmplitudeFactoryPrivate *priv = self->priv;
+  HyScanFactoryAmplitude *self = HYSCAN_FACTORY_AMPLITUDE (object);
+  HyScanFactoryAmplitudePrivate *priv = self->priv;
 
   g_mutex_init (&priv->lock);
 }
 
 static void
-hyscan_amplitude_factory_object_finalize (GObject *object)
+hyscan_factory_amplitude_object_finalize (GObject *object)
 {
-  HyScanAmplitudeFactory *self = HYSCAN_AMPLITUDE_FACTORY (object);
-  HyScanAmplitudeFactoryPrivate *priv = self->priv;
+  HyScanFactoryAmplitude *self = HYSCAN_FACTORY_AMPLITUDE (object);
+  HyScanFactoryAmplitudePrivate *priv = self->priv;
 
   g_clear_object (&priv->cache);
 
@@ -139,14 +139,14 @@ hyscan_amplitude_factory_object_finalize (GObject *object)
 
   g_mutex_clear (&priv->lock);
 
-  G_OBJECT_CLASS (hyscan_amplitude_factory_parent_class)->finalize (object);
+  G_OBJECT_CLASS (hyscan_factory_amplitude_parent_class)->finalize (object);
 }
 
 /* Функция обновляет состояние объекта. Вызывать строго за мьютексом! */
 static void
-hyscan_amplitude_factory_updated (HyScanAmplitudeFactory *self)
+hyscan_factory_amplitude_updated (HyScanFactoryAmplitude *self)
 {
-  HyScanAmplitudeFactoryPrivate *priv = self->priv;
+  HyScanFactoryAmplitudePrivate *priv = self->priv;
   gchar *uri = NULL;
 
   g_clear_pointer (&priv->token, g_free);
@@ -156,42 +156,42 @@ hyscan_amplitude_factory_updated (HyScanAmplitudeFactory *self)
 
   uri = hyscan_db_get_uri (priv->db);
 
-  priv->token = g_strdup_printf ("AmplitudeFactory.%s.%s.%s",
+  priv->token = g_strdup_printf ("FactoryAmplitude.%s.%s.%s",
                                  uri, priv->project, priv->track);
 
   g_free (uri);
 }
 
 /**
- * hyscan_amplitude_factory_new:
+ * hyscan_factory_amplitude_new:
  * @cache: (nullable): объект #HyScanCache
  *
- * Создает новый объект #HyScanAmplitudeFactory.
+ * Создает новый объект #HyScanFactoryAmplitude.
  *
- * Returns: (transfer full): #HyScanAmplitudeFactory
+ * Returns: (transfer full): #HyScanFactoryAmplitude
  */
-HyScanAmplitudeFactory *
-hyscan_amplitude_factory_new (HyScanCache *cache)
+HyScanFactoryAmplitude *
+hyscan_factory_amplitude_new (HyScanCache *cache)
 {
-  return g_object_new (HYSCAN_TYPE_AMPLITUDE_FACTORY,
+  return g_object_new (HYSCAN_TYPE_FACTORY_AMPLITUDE,
                        "cache", cache, NULL);
 }
 
 /**
- * hyscan_amplitude_factory_get_token:
- * @self: объект #HyScanAmplitudeFactory
+ * hyscan_factory_amplitude_get_token:
+ * @self: объект #HyScanFactoryAmplitude
  *
  * Функция возвращает токен объекта (строка, описывающее его внутреннее состояние).
  *
  * Returns: (transfer full): токен.
  */
 gchar *
-hyscan_amplitude_factory_get_token (HyScanAmplitudeFactory *self)
+hyscan_factory_amplitude_get_token (HyScanFactoryAmplitude *self)
 {
-  HyScanAmplitudeFactoryPrivate *priv;
+  HyScanFactoryAmplitudePrivate *priv;
   gchar *token = NULL;
 
-  g_return_val_if_fail (HYSCAN_IS_AMPLITUDE_FACTORY (self), NULL);
+  g_return_val_if_fail (HYSCAN_IS_FACTORY_AMPLITUDE (self), NULL);
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
@@ -203,8 +203,8 @@ hyscan_amplitude_factory_get_token (HyScanAmplitudeFactory *self)
 }
 
 /**
- * hyscan_amplitude_factory_set_track:
- * @self: объект #HyScanAmplitudeFactory
+ * hyscan_factory_amplitude_set_track:
+ * @self: объект #HyScanFactoryAmplitude
  * @db: база данных
  * @project: проект
  * @track: галс
@@ -212,14 +212,14 @@ hyscan_amplitude_factory_get_token (HyScanAmplitudeFactory *self)
  * Функция задает БД, проект и галс.
  */
 void
-hyscan_amplitude_factory_set_track (HyScanAmplitudeFactory *self,
+hyscan_factory_amplitude_set_track (HyScanFactoryAmplitude *self,
                                     HyScanDB               *db,
                                     const gchar            *project_name,
                                     const gchar            *track_name)
 {
-  HyScanAmplitudeFactoryPrivate *priv;
+  HyScanFactoryAmplitudePrivate *priv;
 
-  g_return_if_fail (HYSCAN_IS_AMPLITUDE_FACTORY (self));
+  g_return_if_fail (HYSCAN_IS_FACTORY_AMPLITUDE (self));
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
@@ -232,16 +232,16 @@ hyscan_amplitude_factory_set_track (HyScanAmplitudeFactory *self,
   priv->project = g_strdup (project_name);
   priv->track = g_strdup (track_name);
 
-  hyscan_amplitude_factory_updated (self);
+  hyscan_factory_amplitude_updated (self);
 
   g_mutex_unlock (&priv->lock);
 
-  hyscan_mother_factory_emit_changed (HYSCAN_MOTHER_FACTORY (self));
+  hyscan_factory_mother_emit_changed (HYSCAN_FACTORY_MOTHER (self));
 }
 
 /**
- * hyscan_amplitude_factory_produce:
- * @self: объект #HyScanAmplitudeFactory
+ * hyscan_factory_amplitude_produce:
+ * @self: объект #HyScanFactoryAmplitude
  * @source: тип источника данных #HyScanSourceType
  *
  * Функция создает новый объект доступа к акустическим данным.
@@ -249,17 +249,17 @@ hyscan_amplitude_factory_set_track (HyScanAmplitudeFactory *self,
  * Returns: (transfer full): объект, реализующий #HyScanAmplitude
  */
 HyScanAmplitude *
-hyscan_amplitude_factory_produce (HyScanAmplitudeFactory *self,
+hyscan_factory_amplitude_produce (HyScanFactoryAmplitude *self,
                                   HyScanSourceType        source)
 {
-  HyScanAmplitudeFactoryPrivate *priv;
+  HyScanFactoryAmplitudePrivate *priv;
   HyScanAcousticData *data;
   HyScanAmplitude *out = NULL;
   HyScanDB *db;
   gchar *project;
   gchar *track;
 
-  g_return_val_if_fail (HYSCAN_IS_AMPLITUDE_FACTORY (self), NULL);
+  g_return_val_if_fail (HYSCAN_IS_FACTORY_AMPLITUDE (self), NULL);
   priv = self->priv;
 
   /* Запоминаем актуальные значения. */

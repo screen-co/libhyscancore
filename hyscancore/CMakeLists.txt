@@ -42,8 +42,9 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-data-writer.c
              hyscan-amplitude.c
              hyscan-acoustic-data.c
-             hyscan-mother-factory.c
-             hyscan-amplitude-factory.c
+             hyscan-factory-mother.c
+             hyscan-factory-amplitude.c
+             hyscan-factory-depth.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
              hyscan-forward-look-player.c
@@ -51,7 +52,6 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nav-data.c
              hyscan-nmea-parser.c
              hyscan-depthometer.c
-             hyscan-depth-factory.c
              hyscan-control.c
              hyscan-control-proxy.c
              hyscan-projector.c

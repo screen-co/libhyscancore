@@ -14,8 +14,8 @@
 enum
 {
   PROP_CACHE = 1,
-  PROP_AMPLITUDE_FACTORY,
-  PROP_DEPTH_FACTORY
+  PROP_FACTORY_AMPLITUDE,
+  PROP_FACTORY_DEPTH
 };
 
 typedef struct
@@ -28,8 +28,8 @@ typedef struct
   GArray                 *sound_velocity;        /* Скорость звука. */
   gfloat                  sound_velocity1;       /* Скорость звука для тех, кто не умеет в профиль скорости звука. */
 
-  gboolean                amp_changed;           /* Флаг на смену AmplitudeFactory. */
-  gboolean                dpt_changed;           /* Флаг на смену DepthFactory. */
+  gboolean                amp_changed;           /* Флаг на смену FactoryAmplitude. */
+  gboolean                dpt_changed;           /* Флаг на смену FactoryDepth. */
   gboolean                source_changed;        /* Флаг на смену типа источника. */
   gboolean                flags_changed;         /* Флаг на смену, хм, флагов. */
   gboolean                speed_changed;         /* Флаг на смену скорости движения. */
@@ -40,8 +40,8 @@ struct _HyScanTrackRectPrivate
 {
   /* Кэш. */
   HyScanCache            *cache;         /* Интерфейс системы кэширования. */
-  HyScanAmplitudeFactory *af;
-  HyScanDepthFactory     *df;
+  HyScanFactoryAmplitude *af;
+  HyScanFactoryDepth     *df;
 
   GThread                *watcher;       /* Поток слежения за КД. */
   gint                    stop;          /* Флаг остановки. */
@@ -94,15 +94,15 @@ hyscan_track_rect_class_init (HyScanTrackRectClass *klass)
                          HYSCAN_TYPE_CACHE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class, PROP_AMPLITUDE_FACTORY,
-    g_param_spec_object ("amp-factory", "AmplitudeFactory",
-                         "HyScanAmplitudeFactory",
-                         HYSCAN_TYPE_AMPLITUDE_FACTORY,
+  g_object_class_install_property (object_class, PROP_FACTORY_AMPLITUDE,
+    g_param_spec_object ("amp-factory", "FactoryAmplitude",
+                         "HyScanFactoryAmplitude",
+                         HYSCAN_TYPE_FACTORY_AMPLITUDE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-  g_object_class_install_property (object_class, PROP_DEPTH_FACTORY,
-    g_param_spec_object ("dpt-factory", "DepthFactory",
-                         "HyScanDepthFactory",
-                         HYSCAN_TYPE_DEPTH_FACTORY,
+  g_object_class_install_property (object_class, PROP_FACTORY_DEPTH,
+    g_param_spec_object ("dpt-factory", "FactoryDepth",
+                         "HyScanFactoryDepth",
+                         HYSCAN_TYPE_FACTORY_DEPTH,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
@@ -123,9 +123,9 @@ hyscan_track_rect_set_property (GObject      *object,
 
   if (prop_id == PROP_CACHE)
     priv->cache = g_value_dup_object (value);
-  else if (prop_id == PROP_AMPLITUDE_FACTORY)
+  else if (prop_id == PROP_FACTORY_AMPLITUDE)
     priv->af = g_value_dup_object (value);
-  else if (prop_id == PROP_DEPTH_FACTORY)
+  else if (prop_id == PROP_FACTORY_DEPTH)
     priv->df = g_value_dup_object (value);
   else
     G_OBJECT_WARN_INVALID_PROPERTY_ID (self, prop_id, pspec);
@@ -328,7 +328,7 @@ hyscan_track_rect_watcher (gpointer data)
       if (priv->pj == NULL)
         {
           if (priv->dc == NULL)
-            priv->dc = dc = hyscan_amplitude_factory_produce (priv->af, priv->cur_state.source);
+            priv->dc = dc = hyscan_factory_amplitude_produce (priv->af, priv->cur_state.source);
           priv->pj = pj = hyscan_track_rect_open_projector (&priv->cur_state, dc);
 
           if (pj == NULL)
@@ -341,7 +341,7 @@ hyscan_track_rect_watcher (gpointer data)
       /* И ещё надо открыть глубину. */
       if (priv->cur_state.flags & HYSCAN_TILE_GROUND && priv->depth == NULL)
         {
-          priv->depth = depth = hyscan_depth_factory_produce (priv->df);
+          priv->depth = depth = hyscan_factory_depth_produce (priv->df);
         }
 
       /* После открытия КД нужно дождаться, пока в них хоть что-то появится. */
@@ -426,8 +426,8 @@ next:
 /* Фукнция создает новый объект HyScanTrackRect. */
 HyScanTrackRect*
 hyscan_track_rect_new (HyScanCache            *cache,
-                       HyScanAmplitudeFactory *amp_factory,
-                       HyScanDepthFactory     *dpt_factory)
+                       HyScanFactoryAmplitude *amp_factory,
+                       HyScanFactoryDepth     *dpt_factory)
 {
   return g_object_new (HYSCAN_TYPE_TRACK_RECT,
                        "cache", cache,

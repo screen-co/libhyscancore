@@ -1,4 +1,4 @@
-/* hyscan-mother-factory.h
+/* hyscan-factory-mother.h
  *
  * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
@@ -32,40 +32,40 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#ifndef __HYSCAN_MOTHER_FACTORY_H__
-#define __HYSCAN_MOTHER_FACTORY_H__
+#ifndef __HYSCAN_FACTORY_MOTHER_H__
+#define __HYSCAN_FACTORY_MOTHER_H__
 
 #include <glib-object.h>
 #include <hyscan-api.h>
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_MOTHER_FACTORY             (hyscan_mother_factory_get_type ())
-#define HYSCAN_MOTHER_FACTORY(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_MOTHER_FACTORY, HyScanMotherFactory))
-#define HYSCAN_IS_MOTHER_FACTORY(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_MOTHER_FACTORY))
-#define HYSCAN_MOTHER_FACTORY_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_MOTHER_FACTORY, HyScanMotherFactoryClass))
-#define HYSCAN_IS_MOTHER_FACTORY_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_MOTHER_FACTORY))
-#define HYSCAN_MOTHER_FACTORY_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_MOTHER_FACTORY, HyScanMotherFactoryClass))
+#define HYSCAN_TYPE_FACTORY_MOTHER             (hyscan_factory_mother_get_type ())
+#define HYSCAN_FACTORY_MOTHER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_FACTORY_MOTHER, HyScanFactoryMother))
+#define HYSCAN_IS_FACTORY_MOTHER(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_FACTORY_MOTHER))
+#define HYSCAN_FACTORY_MOTHER_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_FACTORY_MOTHER, HyScanFactoryMotherClass))
+#define HYSCAN_IS_FACTORY_MOTHER_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_FACTORY_MOTHER))
+#define HYSCAN_FACTORY_MOTHER_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_FACTORY_MOTHER, HyScanFactoryMotherClass))
 
-typedef struct _HyScanMotherFactory HyScanMotherFactory;
-typedef struct _HyScanMotherFactoryClass HyScanMotherFactoryClass;
+typedef struct _HyScanFactoryMother HyScanFactoryMother;
+typedef struct _HyScanFactoryMotherClass HyScanFactoryMotherClass;
 
-struct _HyScanMotherFactory
+struct _HyScanFactoryMother
 {
   GObject parent_instance;
 };
 
-struct _HyScanMotherFactoryClass
+struct _HyScanFactoryMotherClass
 {
   GObjectClass parent_class;
 };
 
 HYSCAN_API
-GType                  hyscan_mother_factory_get_type         (void);
+GType                  hyscan_factory_mother_get_type         (void);
 
 HYSCAN_API
-void                   hyscan_mother_factory_emit_changed     (HyScanMotherFactory *mother);
+void                   hyscan_factory_mother_emit_changed     (HyScanFactoryMother *mother);
 
 G_END_DECLS
 
-#endif /* __HYSCAN_MOTHER_FACTORY_H__ */
+#endif /* __HYSCAN_FACTORY_MOTHER_H__ */

@@ -1,4 +1,4 @@
-/* hyscan-depth-factory.h
+/* hyscan-factory-depth.h
  *
  * Copyright 2018-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
@@ -32,55 +32,55 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#ifndef __HYSCAN_DEPTH_FACTORY_H__
-#define __HYSCAN_DEPTH_FACTORY_H__
+#ifndef __HYSCAN_FACTORY_DEPTH_H__
+#define __HYSCAN_FACTORY_DEPTH_H__
 
-#include "hyscan-mother-factory.h"
+#include "hyscan-factory-mother.h"
 #include "hyscan-depthometer.h"
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_DEPTH_FACTORY             (hyscan_depth_factory_get_type ())
-#define HYSCAN_DEPTH_FACTORY(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DEPTH_FACTORY, HyScanDepthFactory))
-#define HYSCAN_IS_DEPTH_FACTORY(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DEPTH_FACTORY))
-#define HYSCAN_DEPTH_FACTORY_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_DEPTH_FACTORY, HyScanDepthFactoryClass))
-#define HYSCAN_IS_DEPTH_FACTORY_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_DEPTH_FACTORY))
-#define HYSCAN_DEPTH_FACTORY_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DEPTH_FACTORY, HyScanDepthFactoryClass))
+#define HYSCAN_TYPE_FACTORY_DEPTH             (hyscan_factory_depth_get_type ())
+#define HYSCAN_FACTORY_DEPTH(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_FACTORY_DEPTH, HyScanFactoryDepth))
+#define HYSCAN_IS_FACTORY_DEPTH(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_FACTORY_DEPTH))
+#define HYSCAN_FACTORY_DEPTH_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_FACTORY_DEPTH, HyScanFactoryDepthClass))
+#define HYSCAN_IS_FACTORY_DEPTH_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_FACTORY_DEPTH))
+#define HYSCAN_FACTORY_DEPTH_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_FACTORY_DEPTH, HyScanFactoryDepthClass))
 
-typedef struct _HyScanDepthFactory HyScanDepthFactory;
-typedef struct _HyScanDepthFactoryPrivate HyScanDepthFactoryPrivate;
-typedef struct _HyScanDepthFactoryClass HyScanDepthFactoryClass;
+typedef struct _HyScanFactoryDepth HyScanFactoryDepth;
+typedef struct _HyScanFactoryDepthPrivate HyScanFactoryDepthPrivate;
+typedef struct _HyScanFactoryDepthClass HyScanFactoryDepthClass;
 
-struct _HyScanDepthFactory
+struct _HyScanFactoryDepth
 {
-  HyScanMotherFactory parent_instance;
+  HyScanFactoryMother parent_instance;
 
-  HyScanDepthFactoryPrivate *priv;
+  HyScanFactoryDepthPrivate *priv;
 };
 
-struct _HyScanDepthFactoryClass
+struct _HyScanFactoryDepthClass
 {
-  HyScanMotherFactoryClass parent_class;
+  HyScanFactoryMotherClass parent_class;
 };
 
 HYSCAN_API
-GType                  hyscan_depth_factory_get_type         (void);
+GType                  hyscan_factory_depth_get_type         (void);
 
 HYSCAN_API
-HyScanDepthFactory *   hyscan_depth_factory_new              (HyScanCache            *cache);
+HyScanFactoryDepth *   hyscan_factory_depth_new              (HyScanCache            *cache);
 
 HYSCAN_API
-gchar *                hyscan_depth_factory_get_token        (HyScanDepthFactory     *factory);
+gchar *                hyscan_factory_depth_get_token        (HyScanFactoryDepth     *factory);
 
 HYSCAN_API
-void                   hyscan_depth_factory_set_track        (HyScanDepthFactory     *factory,
+void                   hyscan_factory_depth_set_track        (HyScanFactoryDepth     *factory,
                                                               HyScanDB               *db,
                                                               const gchar            *project_name,
                                                               const gchar            *track_name);
 
 HYSCAN_API
-HyScanDepthometer *    hyscan_depth_factory_produce          (HyScanDepthFactory     *factory);
+HyScanDepthometer *    hyscan_factory_depth_produce          (HyScanFactoryDepth     *factory);
 
 G_END_DECLS
 
-#endif /* __HYSCAN_DEPTH_FACTORY_H__ */
+#endif /* __HYSCAN_FACTORY_DEPTH_H__ */

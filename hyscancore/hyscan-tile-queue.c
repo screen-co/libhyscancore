@@ -159,8 +159,8 @@ enum
 {
   PROP_MAX_GENERATORS = 1,
   PROP_CACHE,
-  PROP_AMPLITUDE_FACTORY,
-  PROP_DEPTH_FACTORY,
+  PROP_FACTORY_AMPLITUDE,
+  PROP_FACTORY_DEPTH,
 };
 
 typedef struct
@@ -184,8 +184,8 @@ struct _HyScanTileQueuePrivate
 {
   /* Кэш. */
   HyScanCache            *cache;                 /* Интерфейс системы кэширования. */
-  HyScanAmplitudeFactory *amp_factory;           /* Фабрика объектов акустических данных. */
-  HyScanDepthFactory     *dpt_factory;           /* Фабрика объектов глубины. */
+  HyScanFactoryAmplitude *amp_factory;           /* Фабрика объектов акустических данных. */
+  HyScanFactoryDepth     *dpt_factory;           /* Фабрика объектов глубины. */
 
   /* Параметры генерации. */
   HyScanTileQueueState    cur_state;             /* Текущее состояние. */
@@ -244,8 +244,8 @@ static void                hyscan_tile_queue_task_processor     (gpointer       
 static gint                hyscan_tile_queue_task_finder        (gconstpointer           task,
                                                                  gconstpointer           tile);
 
-static void                hyscan_tile_queue_state_hash         (HyScanAmplitudeFactory *af,
-                                                                 HyScanDepthFactory     *df,
+static void                hyscan_tile_queue_state_hash         (HyScanFactoryAmplitude *af,
+                                                                 HyScanFactoryDepth     *df,
                                                                  HyScanTileQueueState   *state);
 static gchar              *hyscan_tile_queue_cache_key          (const HyScanTile       *tile,
                                                                  guint32                 hash);
@@ -321,15 +321,15 @@ hyscan_tile_queue_class_init (HyScanTileQueueClass *klass)
     g_param_spec_object ("cache", "Cache", "HyScanCache interface",
                          HYSCAN_TYPE_CACHE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-  g_object_class_install_property (object_class, PROP_AMPLITUDE_FACTORY,
-    g_param_spec_object ("amp-factory", "AmplitudeFactory",
-                         "HyScanAmplitudeFactory",
-                         HYSCAN_TYPE_AMPLITUDE_FACTORY,
+  g_object_class_install_property (object_class, PROP_FACTORY_AMPLITUDE,
+    g_param_spec_object ("amp-factory", "FactoryAmplitude",
+                         "HyScanFactoryAmplitude",
+                         HYSCAN_TYPE_FACTORY_AMPLITUDE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-  g_object_class_install_property (object_class, PROP_DEPTH_FACTORY,
-    g_param_spec_object ("dpt-factory", "DepthFactory",
-                         "HyScanDepthFactory",
-                         HYSCAN_TYPE_DEPTH_FACTORY,
+  g_object_class_install_property (object_class, PROP_FACTORY_DEPTH,
+    g_param_spec_object ("dpt-factory", "FactoryDepth",
+                         "HyScanFactoryDepth",
+                         HYSCAN_TYPE_FACTORY_DEPTH,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
 }
@@ -353,9 +353,9 @@ hyscan_tile_queue_set_property (GObject      *object,
     priv->max_generators = g_value_get_uint (value);
   else if (prop_id == PROP_CACHE)
     priv->cache = g_value_dup_object (value);
-  else if (prop_id == PROP_AMPLITUDE_FACTORY)
+  else if (prop_id == PROP_FACTORY_AMPLITUDE)
     priv->amp_factory = g_value_dup_object (value);
-  else if (prop_id == PROP_DEPTH_FACTORY)
+  else if (prop_id == PROP_FACTORY_DEPTH)
     priv->dpt_factory = g_value_dup_object (value);
   else
     G_OBJECT_WARN_INVALID_PROPERTY_ID (self, prop_id, pspec);
@@ -460,7 +460,7 @@ hyscan_tile_queue_get_dc (HyScanTileQueuePrivate *priv,
     return dc;
 
   /* Иначе пробуем открыть. */
-  dc = hyscan_amplitude_factory_produce (priv->amp_factory, source);
+  dc = hyscan_factory_amplitude_produce (priv->amp_factory, source);
 
   /* Либо он не открылся и тут ничего не попишешь...  */
   if (dc == NULL)
@@ -488,7 +488,7 @@ hyscan_tile_queue_get_depthometer (HyScanTileQueuePrivate *priv,
     return depth;
 
   /* Иначе запрашиваем объект. */
-  depth = hyscan_depth_factory_produce (priv->dpt_factory);
+  depth = hyscan_factory_depth_produce (priv->dpt_factory);
   g_hash_table_insert (priv->dctable, GINT_TO_POINTER (key), depth);
 
   return depth;
@@ -894,16 +894,16 @@ hyscan_tile_queue_task_finder (gconstpointer _task,
 
 /* Функция вычисляет хэш состояния. */
 static void
-hyscan_tile_queue_state_hash (HyScanAmplitudeFactory *af,
-                              HyScanDepthFactory     *df,
+hyscan_tile_queue_state_hash (HyScanFactoryAmplitude *af,
+                              HyScanFactoryDepth     *df,
                               HyScanTileQueueState   *state)
 {
   gchar *af_token, *df_token;
   gchar *str;
   gulong hash;
 
-  af_token = hyscan_amplitude_factory_get_token (af);
-  df_token = hyscan_depth_factory_get_token (df);
+  af_token = hyscan_factory_amplitude_get_token (af);
+  df_token = hyscan_factory_depth_get_token (df);
 
   if (af_token == NULL)
     af_token = g_strdup ("none");
@@ -960,8 +960,8 @@ hyscan_tile_queue_cache_key (const HyScanTile *tile,
 HyScanTileQueue*
 hyscan_tile_queue_new (gint                    max_generators,
                        HyScanCache            *cache,
-                       HyScanAmplitudeFactory *amp_factory,
-                       HyScanDepthFactory     *dpt_factory)
+                       HyScanFactoryAmplitude *amp_factory,
+                       HyScanFactoryDepth     *dpt_factory)
 {
   return g_object_new (HYSCAN_TYPE_TILE_QUEUE,
                        "max_generators", max_generators,

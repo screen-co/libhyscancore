@@ -30,8 +30,8 @@
 #define __HYSCAN_TRACK_RECT_H__
 
 #include <hyscan-tile-common.h>
-#include <hyscan-depth-factory.h>
-#include <hyscan-amplitude-factory.h>
+#include <hyscan-factory-depth.h>
+#include <hyscan-factory-amplitude.h>
 
 G_BEGIN_DECLS
 
@@ -69,8 +69,8 @@ GType                   hyscan_track_rect_get_type              (void);
  */
 HYSCAN_API
 HyScanTrackRect        *hyscan_track_rect_new                   (HyScanCache            *cache,
-                                                                 HyScanAmplitudeFactory *amp_factory,
-                                                                 HyScanDepthFactory     *dpt_factory);
+                                                                 HyScanFactoryAmplitude *amp_factory,
+                                                                 HyScanFactoryDepth     *dpt_factory);
 
 HYSCAN_API
 void                    hyscan_track_rect_amp_changed           (HyScanTrackRect        *track_rect);

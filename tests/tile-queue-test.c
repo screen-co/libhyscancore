@@ -38,8 +38,8 @@ main (int argc, char **argv)
 
   HyScanDataWriter *writer;     /* Класс записи данных. */
   HyScanCache *cache;           /* Система кэширования. */
-  HyScanAmplitudeFactory *af;   /* Фабрика акустических данных. */
-  HyScanDepthFactory *df;       /* Фабрика глубин. */
+  HyScanFactoryAmplitude *af;   /* Фабрика акустических данных. */
+  HyScanFactoryDepth *df;       /* Фабрика глубин. */
 
   HyScanTileQueue *tq = NULL;   /* Очередь тайлов. */
   HyScanTile tile, cached_tile; /* Тайлы. */
@@ -96,8 +96,8 @@ main (int argc, char **argv)
   db = hyscan_db_new (db_uri);
   writer = hyscan_data_writer_new ();
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
-  af = hyscan_amplitude_factory_new (cache);
-  df = hyscan_depth_factory_new (cache);
+  af = hyscan_factory_amplitude_new (cache);
+  df = hyscan_factory_depth_new (cache);
 
   hyscan_data_writer_set_db (writer, db);
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
@@ -121,8 +121,8 @@ main (int argc, char **argv)
 
   /* Теперь займемся генерацией тайлов. */
   tq = hyscan_tile_queue_new (1, cache, af, df);
-  hyscan_amplitude_factory_set_track (af, db, name, name);
-  hyscan_depth_factory_set_track (df, db, name, name);
+  hyscan_factory_amplitude_set_track (af, db, name, name);
+  hyscan_factory_depth_set_track (df, db, name, name);
   hyscan_tile_queue_amp_changed (tq);
   hyscan_tile_queue_dpt_changed (tq);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);

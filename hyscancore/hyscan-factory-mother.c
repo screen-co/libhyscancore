@@ -1,4 +1,4 @@
-/* hyscan-mother-factory.h
+/* hyscan-factory-mother.h
  *
  * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
@@ -33,13 +33,13 @@
  */
 
 /**
- * SECTION: hyscan-mother-factory
- * @Title HyScanMotherFactory
+ * SECTION: hyscan-factory-mother
+ * @Title HyScanFactoryMother
  * @Short_description
  *
  */
 
-#include "hyscan-mother-factory.h"
+#include "hyscan-factory-mother.h"
 
 enum
 {
@@ -47,14 +47,14 @@ enum
   SIGNAL_LAST
 };
 
-static guint hyscan_mother_factory_signals[SIGNAL_LAST] = {0};
-G_DEFINE_TYPE (HyScanMotherFactory, hyscan_mother_factory, G_TYPE_OBJECT);
+static guint hyscan_factory_mother_signals[SIGNAL_LAST] = {0};
+G_DEFINE_TYPE (HyScanFactoryMother, hyscan_factory_mother, G_TYPE_OBJECT);
 
 static void
-hyscan_mother_factory_class_init (HyScanMotherFactoryClass *klass)
+hyscan_factory_mother_class_init (HyScanFactoryMotherClass *klass)
 {
-  hyscan_mother_factory_signals[SIGNAL_CHANGED] =
-    g_signal_new ("changed", HYSCAN_TYPE_MOTHER_FACTORY,
+  hyscan_factory_mother_signals[SIGNAL_CHANGED] =
+    g_signal_new ("changed", HYSCAN_TYPE_FACTORY_MOTHER,
                   G_SIGNAL_ACTION, 0,
                   NULL, NULL,
                   g_cclosure_marshal_VOID__VOID,
@@ -62,14 +62,14 @@ hyscan_mother_factory_class_init (HyScanMotherFactoryClass *klass)
 }
 
 static void
-hyscan_mother_factory_init (HyScanMotherFactory *mother)
+hyscan_factory_mother_init (HyScanFactoryMother *mother)
 {
 
 }
 
 void
-hyscan_mother_factory_emit_changed (HyScanMotherFactory *mother)
+hyscan_factory_mother_emit_changed (HyScanFactoryMother *mother)
 {
-  g_return_if_fail (HYSCAN_IS_MOTHER_FACTORY (mother));
-  g_signal_emit (mother, hyscan_mother_factory_signals[SIGNAL_CHANGED], 0);
+  g_return_if_fail (HYSCAN_IS_FACTORY_MOTHER (mother));
+  g_signal_emit (mother, hyscan_factory_mother_signals[SIGNAL_CHANGED], 0);
 }
