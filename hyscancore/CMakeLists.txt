@@ -38,6 +38,7 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshall
 
 add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-core-common.c
+             hyscan-cancellable.c
              hyscan-data-writer.c
              hyscan-amplitude.c
              hyscan-acoustic-data.c
@@ -107,6 +108,7 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 install (FILES hyscan-core-schemas.h
+               hyscan-cancellable.h
                hyscan-data-writer.h
                hyscan-amplitude.h
                hyscan-acoustic-data.h
