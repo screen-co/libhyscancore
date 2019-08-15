@@ -41,6 +41,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-data-writer.c
              hyscan-amplitude.c
              hyscan-acoustic-data.c
+             hyscan-mother-factory.c
              hyscan-amplitude-factory.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c

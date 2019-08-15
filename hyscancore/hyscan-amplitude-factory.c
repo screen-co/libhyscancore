@@ -70,7 +70,7 @@ static void    hyscan_amplitude_factory_object_constructed       (GObject       
 static void    hyscan_amplitude_factory_object_finalize          (GObject                *object);
 static void    hyscan_amplitude_factory_updated                  (HyScanAmplitudeFactory *self);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanAmplitudeFactory, hyscan_amplitude_factory, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanAmplitudeFactory, hyscan_amplitude_factory, HYSCAN_TYPE_MOTHER_FACTORY);
 
 static void
 hyscan_amplitude_factory_class_init (HyScanAmplitudeFactoryClass *klass)
@@ -235,6 +235,8 @@ hyscan_amplitude_factory_set_track (HyScanAmplitudeFactory *self,
   hyscan_amplitude_factory_updated (self);
 
   g_mutex_unlock (&priv->lock);
+
+  hyscan_mother_factory_emit_changed (HYSCAN_MOTHER_FACTORY (self));
 }
 
 /**

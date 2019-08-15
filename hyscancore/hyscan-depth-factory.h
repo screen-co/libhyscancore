@@ -35,7 +35,8 @@
 #ifndef __HYSCAN_DEPTH_FACTORY_H__
 #define __HYSCAN_DEPTH_FACTORY_H__
 
-#include <hyscan-depthometer.h>
+#include "hyscan-mother-factory.h"
+#include "hyscan-depthometer.h"
 
 G_BEGIN_DECLS
 
@@ -52,14 +53,14 @@ typedef struct _HyScanDepthFactoryClass HyScanDepthFactoryClass;
 
 struct _HyScanDepthFactory
 {
-  GObject parent_instance;
+  HyScanMotherFactory parent_instance;
 
   HyScanDepthFactoryPrivate *priv;
 };
 
 struct _HyScanDepthFactoryClass
 {
-  GObjectClass parent_class;
+  HyScanMotherFactoryClass parent_class;
 };
 
 HYSCAN_API
