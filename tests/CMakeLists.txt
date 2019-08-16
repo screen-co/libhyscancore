@@ -4,6 +4,7 @@ set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
                     ${HYSCAN_LIBRARIES}
                     ${HYSCAN_CORE_LIBRARY})
 
+add_executable (cancellable-test cancellable-test.c)
 add_executable (data-writer-test data-writer-test.c)
 add_executable (acoustic-data-test acoustic-data-test.c)
 add_executable (nmea-data-test nmea-data-test.c)
@@ -15,6 +16,7 @@ add_executable (geo-test geo-test.c)
 add_executable (control-test control-test.c hyscan-dummy-device.c)
 add_executable (view-log view-log.c)
 
+target_link_libraries (cancellable-test ${TEST_LIBRARIES})
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-data-test ${TEST_LIBRARIES})
@@ -28,6 +30,8 @@ target_link_libraries (view-log ${TEST_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
+add_test (NAME CancellableTest COMMAND cancellable-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME DataWriterTest COMMAND data-writer-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME AcousticDataTest COMMAND acoustic-data-test -c 1024 file://db
@@ -43,7 +47,8 @@ add_test (NAME GeoTest COMMAND geo-test
 add_test (NAME ControlTest COMMAND control-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
-install (TARGETS data-writer-test
+install (TARGETS cancellable-test
+                 data-writer-test
                  acoustic-data-test
                  nmea-data-test
                  forward-look-data-test
