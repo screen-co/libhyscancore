@@ -102,7 +102,8 @@ gboolean                hyscan_tile_queue_get                  (HyScanTileQueue 
 
 HYSCAN_API
 void                    hyscan_tile_queue_add                  (HyScanTileQueue        *tilequeue,
-                                                                HyScanTile             *tile);
+                                                                HyScanTile             *tile,
+                                                                HyScanCancellable      *cancellable);
 
 HYSCAN_API
 void                    hyscan_tile_queue_add_finished         (HyScanTileQueue        *tilequeue,

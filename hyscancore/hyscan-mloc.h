@@ -5,6 +5,7 @@
 #include <hyscan-cache.h>
 #include <hyscan-geo.h>
 #include <hyscan-types.h>
+#include "hyscan-cancellable.h"
 
 G_BEGIN_DECLS
 
@@ -42,6 +43,7 @@ HyScanmLoc             *hyscan_mloc_new              (HyScanDB              *db,
 
 HYSCAN_API
 gboolean                hyscan_mloc_get              (HyScanmLoc            *mloc,
+                                                      HyScanCancellable     *cancellable,
                                                       gint64                 time,
                                                       HyScanAntennaOffset   *antenna,
                                                       gdouble                shiftx,

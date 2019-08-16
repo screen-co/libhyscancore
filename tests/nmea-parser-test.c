@@ -110,7 +110,7 @@ main (int argc, char **argv)
     for (i = 0; i < SAMPLES; i++)
       {
         expected = i * 0.5;
-        hyscan_nav_data_get (ndata, i, NULL, &val);
+        hyscan_nav_data_get (ndata, NULL, i, NULL, &val);
         if (ABS (val) - ABS (expected) > 1e-5)
           g_error ("Failed to get data at index %i (%f, %f)", i, val, expected);
       }

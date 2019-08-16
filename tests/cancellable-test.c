@@ -22,6 +22,67 @@ check (gfloat expected,
     }
 }
 
+static gfloat prev;
+gfloat get (HyScanCancellable *c, gfloat a, gfloat b)
+{
+  gfloat value;
+
+  value = hyscan_cancellable_get (c);
+  g_message ("%.16f", value);
+  {
+    if (value-prev>0.0)
+      {
+        g_warning ("                              %f", value-prev);
+
+        hyscan_cancellable_set (c, a, b);
+        hyscan_cancellable_get (c);
+      }
+  }
+  prev = value;
+  return 100. * value;
+}
+gfloat sget (HyScanCancellable *c, gfloat a, gfloat b)
+{
+  hyscan_cancellable_set (c, a, b);
+
+  return get(c,a,b);
+}
+
+
+void func (HyScanCancellable *c, int depth)
+{
+  if (depth < 0)
+    return;
+
+  hyscan_cancellable_push (c);
+  sget (c, 0., 1/3.);
+  func (c, depth - 1);
+  sget (c, 1/3., 2/3.);
+  func (c, depth - 1);
+  sget (c, 2/3., 1.);
+  func (c, depth - 1);
+  hyscan_cancellable_pop (c);
+}
+
+void func2 (HyScanCancellable *c, int depth)
+{
+  hyscan_cancellable_push (c);
+  // get (c, 0., 1/3.);
+  if (depth < 2)
+    {
+      func (c, depth - 1);
+      func (c, depth - 1);
+      func (c, depth - 1);
+    }
+  else
+    {
+      func2 (c, depth - 1);
+      func2 (c, depth - 1);
+      func2 (c, depth - 1);
+    }
+  hyscan_cancellable_pop (c);
+}
+
 void
 test (HyScanCancellable *c,
       TestValues        *values)
@@ -87,10 +148,13 @@ TestValues case4[] = {
 int
 main(int argc, char const *argv[])
 {
-  test (NULL, case1);
-  test (NULL, case2);
-  test (NULL, case3);
-  test (NULL, case4);
+  // test (NULL, case1);
+  // test (NULL, case2);
+  // test (NULL, case3);
+  // test (NULL, case4);
+
+  // func (hyscan_cancellable_new(), 10);
+  func2 (hyscan_cancellable_new(), 3);
 
   return 0;
 }

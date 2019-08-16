@@ -214,7 +214,7 @@ hyscan_cancellable_push (HyScanCancellable *cancellable)
 
   /* Для слишком глубоких уровней значения реально не обновляем,
    * но индекс запомнить надо (чтобы pop отрабатывал нормально). */
-  if (priv->index >= N_LEVELS - 2)
+  if (priv->index >= N_LEVELS - 1)
     {
       priv->index++;
       return;

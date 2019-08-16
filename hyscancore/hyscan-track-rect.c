@@ -367,7 +367,7 @@ hyscan_track_rect_watcher (gpointer data)
 
               /* Определяем глубину. */
               if (priv->cur_state.flags & HYSCAN_TILE_GROUND && depth != NULL)
-                dpt = hyscan_depthometer_get (depth, itime);
+                dpt = hyscan_depthometer_get (depth, NULL, itime);
               else
                 dpt = 0.0;
 

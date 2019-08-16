@@ -155,7 +155,7 @@ set_get_check (gchar             *log_prefix,
   gfloat val;
 
   hyscan_depthometer_set_filter_size (depth, filter);
-  val = hyscan_depthometer_get (depth, time);
+  val = hyscan_depthometer_get (depth, NULL, time);
   if (val == expected)
     return;
 

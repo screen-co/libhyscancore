@@ -92,7 +92,7 @@ GType                   hyscan_waterfall_tile_get_type          (void);
  *
  */
 HYSCAN_API
-HyScanWaterfallTile    *hyscan_waterfall_tile_new               (void);
+HyScanWaterfallTile *   hyscan_waterfall_tile_new               (void);
 
 /**
  *
@@ -124,20 +124,6 @@ void                    hyscan_waterfall_tile_set_path          (HyScanWaterfall
                                                                  const gchar         *path);
 /**
  *
- * Функция передает генератору объект с навигационными данными.
- *
- * \param wfall - указатель на объект HyScanWaterfallTile;
- * \param depth - указатель на объект определения глубины.
- *
- * \return TRUE, если удалось установить параметры.
- *
- */
-HYSCAN_API
-gboolean                hyscan_waterfall_tile_set_depth         (HyScanWaterfallTile *wfall,
-                                                                 HyScanDepthometer   *depth);
-
-/**
- *
  * Функция устанавливает скорость судна и звука.
  *
  * \param wfall - указатель на объект HyScanWaterfallTile;
@@ -162,15 +148,15 @@ gboolean                hyscan_waterfall_tile_set_speeds        (HyScanWaterfall
  *
  * \param wfall - указатель на объект HyScanWaterfallTile;
  * \param dc - канал данных, используемый для генерации;
- * \param tile - параметры тайла.
+ * \param depth - указатель на объект определения глубины.
  *
  * \return TRUE, если удалось установить параметры.
  *
  */
 HYSCAN_API
-gboolean                hyscan_waterfall_tile_set_tile          (HyScanWaterfallTile *wfall,
+gboolean                hyscan_waterfall_tile_set_dc            (HyScanWaterfallTile *wfall,
                                                                  HyScanAmplitude     *dc,
-                                                                 HyScanTile           tile);
+                                                                 HyScanDepthometer   *depth);
 /**
  *
  * Функция генерирует тайл.
@@ -185,6 +171,7 @@ gboolean                hyscan_waterfall_tile_set_tile          (HyScanWaterfall
  */
 HYSCAN_API
 gfloat*                 hyscan_waterfall_tile_generate          (HyScanWaterfallTile *wfall,
+                                                                 HyScanCancellable   *cancellable,
                                                                  HyScanTile          *tile,
                                                                  guint32             *size);
 

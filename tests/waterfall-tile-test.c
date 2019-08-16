@@ -115,11 +115,10 @@ main (int argc, char **argv)
   tile.upsample     = 1;
   tile.flags        = 0;
   tile.rotate       = FALSE;
-  hyscan_waterfall_tile_set_depth (wf, NULL);
   hyscan_waterfall_tile_set_speeds (wf, 1.0, 2.0);
-  hyscan_waterfall_tile_set_tile (wf, HYSCAN_AMPLITUDE (dc), tile);
+  hyscan_waterfall_tile_set_dc (wf, HYSCAN_AMPLITUDE (dc), NULL);
 
-  image = hyscan_waterfall_tile_generate (wf, &tile, &image_size);
+  image = hyscan_waterfall_tile_generate (wf, NULL, &tile, &image_size);
 
   gint k,j;
   vals = make_acoustic_string (SIZE, NULL);

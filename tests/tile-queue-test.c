@@ -142,7 +142,7 @@ main (int argc, char **argv)
       guint32 image_size;
       tile = make_tile (i);
 
-      hyscan_tile_queue_add (tq, &tile);
+      hyscan_tile_queue_add (tq, &tile, NULL);
 
       found = hyscan_tile_queue_check (tq, &tile, &cached_tile, &regen);
       if (!found)
@@ -262,7 +262,7 @@ add_tiles (HyScanTileQueue *tq)
     {
       tile = make_tile (i);
 
-      hyscan_tile_queue_add (tq, &tile);
+      hyscan_tile_queue_add (tq, &tile, NULL);
 
     }
   full_callback_number = SIZE;

@@ -168,6 +168,7 @@ hyscan_mloc_new (HyScanDB    *db,
 
 gboolean
 hyscan_mloc_get (HyScanmLoc            *self,
+                 HyScanCancellable     *cancellable,
                  gint64                 time,
                  HyScanAntennaOffset    *antenna,
                  gdouble                shiftx,
@@ -180,6 +181,7 @@ hyscan_mloc_get (HyScanmLoc            *self,
   HyScanGeoGeodetic origin = {0, 0, 0};
   HyScanDBFindStatus fstatus;
   guint32 lindex, rindex, index;
+  gboolean status;
 
   g_return_val_if_fail (HYSCAN_IS_MLOC (self), FALSE);
   priv = self->priv;
@@ -193,12 +195,17 @@ hyscan_mloc_get (HyScanmLoc            *self,
 
   index = lindex;
 
-  if (!hyscan_nav_data_get (priv->lat, index, NULL, &origin.lat) ||
-      !hyscan_nav_data_get (priv->lon, index, NULL, &origin.lon) ||
-      !hyscan_nav_data_get (priv->trk, index, NULL, &origin.h))
-    {
-      return FALSE;
-    }
+  hyscan_cancellable_push (cancellable);
+
+  hyscan_cancellable_set (cancellable, 0, 1/3);
+  status  = hyscan_nav_data_get (priv->lat, cancellable, index, NULL, &origin.lat);
+  hyscan_cancellable_set (cancellable, 1/3, 2/3);
+  status &= hyscan_nav_data_get (priv->lon, cancellable, index, NULL, &origin.lon);
+  hyscan_cancellable_set (cancellable, 2/3, 1);
+  status &= hyscan_nav_data_get (priv->trk, cancellable, index, NULL, &origin.h);
+
+  if (!status)
+    goto exit;
 
   /* Устанавливаем в эту точку (и с этим углом) начало топоцентрической СК. */
   hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
@@ -213,5 +220,7 @@ hyscan_mloc_get (HyScanmLoc            *self,
   /* Перевожу обратно в геодезичесие. */
   hyscan_geo_topo2geo (priv->geo, position, topo);
 
-  return TRUE;
+exit:
+  hyscan_cancellable_pop (cancellable);
+  return status;
 }
