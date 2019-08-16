@@ -3,9 +3,9 @@ set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
                     ${HYSCAN_LIBRARIES}
                     ${HYSCAN_CORE_LIBRARY})
 
+add_executable (cancellable-test cancellable-test.c)
 add_executable (data-writer-test data-writer-test.c)
 add_executable (acoustic-data-test acoustic-data-test.c)
-add_executable (cancellable-test cancellable-test.c)
 add_executable (factory-test factory-test.c)
 add_executable (nmea-data-test nmea-data-test.c)
 add_executable (forward-look-data-test forward-look-data-test.c hyscan-fl-gen.c)
@@ -29,9 +29,9 @@ add_executable (nmea-file-device-test nmea-file-device-test.c)
 add_executable (nav-model-test nav-model-test.c)
 add_executable (nmea-file2udp nmea-file2udp.c)
 
+target_link_libraries (cancellable-test ${TEST_LIBRARIES})
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
-target_link_libraries (cancellable-test ${TEST_LIBRARIES})
 target_link_libraries (factory-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-data-test ${TEST_LIBRARIES})
 target_link_libraries (forward-look-data-test ${TEST_LIBRARIES})
@@ -57,6 +57,8 @@ target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
+add_test (NAME CancellableTest COMMAND cancellable-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME DataWriterTest COMMAND data-writer-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME MarkModelTest COMMAND mark-model-test file://db
@@ -82,7 +84,8 @@ add_test (NAME TaskQueueTest COMMAND task-queue-test
 add_test (NAME NavModelTest COMMAND nav-model-test --default-data
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
-install (TARGETS data-writer-test
+install (TARGETS cancellable-test
+                 data-writer-test
                  acoustic-data-test
                  nmea-data-test
                  forward-look-data-test

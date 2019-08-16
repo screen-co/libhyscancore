@@ -75,10 +75,11 @@ hyscan_nav_data_default_init (HyScanNavDataInterface *iface)
  * Returns: %TRUE, если удалось определить, %FALSE в случае ошибки.
  */
 gboolean
-hyscan_nav_data_get (HyScanNavData *navdata,
-                     guint32        index,
-                     gint64        *time,
-                     gdouble       *value)
+hyscan_nav_data_get (HyScanNavData     *navdata,
+                     HyScanCancellable *cancellable,
+                     guint32            index,
+                     gint64            *time,
+                     gdouble           *value)
 {
   HyScanNavDataInterface *iface;
 
@@ -86,7 +87,7 @@ hyscan_nav_data_get (HyScanNavData *navdata,
   iface = HYSCAN_NAV_DATA_GET_IFACE (navdata);
 
   if (iface->get != NULL)
-    return (*iface->get) (navdata, index, time, value);
+    return (*iface->get) (navdata, cancellable, index, time, value);
 
   return FALSE;
 }
