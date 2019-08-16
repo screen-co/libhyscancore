@@ -82,6 +82,7 @@ void                    hyscan_depthometer_set_validity_time     (HyScanDepthome
 
 HYSCAN_API
 gdouble                 hyscan_depthometer_get                 (HyScanDepthometer      *depthometer,
+                                                                HyScanCancellable      *cancellable,
                                                                 gint64                  time);
 HYSCAN_API
 gdouble                 hyscan_depthometer_check               (HyScanDepthometer      *depthometer,

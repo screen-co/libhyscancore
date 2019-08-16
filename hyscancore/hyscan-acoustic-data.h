@@ -160,6 +160,7 @@ const HyScanComplexFloat *     hyscan_acoustic_data_get_complex        (HyScanAc
 
 HYSCAN_API
 const gfloat *                 hyscan_acoustic_data_get_amplitude      (HyScanAcousticData    *data,
+                                                                        HyScanCancellable     *cancellable,
                                                                         guint32                index,
                                                                         guint32               *n_points,
                                                                         gint64                *time);

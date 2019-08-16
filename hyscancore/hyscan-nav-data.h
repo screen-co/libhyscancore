@@ -38,6 +38,7 @@
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
 #include <hyscan-types.h>
+#include "hyscan-cancellable.h"
 
 G_BEGIN_DECLS
 
@@ -68,6 +69,7 @@ struct _HyScanNavDataInterface
   void                    (*set_cache)                    (HyScanNavData       *ndata,
                                                            HyScanCache         *cache);
   gboolean                (*get)                          (HyScanNavData       *ndata,
+                                                           HyScanCancellable   *cancellable,
                                                            guint32              index,
                                                            gint64              *time,
                                                            gdouble             *value);
@@ -94,6 +96,7 @@ void                    hyscan_nav_data_set_cache       (HyScanNavData          
                                                          HyScanCache            *cache);
 HYSCAN_API
 gboolean                hyscan_nav_data_get             (HyScanNavData         *ndata,
+                                                         HyScanCancellable     *cancellable,
                                                          guint32                index,
                                                          gint64                *time,
                                                          gdouble               *value);

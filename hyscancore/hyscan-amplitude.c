@@ -291,11 +291,12 @@ hyscan_amplitude_get_size_time (HyScanAmplitude *amplitude,
  *          Массив значений амплитуды сигнала или NULL.
  */
 const gfloat *
-hyscan_amplitude_get_amplitude (HyScanAmplitude *amplitude,
-                                guint32          index,
-                                guint32         *n_points,
-                                gint64          *time,
-                                gboolean        *noise)
+hyscan_amplitude_get_amplitude (HyScanAmplitude   *amplitude,
+                                HyScanCancellable *cancellable,
+                                guint32            index,
+                                guint32           *n_points,
+                                gint64            *time,
+                                gboolean          *noise)
 {
   HyScanAmplitudeInterface *iface;
 
@@ -303,7 +304,7 @@ hyscan_amplitude_get_amplitude (HyScanAmplitude *amplitude,
 
   iface = HYSCAN_AMPLITUDE_GET_IFACE (amplitude);
   if (iface->get_amplitude != NULL)
-    return (* iface->get_amplitude) (amplitude, index, n_points, time, noise);
+    return (* iface->get_amplitude) (amplitude, cancellable, index, n_points, time, noise);
 
   return NULL;
 }

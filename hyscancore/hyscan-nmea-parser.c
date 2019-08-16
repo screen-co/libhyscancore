@@ -404,10 +404,11 @@ hyscan_nmea_parser_set_cache (HyScanNavData *navdata,
 
 /* Функция получения глубины. */
 static gboolean
-hyscan_nmea_parser_get (HyScanNavData *navdata,
-                        guint32        index,
-                        gint64        *time,
-                        gdouble       *value)
+hyscan_nmea_parser_get (HyScanNavData     *navdata,
+                        HyScanCancellable *cancellable,
+                        guint32            index,
+                        gint64            *time,
+                        gdouble           *value)
 {
   HyScanNMEAParser *parser = HYSCAN_NMEA_PARSER (navdata);
   HyScanNMEAParserPrivate *priv = parser->priv;
