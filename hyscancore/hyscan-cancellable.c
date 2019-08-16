@@ -50,7 +50,8 @@
 
 #include "hyscan-cancellable.h"
 
-#define N_LEVELS (8 /* Размер стека*/ )
+#define N_LEVELS (8 /* Размер стека. */ )
+#define MULTIPLIER (1e8 /* Множитель. */ )
 
 /*
  * HACKING
@@ -62,6 +63,7 @@
  * |--------------|:--:|:-------:|:---------------:|
  * | .current     | .2 |   .5    |       .7        |
  * | .next        | .3 |   .6    |       1.0       |
+ * |--------------|----|---------|-----------------|
  * | result       | .2 |   .25   |      .257       |
  * |--------------|----|---------|-----------------|
  * | .multiplier  |  1 | (30-20) | (30-20)*(60-50) |
@@ -96,7 +98,7 @@ struct _HyScanCancellablePrivate
   HyScanCancellablePercents  values[N_LEVELS]; /* Массив значений. */
 
   gint                       index;            /* Текущий уровень влож-ти. */
-  gfloat                     current;          /* Текущее значение. */
+  gint                       current;          /* Текущее значение. */
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanCancellable, hyscan_cancellable, G_TYPE_CANCELLABLE);
@@ -144,6 +146,7 @@ hyscan_cancellable_set (HyScanCancellable *cancellable,
                         gfloat             current,
                         gfloat             next)
 {
+  gint perc;
   HyScanCancellablePrivate *priv;
   HyScanCancellablePercents *link;
 
@@ -164,7 +167,8 @@ hyscan_cancellable_set (HyScanCancellable *cancellable,
   link->current = current;
   link->next = next;
 
-  priv->current = link->total + link->multiplier * link->current;
+  perc = (link->total + link->multiplier * link->current) * MULTIPLIER;
+  g_atomic_int_set (&priv->current, perc);
 }
 
 /**
@@ -178,12 +182,15 @@ hyscan_cancellable_set (HyScanCancellable *cancellable,
 gfloat
 hyscan_cancellable_get (HyScanCancellable *cancellable)
 {
+  gint current;
+
   /* Cм HACKING выше, почему так сделано. */
   g_return_val_if_fail (G_IS_CANCELLABLE (cancellable), -1.0);
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return 0.0;
 
-  return cancellable->priv->current;
+  current = g_atomic_int_get (&cancellable->priv->current);
+  return current / MULTIPLIER;
 }
 
 /**
