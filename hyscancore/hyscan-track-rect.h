@@ -72,11 +72,6 @@ HyScanTrackRect        *hyscan_track_rect_new                   (HyScanCache    
                                                                  HyScanFactoryAmplitude *amp_factory,
                                                                  HyScanFactoryDepth     *dpt_factory);
 
-HYSCAN_API
-void                    hyscan_track_rect_amp_changed           (HyScanTrackRect        *track_rect);
-HYSCAN_API
-void                    hyscan_track_rect_dpt_changed           (HyScanTrackRect        *track_rect);
-
 /**
  *
  * Функция задает источник.

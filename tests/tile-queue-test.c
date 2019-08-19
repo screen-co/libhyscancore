@@ -123,8 +123,6 @@ main (int argc, char **argv)
   tq = hyscan_tile_queue_new (1, cache, af, df);
   hyscan_factory_amplitude_set_track (af, db, name, name);
   hyscan_factory_depth_set_track (df, db, name, name);
-  hyscan_tile_queue_amp_changed (tq);
-  hyscan_tile_queue_dpt_changed (tq);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);
   g_signal_connect (tq, "tile-queue-ready", G_CALLBACK (tile_ready_callback), &reduced_callback_number);
 

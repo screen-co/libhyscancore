@@ -230,6 +230,9 @@ static void                hyscan_tile_queue_object_finalize    (GObject        
 static HyScanTileQueueTask * hyscan_tile_queue_task_new         (HyScanTile             *tile,
                                                                  HyScanCancellable      *cancellable);
 static void                hyscan_tile_queue_task_free          (gpointer                task);
+
+static void                hyscan_tile_queue_amp_changed        (HyScanTileQueue        *self);
+static void                hyscan_tile_queue_dpt_changed        (HyScanTileQueue        *self);
 static HyScanAmplitude *   hyscan_tile_queue_get_dc             (HyScanTileQueuePrivate *priv,
                                                                  HyScanSourceType        source,
                                                                  gint                    gen_id);
@@ -396,6 +399,15 @@ hyscan_tile_queue_object_constructed (GObject *object)
       priv->generator[i] = hyscan_waterfall_tile_new ();
     }
 
+  /* Подключаемся к сигналам фабрик. */
+  g_signal_connect_swapped (priv->amp_factory, "changed",
+                            G_CALLBACK (hyscan_tile_queue_amp_changed), self);
+  g_signal_connect_swapped (priv->dpt_factory, "changed",
+                            G_CALLBACK (hyscan_tile_queue_dpt_changed), self);
+
+  hyscan_tile_queue_amp_changed (self);
+  hyscan_tile_queue_dpt_changed (self);
+
   /* По умолчанию считаем скорость судна равной 1 м/с, звука - 1500 м/с. */
   hyscan_tile_queue_set_ship_speed (self, 1.0);
   hyscan_tile_queue_set_sound_velocity (self, NULL);
@@ -470,6 +482,42 @@ hyscan_tile_queue_task_free (gpointer _task)
 
   g_clear_object (&task->cancellable);
   g_slice_free (HyScanTileQueueTask, task);
+}
+
+/* Обработчик сигнала "changed" от фабрики каналов данных. */
+void
+hyscan_tile_queue_amp_changed (HyScanTileQueue *self)
+{
+  HyScanTileQueuePrivate *priv = self->priv;
+  HyScanTileQueueState *state = &priv->des_state;
+
+  g_mutex_lock (&priv->state_lock);
+
+  priv->des_state.amp_changed = TRUE;
+  priv->state_changed = TRUE;
+
+  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
+  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
+
+  g_mutex_unlock (&priv->state_lock);
+}
+
+/* Обработчик сигнала "changed" от фабрики измерения глубины. */
+void
+hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
+{
+  HyScanTileQueuePrivate *priv = self->priv;
+  HyScanTileQueueState *state = &priv->des_state;
+
+  g_mutex_lock (&priv->state_lock);
+
+  priv->des_state.dpt_changed = TRUE;
+  priv->state_changed = TRUE;
+
+  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
+  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
+
+  g_mutex_unlock (&priv->state_lock);
 }
 
 /* Функция возвращает КД из ХТ или создает и помещает туда. */
@@ -859,10 +907,7 @@ hyscan_tile_queue_task_processor (gpointer data,
   if (image == NULL)
     goto exit;
 
-  /* Иначе эмиттируем сигнал с тайлом. */
-  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_IMAGE], 0, task->tile, image, image_size, state->hash);
-
-  /* И кладем в кэш при возможности. */
+  /* Иначе кладем в кэш при возможности. */
   if (cache != NULL)
     {
       HyScanTileQueueCache header;
@@ -877,11 +922,13 @@ hyscan_tile_queue_task_processor (gpointer data,
 
       key = hyscan_tile_queue_cache_key (&task->tile, state->hash);
       hyscan_cache_set2 (cache, key, NULL, meta, data);
-
       g_object_unref (meta);
       g_object_unref (data);
       g_free (key);
     }
+
+  /* И эмиттируем сигнал с тайлом. */
+  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_IMAGE], 0, &task->tile, image, image_size, state->hash);
 
   g_free (image);
 
@@ -1078,62 +1125,6 @@ hyscan_tile_queue_set_sound_velocity (HyScanTileQueue *self,
 }
 
 /**
- * hyscan_tile_queue_amp_changed:
- * @tilequeue: объект #HyScanTileQueue
- *
- * Функция уведомляет объект, что изменились параметры каналов данных
- * и их требуется переоткрыть.
- */
-void
-hyscan_tile_queue_amp_changed (HyScanTileQueue *self)
-{
-  HyScanTileQueuePrivate *priv;
-  HyScanTileQueueState *state;
-
-  g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
-  priv = self->priv;
-  state = &priv->des_state;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->des_state.amp_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
-  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
-/**
- * hyscan_tile_queue_dpt_changed:
- * @tilequeue: объект #HyScanTileQueue
- *
- * Функция уведомляет объект, что изменились параметры измерения глубины и такие
- * объекты требуется переоткрыть.
- */
-void
-hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
-{
-  HyScanTileQueuePrivate *priv;
-  HyScanTileQueueState *state;
-
-  g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
-  priv = self->priv;
-  state = &priv->des_state;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->des_state.dpt_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
-  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
-/**
  * hyscan_tile_queue_check:
  * @tilequeue: объект #HyScanTileQueue
  * @requested_tile: (not nullable): запрошенный тайл
@@ -1173,7 +1164,6 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   hyscan_buffer_wrap (priv->header, HYSCAN_DATA_BLOB, &header, size);
   found = hyscan_cache_get2 (priv->cache, key, NULL, size, priv->header, NULL);
   found &= header.magic == TILE_QUEUE_MAGIC;
-
   *cached_tile = header.tile;
 
   if (found && header.tile.finalized)
@@ -1183,7 +1173,6 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
     *regenerate = regen;
 
   g_free (key);
-
   return found;
 }
 

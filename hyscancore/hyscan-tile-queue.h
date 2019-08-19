@@ -82,12 +82,6 @@ void                    hyscan_tile_queue_set_sound_velocity   (HyScanTileQueue 
                                                                 GArray                 *velocity);
 
 HYSCAN_API
-void                    hyscan_tile_queue_amp_changed          (HyScanTileQueue        *tilequeue);
-
-HYSCAN_API
-void                    hyscan_tile_queue_dpt_changed          (HyScanTileQueue        *tilequeue);
-
-HYSCAN_API
 gboolean                hyscan_tile_queue_check                (HyScanTileQueue        *tilequeue,
                                                                 HyScanTile             *requested_tile,
                                                                 HyScanTile             *cached_tile,

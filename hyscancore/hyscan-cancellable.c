@@ -78,10 +78,11 @@
  *
  * Причудливые проверки.
  * Я не знаю, кто и как собирается использовать мой класс. Я не исключаю того,
- * что случайно (или автоматически глибом) мне будет передан не
- * HyScanCancellable, а GCancellable. В этом случае я собираюсь молча, без
- * ворнингов, ничего не делать. Но вот если уж передали не GCancellable, то
- * сдержаться просто невозможно.
+ * что случайно (или автоматически глибом) мне будет передан GCancellable вместо
+ * HyScanCancellable. Проверка NULL сделана аналогично GCancellable. Итого:
+ * NULL ? return :
+ * HYSCAN_CANCELLABLE ? work :
+ * G_CANCELLBALE ? return : warning;
  */
 
 typedef struct
@@ -152,6 +153,8 @@ hyscan_cancellable_set (HyScanCancellable *cancellable,
   HyScanCancellablePercents *link;
 
   /* Cм HACKING выше, почему так сделано. */
+  if (cancellable == NULL)
+    return;
   g_return_if_fail (G_IS_CANCELLABLE (cancellable));
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return;
@@ -213,6 +216,8 @@ hyscan_cancellable_get (HyScanCancellable *cancellable)
   gint current;
 
   /* Cм HACKING выше, почему так сделано. */
+  if (cancellable == NULL)
+    return 0.0;
   g_return_val_if_fail (G_IS_CANCELLABLE (cancellable), -1.0);
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return 0.0;
@@ -234,6 +239,8 @@ hyscan_cancellable_push (HyScanCancellable *cancellable)
   gint i;
 
   /* Cм HACKING выше, почему так сделано. */
+  if (cancellable == NULL)
+    return;
   g_return_if_fail (G_IS_CANCELLABLE (cancellable));
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return;
@@ -274,6 +281,8 @@ hyscan_cancellable_pop (HyScanCancellable *cancellable)
   HyScanCancellablePrivate *priv;
 
   /* Cм HACKING выше, почему так сделано. */
+  if (cancellable == NULL)
+    return;
   g_return_if_fail (G_IS_CANCELLABLE (cancellable));
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return;
@@ -300,6 +309,8 @@ void
 hyscan_cancellable_freeze (HyScanCancellable *cancellable)
 {
   /* Cм HACKING выше, почему так сделано. */
+  if (cancellable == NULL)
+    return;
   g_return_if_fail (G_IS_CANCELLABLE (cancellable));
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return;
@@ -319,6 +330,8 @@ void
 hyscan_cancellable_unfreeze (HyScanCancellable *cancellable)
 {
   /* Cм HACKING выше, почему так сделано. */
+  if (cancellable == NULL)
+    return;
   g_return_if_fail (G_IS_CANCELLABLE (cancellable));
   if (!HYSCAN_IS_CANCELLABLE (cancellable))
     return;

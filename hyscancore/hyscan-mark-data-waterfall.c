@@ -149,8 +149,6 @@ hyscan_mark_data_waterfall_init_object (HyScanMarkData *data,
                                         gint32          param_id,
                                         HyScanDB       *db)
 {
-  // gboolean status;
-  g_message ("init");
   HyScanMarkDataWaterfallPrivate *priv = HYSCAN_MARK_DATA_WATERFALL (data)->priv;
   HyScanParamList *list = hyscan_param_list_new ();
   hyscan_param_list_add (list, "/schema/id");
