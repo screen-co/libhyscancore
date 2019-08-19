@@ -278,6 +278,7 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
   regen = FALSE;
   have_data = TRUE;
 
+  hyscan_cancellable_freeze (cancellable);
   /* Проверяем отрицательность координат вдоль оси движения. */
   if (priv->tile.along_start < 0 || priv->tile.along_end < 0)
     {
@@ -385,6 +386,7 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
 exit:
   *regenerate = regen;
 
+  hyscan_cancellable_unfreeze (cancellable);
   return have_data;
 }
 
@@ -481,6 +483,7 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   is_ground_distance = priv->tile.flags & HYSCAN_TILE_GROUND;
   is_profiler = priv->tile.flags & HYSCAN_TILE_PROFILER;
 
+  hyscan_cancellable_freeze (cancellable);
   // if (HYSCAN_SOURCE_PROFILER != hyscan_acoustic_data_get_source (HYSCAN_ACOUSTIC_DATA (dc)))
     // is_profiler = FALSE;
 
@@ -579,6 +582,7 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   return TRUE;
 
  exit:
+  hyscan_cancellable_unfreeze (cancellable);
   return FALSE;
 }
 
@@ -695,11 +699,16 @@ hyscan_waterfall_tile_string_helper (HyScanWaterfallTilePrivate *priv,
   mark = params->mark;
   width = params->w;
 
+  hyscan_cancellable_freeze (cancellable);
+
   for (i = 0; i < params->h; i++)
     {
       /* Проверяем досрочное завершение. */
       if (g_cancellable_is_cancelled (G_CANCELLABLE (cancellable)))
-        return;
+        {
+          hyscan_cancellable_freeze (cancellable);
+          return;
+        }
 
       if (mark[i] > 0.0)
         {
@@ -720,7 +729,10 @@ hyscan_waterfall_tile_string_helper (HyScanWaterfallTilePrivate *priv,
     {
       /* Проверяем досрочное завершение. */
       if (g_cancellable_is_cancelled (G_CANCELLABLE (cancellable)))
-        return;
+        {
+          hyscan_cancellable_freeze (cancellable);
+          return;
+        }
 
       hyscan_waterfall_tile_interpolate_string (src + i * width, weight + i * width, width);
       hyscan_waterfall_tile_filter_string (filter, src + i * width, dest + i * width, width);
@@ -934,11 +946,16 @@ hyscan_waterfall_tile_filter_frame (HyScanWaterfallTilePrivate *priv,
 
   half = (filter_size - 1) / 2;
 
+  hyscan_cancellable_freeze (cancellable);
+
   for (i = 0; i < height; i++)
     {
       /* Проверяем досрочное завершение. */
       if (g_cancellable_is_cancelled (G_CANCELLABLE (cancellable)))
-        return FALSE;
+        {
+          hyscan_cancellable_unfreeze (cancellable);
+          return FALSE;
+        }
 
       /* Сначала проанализируем, нужно ли фильтровать эту строку. */
       /* Строку не нужно фильтровать тогда, когда в фильтр попадут одни и те же строки. */
@@ -981,6 +998,7 @@ hyscan_waterfall_tile_filter_frame (HyScanWaterfallTilePrivate *priv,
         }
     }
 
+  hyscan_cancellable_unfreeze (cancellable);
   return TRUE;
 }
 
@@ -1182,7 +1200,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
   frame_width = hyscan_tile_common_tile_size (priv->tile.across_start, priv->tile.across_end, step);
 
   /* Предварительные рассчеты. */
-  hyscan_cancellable_set (cancellable, 1/5., 2/5.);
+  hyscan_cancellable_set (cancellable, 0/5., 1/5.);
   have_data = hyscan_waterfall_tile_prepare (priv, cancellable, &upsample, step, &regenerate);
 
   if (!have_data)
@@ -1192,7 +1210,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
   hyscan_waterfall_tile_reset (params);
 
   /* Наполняем массив data0 данными. */
-  hyscan_cancellable_set (cancellable, 2/5., 3/5.);
+  hyscan_cancellable_set (cancellable, 1/5., 2/5.);
   completed = hyscan_waterfall_tile_fill (priv, cancellable, &have_data);
   if (!completed)
     goto user_terminate;
@@ -1201,7 +1219,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
     goto empty_frame;
 
   /* Теперь проходим по строкам. Интерполируем и фильтруем. Результат будет в data1. */
-  hyscan_cancellable_set (cancellable, 3/5., 4/5.);
+  hyscan_cancellable_set (cancellable, 2/5., 3/5.);
   hyscan_waterfall_tile_string_helper (priv, cancellable, upsample);
 
   /* Интерполяция по кадру. Результат остается в data1. */
@@ -1223,7 +1241,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
     }
 
   /* Фильтруем. Результат будет в data2. */
-  hyscan_cancellable_set (cancellable, 4/5., 5/5.);
+  hyscan_cancellable_set (cancellable, 3/5., 4/5.);
   completed = hyscan_waterfall_tile_filter_frame (priv, cancellable, vfilt,
                                                   params->data1,
                                                   params->mark,
@@ -1237,6 +1255,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
   output = hyscan_waterfall_tile_compose_frame (priv, params->data2, params->w, params->h,
                                                 frame_height, frame_width, step, upsample,
                                                 params->start_dist, params->step);
+  hyscan_cancellable_set (cancellable, 5/5., 5/5.);
   empty_frame:
   if (!have_data)
     {

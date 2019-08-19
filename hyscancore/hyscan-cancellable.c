@@ -99,6 +99,7 @@ struct _HyScanCancellablePrivate
 
   gint                       index;            /* Текущий уровень влож-ти. */
   gint                       current;          /* Текущее значение. */
+  gboolean                   freeze;           /* "Заморозка". */
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanCancellable, hyscan_cancellable, G_TYPE_CANCELLABLE);
@@ -161,6 +162,10 @@ hyscan_cancellable_set (HyScanCancellable *cancellable,
   if (priv->index >= N_LEVELS)
     return;
 
+  /* Если заморожено -- выходим. */
+  if (priv->freeze)
+    return;
+
   /* Иначе обновляем значения и пересчитываем общий прогресс. */
   link = &priv->values[priv->index];
 
@@ -171,6 +176,29 @@ hyscan_cancellable_set (HyScanCancellable *cancellable,
   g_atomic_int_set (&priv->current, perc);
 }
 
+/**
+ * hyscan_cancellable_set_total:
+ * @cancellable: HyScanCancellable
+ * @current: номер текущего шага
+ * @start: номер начального шага
+ * @end: номер конечного шага
+ *
+ * Вспомогательная функция для задания прогресса не в процентах, а как номер
+ * текущего шага. Например, если обрабатываются определенные индексы.
+ *
+ * for (i = 10; i < 20; ++i)
+ *   hyscan_cancellable_set_total (canc, i, 10, 20);
+ */
+void
+hyscan_cancellable_set_total (HyScanCancellable *cancellable,
+                              gfloat             current,
+                              gfloat             start,
+                              gfloat             end)
+{
+  hyscan_cancellable_set (cancellable,
+                          (current - start) / (end - start),
+                          (current - start + 1) / (end - start));
+}
 /**
  * hyscan_cancellable_get:
  * @cancellable: HyScanCancellable
@@ -260,4 +288,40 @@ hyscan_cancellable_pop (HyScanCancellable *cancellable)
   hyscan_cancellable_set (cancellable,
                           priv->values[priv->index].next,
                           priv->values[priv->index].next);
+}
+
+/**
+ * hyscan_cancellable_freeze:
+ * @cancellable: HyScanCancellable
+ *
+ * "Размораживает" объект. См. hyscan_cancellable_freeze()
+ */
+void
+hyscan_cancellable_freeze (HyScanCancellable *cancellable)
+{
+  /* Cм HACKING выше, почему так сделано. */
+  g_return_if_fail (G_IS_CANCELLABLE (cancellable));
+  if (!HYSCAN_IS_CANCELLABLE (cancellable))
+    return;
+
+  cancellable->priv->freeze = TRUE;
+}
+
+/**
+ * hyscan_cancellable_unfreeze:
+ * @cancellable: HyScanCancellable
+ *
+ * "Замораживает" объект. Это значит, что последующие вызовы
+ * hyscan_cancellable_set() не будут приводить к изменению процента выполнения.
+ * Удобно использовать, когда лень задавать промежуточные значения.
+ */
+void
+hyscan_cancellable_unfreeze (HyScanCancellable *cancellable)
+{
+  /* Cм HACKING выше, почему так сделано. */
+  g_return_if_fail (G_IS_CANCELLABLE (cancellable));
+  if (!HYSCAN_IS_CANCELLABLE (cancellable))
+    return;
+
+  cancellable->priv->freeze = FALSE;
 }

@@ -75,6 +75,12 @@ void                   hyscan_cancellable_set              (HyScanCancellable *c
                                                             gfloat             next);
 
 HYSCAN_API
+void                   hyscan_cancellable_set_total        (HyScanCancellable *cancellable,
+                                                            gfloat             current,
+                                                            gfloat             start,
+                                                            gfloat             end);
+
+HYSCAN_API
 gfloat                 hyscan_cancellable_get              (HyScanCancellable *cancellable);
 
 HYSCAN_API
@@ -82,6 +88,12 @@ void                   hyscan_cancellable_push             (HyScanCancellable *c
 
 HYSCAN_API
 void                   hyscan_cancellable_pop              (HyScanCancellable *cancellable);
+
+HYSCAN_API
+void                   hyscan_cancellable_freeze           (HyScanCancellable *cancellable);
+
+HYSCAN_API
+void                   hyscan_cancellable_unfreeze         (HyScanCancellable *cancellable);
 
 G_END_DECLS
 
