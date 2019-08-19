@@ -36,7 +36,7 @@
 #ifndef __HYSCAN_MARK_DATA_WATERFALL_H__
 #define __HYSCAN_MARK_DATA_WATERFALL_H__
 
-#include <hyscan-mark-data.h>
+#include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
@@ -53,14 +53,14 @@ typedef struct _HyScanMarkDataWaterfallClass HyScanMarkDataWaterfallClass;
 
 struct _HyScanMarkDataWaterfall
 {
-  HyScanMarkData parent_instance;
+  HyScanObjectData parent_instance;
   
   HyScanMarkDataWaterfallPrivate *priv;
 };
 
 struct _HyScanMarkDataWaterfallClass
 {
-  HyScanMarkDataClass parent_class;
+  HyScanObjectDataClass parent_class;
 };
 
 HYSCAN_API

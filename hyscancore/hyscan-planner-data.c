@@ -14,46 +14,46 @@ struct _HyScanPlannerDataPrivate
 
 static void                hyscan_planner_data_object_constructed  (GObject                  *object);
 static void                hyscan_planner_data_object_finalize     (GObject                  *object);
-static gboolean            hyscan_planner_data_get_full            (HyScanMarkData           *mdata,
+static gboolean            hyscan_planner_data_get_full            (HyScanObjectData         *mdata,
                                                                     HyScanParamList          *read_plist,
-                                                                    gpointer                  object);
-static void                hyscan_planner_data_get_zone            (HyScanMarkData           *mdata,
+                                                                    HyScanObject             *object);
+static void                hyscan_planner_data_get_zone            (HyScanObjectData         *mdata,
                                                                     HyScanParamList          *plist,
-                                                                    gpointer                  object);
-static void                hyscan_planner_data_get_track           (HyScanMarkData           *mdata,
+                                                                    HyScanObject             *object);
+static void                hyscan_planner_data_get_track           (HyScanObjectData         *mdata,
                                                                     HyScanParamList          *plist,
-                                                                    gpointer                  object);
-static gboolean            hyscan_planner_data_set_full            (HyScanMarkData           *data,
+                                                                    HyScanObject             *object);
+static gboolean            hyscan_planner_data_set_full            (HyScanObjectData         *data,
                                                                     HyScanParamList          *write_plist,
-                                                                    gconstpointer             object);
-static gboolean            hyscan_planner_data_set_track           (HyScanMarkData           *data,
+                                                                    const HyScanObject       *object);
+static gboolean            hyscan_planner_data_set_track           (HyScanObjectData         *data,
                                                                     HyScanParamList          *write_plist,
                                                                     const HyScanPlannerTrack *track);
-static gboolean            hyscan_planner_data_set_zone            (HyScanMarkData           *data,
+static gboolean            hyscan_planner_data_set_zone            (HyScanObjectData         *data,
                                                                     HyScanParamList          *write_plist,
                                                                     const HyScanPlannerZone  *zone);
-static gpointer            hyscan_planner_data_object_new          (HyScanMarkData           *data,
+static HyScanObject *      hyscan_planner_data_object_new          (HyScanObjectData         *data,
                                                                     const gchar              *id);
-static gpointer            hyscan_planner_data_object_copy         (gconstpointer             object);
-static void                hyscan_planner_data_object_destroy      (gpointer                  object);
-static HyScanParamList *   hyscan_planner_data_get_read_plist      (HyScanMarkData           *data,
+static HyScanObject *      hyscan_planner_data_object_copy         (const HyScanObject       *object);
+static void                hyscan_planner_data_object_destroy      (HyScanObject             *object);
+static HyScanParamList *   hyscan_planner_data_get_read_plist      (HyScanObjectData         *data,
                                                                     const gchar              *schema_id);
 static HyScanGeoGeodetic * hyscan_planner_data_string_to_points    (const gchar              *string,
                                                                     gsize                    *points_len);
 static gchar *             hyscan_planner_data_points_to_string    (HyScanGeoGeodetic        *points,
                                                                     gsize                     points_len);
-static const gchar *       hyscan_planner_data_get_schema_id       (HyScanMarkData           *data,
-                                                                    gpointer                  mark);
-static gchar *             hyscan_planner_data_generate_id         (HyScanMarkData           *data,
-                                                                    gpointer                  mark);
+static const gchar *       hyscan_planner_data_get_schema_id       (HyScanObjectData         *data,
+                                                                    HyScanObject             *object);
+static gchar *             hyscan_planner_data_generate_id         (HyScanObjectData         *data,
+                                                                    HyScanObject             *object);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanPlannerData, hyscan_planner_data, HYSCAN_TYPE_MARK_DATA)
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanPlannerData, hyscan_planner_data, HYSCAN_TYPE_OBJECT_DATA)
 
 static void
 hyscan_planner_data_class_init (HyScanPlannerDataClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  HyScanMarkDataClass *data_class = HYSCAN_MARK_DATA_CLASS (klass);
+  HyScanObjectDataClass *data_class = HYSCAN_OBJECT_DATA_CLASS (klass);
 
   object_class->constructed = hyscan_planner_data_object_constructed;
   object_class->finalize = hyscan_planner_data_object_finalize;
@@ -116,10 +116,10 @@ hyscan_planner_data_object_finalize (GObject *object)
 }
 
 static const gchar *
-hyscan_planner_data_get_schema_id (HyScanMarkData *data,
-                                   gpointer        mark)
+hyscan_planner_data_get_schema_id (HyScanObjectData *data,
+                                   HyScanObject     *object_)
 {
-  HyScanPlannerObject *object = mark;
+  HyScanPlannerObject *object = object_;
 
   if (object->type == HYSCAN_PLANNER_ZONE)
     return PLANNER_ZONE_SCHEMA;
@@ -130,14 +130,14 @@ hyscan_planner_data_get_schema_id (HyScanMarkData *data,
 }
 
 static gchar *
-hyscan_planner_data_generate_id (HyScanMarkData *data,
-                                 gpointer        mark)
+hyscan_planner_data_generate_id (HyScanObjectData *data,
+                                 HyScanObject     *object_)
 {
   gchar *unique_id;
   gchar *id = NULL;
-  HyScanPlannerObject *object = mark;
+  HyScanPlannerObject *object = object_;
 
-  unique_id = HYSCAN_MARK_DATA_CLASS (hyscan_planner_data_parent_class)->generate_id (data, mark);
+  unique_id = HYSCAN_OBJECT_DATA_CLASS (hyscan_planner_data_parent_class)->generate_id (data, object);
   if (object->type == HYSCAN_PLANNER_ZONE)
     {
       id = g_strconcat (PREFIX_ZONE, unique_id, NULL);
@@ -171,8 +171,8 @@ hyscan_planner_data_track_validate_id (const gchar *track_id)
   return track_id != NULL && g_str_has_prefix (track_id, PREFIX_TRACK);
 }
 
-static gpointer
-hyscan_planner_data_object_new (HyScanMarkData *data,
+static HyScanObject *
+hyscan_planner_data_object_new (HyScanObjectData *data,
                                 const gchar    *id)
 {
   HyScanPlannerObject *object;
@@ -190,7 +190,7 @@ hyscan_planner_data_object_new (HyScanMarkData *data,
 }
 
 static void
-hyscan_planner_data_object_destroy (gpointer object)
+hyscan_planner_data_object_destroy (HyScanObject *object)
 {
   HyScanPlannerObject *planner_object = object;
 
@@ -202,8 +202,8 @@ hyscan_planner_data_object_destroy (gpointer object)
     g_warn_if_reached ();
 }
 
-static gpointer
-hyscan_planner_data_object_copy (gconstpointer object)
+static HyScanObject *
+hyscan_planner_data_object_copy (const HyScanObject *object)
 {
   const HyScanPlannerObject *planner_object = object;
 
@@ -216,7 +216,7 @@ hyscan_planner_data_object_copy (gconstpointer object)
 }
 
 static HyScanParamList *
-hyscan_planner_data_get_read_plist (HyScanMarkData *data,
+hyscan_planner_data_get_read_plist (HyScanObjectData *data,
                                     const gchar    *schema_id)
 {
   HyScanPlannerData *planner_data = HYSCAN_PLANNER_DATA (data);
@@ -293,9 +293,9 @@ hyscan_planner_data_points_to_string (HyScanGeoGeodetic *points,
 }
 
 static void
-hyscan_planner_data_get_zone (HyScanMarkData  *mdata,
-                              HyScanParamList *plist,
-                              gpointer         object)
+hyscan_planner_data_get_zone (HyScanObjectData *mdata,
+                              HyScanParamList  *plist,
+                              HyScanObject     *object)
 {
   HyScanPlannerZone *zone = object;
   const gchar *vertices;
@@ -310,9 +310,9 @@ hyscan_planner_data_get_zone (HyScanMarkData  *mdata,
 }
 
 static void
-hyscan_planner_data_get_track (HyScanMarkData  *mdata,
-                               HyScanParamList *plist,
-                               gpointer         object)
+hyscan_planner_data_get_track (HyScanObjectData *mdata,
+                               HyScanParamList  *plist,
+                               HyScanObject     *object)
 {
   HyScanPlannerTrack *track = object;
 
@@ -328,9 +328,9 @@ hyscan_planner_data_get_track (HyScanMarkData  *mdata,
 }
 
 static gboolean
-hyscan_planner_data_get_full (HyScanMarkData  *mdata,
-                              HyScanParamList *read_plist,
-                              gpointer         object)
+hyscan_planner_data_get_full (HyScanObjectData *mdata,
+                              HyScanParamList  *read_plist,
+                              HyScanObject     *object)
 {
   gint64 sid, sver;
 
@@ -357,7 +357,7 @@ hyscan_planner_data_get_full (HyScanMarkData  *mdata,
 }
 
 static gboolean
-hyscan_planner_data_set_track (HyScanMarkData           *data,
+hyscan_planner_data_set_track (HyScanObjectData           *data,
                                HyScanParamList          *write_plist,
                                const HyScanPlannerTrack *track)
 {
@@ -377,7 +377,7 @@ hyscan_planner_data_set_track (HyScanMarkData           *data,
 }
 
 static gboolean
-hyscan_planner_data_set_zone (HyScanMarkData          *data,
+hyscan_planner_data_set_zone (HyScanObjectData          *data,
                               HyScanParamList         *write_plist,
                               const HyScanPlannerZone *zone)
 {
@@ -396,9 +396,9 @@ hyscan_planner_data_set_zone (HyScanMarkData          *data,
 }
 
 static gboolean
-hyscan_planner_data_set_full (HyScanMarkData   *mdata,
-                              HyScanParamList  *write_plist,
-                              gconstpointer     object)
+hyscan_planner_data_set_full (HyScanObjectData   *mdata,
+                              HyScanParamList    *write_plist,
+                              const HyScanObject *object)
 {
   const HyScanPlannerObject *planner_object = object;
 
@@ -410,18 +410,18 @@ hyscan_planner_data_set_full (HyScanMarkData   *mdata,
   return FALSE;
 }
 
-HyScanMarkData *
+HyScanObjectData *
 hyscan_planner_data_new (HyScanDB    *db,
                          const gchar *project)
 {
-  HyScanMarkData * data;
+  HyScanObjectData * data;
 
   data = g_object_new (HYSCAN_TYPE_PLANNER_DATA,
                        "db", db,
                        "project", project,
                        NULL);
 
-  if (!hyscan_mark_data_is_ready (data))
+  if (!hyscan_object_data_is_ready (data))
     g_clear_object (&data);
 
   return data;

@@ -1,35 +1,36 @@
 #include "hyscan-mark-data-geo.h"
 #include "hyscan-core-schemas.h"
+#include "hyscan-mark.h"
 
 struct _HyScanMarkDataGeoPrivate
 {
   HyScanParamList      *read_plist;
 };
 
-static void              hyscan_mark_data_geo_object_constructed   (GObject           *object);
-static void              hyscan_mark_data_geo_object_finalize      (GObject           *object);
-static const gchar *     hyscan_mark_data_geo_get_schema_id        (HyScanMarkData    *data,
-                                                                    gpointer           mark);
-static gboolean          hyscan_mark_data_geo_get_full             (HyScanMarkData    *data,
-                                                                    HyScanParamList   *read_plist,
-                                                                    gpointer           object);
-static gboolean          hyscan_mark_data_geo_set_full             (HyScanMarkData    *data,
-                                                                    HyScanParamList   *write_plist,
-                                                                    gconstpointer      object);
-static HyScanParamList * hyscan_mark_data_geo_get_read_plist       (HyScanMarkData    *data,
-                                                                    const gchar       *schema_id);
-static gpointer          hyscan_mark_data_geo_object_new           (HyScanMarkData    *data,
-                                                                    const gchar       *id);
-static gpointer          hyscan_mark_data_geo_object_copy          (gconstpointer      object);
-static void              hyscan_mark_data_geo_object_destroy       (gpointer           object);
+static void              hyscan_mark_data_geo_object_constructed   (GObject             *object);
+static void              hyscan_mark_data_geo_object_finalize      (GObject             *object);
+static const gchar *     hyscan_mark_data_geo_get_schema_id        (HyScanObjectData    *data,
+                                                                    HyScanObject        *object);
+static gboolean          hyscan_mark_data_geo_get_full             (HyScanObjectData    *data,
+                                                                    HyScanParamList     *read_plist,
+                                                                    HyScanObject        *object);
+static gboolean          hyscan_mark_data_geo_set_full             (HyScanObjectData    *data,
+                                                                    HyScanParamList     *write_plist,
+                                                                    const HyScanObject  *object);
+static HyScanParamList * hyscan_mark_data_geo_get_read_plist       (HyScanObjectData    *data,
+                                                                    const gchar         *schema_id);
+static HyScanObject *    hyscan_mark_data_geo_object_new           (HyScanObjectData    *data,
+                                                                    const gchar         *id);
+static HyScanObject *    hyscan_mark_data_geo_object_copy          (const HyScanObject  *object);
+static void              hyscan_mark_data_geo_object_destroy       (HyScanObject        *object);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkDataGeo, hyscan_mark_data_geo, HYSCAN_TYPE_MARK_DATA);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanMarkDataGeo, hyscan_mark_data_geo, HYSCAN_TYPE_OBJECT_DATA);
 
 static void
 hyscan_mark_data_geo_class_init (HyScanMarkDataGeoClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  HyScanMarkDataClass *data_class = HYSCAN_MARK_DATA_CLASS (klass);
+  HyScanObjectDataClass *data_class = HYSCAN_OBJECT_DATA_CLASS (klass);
 
   object_class->constructed = hyscan_mark_data_geo_object_constructed;
   object_class->finalize = hyscan_mark_data_geo_object_finalize;
@@ -85,17 +86,17 @@ hyscan_mark_data_geo_object_finalize (GObject *object)
 }
 
 static const gchar *
-hyscan_mark_data_geo_get_schema_id (HyScanMarkData *data,
-                                    gpointer        mark)
+hyscan_mark_data_geo_get_schema_id (HyScanObjectData *data,
+                                    HyScanObject     *object)
 {
   return GEO_MARK_SCHEMA;
 }
 
 /* Функция считывает содержимое объекта. */
 static gboolean
-hyscan_mark_data_geo_get_full (HyScanMarkData  *data,
-                               HyScanParamList *read_plist,
-                               gpointer         object)
+hyscan_mark_data_geo_get_full (HyScanObjectData *data,
+                               HyScanParamList  *read_plist,
+                               HyScanObject     *object)
 {
   HyScanMark *mark = object;
   HyScanGeoGeodetic coord;
@@ -135,9 +136,9 @@ hyscan_mark_data_geo_get_full (HyScanMarkData  *data,
 
 /* Функция записывает значения в существующий объект. */
 static gboolean
-hyscan_mark_data_geo_set_full (HyScanMarkData   *data,
-                               HyScanParamList  *write_plist,
-                               gconstpointer     object)
+hyscan_mark_data_geo_set_full (HyScanObjectData   *data,
+                               HyScanParamList    *write_plist,
+                               const HyScanObject *object)
 {
   const HyScanMarkAny *any = object;
   const HyScanMarkGeo *mark_geo;
@@ -161,29 +162,29 @@ hyscan_mark_data_geo_set_full (HyScanMarkData   *data,
 }
 
 static HyScanParamList *
-hyscan_mark_data_geo_get_read_plist (HyScanMarkData *data,
-                                     const gchar    *schema_id)
+hyscan_mark_data_geo_get_read_plist (HyScanObjectData *data,
+                                     const gchar      *schema_id)
 {
   HyScanMarkDataGeo *data_geo = HYSCAN_MARK_DATA_GEO (data);
 
   return g_object_ref (data_geo->priv->read_plist);
 }
 
-static gpointer
-hyscan_mark_data_geo_object_new (HyScanMarkData *data,
-                                 const gchar    *id)
+static HyScanObject *
+hyscan_mark_data_geo_object_new (HyScanObjectData *data,
+                                 const gchar      *id)
 {
   return hyscan_mark_new (HYSCAN_MARK_GEO);
 }
 
 static void
-hyscan_mark_data_geo_object_destroy (gpointer object)
+hyscan_mark_data_geo_object_destroy (HyScanObject *object)
 {
   hyscan_mark_free (object);
 }
 
-static gpointer
-hyscan_mark_data_geo_object_copy (gconstpointer object)
+static HyScanObject *
+hyscan_mark_data_geo_object_copy (const HyScanObject *object)
 {
   return hyscan_mark_copy ((HyScanMark *) object);
 }

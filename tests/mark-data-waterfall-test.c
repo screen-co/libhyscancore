@@ -34,7 +34,7 @@ main (int argc, char **argv)
   gchar *db_uri = "file://./";           /* Путь к БД. */
   gchar *name = "test";                  /* Проект и галс. */
 
-  HyScanMarkData *data = NULL;
+  HyScanObjectData *data = NULL;
   HyScanMark *mark;
 
   gchar **list;
@@ -67,15 +67,15 @@ main (int argc, char **argv)
 
   /* Отправим несколько меток. */
   g_message ("Adding marks...");
-  hyscan_mark_data_add (data, &test_marks[0], NULL);
-  hyscan_mark_data_add (data, &test_marks[1], NULL);
-  hyscan_mark_data_add (data, &test_marks[2], NULL);
+  hyscan_object_data_add (data, &test_marks[0], NULL);
+  hyscan_object_data_add (data, &test_marks[1], NULL);
+  hyscan_object_data_add (data, &test_marks[2], NULL);
 
   /* Проверим, что получилось. */
-  list = hyscan_mark_data_get_ids (data, &list_len);
+  list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      mark = hyscan_mark_data_get (data, list[i]);
+      mark = hyscan_object_data_get (data, list[i]);
       if (mark == NULL || !mark_lookup (&mark->waterfall))
         g_error ("Failed to get mark <%s>", list[i]);
       else
@@ -84,13 +84,13 @@ main (int argc, char **argv)
 
   /* Изменяем какую-то метку. */
   g_message ("Modifying mark...");
-  hyscan_mark_data_modify (data, list[1], &test_marks[3]);
+  hyscan_object_data_modify (data, list[1], &test_marks[3]);
 
   g_strfreev (list);
-  list = hyscan_mark_data_get_ids (data, &list_len);
+  list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      mark = hyscan_mark_data_get (data, list[i]);
+      mark = hyscan_object_data_get (data, list[i]);
       if (mark == NULL || !mark_lookup (&mark->waterfall))
         g_error ("Failed to get mark <%s>", list[i]);
       else
@@ -99,13 +99,13 @@ main (int argc, char **argv)
 
   /* Удаляем метку. */
   g_message ("Removing mark...");
-  hyscan_mark_data_remove (data, list[2]);
+  hyscan_object_data_remove (data, list[2]);
 
   g_strfreev (list);
-  list = hyscan_mark_data_get_ids (data, &list_len);
+  list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      mark = hyscan_mark_data_get (data, list[i]);
+      mark = hyscan_object_data_get (data, list[i]);
       if (mark == NULL || !mark_lookup (&mark->waterfall))
         g_error ("Failed to get mark <%s>", list[i]);
       else

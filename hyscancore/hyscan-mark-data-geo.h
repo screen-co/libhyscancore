@@ -1,7 +1,7 @@
 #ifndef __HYSCAN_MARK_DATA_GEO_H__
 #define __HYSCAN_MARK_DATA_GEO_H__
 
-#include <hyscan-mark-data.h>
+#include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
@@ -18,13 +18,13 @@ typedef struct _HyScanMarkDataGeoClass HyScanMarkDataGeoClass;
 
 struct _HyScanMarkDataGeo
 {
-  HyScanMarkData            parent_instance;
+  HyScanObjectData          parent_instance;
   HyScanMarkDataGeoPrivate *priv;
 };
 
 struct _HyScanMarkDataGeoClass
 {
-  HyScanMarkDataClass parent_class;
+  HyScanObjectDataClass parent_class;
 };
 
 HYSCAN_API

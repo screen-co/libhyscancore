@@ -2,7 +2,7 @@
 #define __HYSCAN_PLANNER_DATA_H__
 
 #include <hyscan-planner.h>
-#include <hyscan-mark-data.h>
+#include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
@@ -19,21 +19,21 @@ typedef struct _HyScanPlannerDataClass HyScanPlannerDataClass;
 
 struct _HyScanPlannerData
 {
-  HyScanMarkData parent_instance;
+  HyScanObjectData parent_instance;
 
   HyScanPlannerDataPrivate *priv;
 };
 
 struct _HyScanPlannerDataClass
 {
-  HyScanMarkDataClass parent_class;
+  HyScanObjectDataClass parent_class;
 };
 
 HYSCAN_API
 GType                  hyscan_planner_data_get_type         (void);
 
 HYSCAN_API
-HyScanMarkData *       hyscan_planner_data_new              (HyScanDB    *db,
+HyScanObjectData *     hyscan_planner_data_new              (HyScanDB    *db,
                                                              const gchar *project);
 
 G_END_DECLS

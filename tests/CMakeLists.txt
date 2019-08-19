@@ -59,7 +59,7 @@ file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 add_test (NAME DataWriterTest COMMAND data-writer-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-add_test (NAME MarkModelTest COMMAND mark-model-test file://db
+add_test (NAME ObjectModelTest COMMAND mark-model-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME AcousticDataTest COMMAND acoustic-data-test -c 1024 file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")

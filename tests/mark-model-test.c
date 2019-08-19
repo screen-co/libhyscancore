@@ -1,5 +1,5 @@
 #include <hyscan-data-writer.h>
-#include <hyscan-mark-model.h>
+#include <hyscan-object-model.h>
 
 #define if_verbose(...) if (verbose) g_print (__VA_ARGS__);
 #define MARK_RAND 10000
@@ -14,7 +14,7 @@ typedef enum
   LAST
 } Actions;
 
-void                 changed_cb        (HyScanMarkModel     *model,
+void                 changed_cb        (HyScanObjectModel   *model,
                                         gpointer             data);
 void                 test_function     (void);
 
@@ -36,7 +36,7 @@ static gboolean    verbose = FALSE;
 static GHashTable *final_marks = NULL;
 static GSList     *performed = NULL;
 
-HyScanMarkModel   *model = NULL;
+HyScanObjectModel *model = NULL;
 
 int
 main (int argc, char **argv)
@@ -104,9 +104,9 @@ main (int argc, char **argv)
 
   loop = g_main_loop_new (NULL, TRUE);
 
-  model = hyscan_mark_model_new (HYSCAN_TYPE_MARK_DATA_WATERFALL);
+  model = hyscan_object_model_new (HYSCAN_TYPE_MARK_DATA_WATERFALL);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
-  hyscan_mark_model_set_project (model, db, name);
+  hyscan_object_model_set_project (model, db, name);
 
   g_main_loop_run (loop);
   // g_usleep (2 * G_TIME_SPAN_SECOND);
@@ -135,15 +135,15 @@ exit:
 }
 
 void
-changed_cb (HyScanMarkModel *model,
-            gpointer         data)
+changed_cb (HyScanObjectModel *model,
+            gpointer           data)
 {
   GMainLoop *loop = data;
   GHashTable *ht;
   GHashTableIter iter;
   gpointer key, value;
 
-  ht = hyscan_mark_model_get (model);
+  ht = hyscan_object_model_get (model);
 
   if (count)
     {
@@ -192,7 +192,7 @@ test_function (void)
   if (!count)
     return;
 
-  ht = hyscan_mark_model_get (model);
+  ht = hyscan_object_model_get (model);
   len = g_hash_table_size (ht);
 
   action = (len < 5) ? ADD : RANDOM (LAST);
@@ -202,7 +202,7 @@ test_function (void)
   if (action == ADD)
     {
       if_verbose ("Add <%s>\n", mark->name);
-      hyscan_mark_model_add_mark (model, (HyScanMark*)mark);
+      hyscan_object_model_add_object (model, (HyScanMark*)mark);
     }
   else
     {
@@ -218,12 +218,12 @@ test_function (void)
           if (action == REMOVE)
             {
               if_verbose ("Remove <%s>\n", ((HyScanMarkWaterfall*)value)->name);
-              hyscan_mark_model_remove_mark (model, key);
+              hyscan_object_model_remove_object (model, key);
             }
           else if (action == MODIFY)
             {
               if_verbose ("Modify <%s> to <%s>\n", ((HyScanMarkWaterfall*)value)->name, mark->name);
-              hyscan_mark_model_modify_mark (model, key, (HyScanMark*)mark);
+              hyscan_object_model_modify_object (model, key, (HyScanMark*)mark);
             }
           break;
         }
