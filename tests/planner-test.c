@@ -201,8 +201,8 @@ test_tracks (HyScanDB *db,
   /* Проверяем, что галс добавлен. */
   tracks = hyscan_object_data_get_ids (planner, NULL);
   g_assert_cmpint (g_strv_length (tracks), ==, 2);
-  g_assert (g_str_equal (track_id, tracks[0]) && g_str_equal (zone_id, tracks[1]) ||
-            g_str_equal (track_id, tracks[1]) && g_str_equal (zone_id, tracks[0]));
+  g_assert ((g_str_equal (track_id, tracks[0]) && g_str_equal (zone_id, tracks[1])) ||
+            (g_str_equal (track_id, tracks[1]) && g_str_equal (zone_id, tracks[0])));
   g_strfreev (tracks);
 
   /* Меняем параметры галса. */

@@ -84,7 +84,7 @@ static void     hyscan_object_data_object_constructed      (GObject             
 static void     hyscan_object_data_object_finalize         (GObject                *object);
 
 static gchar *  hyscan_object_data_generate_id             (HyScanObjectData         *data,
-                                                            HyScanObject             *object);
+                                                            const HyScanObject       *object);
 
 static gboolean hyscan_object_data_get_internal            (HyScanObjectData         *data,
                                                           const gchar            *id,
@@ -257,8 +257,8 @@ hyscan_object_data_object_finalize (GObject *object)
 
 /* Функция генерирует идентификатор. */
 static gchar*
-hyscan_object_data_generate_id (HyScanObjectData *data,
-                                HyScanObject     *object)
+hyscan_object_data_generate_id (HyScanObjectData   *data,
+                                const HyScanObject *object)
 {
   static gchar dict[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   guint i;

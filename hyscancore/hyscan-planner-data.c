@@ -135,7 +135,7 @@ hyscan_planner_data_generate_id (HyScanObjectData   *data,
 {
   gchar *unique_id;
   gchar *id = NULL;
-  HyScanPlannerObject *object = object_;
+  const HyScanPlannerObject *object = object_;
 
   unique_id = HYSCAN_OBJECT_DATA_CLASS (hyscan_planner_data_parent_class)->generate_id (data, object);
   if (object->type == HYSCAN_PLANNER_ZONE)
