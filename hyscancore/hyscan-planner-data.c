@@ -45,7 +45,7 @@ static gchar *             hyscan_planner_data_points_to_string    (HyScanGeoGeo
 static const gchar *       hyscan_planner_data_get_schema_id       (HyScanObjectData         *data,
                                                                     HyScanObject             *object);
 static gchar *             hyscan_planner_data_generate_id         (HyScanObjectData         *data,
-                                                                    HyScanObject             *object);
+                                                                    const HyScanObject       *object);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanPlannerData, hyscan_planner_data, HYSCAN_TYPE_OBJECT_DATA)
 
@@ -130,8 +130,8 @@ hyscan_planner_data_get_schema_id (HyScanObjectData *data,
 }
 
 static gchar *
-hyscan_planner_data_generate_id (HyScanObjectData *data,
-                                 HyScanObject     *object_)
+hyscan_planner_data_generate_id (HyScanObjectData   *data,
+                                 const HyScanObject *object_)
 {
   gchar *unique_id;
   gchar *id = NULL;

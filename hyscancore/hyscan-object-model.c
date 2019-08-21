@@ -249,7 +249,7 @@ hyscan_object_model_add_task (HyScanObjectModel  *model,
   task = g_new (HyScanObjectModelTask, 1);
   task->action = action;
   task->id = (id != NULL) ? g_strdup (id) : NULL;
-  task->object = klass->object_copy (object);
+  task->object = object != NULL ? klass->object_copy (object) : NULL;
 
   g_type_class_unref (klass);
 
@@ -272,7 +272,8 @@ hyscan_object_model_free_task (gpointer _task,
   HyScanObjectModelTask *task = _task;
   HyScanObjectData *mdata = _mdata;
 
-  hyscan_object_data_destroy (mdata, task->object);
+  if (task->object != NULL)
+    hyscan_object_data_destroy (mdata, task->object);
   g_free (task->id);
   g_free (task);
 }
