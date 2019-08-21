@@ -58,7 +58,6 @@ struct _HyScanFactoryDepthPrivate
 
   HyScanDB     *db;
   gchar        *project; /* */
-  gchar        *track;
 
   GMutex        lock;
   gchar        *token;
@@ -134,7 +133,6 @@ hyscan_factory_depth_object_finalize (GObject *object)
 
   g_clear_object (&priv->db);
   g_free (priv->project);
-  g_free (priv->track);
 
   g_free (priv->token);
 
@@ -152,13 +150,12 @@ hyscan_factory_depth_updated (HyScanFactoryDepth *self)
 
   g_clear_pointer (&priv->token, g_free);
 
-  if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
+  if (priv->db == NULL || priv->project == NULL)
     return;
 
   uri = hyscan_db_get_uri (priv->db);
 
-  priv->token = g_strdup_printf ("FactoryDepth.%s.%s.%s",
-                                 uri, priv->project, priv->track);
+  priv->token = g_strdup_printf ("FactoryDepth.%s.%s", uri, priv->project);
 
   g_free (uri);
 }
@@ -209,15 +206,13 @@ hyscan_factory_depth_get_token (HyScanFactoryDepth *self)
  * @self: объект #HyScanDepthfactory
  * @db: база данных
  * @project: проект
- * @track: галс
  *
- * Функция задает БД, проект и галс.
+ * Функция задает БД, проект.
  */
 void
-hyscan_factory_depth_set_track (HyScanFactoryDepth *self,
-                                HyScanDB           *db,
-                                const gchar        *project,
-                                const gchar        *track)
+hyscan_factory_depth_set_project (HyScanFactoryDepth *self,
+                                  HyScanDB           *db,
+                                  const gchar        *project)
 {
   HyScanFactoryDepthPrivate *priv;
 
@@ -228,11 +223,9 @@ hyscan_factory_depth_set_track (HyScanFactoryDepth *self,
 
   g_clear_object (&priv->db);
   g_clear_pointer (&priv->project, g_free);
-  g_clear_pointer (&priv->track, g_free);
 
   priv->db = g_object_ref (db);
   priv->project = g_strdup (project);
-  priv->track = g_strdup (track);
 
   hyscan_factory_depth_updated (self);
 
@@ -250,14 +243,14 @@ hyscan_factory_depth_set_track (HyScanFactoryDepth *self,
  * Returns: (transfer full): #HyScanDepthometer
  */
 HyScanDepthometer *
-hyscan_factory_depth_produce (HyScanFactoryDepth *self)
+hyscan_factory_depth_produce (HyScanFactoryDepth *self,
+                              const gchar        *track)
 {
   HyScanNMEAParser *parser = NULL;
   HyScanDepthometer *depth = NULL;
   HyScanFactoryDepthPrivate *priv;
-  HyScanDB * db;
-  gchar * project;
-  gchar * track;
+  HyScanDB *db;
+  gchar *project;
 
   g_return_val_if_fail (HYSCAN_IS_FACTORY_DEPTH (self), NULL);
   priv = self->priv;
@@ -265,14 +258,13 @@ hyscan_factory_depth_produce (HyScanFactoryDepth *self)
   g_mutex_lock (&priv->lock);
   db = (priv->db != NULL) ? g_object_ref (priv->db) : NULL;
   project = (priv->project != NULL) ? g_strdup (priv->project) : NULL;
-  track = (priv->track != NULL) ? g_strdup (priv->track) : NULL;
   g_mutex_unlock (&priv->lock);
 
   if (db == NULL || project == NULL || track == NULL)
     goto fail;
 
   parser = hyscan_nmea_parser_new (priv->db, priv->cache,
-                                   priv->project, priv->track, 1,
+                                   priv->project, track, 1,
                                    HYSCAN_NMEA_DATA_DPT,
                                    HYSCAN_NMEA_FIELD_DEPTH);
 
@@ -285,7 +277,6 @@ fail:
   g_clear_object (&db);
   g_clear_object (&parser);
   g_clear_pointer (&project, g_free);
-  g_clear_pointer (&track, g_free);
 
   return depth;
 }

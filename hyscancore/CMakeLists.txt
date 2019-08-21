@@ -55,7 +55,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-control.c
              hyscan-control-proxy.c
              hyscan-projector.c
-             hyscan-tile-common.c
+             hyscan-tile.c
              hyscan-tile-color.c
              hyscan-waterfall-tile.c
              hyscan-tile-queue.c
@@ -126,7 +126,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-projector.h
                hyscan-track-rect.h
                hyscan-mloc.h
-               hyscan-tile-common.h
+               hyscan-tile.h
                hyscan-tile-queue.h
                hyscan-tile-color.h
                hyscan-waterfall-tile.h

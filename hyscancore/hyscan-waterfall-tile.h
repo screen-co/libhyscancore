@@ -52,18 +52,18 @@
 #ifndef __HYSCAN_WATERFALL_TILE_H__
 #define __HYSCAN_WATERFALL_TILE_H__
 
-#include <hyscan-depthometer.h>
-#include <hyscan-amplitude.h>
-#include <hyscan-tile-common.h>
+#include "hyscan-depthometer.h"
+#include "hyscan-amplitude.h"
+#include "hyscan-tile.h"
 
 G_BEGIN_DECLS
 
 #define HYSCAN_TYPE_WATERFALL_TILE              (hyscan_waterfall_tile_get_type ())
 #define HYSCAN_WATERFALL_TILE(obj)              (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTile))
 #define HYSCAN_IS_WATERFALL_TILE(obj)           (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_WATERFALL_TILE))
-#define HYSCAN_TILE_CLASS(klass)                (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
+#define HYSCAN_WATERFALL_TILE_CLASS(klass)      (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
 #define HYSCAN_IS_WATERFALL_TILE_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_WATERFALL_TILE))
-#define HYSCAN_TILE_GET_CLASS(obj)              (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
+#define HYSCAN_WATERFALL_TILE_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
 
 typedef struct _HyScanWaterfallTile HyScanWaterfallTile;
 typedef struct _HyScanWaterfallTilePrivate HyScanWaterfallTilePrivate;

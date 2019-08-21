@@ -115,8 +115,7 @@ struct _HyScanWaterfallTilePrivate
   /* Параметры генерации*/
   HyScanCancellable        *cancellable;        /* Для отмены генерации. */
   HyScanWaterfallTileParams params;             /* Внутренние переменные для генерации тайла. */
-  HyScanTile                requested_tile;     /* Параметры запрошенного тайла в чистом виде. */
-  HyScanTile                tile;               /* Параметры запрошенного тайла с учетом знаков. */
+  HyScanTile               *tile;               /* Запрошенный тайл. */
 
   /* Управляющие переменые. */
   gint                      generator_busy;     /* Идет генерация тайла. */
@@ -235,6 +234,7 @@ hyscan_waterfall_tile_object_finalize (GObject *object)
   g_free (priv->params.weight_add);
 
   g_clear_object (&priv->depth);
+  g_clear_object (&priv->dc);
 
   /* Вызываем деструктор родительского класса. */
   G_OBJECT_CLASS (hyscan_waterfall_tile_parent_class)->finalize (object);
@@ -271,16 +271,16 @@ hyscan_waterfall_tile_prepare (HyScanWaterfallTilePrivate *priv,
   guint32              n_vals;
 
   dc = priv->dc;
-  h_start   = priv->tile.across_start;
-  h_end     = priv->tile.across_end;
-  v_start   = priv->tile.along_start;
-  v_end     = priv->tile.along_end;
+  h_start   = priv->tile->info.across_start;
+  h_end     = priv->tile->info.across_end;
+  v_start   = priv->tile->info.along_start;
+  v_end     = priv->tile->info.along_end;
   regen = FALSE;
   have_data = TRUE;
 
   hyscan_cancellable_freeze (cancellable);
   /* Проверяем отрицательность координат вдоль оси движения. */
-  if (priv->tile.along_start < 0 || priv->tile.along_end < 0)
+  if (priv->tile->info.along_start < 0 || priv->tile->info.along_end < 0)
     {
       have_data = FALSE; /* Кадр пустой, */
       regen = FALSE;     /* перегенерация не требуется. */
@@ -480,8 +480,8 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
   n_vals        = 0;
   jsum          = jtot = jprev = 0;
 
-  is_ground_distance = priv->tile.flags & HYSCAN_TILE_GROUND;
-  is_profiler = priv->tile.flags & HYSCAN_TILE_PROFILER;
+  is_ground_distance = priv->tile->info.flags & HYSCAN_TILE_GROUND;
+  is_profiler = priv->tile->info.flags & HYSCAN_TILE_PROFILER;
 
   hyscan_cancellable_freeze (cancellable);
   // if (HYSCAN_SOURCE_PROFILER != hyscan_acoustic_data_get_source (HYSCAN_ACOUSTIC_DATA (dc)))
@@ -524,7 +524,7 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
             derivativate ((gfloat*)vals, n_vals);
 
           status = hyscan_waterfall_tile_make_string (priv, data0 + j * w, w, weight + j * w,
-                                                      vals, n_vals, step, priv->tile.flags,
+                                                      vals, n_vals, step, priv->tile->info.flags,
                                                       dc_info.data_rate, depth);
           if (is_profiler)
             g_clear_pointer (&vals, g_free);
@@ -553,12 +553,12 @@ hyscan_waterfall_tile_fill (HyScanWaterfallTilePrivate *priv,
           vals = hyscan_amplitude_get_amplitude (dc, cancellable, i, &n_vals, &time, NULL);
           if (vals != NULL)
             {
-              if (priv->tile.flags & HYSCAN_TILE_GROUND)
+              if (priv->tile->info.flags & HYSCAN_TILE_GROUND)
                 depth = hyscan_depthometer_get (priv->depth, cancellable, time);
 
               status = hyscan_waterfall_tile_make_string (priv, data_add + j * w, w,
                                                           weight_add + j * w,
-                                                          vals, n_vals, step, priv->tile.flags,
+                                                          vals, n_vals, step, priv->tile->info.flags,
                                                           dc_info.data_rate, depth);
               if (status)
                 have_data_int = TRUE;
@@ -599,8 +599,8 @@ hyscan_waterfall_tile_make_string (HyScanWaterfallTilePrivate *priv,
                                    gfloat                      dfreq,
                                    gfloat                      depth)
 {
-  gint32 start       = priv->tile.across_start;
-  gint32 end         = priv->tile.across_end;
+  gint32 start       = priv->tile->info.across_start;
+  gint32 end         = priv->tile->info.across_end;
   gfloat speed       = priv->sound_speed / 2.0;
   gboolean have_data = TRUE;
   gint64 k           = 0;
@@ -1022,10 +1022,10 @@ hyscan_waterfall_tile_compose_frame (HyScanWaterfallTilePrivate *priv,
   gint32   end;
   gint     i, j;
 
-  mirror = (priv->requested_tile.across_start < 0) ? TRUE : FALSE;
-  rotate = priv->tile.rotate;
-  start  = ABS (priv->tile.along_start);
-  end    = ABS (priv->tile.along_end);
+  mirror = (priv->tile->info.across_start < 0) ? TRUE : FALSE;
+  rotate = priv->tile->info.rotate;
+  start  = ABS (priv->tile->info.along_start);
+  end    = ABS (priv->tile->info.along_end);
   dest = g_malloc0 (frame_width * frame_height * sizeof(gfloat));
 
   if (start > end)
@@ -1173,11 +1173,11 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
   priv = wfall->priv;
   params = &priv->params;
 
-  priv->tile = priv->requested_tile = *tile;
+  priv->tile = g_object_ref (tile);
 
   /* Устанавливаем флаг "генерируется". */
   if (!g_atomic_int_compare_and_exchange (&priv->generator_busy, 0, 1))
-    return NULL;
+    goto exit;
 
   g_clear_object (&priv->cancellable);
   if (cancellable != NULL)
@@ -1187,17 +1187,17 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
     }
 
 
-  if (tile->along_start == tile->along_end || tile->across_start == tile->across_end)
-    return NULL;
+  if (tile->info.along_start == tile->info.along_end || tile->info.across_start == tile->info.across_end)
+    goto exit;
 
   /* По умолчанию считаем, что тайл перегенерировать не надо. Если всё же будет надо,
    * поменяем это значение позже. */
-  upsample = priv->requested_tile.upsample;
+  upsample = priv->tile->info.upsample;
 
   /* Вычисляем шаг, то есть сколько миллиметров в одном пикселе. А потом размер кадра на выходе. */
-  step = hyscan_tile_common_mm_per_pixel (priv->tile.scale, priv->tile.ppi);
-  frame_height = hyscan_tile_common_tile_size (priv->tile.along_start, priv->tile.along_end, step);
-  frame_width = hyscan_tile_common_tile_size (priv->tile.across_start, priv->tile.across_end, step);
+  step = hyscan_tile_common_mm_per_pixel (priv->tile->info.scale, priv->tile->info.ppi);
+  frame_height = hyscan_tile_common_tile_size (priv->tile->info.along_start, priv->tile->info.along_end, step);
+  frame_width = hyscan_tile_common_tile_size (priv->tile->info.across_start, priv->tile->info.across_end, step);
 
   /* Предварительные рассчеты. */
   hyscan_cancellable_set (cancellable, 0/5., 1/5.);
@@ -1213,7 +1213,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
   hyscan_cancellable_set (cancellable, 1/5., 2/5.);
   completed = hyscan_waterfall_tile_fill (priv, cancellable, &have_data);
   if (!completed)
-    goto user_terminate;
+    goto exit;
 
   if (!have_data)
     goto empty_frame;
@@ -1225,7 +1225,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
   /* Интерполяция по кадру. Результат остается в data1. */
   completed = hyscan_waterfall_tile_interpolate_frame (priv);
   if (!completed)
-    goto user_terminate;
+    goto exit;
 
   /* Оптимизируем размер фильра. */
   vfilt = 2 * MAX (params->filter_opt, upsample);
@@ -1249,7 +1249,7 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
                                                   params->w,
                                                   params->h);
   if (!completed)
-    goto user_terminate;
+    goto exit;
 
   /* Составляем кадр. */
   output = hyscan_waterfall_tile_compose_frame (priv, params->data2, params->w, params->h,
@@ -1265,23 +1265,20 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
     }
 
   /* Обновляем параметры тайла. */
-  priv->requested_tile.w = frame_width;
-  priv->requested_tile.h = frame_height;
-  priv->requested_tile.finalized = regenerate ? FALSE : TRUE;
-
- user_terminate:
+  priv->tile->info.w = frame_width;
+  priv->tile->info.h = frame_height;
+  priv->tile->cacheable.finalized = regenerate ? FALSE : TRUE;
 
   if (size != NULL)
     *size = frame_width * frame_height * sizeof (gfloat);
-  if (tile != NULL)
-    *tile = priv->requested_tile;
+
+ exit:
 
   g_atomic_int_set (&priv->generator_busy, 0);
-  if (cancellable != NULL)
-    {
-      g_clear_object (&priv->cancellable);
-      hyscan_cancellable_pop (cancellable);
-    }
+
+  hyscan_cancellable_pop (cancellable);
+  g_clear_object (&priv->cancellable);
+  g_clear_object (&priv->tile);
 
   return output;
 }

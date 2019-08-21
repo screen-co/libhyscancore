@@ -28,7 +28,7 @@ main (int argc, char **argv)
 
   HyScanAcousticData *dc = NULL;         /* Класс чтения данных. */
   HyScanWaterfallTile *wf = NULL;        /* Генератор тайлов. */
-  HyScanTile tile;
+  HyScanTile *tile = NULL;
   gfloat *image;
   guint32 image_size;
 
@@ -54,7 +54,7 @@ main (int argc, char **argv)
       args = g_strdupv (argv);
     #endif
 
-    context = g_option_context_new ("<db-uri>\n Default db uri is file://./");
+    context = g_option_context_new ("<db-uri>\n Default db uri is file://db");
     g_option_context_set_help_enabled (context, TRUE);
     g_option_context_add_main_entries (context, entries, NULL);
     g_option_context_set_ignore_unknown_options (context, FALSE);
@@ -75,7 +75,7 @@ main (int argc, char **argv)
     if (argc == 2)
       db_uri = g_strdup (args[1]);
     else
-      db_uri = g_strdup ("file://./");
+      db_uri = g_strdup ("file://db");
 
     g_strfreev (args);
   }
@@ -106,28 +106,29 @@ main (int argc, char **argv)
   dc = hyscan_acoustic_data_new (db, NULL, name, name, SSS, 1, FALSE);
   wf = hyscan_waterfall_tile_new ();
 
-  tile.across_start = START * 1000;
-  tile.along_start  = START * 1000;
-  tile.across_end   = END * 1000;
-  tile.along_end    = END * 1000;
-  tile.scale        = 1000;
-  tile.ppi          = 25.4;
-  tile.upsample     = 1;
-  tile.flags        = 0;
-  tile.rotate       = FALSE;
+  tile = hyscan_tile_new (NULL);
+  tile->info.across_start = START * 1000;
+  tile->info.along_start  = START * 1000;
+  tile->info.across_end   = END * 1000;
+  tile->info.along_end    = END * 1000;
+  tile->info.scale        = 1000;
+  tile->info.ppi          = 25.4;
+  tile->info.upsample     = 1;
+  tile->info.flags        = 0;
+  tile->info.rotate       = FALSE;
   hyscan_waterfall_tile_set_speeds (wf, 1.0, 2.0);
   hyscan_waterfall_tile_set_dc (wf, HYSCAN_AMPLITUDE (dc), NULL);
 
-  image = hyscan_waterfall_tile_generate (wf, NULL, &tile, &image_size);
+  image = hyscan_waterfall_tile_generate (wf, NULL, tile, &image_size);
 
   gint k,j;
   vals = make_acoustic_string (SIZE, NULL);
-  for (k = 0; k < tile.w; k++)
-      for (j = 0; j < tile.h; j++)
-          if (NEQ (image[k * tile.w + j], vals[START + j]))
-            g_printf ("%i %i %f %f\n", k, j, image[k * tile.w + j] , vals[START + j]);
+  for (k = 0; k < tile->info.w; k++)
+      for (j = 0; j < tile->info.h; j++)
+          if (NEQ (image[k * tile->info.w + j], vals[START + j]))
+            g_printf ("%i %i %f %f\n", k, j, image[k * tile->info.w + j] , vals[START + j]);
 
-  if (tile.w != END - START || tile.h != END - START)
+  if (tile->info.w != END - START || tile->info.h != END - START)
     FAIL ("Tile size mismatch");
 
   g_free (vals);
@@ -143,6 +144,7 @@ finish:
   g_clear_object (&db);
   g_clear_object (&wf);
   g_clear_object (&buffer);
+  g_clear_object (&tile);
   g_clear_pointer (&db_uri, g_free);
 
   g_printf ("test %s\n", status ? "passed" : "falled");

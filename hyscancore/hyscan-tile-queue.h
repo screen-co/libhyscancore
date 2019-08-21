@@ -35,9 +35,9 @@
 #ifndef __HYSCAN_TILE_QUEUE_H__
 #define __HYSCAN_TILE_QUEUE_H__
 
-#include <hyscan-tile-common.h>
-#include <hyscan-factory-amplitude.h>
-#include <hyscan-factory-depth.h>
+#include "hyscan-tile.h"
+#include "hyscan-factory-amplitude.h"
+#include "hyscan-factory-depth.h"
 
 G_BEGIN_DECLS
 
@@ -84,13 +84,13 @@ void                    hyscan_tile_queue_set_sound_velocity   (HyScanTileQueue 
 HYSCAN_API
 gboolean                hyscan_tile_queue_check                (HyScanTileQueue        *tilequeue,
                                                                 HyScanTile             *requested_tile,
-                                                                HyScanTile             *cached_tile,
+                                                                HyScanTileCacheable    *cacheable,
                                                                 gboolean               *regenerate);
 
 HYSCAN_API
 gboolean                hyscan_tile_queue_get                  (HyScanTileQueue        *tilequeue,
                                                                 HyScanTile             *requested_tile,
-                                                                HyScanTile             *cached_tile,
+                                                                HyScanTileCacheable    *cacheable,
                                                                 gfloat                **buffer,
                                                                 guint32                *size);
 

@@ -9,7 +9,7 @@
  */
 
 #include "hyscan-track-rect.h"
-#include <hyscan-projector.h>
+#include "hyscan-projector.h"
 
 enum
 {
@@ -23,6 +23,7 @@ typedef struct
   /* БД, проект, галс. */
   HyScanTileFlags         flags;                 /* Флаги генерации. */
   HyScanSourceType        source;                /* Источник данных. */
+  gchar                  *track;                 /* Галс. */
 
   gfloat                  ship_speed;            /* Скорость движения. */
   GArray                 *sound_velocity;        /* Скорость звука. */
@@ -176,6 +177,8 @@ hyscan_track_rect_object_finalize (GObject *object)
 
   g_array_unref (priv->cur_state.sound_velocity);
   g_array_unref (priv->new_state.sound_velocity);
+  g_clear_pointer (&priv->cur_state.track, g_free);
+  g_clear_pointer (&priv->new_state.track, g_free);
 
   G_OBJECT_CLASS (hyscan_track_rect_parent_class)->finalize (object);
 }
@@ -245,6 +248,8 @@ hyscan_track_rect_sync_states (HyScanTrackRect *self)
     }
   if (new_st->source_changed)
     {
+      g_clear_pointer (&cur_st->track, g_free);
+      cur_st->track = g_strdup (new_st->track);
       cur_st->source = new_st->source;
       new_st->source_changed = FALSE;
       cur_st->source_changed = TRUE;
@@ -360,7 +365,9 @@ hyscan_track_rect_watcher (gpointer data)
       if (priv->pj == NULL)
         {
           if (priv->dc == NULL)
-            priv->dc = dc = hyscan_factory_amplitude_produce (priv->af, priv->cur_state.source);
+            priv->dc = dc = hyscan_factory_amplitude_produce (priv->af,
+                                                              priv->cur_state.track,
+                                                              priv->cur_state.source);
           priv->pj = pj = hyscan_track_rect_open_projector (&priv->cur_state, dc);
 
           if (pj == NULL)
@@ -373,7 +380,8 @@ hyscan_track_rect_watcher (gpointer data)
       /* И ещё надо открыть глубину. */
       if (priv->cur_state.flags & HYSCAN_TILE_GROUND && priv->depth == NULL)
         {
-          priv->depth = depth = hyscan_factory_depth_produce (priv->df);
+          priv->depth = depth = hyscan_factory_depth_produce (priv->df,
+                                                              priv->cur_state.track);
         }
 
       /* После открытия КД нужно дождаться, пока в них хоть что-то появится. */
@@ -550,6 +558,7 @@ hyscan_track_rect_set_type (HyScanTrackRect *self,
 
 void
 hyscan_track_rect_set_source (HyScanTrackRect  *self,
+                              const gchar      *track,
                               HyScanSourceType  source)
 {
   HyScanTrackRectPrivate *priv;
@@ -559,6 +568,8 @@ hyscan_track_rect_set_source (HyScanTrackRect  *self,
 
   g_mutex_lock (&priv->state_lock);
   priv->new_state.source = source;
+  g_clear_pointer (&priv->new_state.track, g_free);
+  priv->new_state.track = g_strdup (track);
   priv->new_state.source_changed = TRUE;
   priv->have_data = FALSE;
   priv->state_changed = TRUE;

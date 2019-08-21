@@ -73,13 +73,13 @@ HYSCAN_API
 gchar *                hyscan_factory_depth_get_token        (HyScanFactoryDepth     *factory);
 
 HYSCAN_API
-void                   hyscan_factory_depth_set_track        (HyScanFactoryDepth     *factory,
+void                   hyscan_factory_depth_set_project      (HyScanFactoryDepth     *factory,
                                                               HyScanDB               *db,
-                                                              const gchar            *project_name,
-                                                              const gchar            *track_name);
+                                                              const gchar            *project_name);
 
 HYSCAN_API
-HyScanDepthometer *    hyscan_factory_depth_produce          (HyScanFactoryDepth     *factory);
+HyScanDepthometer *    hyscan_factory_depth_produce          (HyScanFactoryDepth     *factory,
+                                                              const gchar            *track);
 
 G_END_DECLS
 

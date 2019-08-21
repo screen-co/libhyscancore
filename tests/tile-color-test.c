@@ -26,7 +26,8 @@ main (int argc, char **argv)
   HyScanCache     *cache;
   HyScanTileColor *color;
 
-  HyScanTile tile1, tile2;
+  HyScanTile *tile = NULL;
+  HyScanTileCacheable cacheable;
   HyScanTileSurface surface;
   gfloat *data = NULL;
   gint size, i, pixels;
@@ -48,19 +49,20 @@ main (int argc, char **argv)
 
   hyscan_tile_color_open (color, "db", "project", "track");
 
-  tile1.across_start = 0;
-  tile1.along_start = 0;
-  tile1.across_end = 10;
-  tile1.along_end = 10;
-  tile1.scale = 1;
-  tile1.ppi = 1;
-  tile1.upsample = 1;
-  tile1.w = 10;
-  tile1.h = 10;
-  tile1.flags = 0;
-  tile1.rotate = 1;
-  tile1.source = 1;
-  tile1.finalized = 1;
+  tile = hyscan_tile_new (NULL);
+  tile->info.across_start = 0;
+  tile->info.along_start = 0;
+  tile->info.across_end = 10;
+  tile->info.along_end = 10;
+  tile->info.scale = 1;
+  tile->info.ppi = 1;
+  tile->info.upsample = 1;
+  tile->info.w = 10;
+  tile->info.h = 10;
+  tile->info.flags = 0;
+  tile->info.rotate = 1;
+  tile->info.source = 1;
+  tile->cacheable.finalized = 1;
 
   /* Подготавливаем tilesurface. */
   surface.width = 10;
@@ -82,7 +84,7 @@ main (int argc, char **argv)
   hyscan_tile_color_set_colormap_for_all (color, cmap, cmap_len, base);
   g_free (cmap);
 
-  hyscan_tile_color_add (color, &tile1, data, size, &surface);
+  hyscan_tile_color_add (color, tile, data, size, &surface);
 
   for (i = 0; i < pixels; i++)
     {
@@ -102,7 +104,7 @@ main (int argc, char **argv)
   hyscan_tile_color_set_colormap_for_all (color, cmap, cmap_len, base);
   g_free (cmap);
 
-  hyscan_tile_color_add (color, &tile1, data, size, &surface);
+  hyscan_tile_color_add (color, tile, data, size, &surface);
 
   for (i = 0; i < pixels; i++)
     {
@@ -116,9 +118,9 @@ main (int argc, char **argv)
         }
     }
 
-  hyscan_tile_color_add (color, &tile1, data, size, &surface);
+  hyscan_tile_color_add (color, tile, data, size, &surface);
 
-  status = hyscan_tile_color_check (color, &tile1, &tile2);
+  status = hyscan_tile_color_check (color, tile, &cacheable);
   if (!status)
     {
       g_print ("Tile not found in cache (though expected)\n");
@@ -126,7 +128,7 @@ main (int argc, char **argv)
     }
 
   /* Теперь считаем то, что лежит в кэше. */
-  status = hyscan_tile_color_get (color, &tile1, &tile2, &surface);
+  status = hyscan_tile_color_get (color, tile, &cacheable, &surface);
   if (!status)
     {
       g_print ("Tile not found in cache (though expected)\n");
@@ -152,6 +154,7 @@ exit:
   g_free (surface.data);
   g_free (data);
 
+  g_clear_object (&tile);
   g_clear_object (&cache);
   g_clear_object (&color);
 

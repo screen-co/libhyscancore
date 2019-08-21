@@ -56,7 +56,6 @@ struct _HyScanFactoryAmplitudePrivate
 
   HyScanDB     *db;
   gchar        *project; /* */
-  gchar        *track;
 
   GMutex        lock;
   gchar        *token;
@@ -108,6 +107,7 @@ hyscan_factory_amplitude_set_property (GObject      *object,
     case PROP_CACHE:
       priv->cache = g_value_dup_object (value);
       break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -133,7 +133,6 @@ hyscan_factory_amplitude_object_finalize (GObject *object)
 
   g_clear_object (&priv->db);
   g_free (priv->project);
-  g_free (priv->track);
 
   g_free (priv->token);
 
@@ -151,13 +150,12 @@ hyscan_factory_amplitude_updated (HyScanFactoryAmplitude *self)
 
   g_clear_pointer (&priv->token, g_free);
 
-  if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
+  if (priv->db == NULL || priv->project == NULL)
     return;
 
   uri = hyscan_db_get_uri (priv->db);
 
-  priv->token = g_strdup_printf ("FactoryAmplitude.%s.%s.%s",
-                                 uri, priv->project, priv->track);
+  priv->token = g_strdup_printf ("FactoryAmplitude.%s.%s", uri, priv->project);
 
   g_free (uri);
 }
@@ -207,15 +205,13 @@ hyscan_factory_amplitude_get_token (HyScanFactoryAmplitude *self)
  * @self: объект #HyScanFactoryAmplitude
  * @db: база данных
  * @project: проект
- * @track: галс
  *
- * Функция задает БД, проект и галс.
+ * Функция задает БД, проект.
  */
 void
-hyscan_factory_amplitude_set_track (HyScanFactoryAmplitude *self,
-                                    HyScanDB               *db,
-                                    const gchar            *project_name,
-                                    const gchar            *track_name)
+hyscan_factory_amplitude_set_project (HyScanFactoryAmplitude *self,
+                                      HyScanDB               *db,
+                                      const gchar            *project_name)
 {
   HyScanFactoryAmplitudePrivate *priv;
 
@@ -226,11 +222,9 @@ hyscan_factory_amplitude_set_track (HyScanFactoryAmplitude *self,
 
   g_clear_object (&priv->db);
   g_clear_pointer (&priv->project, g_free);
-  g_clear_pointer (&priv->track, g_free);
 
   priv->db = g_object_ref (db);
   priv->project = g_strdup (project_name);
-  priv->track = g_strdup (track_name);
 
   hyscan_factory_amplitude_updated (self);
 
@@ -250,6 +244,7 @@ hyscan_factory_amplitude_set_track (HyScanFactoryAmplitude *self,
  */
 HyScanAmplitude *
 hyscan_factory_amplitude_produce (HyScanFactoryAmplitude *self,
+                                  const gchar            *track,
                                   HyScanSourceType        source)
 {
   HyScanFactoryAmplitudePrivate *priv;
@@ -257,7 +252,6 @@ hyscan_factory_amplitude_produce (HyScanFactoryAmplitude *self,
   HyScanAmplitude *out = NULL;
   HyScanDB *db;
   gchar *project;
-  gchar *track;
 
   g_return_val_if_fail (HYSCAN_IS_FACTORY_AMPLITUDE (self), NULL);
   priv = self->priv;
@@ -266,7 +260,6 @@ hyscan_factory_amplitude_produce (HyScanFactoryAmplitude *self,
   g_mutex_lock (&priv->lock);
   db = (priv->db != NULL) ? g_object_ref (priv->db) : NULL;
   project = (priv->project != NULL) ? g_strdup (priv->project) : NULL;
-  track = (priv->track != NULL) ? g_strdup (priv->track) : NULL;
   g_mutex_unlock (&priv->lock);
 
   if (db == NULL || project == NULL || track == NULL)
@@ -286,7 +279,6 @@ hyscan_factory_amplitude_produce (HyScanFactoryAmplitude *self,
 fail:
   g_clear_object (&db);
   g_clear_pointer (&project, g_free);
-  g_clear_pointer (&track, g_free);
 
   return out;
 }

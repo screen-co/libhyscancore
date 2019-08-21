@@ -8,7 +8,7 @@
  *
  */
 #include "hyscan-projector.h"
-#include <hyscan-acoustic-data.h>
+#include "hyscan-amplitude.h"
 #include <math.h>
 
 enum
@@ -20,8 +20,6 @@ struct _HyScanProjectorPrivate
 {
   HyScanAmplitude      *dc;              /* Основной КД. */
   HyScanAntennaOffset   offset;          /* Местоположение антенны. */
-
-  HyScanAcousticData  **addon_dc;        /* Дополнительные КД. */
 
   GArray               *sound_velocity;  /* Профиль скорости звука. */
   gfloat                dfreq;           /* Частота дискретизации. */

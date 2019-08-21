@@ -77,13 +77,13 @@ HYSCAN_API
 guint32                  hyscan_factory_amplitude_get_hash        (HyScanFactoryAmplitude *factory);
 
 HYSCAN_API
-void                     hyscan_factory_amplitude_set_track       (HyScanFactoryAmplitude *factory,
+void                     hyscan_factory_amplitude_set_project     (HyScanFactoryAmplitude *factory,
                                                                    HyScanDB               *db,
-                                                                   const gchar            *project_name,
-                                                                   const gchar            *track_name);
+                                                                   const gchar            *project_name);
 
 HYSCAN_API
 HyScanAmplitude *        hyscan_factory_amplitude_produce         (HyScanFactoryAmplitude *factory,
+                                                                   const gchar            *track,
                                                                    HyScanSourceType        source);
 
 G_END_DECLS

@@ -114,8 +114,8 @@ main (int argc, char **argv)
 
   af = hyscan_factory_amplitude_new (cache);
   df = hyscan_factory_depth_new (cache);
-  hyscan_factory_amplitude_set_track (af, db, name, name);
-  hyscan_factory_depth_set_track (df, db, name, name);
+  hyscan_factory_amplitude_set_project (af, db, name);
+  hyscan_factory_depth_set_project (df, db, name);
 
   {
     HyScanAmplitude *ampl;
@@ -124,15 +124,15 @@ main (int argc, char **argv)
     gint64 time;
     gboolean noise;
 
-    ampl = hyscan_factory_amplitude_produce (af, SSS);
+    ampl = hyscan_factory_amplitude_produce (af, name, SSS);
     hyscan_amplitude_get_amplitude (ampl, NULL, 0, &n_points, &time, &noise);
     g_object_unref (ampl);
 
-    ampl = hyscan_factory_amplitude_produce (af, SSP);
+    ampl = hyscan_factory_amplitude_produce (af, name, SSP);
     hyscan_amplitude_get_amplitude (ampl, NULL, 0, &n_points, &time, &noise);
     g_object_unref (ampl);
 
-    dmeter = hyscan_factory_depth_produce (df);
+    dmeter = hyscan_factory_depth_produce (df, name);
     hyscan_depthometer_get (dmeter, NULL, DB_TIME_INC);
     g_object_unref (dmeter);
   }

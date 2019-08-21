@@ -29,9 +29,9 @@
 #ifndef __HYSCAN_TRACK_RECT_H__
 #define __HYSCAN_TRACK_RECT_H__
 
-#include <hyscan-tile-common.h>
-#include <hyscan-factory-depth.h>
-#include <hyscan-factory-amplitude.h>
+#include "hyscan-tile.h"
+#include "hyscan-factory-depth.h"
+#include "hyscan-factory-amplitude.h"
 
 G_BEGIN_DECLS
 
@@ -82,6 +82,7 @@ HyScanTrackRect        *hyscan_track_rect_new                   (HyScanCache    
  */
 HYSCAN_API
 void                    hyscan_track_rect_set_source           (HyScanTrackRect        *track_rect,
+                                                                const gchar            *track,
                                                                 HyScanSourceType        source);
 
 /**
