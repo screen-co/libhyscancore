@@ -1186,7 +1186,6 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
       hyscan_cancellable_push (cancellable);
     }
 
-
   if (tile->info.along_start == tile->info.along_end || tile->info.across_start == tile->info.across_end)
     goto exit;
 
@@ -1265,8 +1264,8 @@ hyscan_waterfall_tile_generate (HyScanWaterfallTile *wfall,
     }
 
   /* Обновляем параметры тайла. */
-  priv->tile->info.w = frame_width;
-  priv->tile->info.h = frame_height;
+  priv->tile->cacheable.w = frame_width;
+  priv->tile->cacheable.h = frame_height;
   priv->tile->cacheable.finalized = regenerate ? FALSE : TRUE;
 
   if (size != NULL)

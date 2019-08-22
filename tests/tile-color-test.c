@@ -57,11 +57,11 @@ main (int argc, char **argv)
   tile->info.scale = 1;
   tile->info.ppi = 1;
   tile->info.upsample = 1;
-  tile->info.w = 10;
-  tile->info.h = 10;
   tile->info.flags = 0;
   tile->info.rotate = 1;
   tile->info.source = 1;
+  tile->cacheable.w = 10;
+  tile->cacheable.h = 10;
   tile->cacheable.finalized = 1;
 
   /* Подготавливаем tilesurface. */

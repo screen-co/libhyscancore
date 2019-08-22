@@ -69,9 +69,6 @@ struct _HyScanTileInfo
   gfloat               scale;        /**< Масштаб. */
   gfloat               ppi;          /**< PPI. */
 
-  gint32               w;            /**< Ширина тайла в пикселях. */
-  gint32               h;            /**< Высота тайла в пикселях. */
-
   guint                upsample;     /**< Величина передискретизации. */
   gboolean             rotate;       /**< Поворот тайла. */
 
@@ -81,6 +78,8 @@ struct _HyScanTileInfo
 
 struct _HyScanTileCacheable
 {
+  gint32               w;            /**< Ширина тайла в пикселях. */
+  gint32               h;            /**< Высота тайла в пикселях. */
   gboolean             finalized;    /**< Требуется ли перегенерация тайла. */    
 };
 

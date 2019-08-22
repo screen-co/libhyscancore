@@ -123,12 +123,12 @@ main (int argc, char **argv)
 
   gint k,j;
   vals = make_acoustic_string (SIZE, NULL);
-  for (k = 0; k < tile->info.w; k++)
-      for (j = 0; j < tile->info.h; j++)
-          if (NEQ (image[k * tile->info.w + j], vals[START + j]))
-            g_printf ("%i %i %f %f\n", k, j, image[k * tile->info.w + j] , vals[START + j]);
+  for (k = 0; k < tile->cacheable.w; k++)
+      for (j = 0; j < tile->cacheable.h; j++)
+          if (NEQ (image[k * tile->cacheable.w + j], vals[START + j]))
+            g_printf ("%i %i %f %f\n", k, j, image[k * tile->cacheable.w + j] , vals[START + j]);
 
-  if (tile->info.w != END - START || tile->info.h != END - START)
+  if (tile->cacheable.w != END - START || tile->cacheable.h != END - START)
     FAIL ("Tile size mismatch");
 
   g_free (vals);
