@@ -1,7 +1,7 @@
 /*
  * \file hyscan-object-model.c
  *
- * \brief Исходный файл класса асинхронной работы с метками водопада
+ * \brief Исходный файл класса асинхронной работы с объектами из параметров проекта
  * \author Dmitriev Alexander (m1n7@yandex.ru)
  * \date 2017
  * \license Проприетарная лицензия ООО "Экран"
@@ -34,8 +34,8 @@ enum
 /* Задание, структура с информацией о том, что требуется сделать. */
 typedef struct
 {
-  gchar               *id;        /* Идентификатор метки. */
-  gpointer             object;      /* Метка. */
+  gchar               *id;        /* Идентификатор объекта. */
+  HyScanObject        *object;    /* Объект. */
   gint                 action;    /* Требуемое действие. */
 } HyScanObjectModelTask;
 
@@ -63,10 +63,10 @@ struct _HyScanObjectModelPrivate
   gint                     im_flag;          /* Наличие изменений в БД. */
 
   guint                    alerter;          /* Идентификатор обработчика сигнализирующего об изменениях. */
-  gint                     objects_changed;    /* Флаг, сигнализирующий о том, что список меток поменялся. */
+  gint                     objects_changed;  /* Флаг, сигнализирующий о том, что список объектов поменялся. */
 
-  GHashTable              *objects;            /* Список меток (отдаваемый наружу). */
-  GMutex                   objects_lock;       /* Блокировка списка меток. */
+  GHashTable              *objects;          /* Список объектов (отдаваемый наружу). */
+  GMutex                   objects_lock;     /* Блокировка списка объектов. */
 };
 
 static void     hyscan_object_model_object_constructed     (GObject                   *object);
@@ -138,7 +138,7 @@ hyscan_object_model_object_constructed (GObject *object)
   g_cond_init (&priv->im_cond);
 
   priv->stop = FALSE;
-  priv->processing = g_thread_new ("wf-object-process", hyscan_object_model_processing, priv);
+  priv->processing = g_thread_new ("object-model-process", hyscan_object_model_processing, priv);
   priv->alerter = g_timeout_add (500, hyscan_object_model_signaller, model);
 }
 
@@ -325,7 +325,7 @@ hyscan_object_model_do_all_tasks (HyScanObjectModelPrivate  *priv,
   g_slist_free (tasks);
 }
 
-/* Функция забирает метки из БД. */
+/* Функция забирает объекты из БД. */
 static GHashTable *
 hyscan_object_model_get_all_objects (HyScanObjectModelPrivate *priv,
                                      HyScanObjectData         *data)
@@ -337,7 +337,7 @@ hyscan_object_model_get_all_objects (HyScanObjectModelPrivate *priv,
 
   /* Считываем список идентификаторов. Прошу обратить внимание, что
    * возврат хэш-таблицы с 0 элементов -- это нормальная ситуация, например,
-   * если раньше была 1 метка, а потом её удалили. */
+   * если раньше был 1 объект, а потом его удалили. */
   object_list = hyscan_object_model_make_ht (priv);
   id_list = hyscan_object_data_get_ids (data, &len);
 
@@ -361,11 +361,11 @@ static gpointer
 hyscan_object_model_processing (gpointer data)
 {
   HyScanObjectModelPrivate *priv = data;
-  HyScanObjectData *mdata = NULL; /* Объект работы с метками. */
+  HyScanObjectData *mdata = NULL; /* Объект работы с объектами. */
   GHashTable *object_list;        /* Метки из БД. */
-  GHashTable *temp;             /* Для обмена списка меток. */
-  GMutex im_lock;               /* Мьютекс нужен для GCond. */
-  guint32 oldmc, mc;            /* Значения счетчика изменений. */
+  GHashTable *temp;               /* Для обмена списка объектов. */
+  GMutex im_lock;                 /* Мьютекс нужен для GCond. */
+  guint32 oldmc, mc;              /* Значения счетчика изменений. */
 
   oldmc = mc = 0;
   g_mutex_init (&im_lock);
@@ -404,7 +404,7 @@ hyscan_object_model_processing (gpointer data)
 
       if (mdata == NULL)
         {
-          /* Создаем объект работы с метками. */
+          /* Создаем объект работы с объектами. */
           if (priv->cur_state.db != NULL && priv->cur_state.project != NULL)
             {
               mdata = g_object_new (priv->data_type,
@@ -431,7 +431,7 @@ hyscan_object_model_processing (gpointer data)
       /* Выполняем все задания. */
       hyscan_object_model_do_all_tasks (priv, mdata);
 
-      /* Запоминаем мод_каунт перед(!) забором меток. */
+      /* Запоминаем мод_каунт перед(!) забором объектов. */
       oldmc = hyscan_object_data_get_mod_count (mdata);
       object_list = hyscan_object_model_get_all_objects (priv, mdata);
 
@@ -509,7 +509,7 @@ hyscan_object_model_set_project (HyScanObjectModel *model,
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция инициирует принудительное обновление списка меток. */
+/* Функция инициирует принудительное обновление списка объектов. */
 void
 hyscan_object_model_refresh (HyScanObjectModel *model)
 {
@@ -519,7 +519,7 @@ hyscan_object_model_refresh (HyScanObjectModel *model)
   g_cond_signal (&model->priv->im_cond);
 }
 
-/* Функция создает метку в базе данных. */
+/* Функция создает объект в базе данных. */
 void
 hyscan_object_model_add_object (HyScanObjectModel  *model,
                                 const HyScanObject *object)
@@ -529,7 +529,7 @@ hyscan_object_model_add_object (HyScanObjectModel  *model,
   hyscan_object_model_add_task (model, NULL, object, OBJECT_ADD);
 }
 
-/* Функция изменяет метку в базе данных. */
+/* Функция изменяет объект в базе данных. */
 void
 hyscan_object_model_modify_object (HyScanObjectModel  *model,
                                    const gchar        *id,
@@ -540,7 +540,7 @@ hyscan_object_model_modify_object (HyScanObjectModel  *model,
   hyscan_object_model_add_task (model, id, object, OBJECT_MODIFY);
 }
 
-/* Функция удаляет метку из базы данных. */
+/* Функция удаляет объект из базы данных. */
 void
 hyscan_object_model_remove_object (HyScanObjectModel *model,
                                    const gchar       *id)
@@ -550,7 +550,7 @@ hyscan_object_model_remove_object (HyScanObjectModel *model,
   hyscan_object_model_add_task (model, id, NULL, OBJECT_REMOVE);
 }
 
-/* Функция возвращает список меток из внутреннего буфера. */
+/* Функция возвращает список объектов из внутреннего буфера. */
 GHashTable*
 hyscan_object_model_get (HyScanObjectModel *model)
 {
@@ -562,14 +562,14 @@ hyscan_object_model_get (HyScanObjectModel *model)
 
   g_mutex_lock (&priv->objects_lock);
 
-  /* Проверяем, что метки есть. */
+  /* Проверяем, что объекты есть. */
   if (priv->objects == NULL)
     {
       g_mutex_unlock (&priv->objects_lock);
       return NULL;
     }
 
-  /* Копируем метки. */
+  /* Копируем объекты. */
   objects = hyscan_object_model_copy (model, priv->objects);
   g_mutex_unlock (&priv->objects_lock);
 
@@ -595,7 +595,7 @@ hyscan_object_model_copy (HyScanObjectModel *model,
   dst = hyscan_object_model_make_ht (priv);
   data_class = g_type_class_ref (priv->data_type);
 
-  /* Переписываем метки. */
+  /* Переписываем объекты. */
   g_hash_table_iter_init (&iter, src);
   while (g_hash_table_iter_next (&iter, &k, &v))
     g_hash_table_insert (dst, g_strdup (k), data_class->object_copy (v));

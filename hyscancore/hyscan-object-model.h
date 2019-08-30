@@ -18,7 +18,7 @@
  * \code
  * void
  * changed_cb (HyScanObjectModel *man,
- *             gpointer         userdata);
+ *             gpointer           userdata);
  * \endcode
  *
  * Класс полностью потокобезопасен и может использоваться в MainLoop.

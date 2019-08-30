@@ -35,9 +35,9 @@
 
 /**
  * SECTION: hyscan-object-data
- * @Short_description: Абстрактный класс работы с метками
+ * @Short_description: Абстрактный класс работы с объектами параметров проекта
  * @Title: HyScanObjectData
- * @See_also: HyScanObjectDataWaterfall
+ * @See_also: HyScanMarkDataWaterfall, HyScanMarkDataGeo, HyScanPlannerData
  *
  * HyScanObjectData - абстрактный класс позволяющий работать с объектами из
  * параметров проекта базы данных. Он представляет собой обертку над базой данных,
@@ -72,26 +72,26 @@ struct _HyScanObjectDataPrivate
   HyScanParamList   *write_plist;
 };
 
-static void     hyscan_object_data_set_property            (GObject                *object,
+static void     hyscan_object_data_set_property          (GObject                *object,
                                                           guint                   prop_id,
                                                           const GValue           *value,
                                                           GParamSpec             *pspec);
-static void     hyscan_object_data_get_property            (GObject                *object,
+static void     hyscan_object_data_get_property          (GObject                *object,
                                                           guint                   prop_id,
                                                           GValue                 *value,
                                                           GParamSpec             *pspec);
-static void     hyscan_object_data_object_constructed      (GObject                *object);
-static void     hyscan_object_data_object_finalize         (GObject                *object);
+static void     hyscan_object_data_object_constructed    (GObject                *object);
+static void     hyscan_object_data_object_finalize       (GObject                *object);
 
-static gchar *  hyscan_object_data_generate_id             (HyScanObjectData         *data,
-                                                            const HyScanObject       *object);
+static gchar *  hyscan_object_data_generate_id           (HyScanObjectData       *data,
+                                                          const HyScanObject     *object);
 
-static gboolean hyscan_object_data_get_internal            (HyScanObjectData         *data,
+static gboolean hyscan_object_data_get_internal          (HyScanObjectData       *data,
                                                           const gchar            *id,
-                                                          HyScanObject             *object);
-static gboolean hyscan_object_data_set_internal            (HyScanObjectData         *data,
+                                                          HyScanObject           *object);
+static gboolean hyscan_object_data_set_internal          (HyScanObjectData       *data,
                                                           const gchar            *id,
-                                                          const HyScanObject       *object);
+                                                          const HyScanObject     *object);
 
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (HyScanObjectData, hyscan_object_data, G_TYPE_OBJECT);
 
@@ -127,9 +127,9 @@ hyscan_object_data_init (HyScanObjectData *data)
 
 static void
 hyscan_object_data_set_property (GObject      *object,
-                               guint         prop_id,
-                               const GValue *value,
-                               GParamSpec   *pspec)
+                                 guint         prop_id,
+                                 const GValue *value,
+                                 GParamSpec   *pspec)
 {
   HyScanObjectData *data = HYSCAN_OBJECT_DATA (object);
   HyScanObjectDataPrivate *priv = data->priv;
@@ -152,9 +152,9 @@ hyscan_object_data_set_property (GObject      *object,
 
 static void
 hyscan_object_data_get_property (GObject    *object,
-                               guint       prop_id,
-                               GValue     *value,
-                               GParamSpec *pspec)
+                                 guint       prop_id,
+                                 GValue     *value,
+                                 GParamSpec *pspec)
 {
   HyScanObjectData *data = HYSCAN_OBJECT_DATA (object);
   HyScanObjectDataPrivate *priv = data->priv;
@@ -279,8 +279,8 @@ hyscan_object_data_generate_id (HyScanObjectData   *data,
 /* Функция считывает содержимое объекта. */
 static gboolean
 hyscan_object_data_get_internal (HyScanObjectData *data,
-                               const gchar    *id,
-                               HyScanObject     *object)
+                                 const gchar      *id,
+                                 HyScanObject     *object)
 {
   HyScanObjectDataPrivate *priv = data->priv;
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
@@ -323,9 +323,9 @@ exit:
 
 /* Функция записывает значения в существующий объект. */
 static gboolean
-hyscan_object_data_set_internal (HyScanObjectData    *data,
-                               const gchar       *id,
-                               const HyScanObject  *object)
+hyscan_object_data_set_internal (HyScanObjectData   *data,
+                                 const gchar        *id,
+                                 const HyScanObject *object)
 {
   HyScanObjectDataPrivate *priv = data->priv;
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
@@ -361,9 +361,9 @@ hyscan_object_data_is_ready (HyScanObjectData *data)
  * @data: указатель на объект #HyScanObjectData
  * @object: указатель на структуру #HyScanObject
  *
- * Функция добавляет метку в базу данных.
+ * Функция добавляет объект в базу данных.
  *
- * Returns: %TRUE, если удалось добавить метку, иначе %FALSE.
+ * Returns: %TRUE, если удалось добавить объект, иначе %FALSE.
  */
 gboolean
 hyscan_object_data_add (HyScanObjectData  *data,
@@ -416,15 +416,15 @@ exit:
 /**
  * hyscan_object_data_remove:
  * @data: указатель на объект #HyScanObjectData
- * @id: идентификатор метки
+ * @id: идентификатор объекта
  *
- * Функция удаляет метку из базы данных.
+ * Функция удаляет объект из базы данных.
  *
- * Returns: %TRUE, если удалось удалить метку, иначе %FALSE.
+ * Returns: %TRUE, если удалось удалить объект, иначе %FALSE.
  */
 gboolean
 hyscan_object_data_remove (HyScanObjectData *data,
-                         const gchar    *id)
+                           const gchar      *id)
 {
   g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
 
@@ -436,12 +436,12 @@ hyscan_object_data_remove (HyScanObjectData *data,
 /**
  * hyscan_object_data_modify:
  * @data: указатель на объект #HyScanObjectData
- * @id: идентификатор метки
+ * @id: идентификатор объекта
  * @object: указатель на структуру #HyScanObject
  *
- * Функция изменяет метку.
+ * Функция изменяет объект.
  *
- * Returns: %TRUE, если удалось изменить метку, иначе %FALSE
+ * Returns: %TRUE, если удалось изменить объект, иначе %FALSE
  */
 gboolean
 hyscan_object_data_modify (HyScanObjectData   *data,
@@ -450,7 +450,7 @@ hyscan_object_data_modify (HyScanObjectData   *data,
 {
   g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
 
-  /* Проверяем, что метка существует. */
+  /* Проверяем, что объект существует. */
   if (!hyscan_object_data_get_internal (data, id, NULL))
     return FALSE;
 
@@ -469,7 +469,7 @@ hyscan_object_data_modify (HyScanObjectData   *data,
  */
 gchar **
 hyscan_object_data_get_ids (HyScanObjectData *data,
-                          guint          *len)
+                            guint            *len)
 {
   gchar** objects;
 
@@ -486,9 +486,9 @@ hyscan_object_data_get_ids (HyScanObjectData *data,
 /**
  * hyscan_object_data_get:
  * @data: указатель на объект #HyScanObjectData
- * @id: идентификатор метки
+ * @id: идентификатор объекта
  *
- * Функция возвращает метку по идентификатору.
+ * Функция возвращает объект по идентификатору.
  *
  * Returns: указатель на структуру #HyScanObject, %NULL в случае ошибки. Для
  *   удаления hyscan_object_data_destroy().
