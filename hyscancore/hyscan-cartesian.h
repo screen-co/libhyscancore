@@ -59,6 +59,11 @@ gdouble          hyscan_cartesian_distance           (HyScanGeoCartesian2D *p1,
                                                       HyScanGeoCartesian2D *p2);
 
 HYSCAN_API
+void             hyscan_cartesian_normal             (HyScanGeoCartesian2D *p1,
+                                                      HyScanGeoCartesian2D *p2,
+                                                      HyScanGeoCartesian2D *normal);
+
+HYSCAN_API
 void             hyscan_cartesian_rotate             (HyScanGeoCartesian2D *point,
                                                       HyScanGeoCartesian2D *center,
                                                       gdouble               angle,

@@ -221,6 +221,29 @@ hyscan_cartesian_distance (HyScanGeoCartesian2D *p1,
 }
 
 /**
+ * hyscan_cartesian_distance:
+ * @p1: координаты первой точки
+ * @p2: координаты второй точки
+ * @normal: (out): нормаль к отрезку (p1, p2)
+ *
+ * Функция определяет координаты вектора, ортонального к отрезку @p1 - @p2
+ */
+void
+hyscan_cartesian_normal (HyScanGeoCartesian2D *p1,
+                         HyScanGeoCartesian2D *p2,
+                         HyScanGeoCartesian2D *normal)
+{
+  gdouble normal_length;
+
+  normal->y = p2->x - p1->x;
+  normal->x = p1->y - p2->y;
+
+  normal_length = hypot (normal->x, normal->y);
+  normal->x /= normal_length;
+  normal->y /= normal_length;
+}
+
+/**
  * hyscan_cartesian_rotate:
  * @point: координаты точки до поворота
  * @center: точка, вокруг которой происходит поворот
