@@ -71,7 +71,7 @@ static void    hyscan_factory_depth_object_constructed       (GObject           
 static void    hyscan_factory_depth_object_finalize          (GObject               *object);
 static void    hyscan_factory_depth_updated                  (HyScanFactoryDepth    *self);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanFactoryDepth, hyscan_factory_depth, HYSCAN_TYPE_FACTORY_MOTHER);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanFactoryDepth, hyscan_factory_depth, HYSCAN_TYPE_FACTORY);
 
 static void
 hyscan_factory_depth_class_init (HyScanFactoryDepthClass *klass)
@@ -231,7 +231,7 @@ hyscan_factory_depth_set_project (HyScanFactoryDepth *self,
 
   g_mutex_unlock (&priv->lock);
 
-  hyscan_factory_mother_emit_changed (HYSCAN_FACTORY_MOTHER (self));
+  hyscan_factory_emit_changed (HYSCAN_FACTORY (self));
 }
 
 /**

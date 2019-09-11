@@ -37,7 +37,7 @@
 
 #include <hyscan-types.h>
 #include "hyscan-amplitude.h"
-#include "hyscan-factory-mother.h"
+#include "hyscan-factory.h"
 
 G_BEGIN_DECLS
 
@@ -54,14 +54,14 @@ typedef struct _HyScanFactoryAmplitudeClass HyScanFactoryAmplitudeClass;
 
 struct _HyScanFactoryAmplitude
 {
-  HyScanFactoryMother parent_instance;
+  HyScanFactory parent_instance;
 
   HyScanFactoryAmplitudePrivate *priv;
 };
 
 struct _HyScanFactoryAmplitudeClass
 {
-  HyScanFactoryMotherClass parent_class;
+  HyScanFactoryClass parent_class;
 };
 
 HYSCAN_API

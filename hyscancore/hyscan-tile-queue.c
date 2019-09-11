@@ -888,8 +888,8 @@ hyscan_tile_queue_task_processor (gpointer data,
 
   /* Генерируем тайл. */
   image = hyscan_waterfall_tile_generate (priv->generator[gen_id],
-                                          task->cancellable,
-                                          task->tile, &image_size);
+                                      task->cancellable,
+                                      task->tile, &image_size);
 
   /* В случае досрочного прекращения генерации вернется NULL. Тогда мы просто выходим. */
   if (image == NULL)
