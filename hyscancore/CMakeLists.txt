@@ -76,6 +76,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-cartesian.c
              hyscan-task-queue.c
              hyscan-planner.c
+             hyscan-planner-model.c
              hyscan-planner-data.c
              hyscan-nav-model.c
              hyscan-nmea-file-device.c
@@ -146,6 +147,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-cartesian.h
                hyscan-task-queue.h
                hyscan-planner.h
+               hyscan-planner-model.h
                hyscan-planner-data.h
                hyscan-nav-model.h
                hyscan-nmea-file-device.h

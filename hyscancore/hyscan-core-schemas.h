@@ -65,6 +65,9 @@
 #define GEO_MARK_SCHEMA_ID                     4566818919687782529
 #define GEO_MARK_SCHEMA_VERSION                20190100
 
+#define PLANNER_ORIGIN_SCHEMA_ID               3906613780672057459
+#define PLANNER_ORIGIN_SCHEMA_VERSION          20190100
+
 #define PLANNER_ZONE_SCHEMA_ID                 2298441576805697181
 #define PLANNER_ZONE_SCHEMA_VERSION            20190100
 
@@ -87,6 +90,7 @@
 #define PROJECT_INFO_GROUP                     "info"
 #define PROJECT_INFO_OBJECT                    "project"
 
+#define PLANNER_ORIGIN_SCHEMA                  "planner-origin"
 #define PLANNER_ZONE_SCHEMA                    "planner-zone"
 #define PLANNER_TRACK_SCHEMA                   "planner-track"
 #define PLANNER_OBJECT                         "planner"

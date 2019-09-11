@@ -56,6 +56,9 @@ struct _HyScanObjectModel
 struct _HyScanObjectModelClass
 {
   GObjectClass parent_class;
+
+  /* Сигналы. */
+  void         (*changed)             (HyScanObjectModel  *model);
 };
 
 HYSCAN_API
@@ -138,6 +141,17 @@ void                    hyscan_object_model_remove_object     (HyScanObjectModel
  */
 HYSCAN_API
 GHashTable*             hyscan_object_model_get               (HyScanObjectModel         *model);
+
+/**
+ * Функция возвращает копию объекта по его ID из внутреннего буфера.
+ *
+ * \param model указатель на \link HyScanObjectModel \endlink;
+ *
+ * \return HyScanObject или NULL.
+ */
+HYSCAN_API
+HyScanObject *          hyscan_object_model_get_id            (HyScanObjectModel         *model,
+                                                               const gchar               *id);
 
 /**
  * Вспомогательная функция для создания копии таблицы меток.

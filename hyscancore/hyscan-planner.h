@@ -41,25 +41,19 @@
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_PLANNER             (hyscan_planner_get_type ())
-#define HYSCAN_PLANNER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_PLANNER, HyScanPlanner))
-#define HYSCAN_IS_PLANNER(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_PLANNER))
-#define HYSCAN_PLANNER_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_PLANNER, HyScanPlannerClass))
-#define HYSCAN_IS_PLANNER_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_PLANNER))
-#define HYSCAN_PLANNER_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_PLANNER, HyScanPlannerClass))
+#define HYSCAN_PLANNER_ORIGIN_ID "origin"
 
-typedef struct _HyScanPlanner HyScanPlanner;
 typedef union _HyScanPlannerObject HyScanPlannerObject;
 typedef struct _HyScanPlannerTrack HyScanPlannerTrack;
 typedef struct _HyScanPlannerZone HyScanPlannerZone;
-typedef struct _HyScanPlannerPrivate HyScanPlannerPrivate;
-typedef struct _HyScanPlannerClass HyScanPlannerClass;
+typedef struct _HyScanPlannerOrigin HyScanPlannerOrigin;
 
 typedef enum
 {
   HYSCAN_PLANNER_INVALID,
   HYSCAN_PLANNER_ZONE,
   HYSCAN_PLANNER_TRACK,
+  HYSCAN_PLANNER_ORIGIN,
 } HyScanPlannerObjectType;
 
 /**
@@ -87,7 +81,7 @@ struct _HyScanPlannerTrack
 
 /**
  * HyScanPlannerZone:
- * @id: уникальный идентификатор
+ * @type: тип объекта
  * @name: название зоны
  * @points: (element-type HyScanGeoGeodetic): список вершин многоугольника, ограничивающего зону
  * @points_len: число вершин многоугольника
@@ -104,115 +98,44 @@ struct _HyScanPlannerZone
   gint64                   mtime;
 };
 
+/**
+ * HyScanPlannerZone:
+ * @type: тип объекта
+ * @origin:
+ *
+ * Референсная точка, которая считается началом координат для топографической системы координат
+ */
+struct _HyScanPlannerOrigin
+{
+  HyScanPlannerObjectType  type;
+  HyScanGeoGeodetic        origin;
+};
+
 union _HyScanPlannerObject
 {
   HyScanPlannerObjectType type;
   HyScanPlannerTrack      track;
   HyScanPlannerZone       zone;
+  HyScanPlannerOrigin     ref_point;
 };
-
-struct _HyScanPlanner
-{
-  GObject parent_instance;
-
-  HyScanPlannerPrivate *priv;
-};
-
-struct _HyScanPlannerClass
-{
-  GObjectClass parent_class;
-};
-
-HYSCAN_API
-GType                  hyscan_planner_get_type         (void);
-
-HYSCAN_API
-HyScanPlanner *        hyscan_planner_new              (HyScanDB                 *db,
-                                                        const gchar              *project_name);
-
-HYSCAN_API
-HyScanPlannerObject *  hyscan_planner_get              (HyScanPlanner            *planner,
-                                                        const gchar              *id);
-
-HYSCAN_API
-HyScanPlannerObject *  hyscan_planner_object_copy      (HyScanPlannerObject      *object);
-
-HYSCAN_API
-void                   hyscan_planner_object_free      (HyScanPlannerObject      *object);
-
-HYSCAN_API
-gchar **               hyscan_planner_get_ids          (HyScanPlanner            *planner,
-                                                        guint                    *len);
-
-HYSCAN_API
-gboolean               hyscan_planner_add              (HyScanPlanner            *planner,
-                                                        HyScanPlannerObject      *object);
-
-HYSCAN_API
-gboolean               hyscan_planner_modify           (HyScanPlanner            *planner,
-                                                        const gchar              *id,
-                                                        HyScanPlannerObject      *object);
-
-HYSCAN_API
-gboolean               hyscan_planner_remove           (HyScanPlanner            *planner,
-                                                        const gchar              *id);
-
-HYSCAN_API
-gchar **               hyscan_planner_zone_list        (HyScanPlanner            *planner);
-
-HYSCAN_API
-gchar *                hyscan_planner_zone_create      (HyScanPlanner            *planner,
-                                                        const HyScanPlannerZone  *zone);
-
-HYSCAN_API
-gboolean               hyscan_planner_zone_set         (HyScanPlanner            *planner,
-                                                        const HyScanPlannerZone  *zone);
-
-HYSCAN_API
-HyScanPlannerZone *    hyscan_planner_zone_get         (HyScanPlanner            *planner,
-                                                        const gchar              *zone_id);
-
-HYSCAN_API
-gboolean               hyscan_planner_zone_remove      (HyScanPlanner            *planner,
-                                                        const gchar              *zone_id);
 
 HYSCAN_API
 void                   hyscan_planner_zone_free        (HyScanPlannerZone        *zone);
 
 HYSCAN_API
-gchar *                hyscan_planner_track_create     (HyScanPlanner            *planner,
-                                                        const HyScanPlannerTrack  *track);
-
-HYSCAN_API
-gboolean               hyscan_planner_track_set        (HyScanPlanner            *planner,
-                                                        const HyScanPlannerTrack  *track);
-
-HYSCAN_API
-gchar **               hyscan_planner_track_list       (HyScanPlanner            *planner,
-                                                        const gchar              *zone_id);
-
-HYSCAN_API
-HyScanPlannerTrack *   hyscan_planner_track_get        (HyScanPlanner            *planner,
-                                                        const gchar              *track_id);
-
-HYSCAN_API
-gboolean               hyscan_planner_track_remove     (HyScanPlanner            *planner,
-                                                        const gchar              *track_id);
-
-HYSCAN_API
 void                   hyscan_planner_track_free       (HyScanPlannerTrack        *track);
+
+HYSCAN_API
+void                   hyscan_planner_origin_free      (HyScanPlannerOrigin       *ref_point);
 
 HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_copy       (const HyScanPlannerTrack  *track);
 
 HYSCAN_API
+HyScanPlannerOrigin *  hyscan_planner_origin_copy      (const HyScanPlannerOrigin *origin);
+
+HYSCAN_API
 HyScanPlannerZone *    hyscan_planner_zone_copy        (const HyScanPlannerZone   *zone);
-
-HYSCAN_API
-guint32                hyscan_planner_get_mod_count    (HyScanPlanner             *planner);
-
-HYSCAN_API
-HyScanPlannerObjectType hyscan_planner_object_type     (HyScanPlannerObject       *object);
 
 G_END_DECLS
 

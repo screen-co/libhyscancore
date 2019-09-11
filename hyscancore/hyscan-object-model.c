@@ -115,7 +115,7 @@ hyscan_object_model_class_init (HyScanObjectModelClass *klass)
 
   hyscan_object_model_signals[SIGNAL_CHANGED] =
     g_signal_new ("changed", HYSCAN_TYPE_OBJECT_MODEL,
-                  G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                  G_SIGNAL_RUN_FIRST, G_STRUCT_OFFSET (HyScanObjectModelClass, changed), NULL, NULL,
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 }
@@ -574,6 +574,47 @@ hyscan_object_model_get (HyScanObjectModel *model)
   g_mutex_unlock (&priv->objects_lock);
 
   return objects;
+}
+
+/**
+ * hyscan_object_model_get_id:
+ * @model: указатель на модель #HyScanObjectModel
+ * @id: идентификатор объекта
+ *
+ * Функция возвращает объект из внутреннего буфера по его ID.
+ *
+ * Returns: (transfer-full): (nullable): указатель на объект или %NULL, если объект не найден
+ */
+HyScanObject *
+hyscan_object_model_get_id (HyScanObjectModel *model,
+                            const gchar       *id)
+{
+  HyScanObjectModelPrivate *priv;
+  HyScanObjectDataClass *data_class;
+  HyScanObject *object, *copy = NULL;
+
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_MODEL (model), NULL);
+  priv = model->priv;
+
+  g_mutex_lock (&priv->objects_lock);
+
+  /* Проверяем, что объекты есть. */
+  if (priv->objects == NULL)
+    {
+      g_mutex_unlock (&priv->objects_lock);
+      return NULL;
+    }
+
+  /* Копируем объект. */
+  data_class = g_type_class_ref (priv->data_type);
+
+  object = g_hash_table_lookup (priv->objects, id);
+  copy = object != NULL ? data_class->object_copy (object) : NULL;
+  g_mutex_unlock (&priv->objects_lock);
+
+  g_type_class_unref (data_class);
+
+  return copy;
 }
 
 GHashTable *

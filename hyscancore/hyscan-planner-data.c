@@ -10,6 +10,7 @@ struct _HyScanPlannerDataPrivate
 {
   HyScanParamList             *track_read_plist;
   HyScanParamList             *zone_read_plist;
+  HyScanParamList             *origin_read_plist;
 };
 
 static void                hyscan_planner_data_object_constructed  (GObject                  *object);
@@ -102,6 +103,15 @@ hyscan_planner_data_object_constructed (GObject *object)
   hyscan_param_list_add (priv->zone_read_plist, "/vertices");
   hyscan_param_list_add (priv->zone_read_plist, "/ctime");
   hyscan_param_list_add (priv->zone_read_plist, "/mtime");
+
+  priv->origin_read_plist = hyscan_param_list_new ();
+  hyscan_param_list_add (priv->origin_read_plist, "/schema/id");
+  hyscan_param_list_add (priv->origin_read_plist, "/schema/version");
+  hyscan_param_list_add (priv->origin_read_plist, "/lat");
+  hyscan_param_list_add (priv->origin_read_plist, "/lon");
+  hyscan_param_list_add (priv->origin_read_plist, "/azimuth");
+  hyscan_param_list_add (priv->zone_read_plist, "/ctime");
+  hyscan_param_list_add (priv->zone_read_plist, "/mtime");
 }
 
 static void
@@ -112,6 +122,7 @@ hyscan_planner_data_object_finalize (GObject *object)
 
   g_object_unref (priv->track_read_plist);
   g_object_unref (priv->zone_read_plist);
+  g_object_unref (priv->origin_read_plist);
   G_OBJECT_CLASS (hyscan_planner_data_parent_class)->finalize (object);
 }
 
@@ -125,6 +136,8 @@ hyscan_planner_data_get_schema_id (HyScanObjectData *data,
     return PLANNER_ZONE_SCHEMA;
   else if (object->type == HYSCAN_PLANNER_TRACK)
     return PLANNER_TRACK_SCHEMA;
+  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+    return PLANNER_ORIGIN_SCHEMA;
   else
     return NULL;
 }
@@ -155,6 +168,11 @@ hyscan_planner_data_generate_id (HyScanObjectData   *data,
       id = g_strconcat (PREFIX_TRACK, zone_id, "/", unique_id, NULL);
     }
 
+  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+    {
+      id = g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
+    }
+
   g_free (unique_id);
   return id;
 }
@@ -171,6 +189,12 @@ hyscan_planner_data_track_validate_id (const gchar *track_id)
   return track_id != NULL && g_str_has_prefix (track_id, PREFIX_TRACK);
 }
 
+static inline gboolean
+hyscan_planner_data_origin_validate_id (const gchar *origin_id)
+{
+  return g_strcmp0 (origin_id, HYSCAN_PLANNER_ORIGIN_ID);
+}
+
 static HyScanObject *
 hyscan_planner_data_object_new (HyScanObjectData *data,
                                 const gchar    *id)
@@ -183,6 +207,8 @@ hyscan_planner_data_object_new (HyScanObjectData *data,
     object->type = HYSCAN_PLANNER_TRACK;
   else if (hyscan_planner_data_zone_validate_id (id))
     object->type = HYSCAN_PLANNER_ZONE;
+  else if (hyscan_planner_data_origin_validate_id (id))
+    object->type = HYSCAN_PLANNER_ORIGIN;
   else
     object->type = HYSCAN_PLANNER_INVALID;
 
@@ -198,6 +224,8 @@ hyscan_planner_data_object_destroy (HyScanObject *object)
     hyscan_planner_zone_free (&planner_object->zone);
   else if (planner_object->type == HYSCAN_PLANNER_TRACK)
     hyscan_planner_track_free (&planner_object->track);
+  else if (planner_object->type == HYSCAN_PLANNER_ORIGIN)
+    hyscan_planner_origin_free (&planner_object->ref_point);
   else
     g_warn_if_reached ();
 }
@@ -211,6 +239,8 @@ hyscan_planner_data_object_copy (const HyScanObject *object)
     return hyscan_planner_zone_copy (&planner_object->zone);
   else if (planner_object->type == HYSCAN_PLANNER_TRACK)
     return hyscan_planner_track_copy (&planner_object->track);
+  else if (planner_object->type == HYSCAN_PLANNER_ORIGIN)
+    return hyscan_planner_origin_copy (&planner_object->ref_point);
   else
     g_return_val_if_reached (NULL);
 }
@@ -226,6 +256,8 @@ hyscan_planner_data_get_read_plist (HyScanObjectData *data,
     return g_object_ref (priv->track_read_plist);
   else if (g_str_equal (schema_id, PLANNER_ZONE_SCHEMA))
     return g_object_ref (priv->zone_read_plist);
+  else if (g_str_equal (schema_id, PLANNER_ORIGIN_SCHEMA))
+    return g_object_ref (priv->origin_read_plist);
   else
     g_return_val_if_reached (NULL);
 }
@@ -327,6 +359,19 @@ hyscan_planner_data_get_track (HyScanObjectData *mdata,
   track->end.lon = hyscan_param_list_get_double (plist, "/end-lon");
 }
 
+static void
+hyscan_planner_data_get_origin (HyScanObjectData *mdata,
+                                HyScanParamList  *plist,
+                                HyScanObject     *object)
+{
+  HyScanPlannerOrigin *origin = object;
+
+  origin->type = HYSCAN_PLANNER_ORIGIN;
+  origin->origin.lat = hyscan_param_list_get_double (plist, "/lat");
+  origin->origin.lon = hyscan_param_list_get_double (plist, "/lon");
+  origin->origin.h = hyscan_param_list_get_double (plist, "/azimuth");
+}
+
 static gboolean
 hyscan_planner_data_get_full (HyScanObjectData *mdata,
                               HyScanParamList  *read_plist,
@@ -353,6 +398,14 @@ hyscan_planner_data_get_full (HyScanObjectData *mdata,
       return TRUE;
     }
 
+  else if (sid == PLANNER_ORIGIN_SCHEMA_ID && sver == PLANNER_ORIGIN_SCHEMA_VERSION)
+    {
+      if (object != NULL)
+        hyscan_planner_data_get_origin (mdata, read_plist, object);
+
+      return TRUE;
+    }
+
   return FALSE;
 }
 
@@ -372,6 +425,18 @@ hyscan_planner_data_set_track (HyScanObjectData           *data,
   hyscan_param_list_set_double (write_plist, "/start-lon", track->start.lon);
   hyscan_param_list_set_double (write_plist, "/end-lat", track->end.lat);
   hyscan_param_list_set_double (write_plist, "/end-lon", track->end.lon);
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_planner_data_set_origin (HyScanObjectData          *data,
+                                HyScanParamList           *write_plist,
+                                const HyScanPlannerOrigin *origin)
+{
+  hyscan_param_list_set_double (write_plist, "/lat", origin->origin.lat);
+  hyscan_param_list_set_double (write_plist, "/lon", origin->origin.lon);
+  hyscan_param_list_set_double (write_plist, "/azimuth", origin->origin.h);
 
   return TRUE;
 }
@@ -406,6 +471,8 @@ hyscan_planner_data_set_full (HyScanObjectData   *mdata,
     return hyscan_planner_data_set_zone (mdata, write_plist, object);
   else if (planner_object->type == HYSCAN_PLANNER_TRACK)
     return hyscan_planner_data_set_track (mdata, write_plist, object);
+  else if (planner_object->type == HYSCAN_PLANNER_ORIGIN)
+    return hyscan_planner_data_set_origin (mdata, write_plist, object);
 
   return FALSE;
 }

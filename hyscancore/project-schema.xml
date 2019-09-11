@@ -72,6 +72,22 @@
     <key id="height" name="Mark height" type="double"/>
   </schema>
 
+  <schema id="planner-origin">
+    <node id="schema">
+      <key id="id" name="Planner origin schema id" type="integer" access="readonly">
+        <default>3906613780672057459</default>
+      </key>
+      <key id="version" name="Planner zone schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="lat" name="Latitude" type="double"/>
+    <key id="lon" name="Longitude" type="double"/>
+    <key id="azimuth" name="Azimuth, direction of X axis" type="double"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
   <schema id="planner-zone">
     <node id="schema">
       <key id="id" name="Planner zone schema id" type="integer" access="readonly">
