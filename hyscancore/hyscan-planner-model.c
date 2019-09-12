@@ -1,3 +1,50 @@
+/* hyscan-planner-model.c
+ *
+ * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
+ *
+ * This file is part of HyScanGui library.
+ *
+ * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanGui is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanGui имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-planner-model
+ * @Short_description: Модель данных планировщика
+ * @Title: HyScanPlannerModel
+ *
+ * #HyScanPlannerModel предназначен для асинхронной работы с объектами планировщика.
+ * Класс модели расширяет функциональность класса #HyScanObjectModel и позволяет
+ * устанавливать географические координаты начала отсчёта топоцентрической системы
+ * координат и получить объект пересчёта координат из географической СК
+ * в топоцентрическую.
+ *
+ */
+
 #include "hyscan-planner-model.h"
 
 struct _HyScanPlannerModelPrivate
@@ -55,6 +102,13 @@ hyscan_planner_model_changed (HyScanObjectModel *model)
   hyscan_planner_origin_free (origin);
 }
 
+/**
+ * hyscan_planner_model_new:
+ *
+ * Создаёт модель данных для асинхронного доступа к параметрам объектов планировщика.
+ *
+ * Returns: (transfer-full): указатель на HyScanPlannerModel. Для удаления g_object_unref().
+ */
 HyScanPlannerModel *
 hyscan_planner_model_new (void)
 {
@@ -62,6 +116,16 @@ hyscan_planner_model_new (void)
                        "data-type", HYSCAN_TYPE_PLANNER_DATA, NULL);
 }
 
+/**
+ * hyscan_planner_model_get_geo:
+ * @pmodel: указатель на #HyScanPlannerModel
+ *
+ * Функция возвращает объект пересчёта координат схемы галсов из географической
+ * системы координат в топоцентрическую и обратно.
+ *
+ * Returns: (transfer-full): (nullable): указатель на объект HyScanGeo, для удаления
+ *   g_object_unref().
+ */
 HyScanGeo *
 hyscan_planner_model_get_geo (HyScanPlannerModel *pmodel)
 {
@@ -73,6 +137,17 @@ hyscan_planner_model_get_geo (HyScanPlannerModel *pmodel)
   return priv->geo != NULL ? g_object_ref (priv->geo) : NULL;
 }
 
+/**
+ * hyscan_planner_model_set_origin:
+ * @pmodel: указатель на #HyScanPlannerModel
+ * @origin: координаты начала отсчёта топоцентрической системы координат
+ *
+ * Функция устанавливает начало топоцентрической системы координат. Направление
+ * оси OX указывается в поле .h структуры @origin в градусах.
+ *
+ * Фактическое изменение объекта пересчёта координат произойдёт после записи
+ * данных в БД, т.е. при одном из следующих испусканий сигналов "changed".
+ */
 void
 hyscan_planner_model_set_origin (HyScanPlannerModel      *pmodel,
                                  const HyScanGeoGeodetic *origin)
