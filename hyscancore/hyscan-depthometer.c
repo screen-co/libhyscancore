@@ -303,6 +303,7 @@ hyscan_depthometer_set_validity_time (HyScanDepthometer *meter,
  */
 gdouble
 hyscan_depthometer_get (HyScanDepthometer *meter,
+                        HyScanCancellable *cancellable,
                         gint64             time)
 {
   HyScanDepthometerPrivate *priv;
@@ -365,7 +366,7 @@ hyscan_depthometer_get (HyScanDepthometer *meter,
   for (i = 0; i < size; i++)
     {
       gdouble current = 0;
-      hyscan_nav_data_get (priv->source, priv->indexes[i], NULL, &current);
+      hyscan_nav_data_get (priv->source, cancellable, priv->indexes[i], NULL, &current);
       retval += current;
     }
 

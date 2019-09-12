@@ -52,18 +52,18 @@
 #ifndef __HYSCAN_WATERFALL_TILE_H__
 #define __HYSCAN_WATERFALL_TILE_H__
 
-#include <hyscan-depthometer.h>
-#include <hyscan-amplitude.h>
-#include <hyscan-tile-common.h>
+#include "hyscan-depthometer.h"
+#include "hyscan-amplitude.h"
+#include "hyscan-tile.h"
 
 G_BEGIN_DECLS
 
 #define HYSCAN_TYPE_WATERFALL_TILE              (hyscan_waterfall_tile_get_type ())
 #define HYSCAN_WATERFALL_TILE(obj)              (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTile))
 #define HYSCAN_IS_WATERFALL_TILE(obj)           (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_WATERFALL_TILE))
-#define HYSCAN_TILE_CLASS(klass)                (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
+#define HYSCAN_WATERFALL_TILE_CLASS(klass)      (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
 #define HYSCAN_IS_WATERFALL_TILE_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_WATERFALL_TILE))
-#define HYSCAN_TILE_GET_CLASS(obj)              (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
+#define HYSCAN_WATERFALL_TILE_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_WATERFALL_TILE, HyScanWaterfallTileClass))
 
 typedef struct _HyScanWaterfallTile HyScanWaterfallTile;
 typedef struct _HyScanWaterfallTilePrivate HyScanWaterfallTilePrivate;
@@ -92,7 +92,7 @@ GType                   hyscan_waterfall_tile_get_type          (void);
  *
  */
 HYSCAN_API
-HyScanWaterfallTile    *hyscan_waterfall_tile_new               (void);
+HyScanWaterfallTile *   hyscan_waterfall_tile_new               (void);
 
 /**
  *
@@ -124,20 +124,6 @@ void                    hyscan_waterfall_tile_set_path          (HyScanWaterfall
                                                                  const gchar         *path);
 /**
  *
- * Функция передает генератору объект с навигационными данными.
- *
- * \param wfall - указатель на объект HyScanWaterfallTile;
- * \param depth - указатель на объект определения глубины.
- *
- * \return TRUE, если удалось установить параметры.
- *
- */
-HYSCAN_API
-gboolean                hyscan_waterfall_tile_set_depth         (HyScanWaterfallTile *wfall,
-                                                                 HyScanDepthometer   *depth);
-
-/**
- *
  * Функция устанавливает скорость судна и звука.
  *
  * \param wfall - указатель на объект HyScanWaterfallTile;
@@ -162,15 +148,15 @@ gboolean                hyscan_waterfall_tile_set_speeds        (HyScanWaterfall
  *
  * \param wfall - указатель на объект HyScanWaterfallTile;
  * \param dc - канал данных, используемый для генерации;
- * \param tile - параметры тайла.
+ * \param depth - указатель на объект определения глубины.
  *
  * \return TRUE, если удалось установить параметры.
  *
  */
 HYSCAN_API
-gboolean                hyscan_waterfall_tile_set_tile          (HyScanWaterfallTile *wfall,
+gboolean                hyscan_waterfall_tile_set_dc            (HyScanWaterfallTile *wfall,
                                                                  HyScanAmplitude     *dc,
-                                                                 HyScanTile           tile);
+                                                                 HyScanDepthometer   *depth);
 /**
  *
  * Функция генерирует тайл.
@@ -185,6 +171,7 @@ gboolean                hyscan_waterfall_tile_set_tile          (HyScanWaterfall
  */
 HYSCAN_API
 gfloat*                 hyscan_waterfall_tile_generate          (HyScanWaterfallTile *wfall,
+                                                                 HyScanCancellable   *cancellable,
                                                                  HyScanTile          *tile,
                                                                  guint32             *size);
 

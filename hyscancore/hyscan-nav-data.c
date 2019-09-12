@@ -66,27 +66,34 @@ hyscan_nav_data_default_init (HyScanNavDataInterface *iface)
 /**
  * hyscan_nav_data_get:
  * @ndata: указатель на интерфейс #HyScanNavData
+ * @cancellable: #HyScanCancellable
  * @index: индекс записи в канале данных
  * @time: (out) (nullable): время данных
  * @value: (out) (nullable): значение
  *
  * Функция возвращает значение для заданного индекса.
  *
- * Returns: %TRUE, если удалось определить, %FALSE в случае ошибки.
+ * Returns: %TRUE, если удалось определить, %FALSE в случае ошибки или если
+ * cancellable был отменен.
  */
 gboolean
-hyscan_nav_data_get (HyScanNavData *navdata,
-                     guint32        index,
-                     gint64        *time,
-                     gdouble       *value)
+hyscan_nav_data_get (HyScanNavData     *navdata,
+                     HyScanCancellable *cancellable,
+                     guint32            index,
+                     gint64            *time,
+                     gdouble           *value)
 {
   HyScanNavDataInterface *iface;
 
   g_return_val_if_fail (HYSCAN_IS_NAV_DATA (navdata), FALSE);
+
+  if (g_cancellable_is_cancelled (G_CANCELLABLE (cancellable)))
+    return FALSE;
+
   iface = HYSCAN_NAV_DATA_GET_IFACE (navdata);
 
   if (iface->get != NULL)
-    return (*iface->get) (navdata, index, time, value);
+    return (*iface->get) (navdata, cancellable, index, time, value);
 
   return FALSE;
 }

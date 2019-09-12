@@ -49,7 +49,7 @@
 #ifndef __HYSCAN_PROJECTOR_H__
 #define __HYSCAN_PROJECTOR_H__
 
-#include <hyscan-amplitude.h>
+#include "hyscan-amplitude.h"
 
 G_BEGIN_DECLS
 

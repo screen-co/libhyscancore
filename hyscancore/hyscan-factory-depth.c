@@ -1,4 +1,4 @@
-/* hyscan-depth-factory.c
+/* hyscan-factory-depth.c
  *
  * Copyright 2018-2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
@@ -33,16 +33,16 @@
  */
 
 /**
- * SECTION: hyscan-depth-factory
+ * SECTION: hyscan-factory-depth
  * @Short_description: фабрика объектов доступа к данным глубины
- * @Title: HyScanDepthFactory
+ * @Title: HyScanFactoryDepth
  * @see_also: HyScanDepthometer
  *
  * Объект является фабрикой объектов доступа к данным глубины.
  */
 
 
-#include "hyscan-depth-factory.h"
+#include "hyscan-factory-depth.h"
 #include <hyscan-nmea-parser.h>
 #include <string.h>
 
@@ -52,36 +52,35 @@ enum
   PROP_CACHE,
 };
 
-struct _HyScanDepthFactoryPrivate
+struct _HyScanFactoryDepthPrivate
 {
   HyScanCache  *cache;
 
   HyScanDB     *db;
   gchar        *project; /* */
-  gchar        *track;
 
   GMutex        lock;
   gchar        *token;
 };
 
-static void    hyscan_depth_factory_set_property             (GObject               *object,
+static void    hyscan_factory_depth_set_property             (GObject               *object,
                                                               guint                  prop_id,
                                                               const GValue          *value,
                                                               GParamSpec            *pspec);
-static void    hyscan_depth_factory_object_constructed       (GObject               *object);
-static void    hyscan_depth_factory_object_finalize          (GObject               *object);
-static void    hyscan_depth_factory_updated                  (HyScanDepthFactory    *self);
+static void    hyscan_factory_depth_object_constructed       (GObject               *object);
+static void    hyscan_factory_depth_object_finalize          (GObject               *object);
+static void    hyscan_factory_depth_updated                  (HyScanFactoryDepth    *self);
 
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanDepthFactory, hyscan_depth_factory, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanFactoryDepth, hyscan_factory_depth, HYSCAN_TYPE_FACTORY);
 
 static void
-hyscan_depth_factory_class_init (HyScanDepthFactoryClass *klass)
+hyscan_factory_depth_class_init (HyScanFactoryDepthClass *klass)
 {
   GObjectClass *oclass = G_OBJECT_CLASS (klass);
 
-  oclass->set_property = hyscan_depth_factory_set_property;
-  oclass->constructed = hyscan_depth_factory_object_constructed;
-  oclass->finalize = hyscan_depth_factory_object_finalize;
+  oclass->set_property = hyscan_factory_depth_set_property;
+  oclass->constructed = hyscan_factory_depth_object_constructed;
+  oclass->finalize = hyscan_factory_depth_object_finalize;
 
   g_object_class_install_property (oclass, PROP_CACHE,
     g_param_spec_object ("cache", "Cache", "HyScanCache interface",
@@ -90,19 +89,19 @@ hyscan_depth_factory_class_init (HyScanDepthFactoryClass *klass)
 }
 
 static void
-hyscan_depth_factory_init (HyScanDepthFactory *depth_factory)
+hyscan_factory_depth_init (HyScanFactoryDepth *factory_depth)
 {
-  depth_factory->priv = hyscan_depth_factory_get_instance_private (depth_factory);
+  factory_depth->priv = hyscan_factory_depth_get_instance_private (factory_depth);
 }
 
 static void
-hyscan_depth_factory_set_property (GObject      *object,
+hyscan_factory_depth_set_property (GObject      *object,
                                    guint         prop_id,
                                    const GValue *value,
                                    GParamSpec   *pspec)
 {
-  HyScanDepthFactory *depth_factory = HYSCAN_DEPTH_FACTORY (object);
-  HyScanDepthFactoryPrivate *priv = depth_factory->priv;
+  HyScanFactoryDepth *factory_depth = HYSCAN_FACTORY_DEPTH (object);
+  HyScanFactoryDepthPrivate *priv = factory_depth->priv;
 
   switch (prop_id)
     {
@@ -116,71 +115,69 @@ hyscan_depth_factory_set_property (GObject      *object,
 }
 
 static void
-hyscan_depth_factory_object_constructed (GObject *object)
+hyscan_factory_depth_object_constructed (GObject *object)
 {
-  HyScanDepthFactory *depth_factory = HYSCAN_DEPTH_FACTORY (object);
-  HyScanDepthFactoryPrivate *priv = depth_factory->priv;
+  HyScanFactoryDepth *factory_depth = HYSCAN_FACTORY_DEPTH (object);
+  HyScanFactoryDepthPrivate *priv = factory_depth->priv;
 
   g_mutex_init (&priv->lock);
 }
 
 static void
-hyscan_depth_factory_object_finalize (GObject *object)
+hyscan_factory_depth_object_finalize (GObject *object)
 {
-  HyScanDepthFactory *depth_factory = HYSCAN_DEPTH_FACTORY (object);
-  HyScanDepthFactoryPrivate *priv = depth_factory->priv;
+  HyScanFactoryDepth *factory_depth = HYSCAN_FACTORY_DEPTH (object);
+  HyScanFactoryDepthPrivate *priv = factory_depth->priv;
 
   g_clear_object (&priv->cache);
 
   g_clear_object (&priv->db);
   g_free (priv->project);
-  g_free (priv->track);
 
   g_free (priv->token);
 
   g_mutex_clear (&priv->lock);
 
-  G_OBJECT_CLASS (hyscan_depth_factory_parent_class)->finalize (object);
+  G_OBJECT_CLASS (hyscan_factory_depth_parent_class)->finalize (object);
 }
 
 /* Функция обновляет состояние объекта. Вызывать строго за мьютексом! */
 static void
-hyscan_depth_factory_updated (HyScanDepthFactory *self)
+hyscan_factory_depth_updated (HyScanFactoryDepth *self)
 {
-  HyScanDepthFactoryPrivate *priv = self->priv;
+  HyScanFactoryDepthPrivate *priv = self->priv;
   gchar *uri = NULL;
 
   g_clear_pointer (&priv->token, g_free);
 
-  if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
+  if (priv->db == NULL || priv->project == NULL)
     return;
 
   uri = hyscan_db_get_uri (priv->db);
 
-  priv->token = g_strdup_printf ("DepthFactory.%s.%s.%s",
-                                 uri, priv->project, priv->track);
+  priv->token = g_strdup_printf ("FactoryDepth.%s.%s", uri, priv->project);
 
   g_free (uri);
 }
 
 /**
- * hyscan_depth_factory_new:
+ * hyscan_factory_depth_new:
  * @cache: (nullable): объект #HyScanCache
  *
- * Создает новый объект #HyScanDepthFactory.
+ * Создает новый объект #HyScanFactoryDepth.
  *
- * Returns: (transfer full): #HyScanDepthFactory
+ * Returns: (transfer full): #HyScanFactoryDepth
  */
-HyScanDepthFactory *
-hyscan_depth_factory_new (HyScanCache *cache)
+HyScanFactoryDepth *
+hyscan_factory_depth_new (HyScanCache *cache)
 {
-  return g_object_new (HYSCAN_TYPE_DEPTH_FACTORY,
+  return g_object_new (HYSCAN_TYPE_FACTORY_DEPTH,
                        "cache", cache,
                        NULL);
 }
 
 /**
- * hyscan_depth_factory_get_token:
+ * hyscan_factory_depth_get_token:
  * @self: объект #HyScanDepthfactory
  *
  * Функция возвращает токен объекта (строка, описывающее его внутреннее состояние).
@@ -188,12 +185,12 @@ hyscan_depth_factory_new (HyScanCache *cache)
  * Returns: (transfer full): токен.
  */
 gchar *
-hyscan_depth_factory_get_token (HyScanDepthFactory *self)
+hyscan_factory_depth_get_token (HyScanFactoryDepth *self)
 {
-  HyScanDepthFactoryPrivate *priv;
+  HyScanFactoryDepthPrivate *priv;
   gchar *token = NULL;
 
-  g_return_val_if_fail (HYSCAN_IS_DEPTH_FACTORY (self), NULL);
+  g_return_val_if_fail (HYSCAN_IS_FACTORY_DEPTH (self), NULL);
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
@@ -205,42 +202,40 @@ hyscan_depth_factory_get_token (HyScanDepthFactory *self)
 }
 
 /**
- * hyscan_depth_factory_set_track:
+ * hyscan_factory_depth_set_track:
  * @self: объект #HyScanDepthfactory
  * @db: база данных
  * @project: проект
- * @track: галс
  *
- * Функция задает БД, проект и галс.
+ * Функция задает БД, проект.
  */
 void
-hyscan_depth_factory_set_track (HyScanDepthFactory *self,
-                                HyScanDB           *db,
-                                const gchar        *project,
-                                const gchar        *track)
+hyscan_factory_depth_set_project (HyScanFactoryDepth *self,
+                                  HyScanDB           *db,
+                                  const gchar        *project)
 {
-  HyScanDepthFactoryPrivate *priv;
+  HyScanFactoryDepthPrivate *priv;
 
-  g_return_if_fail (HYSCAN_IS_DEPTH_FACTORY (self));
+  g_return_if_fail (HYSCAN_IS_FACTORY_DEPTH (self));
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
 
   g_clear_object (&priv->db);
   g_clear_pointer (&priv->project, g_free);
-  g_clear_pointer (&priv->track, g_free);
 
   priv->db = g_object_ref (db);
   priv->project = g_strdup (project);
-  priv->track = g_strdup (track);
 
-  hyscan_depth_factory_updated (self);
+  hyscan_factory_depth_updated (self);
 
   g_mutex_unlock (&priv->lock);
+
+  hyscan_factory_emit_changed (HYSCAN_FACTORY (self));
 }
 
 /**
- * hyscan_depth_factory_produce:
+ * hyscan_factory_depth_produce:
  * @self: объект #HyScanDepthfactory
  *
  * Функция создает новый объект доступа к данным глубины.
@@ -248,29 +243,28 @@ hyscan_depth_factory_set_track (HyScanDepthFactory *self,
  * Returns: (transfer full): #HyScanDepthometer
  */
 HyScanDepthometer *
-hyscan_depth_factory_produce (HyScanDepthFactory *self)
+hyscan_factory_depth_produce (HyScanFactoryDepth *self,
+                              const gchar        *track)
 {
   HyScanNMEAParser *parser = NULL;
   HyScanDepthometer *depth = NULL;
-  HyScanDepthFactoryPrivate *priv;
-  HyScanDB * db;
-  gchar * project;
-  gchar * track;
+  HyScanFactoryDepthPrivate *priv;
+  HyScanDB *db;
+  gchar *project;
 
-  g_return_val_if_fail (HYSCAN_IS_DEPTH_FACTORY (self), NULL);
+  g_return_val_if_fail (HYSCAN_IS_FACTORY_DEPTH (self), NULL);
   priv = self->priv;
 
   g_mutex_lock (&priv->lock);
   db = (priv->db != NULL) ? g_object_ref (priv->db) : NULL;
   project = (priv->project != NULL) ? g_strdup (priv->project) : NULL;
-  track = (priv->track != NULL) ? g_strdup (priv->track) : NULL;
   g_mutex_unlock (&priv->lock);
 
   if (db == NULL || project == NULL || track == NULL)
     goto fail;
 
   parser = hyscan_nmea_parser_new (priv->db, priv->cache,
-                                   priv->project, priv->track, 1,
+                                   priv->project, track, 1,
                                    HYSCAN_NMEA_DATA_DPT,
                                    HYSCAN_NMEA_FIELD_DEPTH);
 
@@ -283,7 +277,6 @@ fail:
   g_clear_object (&db);
   g_clear_object (&parser);
   g_clear_pointer (&project, g_free);
-  g_clear_pointer (&track, g_free);
 
   return depth;
 }

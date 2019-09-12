@@ -35,9 +35,9 @@
 #ifndef __HYSCAN_TILE_QUEUE_H__
 #define __HYSCAN_TILE_QUEUE_H__
 
-#include <hyscan-tile-common.h>
-#include <hyscan-amplitude-factory.h>
-#include <hyscan-depth-factory.h>
+#include "hyscan-tile.h"
+#include "hyscan-factory-amplitude.h"
+#include "hyscan-factory-depth.h"
 
 G_BEGIN_DECLS
 
@@ -65,13 +65,13 @@ struct _HyScanTileQueueClass
 };
 
 HYSCAN_API
-GType                  hyscan_tile_queue_get_type              (void);
+GType                   hyscan_tile_queue_get_type             (void);
 
 HYSCAN_API
 HyScanTileQueue *       hyscan_tile_queue_new                  (gint                    max_generators,
                                                                 HyScanCache            *cache,
-                                                                HyScanAmplitudeFactory *amp_factory,
-                                                                HyScanDepthFactory     *dpt_factory);
+                                                                HyScanFactoryAmplitude *amp_factory,
+                                                                HyScanFactoryDepth     *dpt_factory);
 
 HYSCAN_API
 void                    hyscan_tile_queue_set_ship_speed       (HyScanTileQueue        *tilequeue,
@@ -82,27 +82,22 @@ void                    hyscan_tile_queue_set_sound_velocity   (HyScanTileQueue 
                                                                 GArray                 *velocity);
 
 HYSCAN_API
-void                    hyscan_tile_queue_amp_changed          (HyScanTileQueue        *tilequeue);
-
-HYSCAN_API
-void                    hyscan_tile_queue_dpt_changed          (HyScanTileQueue        *tilequeue);
-
-HYSCAN_API
 gboolean                hyscan_tile_queue_check                (HyScanTileQueue        *tilequeue,
                                                                 HyScanTile             *requested_tile,
-                                                                HyScanTile             *cached_tile,
+                                                                HyScanTileCacheable    *cacheable,
                                                                 gboolean               *regenerate);
 
 HYSCAN_API
 gboolean                hyscan_tile_queue_get                  (HyScanTileQueue        *tilequeue,
                                                                 HyScanTile             *requested_tile,
-                                                                HyScanTile             *cached_tile,
+                                                                HyScanTileCacheable    *cacheable,
                                                                 gfloat                **buffer,
                                                                 guint32                *size);
 
 HYSCAN_API
 void                    hyscan_tile_queue_add                  (HyScanTileQueue        *tilequeue,
-                                                                HyScanTile             *tile);
+                                                                HyScanTile             *tile,
+                                                                HyScanCancellable      *cancellable);
 
 HYSCAN_API
 void                    hyscan_tile_queue_add_finished         (HyScanTileQueue        *tilequeue,

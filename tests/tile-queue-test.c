@@ -26,8 +26,10 @@ void        tile_queue_image_cb  (HyScanTileQueue *queue,
 void        tile_ready_callback  (HyScanTileQueue *queue,
                                   gpointer         user_data);
 void        wait_for_generation  (void);
-HyScanTile  make_tile            (gint             seed);
-void        add_tiles            (HyScanTileQueue *tq);
+HyScanTile* make_tile            (gint             seed,
+                                  const gchar     *track);
+void        add_tiles            (HyScanTileQueue *tq,
+                                  const gchar     *track);
 
 int
 main (int argc, char **argv)
@@ -38,11 +40,12 @@ main (int argc, char **argv)
 
   HyScanDataWriter *writer;     /* Класс записи данных. */
   HyScanCache *cache;           /* Система кэширования. */
-  HyScanAmplitudeFactory *af;   /* Фабрика акустических данных. */
-  HyScanDepthFactory *df;       /* Фабрика глубин. */
+  HyScanFactoryAmplitude *af;   /* Фабрика акустических данных. */
+  HyScanFactoryDepth *df;       /* Фабрика глубин. */
 
   HyScanTileQueue *tq = NULL;   /* Очередь тайлов. */
-  HyScanTile tile, cached_tile; /* Тайлы. */
+  HyScanTile *tile;             /* Тайл. */
+  HyScanTileCacheable cacheable;/* Доп. параметры тайла. */
 
   gint64 time = 0;              /* Время записи строки. */
   gint i;                       /* Простой маленький счетчик.*/
@@ -65,7 +68,7 @@ main (int argc, char **argv)
       args = g_strdupv (argv);
     #endif
 
-    context = g_option_context_new ("<db-uri>\n Default db uri is file://./");
+    context = g_option_context_new ("<db-uri>\n Default db uri is file://db");
     g_option_context_set_help_enabled (context, TRUE);
     g_option_context_add_main_entries (context, entries, NULL);
     g_option_context_set_ignore_unknown_options (context, FALSE);
@@ -86,7 +89,7 @@ main (int argc, char **argv)
     if (argc == 2)
       db_uri = g_strdup (args[1]);
     else
-      db_uri = g_strdup ("file://./");
+      db_uri = g_strdup ("file://db");
 
     g_strfreev (args);
   }
@@ -96,8 +99,8 @@ main (int argc, char **argv)
   db = hyscan_db_new (db_uri);
   writer = hyscan_data_writer_new ();
   cache = HYSCAN_CACHE (hyscan_cached_new (512));
-  af = hyscan_amplitude_factory_new (cache);
-  df = hyscan_depth_factory_new (cache);
+  af = hyscan_factory_amplitude_new (cache);
+  df = hyscan_factory_depth_new (cache);
 
   hyscan_data_writer_set_db (writer, db);
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
@@ -121,16 +124,14 @@ main (int argc, char **argv)
 
   /* Теперь займемся генерацией тайлов. */
   tq = hyscan_tile_queue_new (1, cache, af, df);
-  hyscan_amplitude_factory_set_track (af, db, name, name);
-  hyscan_depth_factory_set_track (df, db, name, name);
-  hyscan_tile_queue_amp_changed (tq);
-  hyscan_tile_queue_dpt_changed (tq);
+  hyscan_factory_amplitude_set_project (af, db, name);
+  hyscan_factory_depth_set_project (df, db, name);
   g_signal_connect (tq, "tile-queue-image", G_CALLBACK (tile_queue_image_cb), &full_callback_number);
   g_signal_connect (tq, "tile-queue-ready", G_CALLBACK (tile_ready_callback), &reduced_callback_number);
 
   hyscan_tile_queue_set_sound_velocity (tq, NULL);
 
-  add_tiles (tq);
+  add_tiles (tq, name);
   hyscan_tile_queue_add_finished (tq, 1);
   wait_for_generation ();
 
@@ -140,17 +141,17 @@ main (int argc, char **argv)
       gboolean regen, found;
       gfloat *image;
       guint32 image_size;
-      tile = make_tile (i);
+      tile = make_tile (i, name);
 
-      hyscan_tile_queue_add (tq, &tile);
-
-      found = hyscan_tile_queue_check (tq, &tile, &cached_tile, &regen);
+      found = hyscan_tile_queue_check (tq, tile, &cacheable, &regen);
       if (!found)
         FAIL ("Not found tile.");
 
-      found = hyscan_tile_queue_get (tq, &tile, &cached_tile, &image, &image_size);
+      found = hyscan_tile_queue_get (tq, tile, &cacheable, &image, &image_size);
       if (!found)
         FAIL ("Failed to get tile.");
+
+      g_object_unref (tile);
     }
 
   status = TRUE;
@@ -168,7 +169,7 @@ finish:
   hyscan_db_project_remove	(db, name);
   g_clear_object (&db);
 
-  g_printf ("test %s\n", status ? "passed" : "falled");
+  g_printf ("test %s\n", status ? "passed" : "failed");
 
   return status ? 0 : 1;
 }
@@ -233,38 +234,40 @@ wait_for_generation (void)
     }
 }
 
-HyScanTile
-make_tile (gint seed)
+HyScanTile *
+make_tile (gint         seed,
+           const gchar *track)
 {
-  HyScanTile tile;
+  HyScanTile *tile = hyscan_tile_new (track);
 
-  tile.across_start = 0;
-  tile.along_start = 0;
-  tile.scale = 100;
-  tile.ppi = 25.4;
-  tile.upsample = 1;
-  tile.flags = 0;
-  tile.rotate = 0;
+  tile->info.across_start = 0;
+  tile->info.along_start = 0;
+  tile->info.scale = 100;
+  tile->info.ppi = 25.4;
+  tile->info.upsample = 1;
+  tile->info.flags = 0;
+  tile->info.rotate = 0;
 
-  tile.source = (seed % 2) ? SSS : SSP;
-  tile.across_end = 1 + seed * 10;
-  tile.along_end = 1 + seed * 10;
+  tile->info.source = (seed % 2) ? SSS : SSP;
+  tile->info.across_end = 1 + seed * 10;
+  tile->info.along_end = 1 + seed * 10;
 
   return tile;
 }
 void
-add_tiles (HyScanTileQueue *tq)
+add_tiles (HyScanTileQueue *tq,
+           const gchar     *track)
 {
   gint i;
-  HyScanTile tile;
+  HyScanTile *tile;
 
   for (i = 0; i < SIZE; i++)
     {
-      tile = make_tile (i);
-
-      hyscan_tile_queue_add (tq, &tile);
-
+      tile = make_tile (i, track);
+      hyscan_tile_queue_add (tq, tile, NULL);
+      g_object_unref (tile);
     }
+
   full_callback_number = SIZE;
   reduced_callback_number = SIZE;
 }

@@ -37,6 +37,7 @@
 
 #include <hyscan-cache.h>
 #include <hyscan-db.h>
+#include "hyscan-cancellable.h"
 
 G_BEGIN_DECLS
 
@@ -92,6 +93,7 @@ struct _HyScanAmplitudeInterface
                                                                 gint64                *time);
 
   const gfloat *         (*get_amplitude)                      (HyScanAmplitude       *amplitude,
+                                                                HyScanCancellable     *cancellable,
                                                                 guint32                index,
                                                                 guint32               *n_points,
                                                                 gint64                *time,
@@ -137,6 +139,7 @@ gboolean               hyscan_amplitude_get_size_time          (HyScanAmplitude 
 
 HYSCAN_API
 const gfloat *         hyscan_amplitude_get_amplitude          (HyScanAmplitude       *amplitude,
+                                                                HyScanCancellable     *cancellable,
                                                                 guint32                index,
                                                                 guint32               *n_points,
                                                                 gint64                *time,

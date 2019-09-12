@@ -48,7 +48,7 @@
 #define __HYSCAN_TILE_COLOR_H__
 
 #include <hyscan-cache.h>
-#include <hyscan-tile-common.h>
+#include "hyscan-tile.h"
 
 G_BEGIN_DECLS
 
@@ -129,14 +129,14 @@ void                    hyscan_tile_color_close                (HyScanTileColor 
  *
  * \param color указатель на \link HyScanTileColor \endlink;
  * \param requested_tile запрошенный тайл;
- * \param cached_tile тайл, хранящийся в кэше.
+ * \param cacheable кэшируемая информация о тайле.
  *
  * \return TRUE, если тайл найден.
  */
 HYSCAN_API
 gboolean                hyscan_tile_color_check                (HyScanTileColor        *color,
                                                                 HyScanTile             *requested_tile,
-                                                                HyScanTile             *cached_tile);
+                                                                HyScanTileCacheable    *cacheable);
 
 /**
  *
@@ -146,7 +146,7 @@ gboolean                hyscan_tile_color_check                (HyScanTileColor 
  *
  * \param color указатель на \link HyScanTileColor \endlink;
  * \param requested_tile запрошенный тайл;
- * \param cached_tile кэшированный тайл;
+ * \param cacheable кэшируемая информация о тайле;
  * \param surface структура \link HyScanTileSurface \endlink с информацией об
  * области, в которую следует отрисовать тайл.
  *
@@ -155,7 +155,7 @@ gboolean                hyscan_tile_color_check                (HyScanTileColor 
 HYSCAN_API
 gboolean                hyscan_tile_color_get                  (HyScanTileColor        *color,
                                                                 HyScanTile             *requested_tile,
-                                                                HyScanTile             *cached_tile,
+                                                                HyScanTileCacheable    *cacheable,
                                                                 HyScanTileSurface      *surface);
 
 /**

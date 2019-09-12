@@ -38,22 +38,25 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshall
 
 add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-core-common.c
+             hyscan-cancellable.c
              hyscan-data-writer.c
              hyscan-amplitude.c
              hyscan-acoustic-data.c
-             hyscan-amplitude-factory.c
+             hyscan-factory.c
+             hyscan-factory-amplitude.c
+             hyscan-factory-depth.c
              hyscan-nmea-data.c
              hyscan-forward-look-data.c
              hyscan-forward-look-player.c
              hyscan-geo.c
              hyscan-nav-data.c
+             # hyscan-nav-filter.c
              hyscan-nmea-parser.c
              hyscan-depthometer.c
-             hyscan-depth-factory.c
              hyscan-control.c
              hyscan-control-proxy.c
              hyscan-projector.c
-             hyscan-tile-common.c
+             hyscan-tile.c
              hyscan-tile-color.c
              hyscan-waterfall-tile.c
              hyscan-tile-queue.c
@@ -109,6 +112,7 @@ install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERS
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 install (FILES hyscan-core-schemas.h
+               hyscan-cancellable.h
                hyscan-data-writer.h
                hyscan-amplitude.h
                hyscan-acoustic-data.h
@@ -126,7 +130,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-projector.h
                hyscan-track-rect.h
                hyscan-mloc.h
-               hyscan-tile-common.h
+               hyscan-tile.h
                hyscan-tile-queue.h
                hyscan-tile-color.h
                hyscan-waterfall-tile.h

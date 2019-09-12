@@ -1696,6 +1696,7 @@ hyscan_acoustic_data_get_complex (HyScanAcousticData    *data,
  */
 const gfloat *
 hyscan_acoustic_data_get_amplitude (HyScanAcousticData *data,
+                                    HyScanCancellable  *cancellable,
                                     guint32             index,
                                     guint32            *n_points,
                                     gint64             *time)
@@ -1836,17 +1837,18 @@ hyscan_acoustic_data_amplitude_get_size_time (HyScanAmplitude *amplitude,
 }
 
 static const gfloat *
-hyscan_acoustic_data_amplitude_get_amplitude (HyScanAmplitude *amplitude,
-                                              guint32          index,
-                                              guint32         *n_points,
-                                              gint64          *time,
-                                              gboolean        *noise)
+hyscan_acoustic_data_amplitude_get_amplitude (HyScanAmplitude   *amplitude,
+                                              HyScanCancellable *cancellable,
+                                              guint32            index,
+                                              guint32           *n_points,
+                                              gint64            *time,
+                                              gboolean          *noise)
 {
   HyScanAcousticData *data = HYSCAN_ACOUSTIC_DATA (amplitude);
 
   (noise != NULL) ? *noise = data->priv->noise : 0;
 
-  return hyscan_acoustic_data_get_amplitude (data, index, n_points, time);
+  return hyscan_acoustic_data_get_amplitude (data, cancellable, index, n_points, time);
 }
 
 static void

@@ -31,6 +31,7 @@
  * Во-вторых, этот программный код можно использовать по коммерческой
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
+
 /**
  * SECTION: hyscan-tile-queue
  * @Short_description: асинхронная генерация тайлов водопада
@@ -47,7 +48,7 @@
  *
  * На вход #hyscan_tile_queue_add подается структура #HyScanTile.
  * В ней должны быть заданы следующие поля:
- * \code
+ * |[<!-- language="C" -->
  *   gint32               across_start; // Начальная координата поперек оси движения (мм).
  *   gint32               along_start;  // Начальная координата вдоль оси движения (мм).
  *   gint32               across_end;   // Конечная координата поперек оси движения (мм).
@@ -58,14 +59,17 @@
  *   HyScanTileType       type;         // Тип отображения.
  *   gboolean             rotate;       // Поворот тайла.
  *   HyScanSourceType     source;       // Канал данных для тайла.
- * \endcode
+ * ]|
+ *
+ * Пользователю может быть полезно знать, в какой момент внутреннее состояние
+ * стало идентично желаемому (тому, что настраивается методами _set*).
+ * Для этого введено понятие хэша состояния. Хэш рассылается сигналом
+ * #HyScanTileQueue::tile-queue-hash и как один из параметров
+ * #HyScanTileQueue::tile-queue-image
  *
  * Методы класса потокобезопасны, однако не предвидится ситуация, когда
  * два потока будут работать с одним и тем же генератором тайлов.
  * Все функции заточены под то, что они будут вызываны из главного потока.
- *
- * Класс эмиттирует 3 сигнала: "tile-queue-image", "tile-queue-ready" и "tile-queue-sync".
- * "tile-queue-image"
  */
 
 /* Для разработчика.
@@ -81,10 +85,10 @@
  * Переход 2 возможен только в hyscan_tile_queue_task_processor
  *
  * При этом данные идут так:
- * new -(1)-> prequeue -(2)-> queue -(3)-> free
- *       ^               ^            ^ (3) в функции hyscan_tile_queue_processing;
- *       |               '------------- (2) в функции hyscan_tile_queue_add_finished;
- *       '----------------------------- (1) в функции hyscan_tile_queue_add;
+ * new -(1)-> prelist -(2)-> queue -(3)-> free
+ *       ^              ^            ^ (3) в функции hyscan_tile_queue_processing;
+ *       |              '------------- (2) в функции hyscan_tile_queue_add_finished;
+ *       '---------------------------- (1) в функции hyscan_tile_queue_add;
  *
  * === Блокировки доступов ===
  * Методы класса предназначены для вызова из g_main_loop.
@@ -98,22 +102,17 @@
  * |           | cur_state   | dctable         |           |
  * |           | dctable     |                 |           |
  * +-----------+-------------+-----------------+-----------+
- * Для всего state'ов и dctable есть свой мьютекс.
+ * Для state'ов и dctable есть свой мьютекс.
  *
  * Можно считать чтение из cur_state потокобезопасной операцией, а
  * неодновременность доступа разных потоков к cur_state и des_state будет
  * гарантирована если _processing завершит генераторы перед синхронизацией.
- *
- * === Внешняя синхронизация ===
- * Пользователю может быть полезно знать, в какой момент внутреннее состояние
- * стало идентично желаемому (тому, что настраивается методами _set*).
- * Для этого введено понятие хэша состояния.
  */
 
 #include "hyscan-tile-queue.h"
+#include "hyscan-waterfall-tile.h"
+#include "hyscan-nmea-parser.h"
 #include <hyscan-core-marshallers.h>
-#include <hyscan-waterfall-tile.h>
-#include <hyscan-nmea-parser.h>
 #include <string.h>
 #include <zlib.h>
 
@@ -127,17 +126,18 @@
 
 typedef struct
 {
-  HyScanTile tile;    /* Требуемый тайл. */
-  guint64    view_id; /* Некий идентификатор. */
-  gint       status;  /* Состояние задачи. */
-  gint       gen_id;  /* Номер генератора. */
+  HyScanTile        *tile;        /* Требуемый тайл. */
+  HyScanCancellable *cancellable; /* Отмена задания. */
+  guint64            view_id;     /* Некий идентификатор. */
+  gint               status;      /* Состояние задачи. */
+  gint               gen_id;      /* Номер генератора. */
 } HyScanTileQueueTask;
 
 typedef struct
 {
-  guint32    magic;
-  guint32    size;
-  HyScanTile tile;
+  guint32             magic;
+  guint32             size;
+  HyScanTileCacheable cacheable;
 } HyScanTileQueueCache;
 
 /* Состояние задачи. */
@@ -160,8 +160,8 @@ enum
 {
   PROP_MAX_GENERATORS = 1,
   PROP_CACHE,
-  PROP_AMPLITUDE_FACTORY,
-  PROP_DEPTH_FACTORY,
+  PROP_FACTORY_AMPLITUDE,
+  PROP_FACTORY_DEPTH,
 };
 
 typedef struct
@@ -185,8 +185,8 @@ struct _HyScanTileQueuePrivate
 {
   /* Кэш. */
   HyScanCache            *cache;                 /* Интерфейс системы кэширования. */
-  HyScanAmplitudeFactory *amp_factory;           /* Фабрика объектов акустических данных. */
-  HyScanDepthFactory     *dpt_factory;           /* Фабрика объектов глубины. */
+  HyScanFactoryAmplitude *amp_factory;           /* Фабрика объектов акустических данных. */
+  HyScanFactoryDepth     *dpt_factory;           /* Фабрика объектов глубины. */
 
   /* Параметры генерации. */
   HyScanTileQueueState    cur_state;             /* Текущее состояние. */
@@ -195,7 +195,7 @@ struct _HyScanTileQueuePrivate
   gint                    state_changed;         /* Флаг на изменение состояния извне. */
 
   /* Очередь заданий. */
-  GArray                 *prequeue;              /* Список тайлов, которые необходимо будет сгенерировать. */
+  GList                  *prelist;               /* Список тайлов, которые необходимо будет сгенерировать. */
   GQueue                 *queue;                 /* Очередь заданий. */
   GMutex                  qlock;                 /* Блокировка множественного доступа к очереди. */
   gint                    qflag;                 /* Флаг на наличие новых заданий или освободившийся генератор. */
@@ -211,7 +211,8 @@ struct _HyScanTileQueuePrivate
   guint                   max_generators;        /* Максимальное число генераторов. */
   guint                   available_generators;  /* Количество незанятых генераторов. */
 
-  GHashTable             *dctable;               /* Каналы данных и объекты определения глубины. */
+  GHashTable             *amp_table;             /* Каналы данных. */
+  GHashTable             *dpt_table;             /* Объекты определения глубины. */
   GMutex                  dc_lock;               /* Блокировка доступа к каналам данных. */
 
   guint64                 view_id;               /* Идентификатор. */
@@ -227,10 +228,18 @@ static void                hyscan_tile_queue_set_property       (GObject        
 static void                hyscan_tile_queue_object_constructed (GObject                *object);
 static void                hyscan_tile_queue_object_finalize    (GObject                *object);
 
-static HyScanAmplitude    *hyscan_tile_queue_get_dc             (HyScanTileQueuePrivate *priv,
+static HyScanTileQueueTask * hyscan_tile_queue_task_new         (HyScanTile             *tile,
+                                                                 HyScanCancellable      *cancellable);
+static void                hyscan_tile_queue_task_free          (gpointer                task);
+
+static void                hyscan_tile_queue_amp_changed        (HyScanTileQueue        *self);
+static void                hyscan_tile_queue_dpt_changed        (HyScanTileQueue        *self);
+static HyScanAmplitude *   hyscan_tile_queue_get_dc             (HyScanTileQueuePrivate *priv,
+                                                                 const gchar            *track,
                                                                  HyScanSourceType        source,
                                                                  gint                    gen_id);
-static HyScanDepthometer  *hyscan_tile_queue_get_depthometer    (HyScanTileQueuePrivate *priv,
+static HyScanDepthometer * hyscan_tile_queue_get_depthometer    (HyScanTileQueuePrivate *priv,
+                                                                 const gchar            *track,
                                                                  gint                    gen_id);
 
 static gint                hyscan_tile_queue_check_gen_state    (HyScanTileQueuePrivate *priv,
@@ -245,10 +254,10 @@ static void                hyscan_tile_queue_task_processor     (gpointer       
 static gint                hyscan_tile_queue_task_finder        (gconstpointer           task,
                                                                  gconstpointer           tile);
 
-static void                hyscan_tile_queue_state_hash         (HyScanAmplitudeFactory *af,
-                                                                 HyScanDepthFactory     *df,
+static void                hyscan_tile_queue_state_hash         (HyScanFactoryAmplitude *af,
+                                                                 HyScanFactoryDepth     *df,
                                                                  HyScanTileQueueState   *state);
-static gchar              *hyscan_tile_queue_cache_key          (const HyScanTile       *tile,
+static gchar *             hyscan_tile_queue_cache_key          (HyScanTile             *tile,
                                                                  guint32                 hash);
 
 static guint   hyscan_tile_queue_signals[SIGNAL_LAST] = {0};
@@ -284,6 +293,7 @@ hyscan_tile_queue_class_init (HyScanTileQueueClass *klass)
    * @tile: (TYPE HyScanTile): тайл
    * @image: сгенерированное изображение
    * @image_size: размер изображения в байтах
+   * @hash: хэш состояния, при котором сгенерирован тайл
    * @user_data: данные, определенные в момент подключения к сигналу
    *
    * Эмиттируется из потока генерации тайла сразу же после успешной генерации
@@ -321,15 +331,15 @@ hyscan_tile_queue_class_init (HyScanTileQueueClass *klass)
     g_param_spec_object ("cache", "Cache", "HyScanCache interface",
                          HYSCAN_TYPE_CACHE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-  g_object_class_install_property (object_class, PROP_AMPLITUDE_FACTORY,
-    g_param_spec_object ("amp-factory", "AmplitudeFactory",
-                         "HyScanAmplitudeFactory",
-                         HYSCAN_TYPE_AMPLITUDE_FACTORY,
+  g_object_class_install_property (object_class, PROP_FACTORY_AMPLITUDE,
+    g_param_spec_object ("amp-factory", "FactoryAmplitude",
+                         "HyScanFactoryAmplitude",
+                         HYSCAN_TYPE_FACTORY_AMPLITUDE,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-  g_object_class_install_property (object_class, PROP_DEPTH_FACTORY,
-    g_param_spec_object ("dpt-factory", "DepthFactory",
-                         "HyScanDepthFactory",
-                         HYSCAN_TYPE_DEPTH_FACTORY,
+  g_object_class_install_property (object_class, PROP_FACTORY_DEPTH,
+    g_param_spec_object ("dpt-factory", "FactoryDepth",
+                         "HyScanFactoryDepth",
+                         HYSCAN_TYPE_FACTORY_DEPTH,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
 }
@@ -353,9 +363,9 @@ hyscan_tile_queue_set_property (GObject      *object,
     priv->max_generators = g_value_get_uint (value);
   else if (prop_id == PROP_CACHE)
     priv->cache = g_value_dup_object (value);
-  else if (prop_id == PROP_AMPLITUDE_FACTORY)
+  else if (prop_id == PROP_FACTORY_AMPLITUDE)
     priv->amp_factory = g_value_dup_object (value);
-  else if (prop_id == PROP_DEPTH_FACTORY)
+  else if (prop_id == PROP_FACTORY_DEPTH)
     priv->dpt_factory = g_value_dup_object (value);
   else
     G_OBJECT_WARN_INVALID_PROPERTY_ID (self, prop_id, pspec);
@@ -379,9 +389,9 @@ hyscan_tile_queue_object_constructed (GObject *object)
 
   /* Инициализируем очередь. */
   priv->queue = g_queue_new ();
-  priv->prequeue = g_array_new (FALSE, TRUE, sizeof(HyScanTile));
 
-  priv->dctable = g_hash_table_new_full (NULL, NULL, NULL, g_object_unref);
+  priv->amp_table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+  priv->dpt_table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
   priv->generator = g_malloc0 (priv->max_generators * sizeof (HyScanWaterfallTile*));
   priv->generator_state = g_malloc0 (priv->max_generators * sizeof (gint));
   priv->available_generators = priv->max_generators;
@@ -392,6 +402,15 @@ hyscan_tile_queue_object_constructed (GObject *object)
       priv->generator_state[i] = IDLE;
       priv->generator[i] = hyscan_waterfall_tile_new ();
     }
+
+  /* Подключаемся к сигналам фабрик. */
+  g_signal_connect_swapped (priv->amp_factory, "changed",
+                            G_CALLBACK (hyscan_tile_queue_amp_changed), self);
+  g_signal_connect_swapped (priv->dpt_factory, "changed",
+                            G_CALLBACK (hyscan_tile_queue_dpt_changed), self);
+
+  hyscan_tile_queue_amp_changed (self);
+  hyscan_tile_queue_dpt_changed (self);
 
   /* По умолчанию считаем скорость судна равной 1 м/с, звука - 1500 м/с. */
   hyscan_tile_queue_set_ship_speed (self, 1.0);
@@ -421,11 +440,12 @@ hyscan_tile_queue_object_finalize (GObject *object)
   for (i = 0; i < priv->max_generators; i++)
     g_clear_object (&priv->generator[i]);
 
-  g_hash_table_destroy (priv->dctable);
+  g_hash_table_unref (priv->amp_table);
+  g_hash_table_unref (priv->dpt_table);
   g_free (priv->generator);
   g_free (priv->generator_state);
-  g_queue_free_full (priv->queue, g_free);
-  g_array_unref (priv->prequeue);
+  g_queue_free_full (priv->queue, hyscan_tile_queue_task_free);
+  g_list_free_full(priv->prelist, hyscan_tile_queue_task_free);
 
   /* Чистим стейты. */
   g_clear_pointer (&priv->cur_state.sound_velocity, g_array_unref);
@@ -444,53 +464,112 @@ hyscan_tile_queue_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_tile_queue_parent_class)->finalize (object);
 }
 
+static HyScanTileQueueTask *
+hyscan_tile_queue_task_new (HyScanTile        *tile,
+                            HyScanCancellable *cancellable)
+{
+  HyScanTileQueueTask * task = g_slice_new0 (HyScanTileQueueTask);
+
+  task->tile = g_object_ref (tile);
+  if (cancellable != NULL)
+    task->cancellable = g_object_ref (cancellable);
+
+  return task;
+}
+
+static void
+hyscan_tile_queue_task_free (gpointer _task)
+{
+  HyScanTileQueueTask * task = _task;
+
+  if (task == NULL)
+    return;
+
+  g_clear_object (&task->cancellable);
+  g_clear_object (&task->tile);
+  g_slice_free (HyScanTileQueueTask, task);
+}
+
+/* Обработчик сигнала "changed" от фабрики каналов данных. */
+void
+hyscan_tile_queue_amp_changed (HyScanTileQueue *self)
+{
+  HyScanTileQueuePrivate *priv = self->priv;
+  HyScanTileQueueState *state = &priv->des_state;
+
+  g_mutex_lock (&priv->state_lock);
+
+  priv->des_state.amp_changed = TRUE;
+  priv->state_changed = TRUE;
+
+  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
+  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
+
+  g_mutex_unlock (&priv->state_lock);
+}
+
+/* Обработчик сигнала "changed" от фабрики измерения глубины. */
+void
+hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
+{
+  HyScanTileQueuePrivate *priv = self->priv;
+  HyScanTileQueueState *state = &priv->des_state;
+
+  g_mutex_lock (&priv->state_lock);
+
+  priv->des_state.dpt_changed = TRUE;
+  priv->state_changed = TRUE;
+
+  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
+  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
+
+  g_mutex_unlock (&priv->state_lock);
+}
+
 /* Функция возвращает КД из ХТ или создает и помещает туда. */
-static HyScanAmplitude*
+static HyScanAmplitude *
 hyscan_tile_queue_get_dc (HyScanTileQueuePrivate *priv,
+                          const gchar            *track,
                           HyScanSourceType        source,
                           gint                    gen_id)
 {
-  HyScanAmplitude *dc = NULL;
-  gint64 key = gen_id + source * xSOURCE;
+  HyScanAmplitude * dc = NULL;
+  gchar * key = g_strdup_printf ("%s.%i.%i", track, source, gen_id);
 
-  dc = g_hash_table_lookup (priv->dctable, GINT_TO_POINTER (key));
+  dc = g_hash_table_lookup (priv->amp_table, key);
 
-  /* Если нашли КД, отдаем его. */
-  if (dc != NULL)
-    return dc;
-
-  /* Иначе пробуем открыть. */
-  dc = hyscan_amplitude_factory_produce (priv->amp_factory, source);
-
-  /* Либо он не открылся и тут ничего не попишешь...  */
   if (dc == NULL)
-    return NULL;
+    {
+      dc = hyscan_factory_amplitude_produce (priv->amp_factory, track, source);
 
-  /* Либо открылся! */
-  g_hash_table_insert (priv->dctable, GINT_TO_POINTER (key), dc);
+      if (dc != NULL)
+        g_hash_table_insert (priv->amp_table, g_strdup (key), dc);
+    }
 
+  g_free (key);
   return dc;
 }
 
 /* Функция возвращает глубиномер из ХТ или создает и помещает туда. */
 static HyScanDepthometer*
 hyscan_tile_queue_get_depthometer (HyScanTileQueuePrivate *priv,
+                                   const gchar            *track,
                                    gint                    gen_id)
 {
   HyScanDepthometer *depth = NULL;
+  gchar * key = g_strdup_printf ("%s.%i", track, gen_id);
 
-  gint64 key = gen_id + xDEPTH;
+  depth = g_hash_table_lookup (priv->dpt_table, key);
 
-  depth = g_hash_table_lookup (priv->dctable, GINT_TO_POINTER (key));
+  if (depth == NULL)
+    {
+      depth = hyscan_factory_depth_produce (priv->dpt_factory, track);
 
-  /* Если нашли объект, отдаем его. */
-  if (depth != NULL)
-    return depth;
+      if (depth != NULL)
+        g_hash_table_insert (priv->dpt_table, g_strdup (key), depth);
+    }
 
-  /* Иначе запрашиваем объект. */
-  depth = hyscan_depth_factory_produce (priv->dpt_factory);
-  g_hash_table_insert (priv->dctable, GINT_TO_POINTER (key), depth);
-
+  g_free (key);
   return depth;
 }
 
@@ -588,42 +667,27 @@ hyscan_tile_queue_sync_states (HyScanTileQueue *self)
 static void
 hyscan_tile_queue_apply_updates (HyScanTileQueue *self)
 {
-  GHashTable *dctable = self->priv->dctable;
+  HyScanTileQueuePrivate *priv = self->priv;
   HyScanTileQueueState *state = &self->priv->cur_state;
-  GHashTableIter iter;
-  gpointer key, value;
 
   /* Если поменялись параметры фабрики акустических данных, уничтожаем
    * соответствующие объекты. Потоки генерации тайлов не найдут нужные объекты
    * и сами их создадут. */
   if (state->amp_changed)
     {
-      g_hash_table_iter_init (&iter, dctable);
-      while (g_hash_table_iter_next (&iter, &key, &value))
-        {
-          if (HYSCAN_IS_AMPLITUDE (value))
-            g_hash_table_iter_remove (&iter);
-        }
-      g_hash_table_remove_all (dctable);
+      g_hash_table_remove_all (priv->amp_table);
+      state->amp_changed = FALSE;
     }
 
   /* Если изменились параметры фабрики глубиномеров, уничтожаем все объекты
    * измерения глубины. */
   if (state->dpt_changed)
     {
-      g_hash_table_iter_init (&iter, dctable);
-      while (g_hash_table_iter_next (&iter, &key, &value))
-        {
-          if (HYSCAN_IS_DEPTHOMETER (value))
-            g_hash_table_iter_remove (&iter);
-        }
+      g_hash_table_remove_all (priv->dpt_table);
+      state->dpt_changed = FALSE;
     }
 
-  state->amp_changed = FALSE;
-  state->dpt_changed = FALSE;
-
-  hyscan_tile_queue_state_hash (self->priv->amp_factory,
-                                self->priv->dpt_factory, state);
+  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
 }
 
 /* Поток обработки заданий. */
@@ -722,7 +786,7 @@ hyscan_tile_queue_processing (gpointer user_data)
             }
           else if (task->status == CLEANABLE)
             {
-              g_free (link->data);
+              hyscan_tile_queue_task_free (link->data);
               g_queue_delete_link (priv->queue, link);
             }
         }
@@ -748,12 +812,10 @@ hyscan_tile_queue_task_processor (gpointer data,
   HyScanTileQueuePrivate *priv = self->priv;
   HyScanTileQueueTask *task = data;
   HyScanTileQueueState *state = &priv->cur_state;
-  HyScanTile tile;
-
   HyScanSourceType source;
 
   HyScanAmplitude *dc = NULL;
-  HyScanDepthometer  *depth = NULL;
+  HyScanDepthometer *depth = NULL;
 
   /* Поскольку гарантируется, что одновременно task_processor и
    * _processing НЕ полезут в cur_state, блокировку не ставим.
@@ -791,9 +853,9 @@ hyscan_tile_queue_task_processor (gpointer data,
    * одновременно туда писать. */
   g_mutex_lock (&priv->dc_lock);
 
-  source = task->tile.source;
+  source = task->tile->info.source;
 
-  dc = hyscan_tile_queue_get_dc (priv, source, gen_id);
+  dc = hyscan_tile_queue_get_dc (priv, hyscan_tile_get_track (task->tile), source, gen_id);
   if (dc == NULL)
     {
       g_mutex_unlock (&priv->dc_lock);
@@ -801,9 +863,9 @@ hyscan_tile_queue_task_processor (gpointer data,
     }
 
   /* В случае тайла в наклонной дальности глубиномер не требуется. */
-  if (task->tile.flags & HYSCAN_TILE_GROUND)
+  if (task->tile->info.flags & HYSCAN_TILE_GROUND)
     {
-      depth = hyscan_tile_queue_get_depthometer (priv, gen_id);
+      depth = hyscan_tile_queue_get_depthometer (priv, hyscan_tile_get_track (task->tile), gen_id);
       if (depth == NULL)
         {
           g_mutex_unlock (&priv->dc_lock);
@@ -815,9 +877,8 @@ hyscan_tile_queue_task_processor (gpointer data,
   g_mutex_unlock (&priv->dc_lock);
 
   /* Устанавливаем параметры генерации. */
-  setup &= hyscan_waterfall_tile_set_depth (priv->generator[gen_id], depth);
   setup &= hyscan_waterfall_tile_set_speeds (priv->generator[gen_id], ship_speed, sound_velocity1);
-  setup &= hyscan_waterfall_tile_set_tile (priv->generator[gen_id], dc, task->tile);
+  setup &= hyscan_waterfall_tile_set_dc (priv->generator[gen_id], dc, depth);
 
   if (!setup)
     {
@@ -826,16 +887,15 @@ hyscan_tile_queue_task_processor (gpointer data,
     }
 
   /* Генерируем тайл. */
-  image = hyscan_waterfall_tile_generate (priv->generator[gen_id], &tile, &image_size);
+  image = hyscan_waterfall_tile_generate (priv->generator[gen_id],
+                                      task->cancellable,
+                                      task->tile, &image_size);
 
   /* В случае досрочного прекращения генерации вернется NULL. Тогда мы просто выходим. */
   if (image == NULL)
     goto exit;
 
-  /* Иначе эмиттируем сигнал с тайлом. */
-  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_IMAGE], 0, &tile, image, image_size, state->hash);
-
-  /* И кладем в кэш при возможности. */
+  /* Иначе кладем в кэш при возможности. */
   if (cache != NULL)
     {
       HyScanTileQueueCache header;
@@ -844,22 +904,23 @@ hyscan_tile_queue_task_processor (gpointer data,
 
       header.magic = TILE_QUEUE_MAGIC;
       header.size = sizeof (header) + image_size;
-      header.tile = tile;
+      header.cacheable = task->tile->cacheable;
       hyscan_buffer_wrap (meta, HYSCAN_DATA_BLOB, &header, sizeof (header));
       hyscan_buffer_wrap (data, HYSCAN_DATA_BLOB, image, image_size);
 
-      key = hyscan_tile_queue_cache_key (&tile, state->hash);
+      key = hyscan_tile_queue_cache_key (task->tile, state->hash);
       hyscan_cache_set2 (cache, key, NULL, meta, data);
-
       g_object_unref (meta);
       g_object_unref (data);
       g_free (key);
     }
 
+  /* И эмиттируем сигнал с тайлом. */
+  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_IMAGE], 0, task->tile, image, image_size, state->hash);
+
   g_free (image);
 
 exit:
-
   /* Помечаем генератор как бездействующий. */
   if (gen_id != -1)
     g_atomic_int_set (&(priv->generator_state[gen_id]), CLEANABLE);
@@ -878,32 +939,26 @@ hyscan_tile_queue_task_finder (gconstpointer _task,
                                gconstpointer _tile)
 {
   const HyScanTileQueueTask* task = _task;
-  const HyScanTile* tile = _tile;
+  HyScanTile* tile = (HyScanTile*)_tile;
 
-  if (task->tile.across_start != tile->across_start ||
-      task->tile.along_start  != tile->along_start  ||
-      task->tile.across_end   != tile->across_end   ||
-      task->tile.along_end    != tile->along_end    ||
-      task->tile.ppi          != tile->ppi          ||
-      task->tile.scale        != tile->scale)
-    {
-      return 1;
-    }
-  return 0;
+  if (hyscan_tile_compare (task->tile, tile))
+    return 0;
+
+  return 1;
 }
 
 /* Функция вычисляет хэш состояния. */
 static void
-hyscan_tile_queue_state_hash (HyScanAmplitudeFactory *af,
-                              HyScanDepthFactory     *df,
+hyscan_tile_queue_state_hash (HyScanFactoryAmplitude *af,
+                              HyScanFactoryDepth     *df,
                               HyScanTileQueueState   *state)
 {
   gchar *af_token, *df_token;
   gchar *str;
   gulong hash;
 
-  af_token = hyscan_amplitude_factory_get_token (af);
-  df_token = hyscan_depth_factory_get_token (df);
+  af_token = hyscan_factory_amplitude_get_token (af);
+  df_token = hyscan_factory_depth_get_token (df);
 
   if (af_token == NULL)
     af_token = g_strdup ("none");
@@ -927,25 +982,11 @@ hyscan_tile_queue_state_hash (HyScanAmplitudeFactory *af,
 }
 
 /* Функция генерирует ключ для системы кэширования. */
-static gchar*
-hyscan_tile_queue_cache_key (const HyScanTile *tile,
-                             guint32           hash)
+static gchar *
+hyscan_tile_queue_cache_key (HyScanTile *tile,
+                             guint32     hash)
 {
-  gchar *key = g_strdup_printf ("tilequeue.%u|%i.%i.%i.%i.%010.3f.%06.3f|%u.%i.%i.%i",
-                                hash,
-
-                                tile->across_start,
-                                tile->along_start,
-                                tile->across_end,
-                                tile->along_end,
-                                tile->scale,
-                                tile->ppi,
-
-                                tile->upsample,
-                                tile->flags,
-                                tile->rotate,
-                                tile->source);
-  return key;
+  return g_strdup_printf ("tilequeue.%u|%s", hash, hyscan_tile_get_token (tile));
 }
 
 /**
@@ -960,8 +1001,8 @@ hyscan_tile_queue_cache_key (const HyScanTile *tile,
 HyScanTileQueue*
 hyscan_tile_queue_new (gint                    max_generators,
                        HyScanCache            *cache,
-                       HyScanAmplitudeFactory *amp_factory,
-                       HyScanDepthFactory     *dpt_factory)
+                       HyScanFactoryAmplitude *amp_factory,
+                       HyScanFactoryDepth     *dpt_factory)
 {
   return g_object_new (HYSCAN_TYPE_TILE_QUEUE,
                        "max_generators", max_generators,
@@ -1051,62 +1092,6 @@ hyscan_tile_queue_set_sound_velocity (HyScanTileQueue *self,
 }
 
 /**
- * hyscan_tile_queue_amp_changed:
- * @tilequeue: объект #HyScanTileQueue
- *
- * Функция уведомляет объект, что изменились параметры каналов данных
- * и их требуется переоткрыть.
- */
-void
-hyscan_tile_queue_amp_changed (HyScanTileQueue *self)
-{
-  HyScanTileQueuePrivate *priv;
-  HyScanTileQueueState *state;
-
-  g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
-  priv = self->priv;
-  state = &priv->des_state;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->des_state.amp_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
-  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
-/**
- * hyscan_tile_queue_dpt_changed:
- * @tilequeue: объект #HyScanTileQueue
- *
- * Функция уведомляет объект, что изменились параметры измерения глубины и такие
- * объекты требуется переоткрыть.
- */
-void
-hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
-{
-  HyScanTileQueuePrivate *priv;
-  HyScanTileQueueState *state;
-
-  g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
-  priv = self->priv;
-  state = &priv->des_state;
-
-  g_mutex_lock (&priv->state_lock);
-
-  priv->des_state.dpt_changed = TRUE;
-  priv->state_changed = TRUE;
-
-  hyscan_tile_queue_state_hash (priv->amp_factory, priv->dpt_factory, state);
-  g_signal_emit (self, hyscan_tile_queue_signals[SIGNAL_HASH], 0, state->hash);
-
-  g_mutex_unlock (&priv->state_lock);
-}
-
-/**
  * hyscan_tile_queue_check:
  * @tilequeue: объект #HyScanTileQueue
  * @requested_tile: (not nullable): запрошенный тайл
@@ -1119,10 +1104,10 @@ hyscan_tile_queue_dpt_changed (HyScanTileQueue *self)
  * Returns: TRUE, если тайл есть в кэше.
  */
 gboolean
-hyscan_tile_queue_check (HyScanTileQueue *self,
-                         HyScanTile      *requested_tile,
-                         HyScanTile      *cached_tile,
-                         gboolean        *regenerate)
+hyscan_tile_queue_check (HyScanTileQueue     *self,
+                         HyScanTile          *requested_tile,
+                         HyScanTileCacheable *cacheable,
+                         gboolean            *regenerate)
 {
   gchar *key;
   gboolean found = FALSE;
@@ -1134,7 +1119,7 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   g_return_val_if_fail (HYSCAN_IS_TILE_QUEUE (self), FALSE);
   priv = self->priv;
 
-  if (requested_tile == NULL || cached_tile == NULL)
+  if (requested_tile == NULL)
     return FALSE;
 
   if (priv->cache == NULL)
@@ -1146,17 +1131,15 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
   hyscan_buffer_wrap (priv->header, HYSCAN_DATA_BLOB, &header, size);
   found = hyscan_cache_get2 (priv->cache, key, NULL, size, priv->header, NULL);
   found &= header.magic == TILE_QUEUE_MAGIC;
+  *cacheable = header.cacheable;
 
-  *cached_tile = header.tile;
-
-  if (found && header.tile.finalized)
+  if (found && header.cacheable.finalized)
     regen = FALSE;
 
   if (regenerate != NULL)
     *regenerate = regen;
 
   g_free (key);
-
   return found;
 }
 
@@ -1173,11 +1156,11 @@ hyscan_tile_queue_check (HyScanTileQueue *self,
  * Returns: TRUE, если тайл успешно получен из кэша, иначе FALSE.
  */
 gboolean
-hyscan_tile_queue_get (HyScanTileQueue  *self,
-                       HyScanTile       *requested_tile,
-                       HyScanTile       *cached_tile,
-                       gfloat          **buffer,
-                       guint32          *size)
+hyscan_tile_queue_get (HyScanTileQueue      *self,
+                       HyScanTile           *requested_tile,
+                       HyScanTileCacheable  *cacheable,
+                       gfloat              **buffer,
+                       guint32              *size)
 {
   gchar *key;
   gboolean status = FALSE;
@@ -1188,7 +1171,7 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
   g_return_val_if_fail (HYSCAN_IS_TILE_QUEUE (self), FALSE);
   priv = self->priv;
 
-  if (requested_tile == NULL || cached_tile == NULL)
+  if (requested_tile == NULL)
     return FALSE;
 
   if (priv->cache == NULL)
@@ -1203,7 +1186,7 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
   if (status && header.magic == TILE_QUEUE_MAGIC)
     {
       *buffer = hyscan_buffer_get (priv->data, NULL, size);
-      *cached_tile = header.tile;
+      *cacheable = header.cacheable;
     }
   else
     {
@@ -1223,12 +1206,15 @@ hyscan_tile_queue_get (HyScanTileQueue  *self,
  * Функция добавляет новый тайл во временную очередь.
  */
 void
-hyscan_tile_queue_add (HyScanTileQueue *self,
-                       HyScanTile      *tile)
+hyscan_tile_queue_add (HyScanTileQueue   *self,
+                       HyScanTile        *tile,
+                       HyScanCancellable *cancellable)
 {
+  HyScanTileQueueTask *task;
   g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
 
-  g_array_append_val (self->priv->prequeue, *tile);
+  task = hyscan_tile_queue_task_new (tile, cancellable);
+  self->priv->prelist = g_list_prepend (self->priv->prelist, task);
 }
 
 /**
@@ -1247,48 +1233,43 @@ hyscan_tile_queue_add_finished (HyScanTileQueue *self,
                                 guint64          view_id)
 {
   HyScanTileQueuePrivate *priv;
-
-  guint i;
-  HyScanTile *tile;
   HyScanTileQueueTask *task;
-  GList *link;
+  GList *found, *link, *next;
 
   g_return_if_fail (HYSCAN_IS_TILE_QUEUE (self));
   priv = self->priv;
 
-  if (priv->prequeue->len == 0)
-    return;
-
   g_mutex_lock (&priv->qlock);
 
-  /* Тайлы из prequeue переписываем в queue.  При этом если такой
-   * тайл уже генерируется, то просто обновляем для него view_id. */
-  for (i = 0; i < priv->prequeue->len; i++)
+  /* Тайлы из prelist переписываем в queue. */
+  for (link = priv->prelist; link != NULL; link = next)
     {
-      tile = &g_array_index (priv->prequeue, HyScanTile, i);
-      link = g_queue_find_custom (priv->queue, tile, hyscan_tile_queue_task_finder);
+      next = link->next;
+      task = link->data;
 
-      if (link != NULL)
+      found = g_queue_find_custom (priv->queue, task->tile, hyscan_tile_queue_task_finder);
+
+      /* Если тайл уже генерируется, то просто обновляем для него view_id */
+      if (found != NULL)
         {
-          task = link->data;
+          task = found->data;
           task->view_id = view_id;
         }
-      /* Если такой же тайл не найден, добавляем его в список заданий. */
+      /* Если тайл не найден, добавляем его в список заданий. */
       else
         {
-          task = g_new (HyScanTileQueueTask, 1);
-          task->tile = *tile;
           task->view_id = view_id;
           task->status = IDLE;
           task->gen_id = -1;
           g_queue_push_tail (priv->queue, task);
+          priv->prelist = g_list_delete_link (priv->prelist, link);
         }
     }
 
   /* Очищаем временный список тайлов. */
-  if (priv->prequeue->len > 0)
-    g_array_remove_range (priv->prequeue, 0, priv->prequeue->len);
+  g_list_free_full (priv->prelist, hyscan_tile_queue_task_free);
 
+  priv->prelist = NULL;
   priv->view_id = view_id;
   g_atomic_int_set (&priv->qflag, 1);
   g_cond_signal (&priv->qcond);

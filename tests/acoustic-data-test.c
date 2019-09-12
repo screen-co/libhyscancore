@@ -542,7 +542,7 @@ check_complex_data (HyScanDB         *db,
 
         data_time0 = 1000 * (i + 1);
 
-        data = hyscan_amplitude_get_amplitude (amplitude, i, &data_size, &data_time, &is_noise);
+        data = hyscan_amplitude_get_amplitude (amplitude, NULL, i, &data_size, &data_time, &is_noise);
         if (data == NULL)
           g_error ("can't get amplitude data");
 
@@ -615,7 +615,7 @@ check_amplitude_data (HyScanDB         *db,
 
       data_time0 = 1000 * (i + 1);
 
-      data = hyscan_amplitude_get_amplitude (amplitude, i, &data_size, &data_time, &is_noise);
+      data = hyscan_amplitude_get_amplitude (amplitude, NULL, i, &data_size, &data_time, &is_noise);
       if (data == NULL)
         g_error ("can't get amplitude data");
 

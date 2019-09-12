@@ -169,6 +169,7 @@ hyscan_mark_waterfall_set_center (HyScanMarkWaterfall *mark,
                                   guint32              index,
                                   guint32              count)
 {
+  g_clear_pointer (&mark->source, g_free);
   mark->source = g_strdup (source);
   mark->index = index;
   mark->count = count;
