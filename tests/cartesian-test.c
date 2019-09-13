@@ -33,6 +33,7 @@
  */
 
 #include <hyscan-cartesian.h>
+#define N_SEGMENTS 1000000
 
 static HyScanGeoCartesian2D points_inside[][2] = {
   {{ -1.0, -1.0}, {  2.0,  2.0   }},
@@ -43,6 +44,7 @@ static HyScanGeoCartesian2D points_inside[][2] = {
 
 static HyScanGeoCartesian2D points_outside[][2] = {
   {{  -1.0,  0.0}, { -2.0, 2.0}},
+  {{   1.0,  3.0}, { -2.0, 0.0}},
 };
 
 void
@@ -161,6 +163,42 @@ test_rotate_area (void)
   g_message ("Rotate test done!");
 }
 
+void
+test_performance (void)
+{
+  gint i;
+  GRand *rand;
+  gint count_inside;
+  HyScanGeoCartesian2D *start;
+  HyScanGeoCartesian2D *end;
+  gint64 start_time, end_time;
+  HyScanGeoCartesian2D area_from = { 0.25, 0.25 }, area_to = { 0.75, 0.75 };
+
+  /* Генерируем данные. */
+  start = g_new (HyScanGeoCartesian2D, N_SEGMENTS);
+  end = g_new (HyScanGeoCartesian2D, N_SEGMENTS);
+  rand = g_rand_new ();
+  for (i = 0; i < N_SEGMENTS; ++i)
+    {
+      start[i].x = g_rand_double_range (rand, 0, 1);
+      start[i].y = g_rand_double_range (rand, 0, 1);
+      end[i].x   = g_rand_double_range (rand, 0, 1);
+      end[i].y   = g_rand_double_range (rand, 0, 1);
+    }
+
+  /* Тест скорости. */
+  start_time = g_get_monotonic_time ();
+  count_inside = 0;
+  for (i = 0; i < N_SEGMENTS; ++i)
+    count_inside += hyscan_cartesian_is_inside (&end[i], &start[i], &area_from, &area_to) ? 1 : 0;
+  end_time = g_get_monotonic_time ();
+
+  g_free (start);
+  g_free (end);
+  g_message ("Performance test: %d out of %d intersected. Calculation time is %.2f ms",
+             count_inside, N_SEGMENTS, (gdouble) (end_time - start_time) / G_TIME_SPAN_MILLISECOND);
+}
+
 int
 main (int    argc,
       char **argv)
@@ -190,6 +228,7 @@ main (int    argc,
   test_distance_to_line ();
   test_rotate ();
   test_rotate_area ();
+  test_performance ();
 
   g_message ("Test done successfully");
 

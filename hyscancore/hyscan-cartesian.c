@@ -59,20 +59,97 @@
 #include "hyscan-cartesian.h"
 #include <math.h>
 
-static inline gboolean   hyscan_cartesian_is_between     (gdouble    val1,
-                                                          gdouble    val2,
-                                                          gdouble    boundary);
+static inline gboolean   hyscan_cartesian_is_between         (gdouble               val1,
+                                                              gdouble               val2,
+                                                              gdouble               boundary);
 
-static inline gboolean   hyscan_cartesian_is_cross       (gdouble    val1,
-                                                          gdouble    val2,
-                                                          gdouble    boundary);
+static gboolean          hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D *p1,
+                                                              HyScanGeoCartesian2D *q1,
+                                                              HyScanGeoCartesian2D *p2,
+                                                              HyScanGeoCartesian2D *q2);
+static gboolean          hyscan_cartesian_on_segment         (HyScanGeoCartesian2D *p,
+                                                              HyScanGeoCartesian2D *q,
+                                                              HyScanGeoCartesian2D *r);
+static gint              hyscan_cartesian_orientation        (HyScanGeoCartesian2D *p,
+                                                              HyScanGeoCartesian2D *q,
+                                                              HyScanGeoCartesian2D *r);
 
-static inline gboolean
-hyscan_cartesian_is_cross (gdouble val1,
-                           gdouble val2,
-                           gdouble boundary)
+/* Для трёх заданных точек p, q, r на одной прямой, функция проверяет
+ * лежит ли точка q на отрезке 'pr' */
+static gboolean
+hyscan_cartesian_on_segment (HyScanGeoCartesian2D *p,
+                             HyScanGeoCartesian2D *q,
+                             HyScanGeoCartesian2D *r)
 {
-  return ((val1 < boundary) - (val2 > boundary) == 0);
+  if (q->x <= MAX (p->x, r->x) && q->x >= MIN (p->x, r->x) &&
+      q->y <= MAX (p->y, r->y) && q->y >= MIN (p->y, r->y))
+    {
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+/* Находит ориентацию тройки (p, q, r).
+ * Функция возвращает следующие значения:
+ * 0 --> p, q и r колллинеарны,
+ * 1 --> по часовой стрелке,
+ * 2 --> против часовой стрелки. */
+static gint
+hyscan_cartesian_orientation (HyScanGeoCartesian2D *p,
+                              HyScanGeoCartesian2D *q,
+                              HyScanGeoCartesian2D *r)
+{
+  /* См. https://www.geeksforgeeks.org/orientation-3-ordered-points/. */
+  gdouble val;
+
+  val = (q->y - p->y) * (r->x - q->x) -
+        (q->x - p->x) * (r->y - q->y);
+
+  if (val == 0)
+    return 0;               /* Точки лежат на одной прямой. */
+
+  return (val > 0) ? 1 : 2; /* Точки расположены по часовой или против часовой стрелки. */
+}
+
+/* Функция возвращает TRUE, если отрезки 'p1q1' и 'p2q2' пересекаются.
+ * https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/ */
+static gboolean
+hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D *p1,
+                                     HyScanGeoCartesian2D *q1,
+                                     HyScanGeoCartesian2D *p2,
+                                     HyScanGeoCartesian2D *q2)
+{
+  gint o1, o2, o3, o4;
+
+  /* Находим 4 ориентации, необходимые для общего и частных случаев. */
+  o1 = hyscan_cartesian_orientation (p1, q1, p2);
+  o2 = hyscan_cartesian_orientation (p1, q1, q2);
+  o3 = hyscan_cartesian_orientation (p2, q2, p1);
+  o4 = hyscan_cartesian_orientation (p2, q2, q1);
+
+  /* Общий случай. */
+  if (o1 != o2 && o3 != o4)
+    return TRUE;
+
+  /* Частные случаи
+   * p1, q1 и p2 на одной прямой и p2 лежит на отрезке p1q1 */
+  if (o1 == 0 && hyscan_cartesian_on_segment (p1, p2, q1))
+    return TRUE;
+
+  /* p1, q1 и q2 на одной прямой и q2 лежит на отрезке p1q1 */
+  if (o2 == 0 && hyscan_cartesian_on_segment (p1, q2, q1))
+    return TRUE;
+
+  /* p2, q2 и p1 на одной прямой и p1 лежит на отрезке p2q2. */
+  if (o3 == 0 && hyscan_cartesian_on_segment (p2, p1, q2))
+    return TRUE;
+
+  /* p2, q2 и q1 на одной прямой и q1 лежит на отрезке p2q2. */
+  if (o4 == 0 && hyscan_cartesian_on_segment (p2, q1, q2))
+    return TRUE;
+
+  return FALSE; /* Ни один из предыдущих случае. */
 }
 
 static inline gboolean
@@ -104,7 +181,6 @@ hyscan_cartesian_is_point_inside (HyScanGeoCartesian2D *point,
 
 }
 
-
 /**
  * hyscan_cartesian_is_inside:
  * @segment_start: координаты начала отрезка
@@ -123,8 +199,7 @@ hyscan_cartesian_is_inside (HyScanGeoCartesian2D *segment_start,
                             HyScanGeoCartesian2D *area_from,
                             HyScanGeoCartesian2D *area_to)
 {
-  gboolean cross_x, cross_y;
-  gboolean between_x, between_y;
+  HyScanGeoCartesian2D vertex1, vertex2;
 
   /* 1. Один из концов отрезка внутри области. */
   if (hyscan_cartesian_is_point_inside (segment_start, area_from, area_to) ||
@@ -133,19 +208,16 @@ hyscan_cartesian_is_inside (HyScanGeoCartesian2D *segment_start,
       return TRUE;
     }
 
-  /* 2. Отрезок пересекает границы области. */
-  cross_x = hyscan_cartesian_is_cross (segment_start->x, segment_end->x, area_from->x) ||
-            hyscan_cartesian_is_cross (segment_start->x, segment_end->x, area_to->x);
-  cross_y = hyscan_cartesian_is_cross (segment_start->y, segment_end->y, area_from->y) ||
-            hyscan_cartesian_is_cross (segment_start->y, segment_end->y, area_to->y);
-  
-  between_x = hyscan_cartesian_is_between (area_from->x, area_to->x, segment_start->x) &&
-              hyscan_cartesian_is_between (area_from->x, area_to->x, segment_end->x);
+  /* 2. Отрезок пересекает одну из сторон прямоугольника. */
+  vertex1.x = area_from->x;
+  vertex1.y = area_to->y;
+  vertex2.x = area_to->x;
+  vertex2.y = area_from->y;
 
-  between_y = hyscan_cartesian_is_between (area_from->y, area_to->y, segment_start->y) &&
-              hyscan_cartesian_is_between (area_from->y, area_to->y, segment_end->y);
-  
-  return (cross_x || between_x) && (cross_y || between_y);
+  return hyscan_cartesian_segments_intersect (segment_start, segment_end, area_from, &vertex1) ||
+         hyscan_cartesian_segments_intersect (segment_start, segment_end, area_from, &vertex2) ||
+         hyscan_cartesian_segments_intersect (segment_start, segment_end, area_to, &vertex1) ||
+         hyscan_cartesian_segments_intersect (segment_start, segment_end, area_to, &vertex2);
 }
 
 /**
