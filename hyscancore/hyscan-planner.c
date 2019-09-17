@@ -45,6 +45,47 @@
 #include <string.h>
 
 /**
+ * hyscan_planner_zone_vertex_remove:
+ * @zone: указатель на структуру #HyScanPlannerZone
+ * @index: индекс вершины, которую надо удалить
+ *
+ * Удаляет вершину @index из границ зоны @zone.
+ */
+void
+hyscan_planner_zone_vertex_remove (HyScanPlannerZone *zone,
+                                   gsize              index)
+{
+  gsize i;
+  g_return_if_fail (index < zone->points_len);
+
+  for (i = index + 1; i < zone->points_len; ++i)
+    zone->points[i - 1] = zone->points[i];
+
+  zone->points_len--;
+}
+
+/**
+ * hyscan_planner_zone_vertex_dup:
+ * @zone: указатель на структуру #HyScanPlannerZone
+ * @index: индекс вершины, которую надо продублировать
+ *
+ * Вставляет после вершины @index копию этой вершины.
+ */
+void
+hyscan_planner_zone_vertex_dup (HyScanPlannerZone *zone,
+                                gsize              index)
+{
+  gsize i;
+  g_return_if_fail (index < zone->points_len);
+
+  zone->points_len++;
+  zone->points = g_realloc_n (zone->points, zone->points_len, sizeof (*zone->points));
+
+  for (i = zone->points_len - 1; i > index; --i)
+    zone->points[i] = zone->points[i-1];
+}
+
+/**
  * hyscan_planner_zone_free:
  * @zone: указатель на структуру #HyScanPlannerZone
  *

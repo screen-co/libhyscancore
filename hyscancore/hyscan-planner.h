@@ -120,22 +120,30 @@ union _HyScanPlannerObject
 };
 
 HYSCAN_API
-void                   hyscan_planner_zone_free        (HyScanPlannerZone        *zone);
+void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone         *zone,
+                                                          gsize                      index);
 
 HYSCAN_API
-void                   hyscan_planner_track_free       (HyScanPlannerTrack        *track);
+void                   hyscan_planner_zone_vertex_dup    (HyScanPlannerZone         *zone,
+                                                          gsize                      index);
 
 HYSCAN_API
-void                   hyscan_planner_origin_free      (HyScanPlannerOrigin       *ref_point);
+void                   hyscan_planner_zone_free          (HyScanPlannerZone         *zone);
 
 HYSCAN_API
-HyScanPlannerTrack *   hyscan_planner_track_copy       (const HyScanPlannerTrack  *track);
+void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
 
 HYSCAN_API
-HyScanPlannerOrigin *  hyscan_planner_origin_copy      (const HyScanPlannerOrigin *origin);
+void                   hyscan_planner_origin_free        (HyScanPlannerOrigin       *ref_point);
 
 HYSCAN_API
-HyScanPlannerZone *    hyscan_planner_zone_copy        (const HyScanPlannerZone   *zone);
+HyScanPlannerTrack *   hyscan_planner_track_copy         (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+HyScanPlannerOrigin *  hyscan_planner_origin_copy        (const HyScanPlannerOrigin *origin);
+
+HYSCAN_API
+HyScanPlannerZone *    hyscan_planner_zone_copy          (const HyScanPlannerZone   *zone);
 
 G_END_DECLS
 
