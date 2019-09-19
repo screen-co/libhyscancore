@@ -863,7 +863,7 @@ hyscan_nav_model_set_delay (HyScanNavModel *model,
  * hyscan_nav_model_get:
  * @model: указатель на #HyScanNavModel
  * @data: (out): данные модели #HyScanNavModelData
- * @time_delta: (out): (nullable): возраст данных @data в секундах
+ * @time_delta: (out) (nullable): возраст данных @data в секундах
  *
  * Записывает текущие данные модели в @data. Возраст @time_delta показывает
  * время в секундах, прошедшее с того момента, когда данные @data были

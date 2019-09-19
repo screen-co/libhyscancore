@@ -583,7 +583,7 @@ hyscan_object_model_get (HyScanObjectModel *model)
  *
  * Функция возвращает объект из внутреннего буфера по его ID.
  *
- * Returns: (transfer-full): (nullable): указатель на объект или %NULL, если объект не найден
+ * Returns: (transfer full) (nullable): указатель на объект или %NULL, если объект не найден
  */
 HyScanObject *
 hyscan_object_model_get_id (HyScanObjectModel *model,

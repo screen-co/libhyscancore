@@ -464,7 +464,7 @@ hyscan_object_data_modify (HyScanObjectData   *data,
  *
  * Функция возвращает список идентификаторов всех меток.
  *
- * Returns: (array length=len): (transfer full): %NULL-терминированный список
+ * Returns: (array length=len) (transfer full): %NULL-терминированный список
  *   идентификаторов, %NULL если меток нет. Для удаления g_strfreev()
  */
 gchar **

@@ -225,7 +225,7 @@ hyscan_cartesian_is_inside (HyScanGeoCartesian2D *segment_start,
  * @p1: координаты первой точки на прямой
  * @p2: координаты второй точки на прямой
  * @point: координаты целевой точки
- * @nearest_point: (out): (nullable): координаты проекции точки @point на прямую
+ * @nearest_point: (out) (nullable): координаты проекции точки @point на прямую
  * Returns: расстояние от точки @point до прямой @p1 - @p2
  */
 gdouble

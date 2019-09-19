@@ -107,7 +107,7 @@ hyscan_planner_model_changed (HyScanObjectModel *model)
  *
  * Создаёт модель данных для асинхронного доступа к параметрам объектов планировщика.
  *
- * Returns: (transfer-full): указатель на HyScanPlannerModel. Для удаления g_object_unref().
+ * Returns: (transfer full): указатель на HyScanPlannerModel. Для удаления g_object_unref().
  */
 HyScanPlannerModel *
 hyscan_planner_model_new (void)
@@ -123,7 +123,7 @@ hyscan_planner_model_new (void)
  * Функция возвращает объект пересчёта координат схемы галсов из географической
  * системы координат в топоцентрическую и обратно.
  *
- * Returns: (transfer-full): (nullable): указатель на объект HyScanGeo, для удаления
+ * Returns: (transfer full) (nullable): указатель на объект HyScanGeo, для удаления
  *   g_object_unref().
  */
 HyScanGeo *
@@ -187,7 +187,7 @@ hyscan_planner_model_set_origin (HyScanPlannerModel      *pmodel,
  *
  * Возвращает координаты точки отсчёта для схемы галсов проекта.
  *
- * Returns: (transfer-full): указатель на структуру #HyScanPlannerOrigin.
+ * Returns: (transfer full): указатель на структуру #HyScanPlannerOrigin.
  *   Для удаления hyscan_planner_origin_free
  */
 HyScanPlannerOrigin *
