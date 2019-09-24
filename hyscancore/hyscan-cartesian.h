@@ -55,6 +55,11 @@ gdouble          hyscan_cartesian_distance_to_line   (HyScanGeoCartesian2D *p1,
                                                       HyScanGeoCartesian2D *nearest_point);
 
 HYSCAN_API
+gint             hyscan_cartesian_side               (HyScanGeoCartesian2D *start,
+                                                      HyScanGeoCartesian2D *end,
+                                                      HyScanGeoCartesian2D *point);
+
+HYSCAN_API
 gdouble          hyscan_cartesian_distance           (HyScanGeoCartesian2D *p1,
                                                       HyScanGeoCartesian2D *p2);
 

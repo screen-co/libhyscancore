@@ -137,6 +137,9 @@ HYSCAN_API
 void                   hyscan_planner_origin_free        (HyScanPlannerOrigin       *ref_point);
 
 HYSCAN_API
+void                   hyscan_planner_object_free        (HyScanPlannerObject       *object);
+
+HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_copy         (const HyScanPlannerTrack  *track);
 
 HYSCAN_API

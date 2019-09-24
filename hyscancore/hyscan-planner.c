@@ -119,6 +119,20 @@ hyscan_planner_origin_free (HyScanPlannerOrigin *origin)
   g_slice_free (HyScanPlannerOrigin, origin);
 }
 
+void
+hyscan_planner_object_free (HyScanPlannerObject *object)
+{
+  if (object == NULL)
+    return;
+
+  if (object->type == HYSCAN_PLANNER_TRACK)
+    hyscan_planner_track_free (&object->track);
+  else if (object->type == HYSCAN_PLANNER_ZONE)
+    hyscan_planner_zone_free (&object->zone);
+  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+    hyscan_planner_origin_free (&object->ref_point);
+}
+
 HyScanPlannerTrack *
 hyscan_planner_track_copy (const HyScanPlannerTrack *track)
 {

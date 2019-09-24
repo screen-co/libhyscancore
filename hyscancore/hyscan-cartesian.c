@@ -274,6 +274,30 @@ hyscan_cartesian_distance_to_line (HyScanGeoCartesian2D *p1,
 }
 
 /**
+ * hyscan_cartesian_side:
+ * @start: одна точка на прямой
+ * @end: вторая точка на прямой
+ * @point: исследуемая точка
+ *
+ * Функция определеяет положение точки @point относительно прямой, проходящей
+ * через точки @start и @end.
+ *
+ * Returns: 0, если точка лежит на прямой, -1 - если точка с одной стороны,
+ *   1 - если точка с другой стороны
+ */
+gint
+hyscan_cartesian_side (HyScanGeoCartesian2D *start,
+                       HyScanGeoCartesian2D *end,
+                       HyScanGeoCartesian2D *point)
+{
+  gdouble d;
+
+  d = (point->x - start->x) * (end->y - start->y) - (point->y - start->y) * (end->x - start->x);
+
+  return d == 0 ? 0 : (d > 0 ? 1 : -1);
+}
+
+/**
  * hyscan_cartesian_distance:
  * @p1: координаты первой точки
  * @p2: координаты второй точки
