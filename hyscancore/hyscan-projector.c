@@ -501,7 +501,7 @@ hyscan_projector_count_to_coord (HyScanProjector   *self,
     coord = hyscan_projector_count_to_coord_internal (self, count);
 
   if (depth > 0.0)
-    coord = sqrt (coord * coord - depth * depth);
+    coord = coord > depth ? sqrt (coord * coord - depth * depth) : 0.0;
   else if (depth < 0.0)
     return FALSE;
 
