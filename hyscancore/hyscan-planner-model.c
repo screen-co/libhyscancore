@@ -198,6 +198,8 @@ hyscan_planner_model_get_origin (HyScanPlannerModel *pmodel)
   g_return_val_if_fail (HYSCAN_IS_PLANNER_MODEL (pmodel), NULL);
 
   object = (HyScanPlannerOrigin *) hyscan_object_model_get_id (HYSCAN_OBJECT_MODEL (pmodel), HYSCAN_PLANNER_ORIGIN_ID);
+  if (object == NULL)
+    return NULL;
 
   if (object->type != HYSCAN_PLANNER_ORIGIN)
     {

@@ -221,6 +221,9 @@ hyscan_object_data_planner_origin_validate_id (const gchar *origin_id)
 static void
 hyscan_object_data_planner_object_destroy (HyScanObject *object)
 {
+  if (object == NULL)
+    return;
+
   if (object->type == HYSCAN_PLANNER_ZONE)
     hyscan_planner_zone_free ((HyScanPlannerZone *) object);
   else if (object->type == HYSCAN_PLANNER_TRACK)
@@ -234,6 +237,9 @@ hyscan_object_data_planner_object_destroy (HyScanObject *object)
 static HyScanObject *
 hyscan_object_data_planner_object_copy (const HyScanObject *object)
 {
+  if (object == NULL)
+    return NULL;
+
   if (object->type == HYSCAN_PLANNER_ZONE)
     return (HyScanObject *) hyscan_planner_zone_copy ((HyScanPlannerZone *) object);
   else if (object->type == HYSCAN_PLANNER_TRACK)
