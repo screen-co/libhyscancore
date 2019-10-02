@@ -35,81 +35,149 @@
 
 #include "hyscan-mark.h"
 
-G_DEFINE_BOXED_TYPE (HyScanMark, hyscan_mark,
-                     hyscan_mark_copy, hyscan_mark_free)
+static void  hyscan_mark_copy_any (const HyScanMark *mark,
+                                   HyScanMark       *copy);
+static void  hyscan_mark_free_any (HyScanMark       *mark);
 
-HyScanMark*
-hyscan_mark_new (HyScanMarkType type)
+/* Удаляет общие поля. */
+static void
+hyscan_mark_free_any (HyScanMark *mark)
 {
-  HyScanMark* mark;
-  mark = g_slice_new0 (HyScanMark);
-  mark->type = type;
+  g_free (mark->name);
+  g_free (mark->description);
+  g_free (mark->operator_name);
+}
+
+/* Копирует общие поля. */
+static void
+hyscan_mark_copy_any (const HyScanMark *mark,
+                      HyScanMark       *copy)
+{
+  hyscan_mark_set_text (copy, mark->name,
+                              mark->description,
+                              mark->operator_name);
+  hyscan_mark_set_labels (copy, mark->labels);
+  hyscan_mark_set_ctime (copy, mark->ctime);
+  hyscan_mark_set_mtime (copy, mark->mtime);
+  hyscan_mark_set_size (copy, mark->width, mark->height);
+}
+
+/**
+ * hyscan_mark_waterfall_new:
+ * 
+ * Создаёт структуру #HyScanMarkWaterfall
+ * 
+ * Returns: указатель на #HyScanMarkWaterfall. Для удаления hyscan_mark_waterfall_free()
+ */
+HyScanMarkWaterfall *
+hyscan_mark_waterfall_new (void)
+{
+  HyScanMarkWaterfall *mark;
+
+  mark = g_slice_new0 (HyScanMarkWaterfall);
+  mark->type = HYSCAN_MARK_WATERFALL;
+
   return mark;
 }
 
-HyScanMark*
-hyscan_mark_copy (HyScanMark *mark)
+/**
+ * hyscan_mark_waterfall_copy:
+ * @mark: указатель на копируемую структуру
+ * 
+ * Создаёт копию структуру @mark
+ * 
+ * Returns: указатель на #HyScanMarkWaterfall. Для удаления hyscan_mark_waterfall_free()
+ */
+HyScanMarkWaterfall *
+hyscan_mark_waterfall_copy (const HyScanMarkWaterfall *mark)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
-  HyScanMark *copy;
+  HyScanMarkWaterfall *copy;
 
   if (mark == NULL)
     return NULL;
 
-  copy = hyscan_mark_new (mark->type);
-
-  switch (mark->type)
-    {
-    case HYSCAN_MARK_WATERFALL:
-      hyscan_mark_waterfall_set_track (&copy->waterfall, mark->waterfall.track);
-      hyscan_mark_waterfall_set_center (&copy->waterfall, mark->waterfall.source,
-                                        mark->waterfall.index, mark->waterfall.count);
-      break;
-
-    case HYSCAN_MARK_GEO:
-      hyscan_mark_geo_set_center (&copy->geo, mark->geo.center);
-      break;
-
-    default:
-      g_return_val_if_reached (NULL);
-    }
-
-  /* Копируем общие поля. */
-  copy->type = mark->type;
-  hyscan_mark_set_text (copy, any->name,
-                              any->description,
-                              any->operator_name);
-  hyscan_mark_set_labels (copy, any->labels);
-  hyscan_mark_set_ctime (copy, any->ctime);
-  hyscan_mark_set_mtime (copy, any->mtime);
-  hyscan_mark_set_size (copy, any->width, any->height);
+  copy = hyscan_mark_waterfall_new ();
+  hyscan_mark_waterfall_set_track (copy, mark->track);
+  hyscan_mark_waterfall_set_center (copy, mark->source, mark->index, mark->count);
+  hyscan_mark_copy_any ((const HyScanMark *) mark, (HyScanMark *) copy);
 
   return copy;
 }
 
-
+/**
+ * hyscan_mark_waterfall_free:
+ * @mark: указатель на HyScanWaterfallMark
+ * 
+ * Удаляет структуру #HyScanMarkWaterfall
+ */
 void
-hyscan_mark_free (HyScanMark *mark)
+hyscan_mark_waterfall_free (HyScanMarkWaterfall *mark)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
-
   if (mark == NULL)
     return;
 
-  /* Освобождаем общие поля. */
-  g_free (any->name);
-  g_free (any->description);
-  g_free (any->operator_name);
-
-  if (mark->type == HYSCAN_MARK_WATERFALL)
-    {
-      g_free (mark->waterfall.track);
-      g_free (mark->waterfall.source);
-    }
-
-  g_slice_free (HyScanMark, mark);
+  g_free (mark->track);
+  g_free (mark->source);
+  hyscan_mark_free_any ((HyScanMark *) mark);
+  g_slice_free (HyScanMarkWaterfall, mark);
 }
 
+/**
+ * hyscan_mark_geo_new:
+ * 
+ * Создаёт структуру #HyScanMarkGeo
+ * 
+ * Returns: указатель на #HyScanMarkGeo. Для удаления hyscan_mark_geo_free()
+ */
+HyScanMarkGeo *
+hyscan_mark_geo_new (void)
+{
+  HyScanMarkGeo *mark;
+
+  mark = g_slice_new0 (HyScanMarkGeo);
+  mark->type = HYSCAN_MARK_GEO;
+
+  return mark;
+}
+
+/**
+ * hyscan_mark_geo_copy:
+ * @mark: указатель на копируемую структуру
+ * 
+ * Создаёт копию структуру @mark
+ * 
+ * Returns: указатель на #HyScanMarkGeo. Для удаления hyscan_mark_geo_free()
+ */
+HyScanMarkGeo *
+hyscan_mark_geo_copy (const HyScanMarkGeo *mark)
+{
+  HyScanMarkGeo *copy;
+
+  if (mark == NULL)
+    return NULL;
+
+  copy = hyscan_mark_geo_new ();
+  hyscan_mark_geo_set_center (copy, mark->center);
+  hyscan_mark_copy_any ((const HyScanMark *) mark, (HyScanMark *) copy);
+
+  return copy;
+}
+
+/**
+ * hyscan_mark_geo_free:
+ * @mark: указатель на HyScanGeoMark
+ * 
+ * Удаляет структуру #HyScanMarkGeo
+ */
+void
+hyscan_mark_geo_free (HyScanMarkGeo *mark)
+{
+  if (mark == NULL)
+    return;
+
+  hyscan_mark_free_any ((HyScanMark *) mark);
+  g_slice_free (HyScanMarkGeo, mark);
+}
 
 void
 hyscan_mark_waterfall_set_track (HyScanMarkWaterfall *mark,
@@ -125,42 +193,34 @@ hyscan_mark_set_text (HyScanMark  *mark,
                       const gchar *description,
                       const gchar *oper)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
+  g_free (mark->name);
+  g_free (mark->description);
+  g_free (mark->operator_name);
 
-  g_free (any->name);
-  g_free (any->description);
-  g_free (any->operator_name);
-
-  any->name = g_strdup (name);
-  any->description = g_strdup (description);
-  any->operator_name = g_strdup (oper);
+  mark->name = g_strdup (name);
+  mark->description = g_strdup (description);
+  mark->operator_name = g_strdup (oper);
 }
 
 void
 hyscan_mark_set_labels (HyScanMark *mark,
                         guint64     labels)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
-
-  any->labels = labels;
+  mark->labels = labels;
 }
 
 void
 hyscan_mark_set_ctime (HyScanMark *mark,
                        gint64      creation)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
-
-  any->ctime = creation;
+  mark->ctime = creation;
 }
 
 void
 hyscan_mark_set_mtime (HyScanMark *mark,
                        gint64      modification)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
-
-  any->mtime = modification;
+  mark->mtime = modification;
 }
 
 void
@@ -190,10 +250,8 @@ hyscan_mark_set_size (HyScanMark *mark,
                       gdouble     width,
                       gdouble     height)
 {
-  HyScanMarkAny *any = (HyScanMarkAny *) mark;
-
-  any->width = width;
-  any->height = height;
+  mark->width = width;
+  mark->height = height;
 }
 
 void

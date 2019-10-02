@@ -51,7 +51,8 @@ G_BEGIN_DECLS
 typedef struct _HyScanObjectData HyScanObjectData;
 typedef struct _HyScanObjectDataPrivate HyScanObjectDataPrivate;
 typedef struct _HyScanObjectDataClass HyScanObjectDataClass;
-typedef void HyScanObject;
+typedef struct _HyScanObject HyScanObject;
+typedef gint32 HyScanObjectType;
 
 struct _HyScanObjectData
 {
@@ -64,14 +65,13 @@ struct _HyScanObjectData
  * HyScanObjectDataClass:
  * @group_name: названия группы параметров проекта
  * @init_obj: функция выполняется при создании объекта класса #HyScanObjectData
- * @object_new: функция создаёт структуру объекта, соответствующего указанному ID
  * @object_copy: функция создаёт структуру с копией указанного объекта
- * @object_destroy: освобождает память, выделенную функциями object_new и object_copy
+ * @object_destroy: освобождает память, выделенную функциями object_copy и get_full
  * @get_read_plist: функция возвращает список параметров #HyScanParamList для чтения объекта с указанным ID
  * @get_full: функция считывает содержимое объекта
  * @set_full: функция записывает значения в существующий объект
  * @generate_id: функция генерирует уникальный идентификатор для указанного объекта
- * @generate_id: функция возвращает ИД схемы для указанного объекта
+ * @get_schema_id: функция возвращает ИД схемы для указанного объекта
  */
 struct _HyScanObjectDataClass
 {
@@ -83,19 +83,15 @@ struct _HyScanObjectDataClass
                                           gint32               param_id,
                                           HyScanDB            *db);
 
-  HyScanObject *     (*object_new)       (HyScanObjectData    *data,
-                                          const gchar         *id);
-
   HyScanObject *     (*object_copy)      (const HyScanObject  *object);
 
   void               (*object_destroy)   (HyScanObject        *object);
 
   HyScanParamList *  (*get_read_plist)   (HyScanObjectData    *data,
-                                          const gchar         *schema_id);
+                                          const gchar         *id);
 
-  gboolean           (*get_full)         (HyScanObjectData    *data,
-                                          HyScanParamList     *read_plist,
-                                          HyScanObject        *object);
+  HyScanObject *     (*get_full)         (HyScanObjectData    *data,
+                                          HyScanParamList     *read_plist);
 
   gboolean           (*set_full)         (HyScanObjectData    *data,
                                           HyScanParamList     *write_plist,
@@ -105,7 +101,21 @@ struct _HyScanObjectDataClass
                                           const HyScanObject  *object);
 
   const gchar *      (*get_schema_id)    (HyScanObjectData    *data,
-                                          HyScanObject        *object);
+                                          const HyScanObject  *object);
+};
+
+/**
+ * HyScanObject:
+ * @type: тип объекта
+ *
+ * Все структуры, которые загружаются при помощи HyScanObjectData должны иметь
+ * первое поле типа #HyScanObjectType. При передачи структуры пользователя в такие
+ * функции как hyscan_object_data_add() и hyscan_object_data_modify() структура
+ * должна приводится к типу #HyScanObject.
+ */
+struct _HyScanObject
+{
+  HyScanObjectType       type;
 };
 
 HYSCAN_API
@@ -120,29 +130,21 @@ gboolean                        hyscan_object_data_add               (HyScanObje
                                                                       gchar              **id);
 
 HYSCAN_API
-gboolean                        hyscan_object_data_remove            (HyScanObjectData   *data,
-                                                                      const gchar        *id);
+gboolean                        hyscan_object_data_remove            (HyScanObjectData    *data,
+                                                                      const gchar         *id);
 
 HYSCAN_API
-HyScanObject *                  hyscan_object_data_copy              (HyScanObjectData   *data,
-                                                                      const HyScanObject *object);
+gboolean                        hyscan_object_data_modify            (HyScanObjectData    *data,
+                                                                      const gchar         *id,
+                                                                      const HyScanObject  *object);
 
 HYSCAN_API
-void                            hyscan_object_data_destroy           (HyScanObjectData   *data,
-                                                                      HyScanObject       *object);
+gchar **                        hyscan_object_data_get_ids           (HyScanObjectData    *data,
+                                                                      guint               *len);
 
 HYSCAN_API
-gboolean                        hyscan_object_data_modify            (HyScanObjectData   *data,
-                                                                      const gchar        *id,
-                                                                      const HyScanObject *object);
-
-HYSCAN_API
-gchar **                        hyscan_object_data_get_ids           (HyScanObjectData   *data,
-                                                                      guint              *len);
-
-HYSCAN_API
-HyScanObject *                  hyscan_object_data_get               (HyScanObjectData   *data,
-                                                                      const gchar        *id);
+HyScanObject *                  hyscan_object_data_get               (HyScanObjectData    *data,
+                                                                      const gchar         *id);
 
 HYSCAN_API
 guint32                         hyscan_object_data_get_mod_count     (HyScanObjectData    *data);

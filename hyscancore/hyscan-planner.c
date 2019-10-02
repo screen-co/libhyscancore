@@ -34,15 +34,180 @@
 
 /**
  * SECTION: hyscan-planner
- * @Short_description: модель данных списку запланированных галсов
+ * @Short_description: структуры объектов планировщика галсов
  * @Title: HyScanPlanner
- *
- * Планировщик галсов позволяет загружать и сохранять схему плановых галсов проекта.
  *
  */
 
 #include "hyscan-planner.h"
 #include <string.h>
+
+/**
+ * hyscan_planner_origin_new:
+ *
+ * Создаёт пустую структуру #HyScanPlannerOrigin
+ */
+HyScanPlannerOrigin *
+hyscan_planner_origin_new (void)
+{
+  HyScanPlannerOrigin *origin;
+
+  origin = g_slice_new0 (HyScanPlannerOrigin);
+  origin->type = HYSCAN_PLANNER_ORIGIN;
+
+  return origin;
+}
+
+/**
+ * hyscan_planner_origin_free:
+ * @origin: указатель на структуру HyScanPlannerOrigin
+ *
+ * Копирует структуру #HyScanPlannerOrigin
+ */
+HyScanPlannerOrigin *
+hyscan_planner_origin_copy (const HyScanPlannerOrigin *origin)
+{
+  HyScanPlannerOrigin *copy;
+
+  if (origin == NULL)
+    return NULL;
+
+  copy = hyscan_planner_origin_new ();
+  copy->origin = origin->origin;
+
+  return copy;
+}
+
+/**
+ * hyscan_planner_origin_free:
+ * @origin: указатель на структуру HyScanPlannerOrigin
+ *
+ * Удаляет структуру #HyScanPlannerOrigin
+ */
+void
+hyscan_planner_origin_free (HyScanPlannerOrigin *origin)
+{
+  if (origin == NULL)
+    return;
+
+  g_slice_free (HyScanPlannerOrigin, origin);
+}
+
+/**
+ * hyscan_planner_track_new:
+ *
+ * Создаёт пустую структуру #HyScanPlannerTrack
+ */
+HyScanPlannerTrack *
+hyscan_planner_track_new (void)
+{
+  HyScanPlannerTrack *track;
+  
+  track = g_slice_new0 (HyScanPlannerTrack);
+  track->type = HYSCAN_PLANNER_TRACK;
+
+  return track;
+}
+
+/**
+ * hyscan_planner_track_copy:
+ * @track: указатель на структуру HyScanPlannerTrack
+ *
+ * Копирует структуру #HyScanPlannerTrack
+ */
+HyScanPlannerTrack *
+hyscan_planner_track_copy (const HyScanPlannerTrack *track)
+{
+  HyScanPlannerTrack *copy;
+
+  if (track == NULL)
+    return NULL;
+
+  copy = hyscan_planner_track_new ();
+  copy->zone_id = g_strdup (track->zone_id);
+  copy->name = g_strdup (track->name);
+  copy->number = track->number;
+  copy->speed = track->speed;
+  copy->start = track->start;
+  copy->end = track->end;
+
+  return copy;
+}
+
+/**
+ * hyscan_planner_track_free:
+ * @track: указатель на структуру HyScanPlannerTrack
+ *
+ * Удаляет структуру #HyScanPlannerTrack
+ */
+void
+hyscan_planner_track_free (HyScanPlannerTrack *track)
+{
+  if (track == NULL)
+    return;
+
+  g_free (track->zone_id);
+  g_free (track->name);
+  g_slice_free (HyScanPlannerTrack, track);
+}
+
+/**
+ * hyscan_planner_zone_new:
+ *
+ * Создаёт пустую структуру #HyScanPlannerZone
+ */
+HyScanPlannerZone *
+hyscan_planner_zone_new (void)
+{
+  HyScanPlannerZone *zone;
+  
+  zone = g_slice_new0 (HyScanPlannerZone);
+  zone->type = HYSCAN_PLANNER_ZONE;
+
+  return zone;
+}
+
+/**
+ * hyscan_planner_zone_copy:
+ * @zone: указатель на структуру HyScanPlannerZone
+ *
+ * Копирует структуру #HyScanPlannerZone
+ */
+HyScanPlannerZone *
+hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
+{
+  HyScanPlannerZone *copy;
+
+  if (zone == NULL)
+    return NULL;
+
+  copy = hyscan_planner_zone_new ();
+  copy->name = g_strdup (zone->name);
+  copy->ctime = zone->ctime;
+  copy->mtime = zone->mtime;
+  copy->points_len = zone->points_len;
+  copy->points = g_new0 (HyScanGeoGeodetic, zone->points_len);
+  memcpy (copy->points, zone->points, sizeof (HyScanGeoGeodetic) * zone->points_len);
+
+  return copy;
+}
+
+/**
+ * hyscan_planner_zone_free:
+ * @zone: указатель на структуру HyScanPlannerZone
+ *
+ * Удаляет структуру #HyScanPlannerZone
+ */
+void
+hyscan_planner_zone_free (HyScanPlannerZone *zone)
+{
+  if (zone == NULL)
+    return;
+
+  g_free (zone->points);
+  g_free (zone->name);
+  g_slice_free (HyScanPlannerZone, zone);
+}
 
 /**
  * hyscan_planner_zone_vertex_remove:
@@ -83,98 +248,4 @@ hyscan_planner_zone_vertex_dup (HyScanPlannerZone *zone,
 
   for (i = zone->points_len - 1; i > index; --i)
     zone->points[i] = zone->points[i-1];
-}
-
-/**
- * hyscan_planner_zone_free:
- * @zone: указатель на структуру #HyScanPlannerZone
- *
- * Освобождает память, занятую структурой #HyScanPlannerZone
- */
-void
-hyscan_planner_zone_free (HyScanPlannerZone *zone)
-{
-  g_free (zone->points);
-  g_free (zone->name);
-  g_slice_free (HyScanPlannerZone, zone);
-}
-
-/**
- * hyscan_planner_track_free:
- * @track: указатель на структуру #HyScanPlannerTrack
- *
- * Освобождает память, занятую структурой #HyScanPlannerTrack
- */
-void
-hyscan_planner_track_free (HyScanPlannerTrack *track)
-{
-  g_free (track->zone_id);
-  g_free (track->name);
-  g_slice_free (HyScanPlannerTrack, track);
-}
-
-void
-hyscan_planner_origin_free (HyScanPlannerOrigin *origin)
-{
-  g_slice_free (HyScanPlannerOrigin, origin);
-}
-
-void
-hyscan_planner_object_free (HyScanPlannerObject *object)
-{
-  if (object == NULL)
-    return;
-
-  if (object->type == HYSCAN_PLANNER_TRACK)
-    hyscan_planner_track_free (&object->track);
-  else if (object->type == HYSCAN_PLANNER_ZONE)
-    hyscan_planner_zone_free (&object->zone);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
-    hyscan_planner_origin_free (&object->ref_point);
-}
-
-HyScanPlannerTrack *
-hyscan_planner_track_copy (const HyScanPlannerTrack *track)
-{
-  HyScanPlannerTrack *copy;
-
-  copy = g_slice_new (HyScanPlannerTrack);
-  copy->type = track->type;
-  copy->zone_id = g_strdup (track->zone_id);
-  copy->name = g_strdup (track->name);
-  copy->number = track->number;
-  copy->speed = track->speed;
-  copy->start = track->start;
-  copy->end = track->end;
-
-  return copy;
-}
-
-HyScanPlannerOrigin *
-hyscan_planner_origin_copy (const HyScanPlannerOrigin *origin)
-{
-  HyScanPlannerOrigin *copy;
-
-  copy = g_slice_new (HyScanPlannerOrigin);
-  copy->type = origin->type;
-  copy->origin = origin->origin;
-
-  return copy;
-}
-
-HyScanPlannerZone *
-hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
-{
-  HyScanPlannerZone *copy;
-
-  copy = g_slice_new (HyScanPlannerZone);
-  copy->type = zone->type;
-  copy->name = g_strdup (zone->name);
-  copy->ctime = zone->ctime;
-  copy->mtime = zone->mtime;
-  copy->points_len = zone->points_len;
-  copy->points = g_new0 (HyScanGeoGeodetic, zone->points_len);
-  memcpy (copy->points, zone->points, sizeof (HyScanGeoGeodetic) * zone->points_len);
-
-  return copy;
 }

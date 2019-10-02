@@ -104,7 +104,7 @@ main (int argc, char **argv)
 
   loop = g_main_loop_new (NULL, TRUE);
 
-  model = hyscan_object_model_new (HYSCAN_TYPE_MARK_DATA_WATERFALL);
+  model = hyscan_object_model_new (HYSCAN_TYPE_OBJECT_DATA_WFMARK);
   g_signal_connect (model, "changed", G_CALLBACK (changed_cb), loop);
   hyscan_object_model_set_project (model, db, name);
 
@@ -202,7 +202,7 @@ test_function (void)
   if (action == ADD)
     {
       if_verbose ("Add <%s>\n", mark->name);
-      hyscan_object_model_add_object (model, (HyScanMark*)mark);
+      hyscan_object_model_add_object (model, (HyScanObject*)mark);
     }
   else
     {
@@ -223,14 +223,14 @@ test_function (void)
           else if (action == MODIFY)
             {
               if_verbose ("Modify <%s> to <%s>\n", ((HyScanMarkWaterfall*)value)->name, mark->name);
-              hyscan_object_model_modify_object (model, key, (HyScanMark*)mark);
+              hyscan_object_model_modify_object (model, key, (HyScanObject*)mark);
             }
           break;
         }
     }
   update_list (mark, (HyScanMarkWaterfall*)value, action);
 
-  hyscan_mark_free ((HyScanMark*)mark);
+  hyscan_mark_waterfall_free (mark);
   g_hash_table_unref (ht);
 }
 
@@ -346,7 +346,7 @@ make_mark (void)
 {
   gint seed = RANDOM (MARK_RAND);
   gint seed2 = RANDOM (MARK_RAND);
-  HyScanMarkWaterfall *mark = (HyScanMarkWaterfall*)hyscan_mark_new (HYSCAN_MARK_WATERFALL);
+  HyScanMarkWaterfall *mark = hyscan_mark_waterfall_new ();
 
   mark->track = g_strdup_printf ("TrackID%05i%05i", seed, seed2);
   mark->name = g_strdup_printf ("Mark %05i%05i", seed, seed2);

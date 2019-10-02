@@ -89,17 +89,17 @@ hyscan_planner_model_changed (HyScanObjectModel *model)
 {
   HyScanPlannerModel *pmodel = HYSCAN_PLANNER_MODEL (model);
   HyScanPlannerModelPrivate *priv = pmodel->priv;
-  HyScanPlannerOrigin *origin;
+  HyScanPlannerOrigin *object;
 
   g_clear_object (&priv->geo);
 
-  origin = hyscan_object_model_get_id (model, HYSCAN_PLANNER_ORIGIN_ID);
-  if (origin == NULL)
+  object = (HyScanPlannerOrigin *) hyscan_object_model_get_id (model, HYSCAN_PLANNER_ORIGIN_ID);
+  if (object == NULL)
     return;
 
-  priv->geo = hyscan_geo_new (origin->origin, HYSCAN_GEO_ELLIPSOID_WGS84);
+  priv->geo = hyscan_geo_new (object->origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
-  hyscan_planner_origin_free (origin);
+  hyscan_planner_origin_free (object);
 }
 
 /**
@@ -113,7 +113,7 @@ HyScanPlannerModel *
 hyscan_planner_model_new (void)
 {
   return g_object_new (HYSCAN_TYPE_PLANNER_MODEL,
-                       "data-type", HYSCAN_TYPE_PLANNER_DATA, NULL);
+                       "data-type", HYSCAN_TYPE_OBJECT_DATA_PLANNER, NULL);
 }
 
 /**
@@ -173,9 +173,9 @@ hyscan_planner_model_set_origin (HyScanPlannerModel      *pmodel,
       ref_point.origin = *origin;
 
       if (prev_value != NULL)
-        hyscan_object_model_modify_object (model, HYSCAN_PLANNER_ORIGIN_ID, &ref_point);
+        hyscan_object_model_modify_object (model, HYSCAN_PLANNER_ORIGIN_ID, (const HyScanObject *) &ref_point);
       else
-        hyscan_object_model_add_object (model, &ref_point);
+        hyscan_object_model_add_object (model, (const HyScanObject *) &ref_point);
     }
 
   g_clear_pointer (&prev_value, hyscan_planner_origin_free);
@@ -188,12 +188,22 @@ hyscan_planner_model_set_origin (HyScanPlannerModel      *pmodel,
  * Возвращает координаты точки отсчёта для схемы галсов проекта.
  *
  * Returns: (transfer full): указатель на структуру #HyScanPlannerOrigin.
- *   Для удаления hyscan_planner_origin_free
+ *   Для удаления hyscan_object_free()
  */
 HyScanPlannerOrigin *
 hyscan_planner_model_get_origin (HyScanPlannerModel *pmodel)
 {
+  HyScanPlannerOrigin *object;
+
   g_return_val_if_fail (HYSCAN_IS_PLANNER_MODEL (pmodel), NULL);
 
-  return hyscan_object_model_get_id (HYSCAN_OBJECT_MODEL (pmodel), HYSCAN_PLANNER_ORIGIN_ID);
+  object = (HyScanPlannerOrigin *) hyscan_object_model_get_id (HYSCAN_OBJECT_MODEL (pmodel), HYSCAN_PLANNER_ORIGIN_ID);
+
+  if (object->type != HYSCAN_PLANNER_ORIGIN)
+    {
+      hyscan_object_model_remove_object (HYSCAN_OBJECT_MODEL (pmodel), HYSCAN_PLANNER_ORIGIN_ID);
+      object = NULL;
+    }
+
+  return object;
 }

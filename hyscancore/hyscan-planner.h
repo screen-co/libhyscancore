@@ -38,30 +38,26 @@
 #include <hyscan-geo.h>
 #include <hyscan-nav-model.h>
 #include <hyscan-db.h>
+#include "hyscan-object-data.h"
 
 G_BEGIN_DECLS
 
 #define HYSCAN_PLANNER_ORIGIN_ID "origin"
 
-typedef union _HyScanPlannerObject HyScanPlannerObject;
+#define HYSCAN_PLANNER_ZONE     0x1dc83c66
+#define HYSCAN_PLANNER_TRACK    0x2f0365da
+#define HYSCAN_PLANNER_ORIGIN   0x0fe285b7
+
 typedef struct _HyScanPlannerTrack HyScanPlannerTrack;
 typedef struct _HyScanPlannerZone HyScanPlannerZone;
 typedef struct _HyScanPlannerOrigin HyScanPlannerOrigin;
-
-typedef enum
-{
-  HYSCAN_PLANNER_INVALID,
-  HYSCAN_PLANNER_ZONE,
-  HYSCAN_PLANNER_TRACK,
-  HYSCAN_PLANNER_ORIGIN,
-} HyScanPlannerObjectType;
 
 /**
  * HyScanPlannerTrack:
  * @id: уникальный идентификатор
  * @zone_id: идентификатор зоны, в котрой находится галс
  * @number: порядковый номер галса
- * @speed: скокрость движения судна, м/с
+ * @speed: скорость движения судна, м/с
  * @name: название
  * @start: геокоординаты начала
  * @start: геокоординаты конца
@@ -70,7 +66,7 @@ typedef enum
  */
 struct _HyScanPlannerTrack
 {
-  HyScanPlannerObjectType  type;
+  HyScanObjectType         type;
   gchar                   *zone_id;
   guint                    number;
   gdouble                  speed;
@@ -90,7 +86,7 @@ struct _HyScanPlannerTrack
  */
 struct _HyScanPlannerZone
 {
-  HyScanPlannerObjectType  type;
+  HyScanObjectType         type;
   gchar                   *name;
   HyScanGeoGeodetic       *points;
   gsize                    points_len;
@@ -101,23 +97,42 @@ struct _HyScanPlannerZone
 /**
  * HyScanPlannerZone:
  * @type: тип объекта
- * @origin:
+ * @origin: координаты точки начала отсчёта, поле .h содержит направление оси OX
  *
  * Референсная точка, которая считается началом координат для топографической системы координат
  */
 struct _HyScanPlannerOrigin
 {
-  HyScanPlannerObjectType  type;
+  HyScanObjectType         type;
   HyScanGeoGeodetic        origin;
 };
 
-union _HyScanPlannerObject
-{
-  HyScanPlannerObjectType type;
-  HyScanPlannerTrack      track;
-  HyScanPlannerZone       zone;
-  HyScanPlannerOrigin     ref_point;
-};
+HYSCAN_API
+HyScanPlannerOrigin *  hyscan_planner_origin_new         (void);
+
+HYSCAN_API
+HyScanPlannerOrigin *  hyscan_planner_origin_copy        (const HyScanPlannerOrigin *origin);
+
+HYSCAN_API
+void                   hyscan_planner_origin_free        (HyScanPlannerOrigin       *origin);
+
+HYSCAN_API
+HyScanPlannerTrack *   hyscan_planner_track_new          (void);
+
+HYSCAN_API
+HyScanPlannerTrack *   hyscan_planner_track_copy         (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
+
+HYSCAN_API
+HyScanPlannerZone *    hyscan_planner_zone_new           (void);
+
+HYSCAN_API
+HyScanPlannerZone *    hyscan_planner_zone_copy          (const HyScanPlannerZone   *zone);
+
+HYSCAN_API
+void                   hyscan_planner_zone_free          (HyScanPlannerZone         *zone);
 
 HYSCAN_API
 void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone         *zone,
@@ -126,27 +141,6 @@ void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone     
 HYSCAN_API
 void                   hyscan_planner_zone_vertex_dup    (HyScanPlannerZone         *zone,
                                                           gsize                      index);
-
-HYSCAN_API
-void                   hyscan_planner_zone_free          (HyScanPlannerZone         *zone);
-
-HYSCAN_API
-void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
-
-HYSCAN_API
-void                   hyscan_planner_origin_free        (HyScanPlannerOrigin       *ref_point);
-
-HYSCAN_API
-void                   hyscan_planner_object_free        (HyScanPlannerObject       *object);
-
-HYSCAN_API
-HyScanPlannerTrack *   hyscan_planner_track_copy         (const HyScanPlannerTrack  *track);
-
-HYSCAN_API
-HyScanPlannerOrigin *  hyscan_planner_origin_copy        (const HyScanPlannerOrigin *origin);
-
-HYSCAN_API
-HyScanPlannerZone *    hyscan_planner_zone_copy          (const HyScanPlannerZone   *zone);
 
 G_END_DECLS
 

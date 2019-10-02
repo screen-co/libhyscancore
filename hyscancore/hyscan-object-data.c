@@ -37,7 +37,7 @@
  * SECTION: hyscan-object-data
  * @Short_description: Абстрактный класс работы с объектами параметров проекта
  * @Title: HyScanObjectData
- * @See_also: HyScanMarkDataWaterfall, HyScanMarkDataGeo, HyScanPlannerData
+ * @See_also: HyScanObjectDataWfmark, HyScanObjectDataGeomark, HyScanObjectDataPlanner
  *
  * HyScanObjectData - абстрактный класс позволяющий работать с объектами из
  * параметров проекта базы данных. Он представляет собой обертку над базой данных,
@@ -50,7 +50,6 @@
  */
 
 #include "hyscan-object-data.h"
-#include "hyscan-core-schemas.h"
 #include <string.h>
 
 #define OBJECT_ID_LEN 20
@@ -67,9 +66,7 @@ struct _HyScanObjectDataPrivate
   HyScanDB          *db;       /* Интерфейс БД. */
   gchar             *project;  /* Проект. */
   gint32             param_id; /* Идентификатор группы параметров. */
-
-  HyScanParamList   *read_plist;
-  HyScanParamList   *write_plist;
+  HyScanParamList   *plist;    /* Список параметров для чтения объекта. */
 };
 
 static void     hyscan_object_data_set_property          (GObject                *object,
@@ -86,9 +83,8 @@ static void     hyscan_object_data_object_finalize       (GObject               
 static gchar *  hyscan_object_data_generate_id           (HyScanObjectData       *data,
                                                           const HyScanObject     *object);
 
-static gboolean hyscan_object_data_get_internal          (HyScanObjectData       *data,
-                                                          const gchar            *id,
-                                                          HyScanObject           *object);
+static HyScanObject * hyscan_object_data_get_internal    (HyScanObjectData       *data,
+                                                          const gchar            *id);
 static gboolean hyscan_object_data_set_internal          (HyScanObjectData       *data,
                                                           const gchar            *id,
                                                           const HyScanObject     *object);
@@ -178,17 +174,7 @@ hyscan_object_data_get_property (GObject    *object,
 static void
 hyscan_object_data_object_constructed (GObject *object)
 {
-  gint i;
   gint32 project_id = 0;      /* Идентификатор проекта. */
-  const gchar *param_names[] = {"/name",
-                                "/description",
-                                "/operator",
-                                "/label",
-                                "/ctime",
-                                "/mtime",
-                                "/width",
-                                "/height",
-                                NULL};
 
   HyScanObjectData *data = HYSCAN_OBJECT_DATA (object);
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
@@ -217,16 +203,7 @@ hyscan_object_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  priv->read_plist = hyscan_param_list_new ();
-  priv->write_plist = hyscan_param_list_new ();
-
-  /* Добавляем названия параметров в списки. */
-  for (i = 0; param_names[i] != NULL; ++i)
-    hyscan_param_list_add (priv->read_plist, param_names[i]);
-
-  /* В список на чтение дополнительно запихиваем version и id. */
-  hyscan_param_list_add (priv->read_plist, "/schema/id");
-  hyscan_param_list_add (priv->read_plist, "/schema/version");
+  priv->plist = hyscan_param_list_new ();
 
   if (klass->init_obj != NULL)
     klass->init_obj (data, priv->param_id, priv->db);
@@ -249,8 +226,7 @@ hyscan_object_data_object_finalize (GObject *object)
 
   g_clear_object (&priv->db);
 
-  g_clear_object (&priv->read_plist);
-  g_clear_object (&priv->write_plist);
+  g_clear_object (&priv->plist);
 
   G_OBJECT_CLASS (hyscan_object_data_parent_class)->finalize (object);
 }
@@ -277,48 +253,33 @@ hyscan_object_data_generate_id (HyScanObjectData   *data,
 }
 
 /* Функция считывает содержимое объекта. */
-static gboolean
+static HyScanObject *
 hyscan_object_data_get_internal (HyScanObjectData *data,
-                                 const gchar      *id,
-                                 HyScanObject     *object)
+                                 const gchar      *id)
 {
   HyScanObjectDataPrivate *priv = data->priv;
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
 
-  HyScanDataSchema *schema = NULL;
-  const gchar *schema_id;
   HyScanParamList *read_plist = NULL;
   gboolean read_status;
+  HyScanObject *object = NULL;
 
-  g_return_val_if_fail (klass->get_full != NULL, FALSE);
+  g_return_val_if_fail (klass->get_full != NULL && klass->get_read_plist != NULL, FALSE);
 
-  /* Определяем схему данных запрошенного объекта. */
-  schema = hyscan_db_param_object_get_schema (priv->db, priv->param_id, id);
-  if (schema == NULL)
-    {
-      g_warning ("HyScanObjectData: failed to determine schema of <%s>", id);
-      return FALSE;
-    }
-  schema_id = hyscan_data_schema_get_id (schema);
-
-  /* Получаем список параметров для чтения этой схемы. */
-  if (klass->get_read_plist != NULL)
-    read_plist = klass->get_read_plist (data, schema_id);
-  else
-    read_plist = g_object_ref (priv->read_plist);
+  /* Получаем список параметров для чтения объекта с этим идентификатором. */
+  read_plist = klass->get_read_plist (data, id);
 
   /* Считываем параметры объекта и формируем из него структуру. */
   read_status = hyscan_db_param_get (priv->db, priv->param_id, id, read_plist);
   if (!read_status)
     goto exit;
 
-  read_status = klass->get_full (data, read_plist, object);
+  object = klass->get_full (data, read_plist);
 
 exit:
-  g_clear_object (&schema);
   g_clear_object (&read_plist);
 
-  return read_status;
+  return object;
 }
 
 /* Функция записывает значения в существующий объект. */
@@ -330,12 +291,12 @@ hyscan_object_data_set_internal (HyScanObjectData   *data,
   HyScanObjectDataPrivate *priv = data->priv;
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
 
-  hyscan_param_list_clear (priv->write_plist);
+  hyscan_param_list_clear (priv->plist);
 
   if (klass->set_full != NULL)
-    klass->set_full (data, priv->write_plist, object);
+    klass->set_full (data, priv->plist, object);
 
-  return hyscan_db_param_set (priv->db, priv->param_id, id, priv->write_plist);
+  return hyscan_db_param_set (priv->db, priv->param_id, id, priv->plist);
 }
 
 /**
@@ -450,10 +411,6 @@ hyscan_object_data_modify (HyScanObjectData   *data,
 {
   g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
 
-  /* Проверяем, что объект существует. */
-  if (!hyscan_object_data_get_internal (data, id, NULL))
-    return FALSE;
-
   return hyscan_object_data_set_internal (data, id, object);
 }
 
@@ -497,21 +454,9 @@ HyScanObject *
 hyscan_object_data_get (HyScanObjectData *data,
                         const gchar      *id)
 {
-  HyScanObjectDataClass *klass;
-  gboolean status;
-  HyScanObject *object = NULL;
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), NULL);
 
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
-  klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
-
-  object = klass->object_new (data, id);
-
-  status = hyscan_object_data_get_internal (data, id, object);
-
-  if (!status)
-    g_clear_pointer (&object, klass->object_destroy);
-
-  return object;
+  return hyscan_object_data_get_internal (data, id);
 }
 
 /**
@@ -529,26 +474,4 @@ hyscan_object_data_get_mod_count (HyScanObjectData *data)
   g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), 0);
 
   return hyscan_db_get_mod_count (data->priv->db, data->priv->param_id);
-}
-
-HyScanObject *
-hyscan_object_data_copy (HyScanObjectData   *data,
-                         const HyScanObject *object)
-{
-  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
-
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), NULL);
-
-  return klass->object_copy (object);
-}
-
-void
-hyscan_object_data_destroy (HyScanObjectData *data,
-                            HyScanObject     *object)
-{
-  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
-
-  g_return_if_fail (HYSCAN_IS_OBJECT_DATA (data));
-
-  klass->object_destroy (object);
 }

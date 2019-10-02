@@ -39,27 +39,14 @@
 #include <hyscan-types.h>
 #include <hyscan-param-list.h>
 #include <hyscan-geo.h>
+#include "hyscan-object-data.h"
 
-typedef enum _HyScanMarkType HyScanMarkType;
-typedef union _HyScanMark HyScanMark;
-typedef struct _HyScanMarkAny HyScanMarkAny;
+#define HYSCAN_MARK_WATERFALL         0x0523a9ab
+#define HYSCAN_MARK_GEO               0x1f5c3db7
+
+typedef struct _HyScanMarkAny HyScanMark;
 typedef struct _HyScanMarkWaterfall HyScanMarkWaterfall;
 typedef struct _HyScanMarkGeo HyScanMarkGeo;
-
-/**
- * HyScanMarkType:
- * @HYSCAN_MARK_WATERFALL: метка водопада #HyScanMarkWaterfall
- * @HYSCAN_MARK_GEO: географическая метка #HyScanMarkGeo
- *
- * Тип метки
- */
-enum _HyScanMarkType
-{
-  HYSCAN_MARK_INVALID = -1,
-  HYSCAN_MARK_WATERFALL = 0,
-  HYSCAN_MARK_GEO,  
-  HYSCAN_MARK_LAST
-};
 
 /**
  * HyScanMarkAny:
@@ -79,7 +66,7 @@ enum _HyScanMarkType
  */
 struct _HyScanMarkAny
 {
-  HyScanMarkType    type;
+  HyScanObjectType  type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
@@ -110,8 +97,8 @@ struct _HyScanMarkAny
  */
 struct _HyScanMarkWaterfall
 {
-  HyScanMarkType    type;
-  gchar            *name;             
+  HyScanObjectType  type;
+  gchar            *name;
   gchar            *description;
   gchar            *operator_name;
   guint64           labels;
@@ -143,7 +130,7 @@ struct _HyScanMarkWaterfall
  */
 struct _HyScanMarkGeo
 {
-  HyScanMarkType    type;
+  HyScanObjectType  type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
@@ -156,33 +143,23 @@ struct _HyScanMarkGeo
   HyScanGeoGeodetic center;
 };
 
-/**
- * HyScanMark:
- * @type: тип метки
- * @any: общие поля разных типов меток
- * @waterfall: метка водопада
- * @geo: географическая метка
- *
- * Объединение различных типов меток. Тип метки всегда хранится в первом поле
- * type. Чтобы получить значения других полей, необходимо привести #HyScanMark
- * к нужному типу.
- */
-union _HyScanMark
-{
-  HyScanMarkType        type;
-  HyScanMarkAny         any;
-  HyScanMarkWaterfall   waterfall;
-  HyScanMarkGeo         geo;
-};
+HYSCAN_API
+HyScanMarkWaterfall *  hyscan_mark_waterfall_new                    (void);
 
 HYSCAN_API
-HyScanMark            *hyscan_mark_new                              (HyScanMarkType         type);
+HyScanMarkWaterfall *  hyscan_mark_waterfall_copy                   (const HyScanMarkWaterfall *mark);
 
 HYSCAN_API
-HyScanMark            *hyscan_mark_copy                             (HyScanMark            *mark);
+void                   hyscan_mark_waterfall_free                   (HyScanMarkWaterfall       *mark);
 
 HYSCAN_API
-void                   hyscan_mark_free                             (HyScanMark            *mark);
+HyScanMarkGeo *        hyscan_mark_geo_new                          (void);
+
+HYSCAN_API
+HyScanMarkGeo *        hyscan_mark_geo_copy                         (const HyScanMarkGeo       *mark);
+
+HYSCAN_API
+void                   hyscan_mark_geo_free                         (HyScanMarkGeo             *mark);
 
 HYSCAN_API
 void                   hyscan_mark_set_text                         (HyScanMark            *mark,

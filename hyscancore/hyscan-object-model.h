@@ -1,36 +1,45 @@
-/**
+/* hyscan-object-model.h
  *
- * \file hyscan-object-model.h
+ * Copyright 2017-2019 Screen LLC, Dmitriev Alexander <m1n7@yandex.ru>
+ * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * \brief Заголовочный файл класса асинхронной работы с метками водопада.
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * This file is part of HyScanGui library.
  *
- * \defgroup HyScanObjectModel HyScanObjectModel - класс асинхронной работы с метками водопада.
+ * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * HyScanObjectModel - класс асинхронной работы с метками режима водопад.
- * Он представляет собой обертку над HyScanObjectData. Класс предоставляет
- * все методы, необходимые для создания, изменения и удаления меток.
+ * HyScanGui is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Сигнал "changed" сигнализирует о том, что есть изменения в списке меток.
- * Прямо в обработчике сигнала можно получить актуальный список меток.
- * \code
- * void
- * changed_cb (HyScanObjectModel *man,
- *             gpointer           userdata);
- * \endcode
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
- * Класс полностью потокобезопасен и может использоваться в MainLoop.
- *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
+
+/* HyScanGui имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
 #ifndef __HYSCAN_OBJECT_MODEL_H__
 #define __HYSCAN_OBJECT_MODEL_H__
 
 #include <hyscan-object-data.h>
-#include <hyscan-mark-data-geo.h>
-#include <hyscan-mark-data-waterfall.h>
-#include <hyscan-planner-data.h>
+#include <hyscan-object-data-geomark.h>
+#include <hyscan-object-data-wfmark.h>
+#include <hyscan-object-data-planner.h>
 #include <hyscan-mark.h>
 
 G_BEGIN_DECLS
@@ -64,98 +73,37 @@ struct _HyScanObjectModelClass
 HYSCAN_API
 GType                   hyscan_object_model_get_type          (void);
 
-/**
- * Функция создает новый объект HyScanObjectModel.
- *
- * \param data_type тип класса работы с метками.
- *
- * \return объект HyScanObjectModel.
- */
 HYSCAN_API
-HyScanObjectModel*        hyscan_object_model_new             (GType                      data_type);
+HyScanObjectModel*      hyscan_object_model_new               (GType                      data_type);
 
-/**
- * Функция устанавливает проект.
- *
- * \param model указатель на \link HyScanObjectModel \endlink;
- * \param project имя проекта.
- *
- */
 HYSCAN_API
 void                    hyscan_object_model_set_project       (HyScanObjectModel         *model,
                                                                HyScanDB                  *db,
                                                                const gchar               *project);
 
-/**
- * Функция инициирует принудительное обновление списка меток.
- *
- * \param model указатель на \link HyScanObjectModel \endlink.
- *
- */
 HYSCAN_API
 void                    hyscan_object_model_refresh           (HyScanObjectModel         *model);
 
-/**
- * Функция создает метку в базе данных.
- *
- * \param model указатель на \link HyScanObjectModel \endlink;
- * \param object создаваемая метка.
- *
- */
 HYSCAN_API
 void                    hyscan_object_model_add_object        (HyScanObjectModel         *model,
                                                                const HyScanObject        *object);
 
-/**
- * Функция изменяет метку в базе данных.
- * В результате этой функции все поля метки будут перезаписаны.
- *
- * \param model указатель на \link HyScanObjectModel \endlink;
- * \param id идентификатор метки;
- * \param object новые значения.
- *
- */
 HYSCAN_API
 void                    hyscan_object_model_modify_object     (HyScanObjectModel         *model,
                                                                const gchar               *id,
                                                                const HyScanObject        *object);
 
-/**
- * Функция удаляет метку из базы данных.
- *
- * \param model указатель на \link HyScanObjectModel \endlink;
- * \param id идентификатор метки.
- *
- */
 HYSCAN_API
 void                    hyscan_object_model_remove_object     (HyScanObjectModel         *model,
                                                                const gchar               *id);
 
-/**
- * Функция возвращает список меток из внутреннего буфера.
- *
- * \param model указатель на \link HyScanObjectModel \endlink;
- *
- * \return GHashTable, где ключом является идентификатор метки,
- * а значением - структура HyScanObject.
- */
 HYSCAN_API
 GHashTable*             hyscan_object_model_get               (HyScanObjectModel         *model);
 
-/**
- * Функция возвращает копию объекта по его ID из внутреннего буфера.
- *
- * \param model указатель на \link HyScanObjectModel \endlink;
- *
- * \return HyScanObject или NULL.
- */
 HYSCAN_API
 HyScanObject *          hyscan_object_model_get_id            (HyScanObjectModel         *model,
                                                                const gchar               *id);
 
-/**
- * Вспомогательная функция для создания копии таблицы меток.
- */
 HYSCAN_API
 GHashTable*             hyscan_object_model_copy              (HyScanObjectModel         *model,
                                                                GHashTable                *objects);

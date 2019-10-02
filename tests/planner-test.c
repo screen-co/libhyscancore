@@ -33,7 +33,7 @@
  */
 
 #include <glib.h>
-#include <hyscan-planner-data.h>
+#include <hyscan-object-data-planner.h>
 #include <math.h>
 #include <gio/gio.h>
 
@@ -102,7 +102,7 @@ test_zones (HyScanDB *db,
   gsize points_len = 10;
   gsize i = 0;
 
-  planner = hyscan_planner_data_new (db, project_name);
+  planner = hyscan_object_data_planner_new (db, project_name);
 
   /* Добавляем зону. */
   new_zone.type = HYSCAN_PLANNER_ZONE;
@@ -110,8 +110,8 @@ test_zones (HyScanDB *db,
   new_zone.points = NULL;
   new_zone.name = "Zone 1";
   new_zone.ctime = 1234;
-  new_zone.mtime = new_zone.ctime;
-  status = hyscan_object_data_add (planner, &new_zone, &zone_id);
+  new_zone.mtime = 1234;
+  status = hyscan_object_data_add (planner, (HyScanObject *) &new_zone, &zone_id);
   g_assert (status != FALSE);
 
   /* Проверяем, что зона добавлена. */
@@ -120,7 +120,7 @@ test_zones (HyScanDB *db,
   g_assert_cmpstr (zone_id, ==, zones[0]);
   g_strfreev (zones);
 
-  zone = hyscan_object_data_get (planner, zone_id);
+  zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, zone_id);
   g_assert (zone->type == HYSCAN_PLANNER_ZONE);
   g_assert_cmpstr (zone->name, ==, new_zone.name);
   g_assert_cmpint (zone->ctime, ==, new_zone.ctime);
@@ -132,11 +132,11 @@ test_zones (HyScanDB *db,
   points = create_points_array (points_len);
   zone->points = create_points_array (points_len);
   zone->points_len = points_len;
-  hyscan_object_data_modify (planner, zone_id, zone);
+  hyscan_object_data_modify (planner, zone_id, (const HyScanObject *) zone);
   hyscan_planner_zone_free (zone);
 
   /* Проверяем, что границы установились. */
-  zone = hyscan_object_data_get (planner, zone_id);
+  zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, zone_id);
   g_assert (zone != NULL);
   g_assert_cmpint (zone->points_len, ==, points_len);
   for (i = 0; i < zone->points_len; ++i)
@@ -147,7 +147,7 @@ test_zones (HyScanDB *db,
   hyscan_planner_zone_free (zone);
 
   /* Проверяем несуществующие зоны. */
-  zone = hyscan_object_data_get (planner, "zone-nonexistent_id");
+  zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, "zone-nonexistent_id");
   g_assert (zone == NULL);
 
   /* Удаляем зону. */
@@ -169,11 +169,11 @@ test_tracks (HyScanDB *db,
   gchar *track_id = NULL;
   gchar *zone_id = NULL;
   gchar **tracks;
-  HyScanPlannerTrack *track;
+  HyScanPlannerTrack *track_obj;
   HyScanPlannerTrack track_new;
   HyScanPlannerZone zone;
 
-  planner = hyscan_planner_data_new (db, project_name);
+  planner = hyscan_object_data_planner_new (db, project_name);
 
   zone.type = HYSCAN_PLANNER_ZONE;
   zone.name = "Тест";
@@ -181,7 +181,7 @@ test_tracks (HyScanDB *db,
   zone.points_len = 0;
   zone.mtime = 0;
   zone.ctime = 0;
-  status = hyscan_object_data_add (planner, &zone, &zone_id);
+  status = hyscan_object_data_add (planner, (HyScanObject *) &zone, &zone_id);
   g_assert_true (status);
 
   /* Добавляем плановый галс. */
@@ -194,7 +194,7 @@ test_tracks (HyScanDB *db,
   track_new.number = 0;
   track_new.speed = 1.3;
   track_new.zone_id = zone_id;
-  status = hyscan_object_data_add (planner, &track_new, &track_id);
+  status = hyscan_object_data_add (planner, (HyScanObject *) &track_new, &track_id);
   g_assert_true (status);
   g_assert (track_id != NULL);
 
@@ -206,21 +206,21 @@ test_tracks (HyScanDB *db,
   g_strfreev (tracks);
 
   /* Меняем параметры галса. */
-  track = hyscan_object_data_get (planner, track_id);
-  g_assert (track != NULL);
-  track->speed = 1.0;
-  hyscan_object_data_modify (planner, track_id, track);
-  hyscan_planner_track_free (track);
+  track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
+  g_assert (track_obj != NULL);
+  track_obj->speed = 1.0;
+  hyscan_object_data_modify (planner, track_id, (const HyScanObject *) track_obj);
+  hyscan_planner_track_free (track_obj);
 
   /* Проверяем, что параметры обновились. */
-  track = hyscan_object_data_get (planner, track_id);
-  g_assert (track != NULL);
-  g_assert (ABS (track->speed - 1.0) < 1e-4);
-  hyscan_planner_track_free (track);
+  track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
+  g_assert (track_obj != NULL);
+  g_assert (ABS (track_obj->speed - 1.0) < 1e-4);
+  hyscan_planner_track_free (track_obj);
 
   /* Проверяем несуществующие галсы. */
-  track = hyscan_object_data_get (planner, "track-nonexistent_id");
-  g_assert (track == NULL);
+  track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, "track-nonexistent_id");
+  g_assert (track_obj == NULL);
 
   /* Удаляем галс. */
   status = hyscan_object_data_remove (planner, track_id) &&

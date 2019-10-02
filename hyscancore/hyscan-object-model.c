@@ -1,16 +1,59 @@
-/*
- * \file hyscan-object-model.c
+/* hyscan-object-model.c
  *
- * \brief Исходный файл класса асинхронной работы с объектами из параметров проекта
- * \author Dmitriev Alexander (m1n7@yandex.ru)
- * \date 2017
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2017-2019 Screen LLC, Dmitriev Alexander <m1n7@yandex.ru>
+ * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
+ *
+ * This file is part of HyScanGui library.
+ *
+ * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanGui is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanGui имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-object-model
+ * @Short_description: класс асинхронной работы с метками водопада
+ * @Title: HyScanObjectModel
+ * 
+ * HyScanObjectModel - класс асинхронной работы с параметрами проекта.
+ * Он представляет собой обертку над #HyScanObjectData. Класс предоставляет
+ * все методы, необходимые для создания, изменения и удаления объектов из определённой
+ * группы параметров проекта.
+ *
+ * Сигнал "changed" сигнализирует о том, что есть изменения в списке объектов.
+ * Прямо в обработчике сигнала можно получить актуальный список объектов.
+ *
+ * Класс полностью потокобезопасен и может использоваться в MainLoop.
  *
  */
 
 #include "hyscan-object-model.h"
 
-#define DELAY (250 * G_TIME_SPAN_MILLISECOND)
+#define CHECK_INTERVAL_US (250 * G_TIME_SPAN_MILLISECOND)
+#define ALERT_INTERVAL_MS (500)
 
 enum
 {
@@ -50,8 +93,8 @@ typedef struct
 struct _HyScanObjectModelPrivate
 {
   GType                    data_type;        /* Класс работы с данными. */
-  HyScanObjectModelState     cur_state;        /* Текущее состояние. */
-  HyScanObjectModelState     new_state;        /* Желаемое состояние. */
+  HyScanObjectModelState   cur_state;        /* Текущее состояние. */
+  HyScanObjectModelState   new_state;        /* Желаемое состояние. */
   GMutex                   state_lock;       /* Блокировка состояния. */
 
   GThread                 *processing;       /* Поток обработки. */
@@ -69,33 +112,33 @@ struct _HyScanObjectModelPrivate
   GMutex                   objects_lock;     /* Блокировка списка объектов. */
 };
 
-static void     hyscan_object_model_object_constructed     (GObject                   *object);
-static void     hyscan_object_model_object_finalize        (GObject                   *object);
-static void     hyscan_object_model_set_property           (GObject                   *object,
-                                                            guint                      prop_id,
-                                                            const GValue              *value,
-                                                            GParamSpec                *pspec);
+static void         hyscan_object_model_object_constructed     (GObject                   *object);
+static void         hyscan_object_model_object_finalize        (GObject                   *object);
+static void         hyscan_object_model_set_property           (GObject                   *object,
+                                                                guint                      prop_id,
+                                                                const GValue              *value,
+                                                                GParamSpec                *pspec);
+                    
+static void         hyscan_object_model_clear_state            (HyScanObjectModelState    *state);
+static gboolean     hyscan_object_model_track_sync             (HyScanObjectModelPrivate  *priv);
 
-static void     hyscan_object_model_clear_state            (HyScanObjectModelState    *state);
-static gboolean hyscan_object_model_track_sync             (HyScanObjectModelPrivate  *priv);
-
-static GHashTable * hyscan_object_model_make_ht            (HyScanObjectModelPrivate  *priv);
-static void     hyscan_object_model_add_task               (HyScanObjectModel         *model,
-                                                            const gchar               *id,
-                                                            const HyScanObject        *object,
-                                                            gint                       action);
-static void     hyscan_object_model_free_task              (gpointer                   _task,
-                                                            gpointer                   _mdata);
-static void     hyscan_object_model_do_task                (gpointer                   data,
-                                                            gpointer                   user_data);
-static void     hyscan_object_model_do_all_tasks           (HyScanObjectModelPrivate  *priv,
-                                                            HyScanObjectData          *data);
-static GHashTable * hyscan_object_model_get_all_objects    (HyScanObjectModelPrivate  *priv,
-                                                            HyScanObjectData          *data);
-static gpointer hyscan_object_model_processing             (gpointer                   data);
-static gboolean hyscan_object_model_signaller              (gpointer                   data);
-
-static guint    hyscan_object_model_signals[SIGNAL_LAST] = {0};
+static GHashTable * hyscan_object_model_make_ht                (HyScanObjectModelPrivate  *priv);
+static void         hyscan_object_model_add_task               (HyScanObjectModel         *model,
+                                                                const gchar               *id,
+                                                                const HyScanObject        *object,
+                                                                gint                       action);
+static void         hyscan_object_model_free_task              (gpointer                   _task,
+                                                                gpointer                   _mdata);
+static void         hyscan_object_model_do_task                (gpointer                   data,
+                                                                gpointer                   user_data);
+static void         hyscan_object_model_do_all_tasks           (HyScanObjectModelPrivate  *priv,
+                                                                HyScanObjectData          *data);
+static GHashTable * hyscan_object_model_get_all_objects        (HyScanObjectModelPrivate  *priv,
+                                                                HyScanObjectData          *data);
+static gpointer     hyscan_object_model_processing             (gpointer                   data);
+static gboolean     hyscan_object_model_signaller              (gpointer                   data);
+                    
+static guint        hyscan_object_model_signals[SIGNAL_LAST] = {0};
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectModel, hyscan_object_model, G_TYPE_OBJECT);
 
@@ -138,8 +181,8 @@ hyscan_object_model_object_constructed (GObject *object)
   g_cond_init (&priv->im_cond);
 
   priv->stop = FALSE;
-  priv->processing = g_thread_new ("object-model-process", hyscan_object_model_processing, priv);
-  priv->alerter = g_timeout_add (500, hyscan_object_model_signaller, model);
+  priv->processing = g_thread_new ("object-model", hyscan_object_model_processing, priv);
+  priv->alerter = g_timeout_add (ALERT_INTERVAL_MS, hyscan_object_model_signaller, model);
 }
 
 static void
@@ -226,7 +269,7 @@ hyscan_object_model_make_ht (HyScanObjectModelPrivate *priv)
   GDestroyNotify destroy_func;
 
   data_class = g_type_class_ref (priv->data_type);
-  destroy_func = data_class->object_destroy;
+  destroy_func = (GDestroyNotify) data_class->object_destroy;
   g_type_class_unref (data_class);
 
   return g_hash_table_new_full (g_str_hash, g_str_equal, g_free, destroy_func);
@@ -249,7 +292,7 @@ hyscan_object_model_add_task (HyScanObjectModel  *model,
   task = g_new (HyScanObjectModelTask, 1);
   task->action = action;
   task->id = (id != NULL) ? g_strdup (id) : NULL;
-  task->object = object != NULL ? klass->object_copy (object) : NULL;
+  task->object = klass->object_copy (object);
 
   g_type_class_unref (klass);
 
@@ -271,20 +314,21 @@ hyscan_object_model_free_task (gpointer _task,
 {
   HyScanObjectModelTask *task = _task;
   HyScanObjectData *mdata = _mdata;
+  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (mdata);
 
   if (task->object != NULL)
-    hyscan_object_data_destroy (mdata, task->object);
+    klass->object_destroy (task->object);
   g_free (task->id);
   g_free (task);
 }
 
 /* Функция выполняет задание. */
 static void
-hyscan_object_model_do_task (gpointer _task,
-                             gpointer _mdata)
+hyscan_object_model_do_task (gpointer data,
+                             gpointer user_data)
 {
-  HyScanObjectModelTask *task = _task;
-  HyScanObjectData *mdata = _mdata;
+  HyScanObjectModelTask *task = data;
+  HyScanObjectData *mdata = user_data;
 
   switch (task->action)
     {
@@ -362,7 +406,7 @@ hyscan_object_model_processing (gpointer data)
 {
   HyScanObjectModelPrivate *priv = data;
   HyScanObjectData *mdata = NULL; /* Объект работы с объектами. */
-  GHashTable *object_list;        /* Метки из БД. */
+  GHashTable *object_list;        /* Объекты из параметров проекта БД. */
   GHashTable *temp;               /* Для обмена списка объектов. */
   GMutex im_lock;                 /* Мьютекс нужен для GCond. */
   guint32 oldmc, mc;              /* Значения счетчика изменений. */
@@ -379,7 +423,7 @@ hyscan_object_model_processing (gpointer data)
       if (oldmc == mc && g_atomic_int_get (&priv->im_flag) == 0)
         {
           gboolean triggered;
-          gint64 until = g_get_monotonic_time () + DELAY;
+          gint64 until = g_get_monotonic_time () + CHECK_INTERVAL_US;
 
           g_mutex_lock (&im_lock);
           triggered = g_cond_wait_until (&priv->im_cond, &im_lock, until);
@@ -421,7 +465,7 @@ hyscan_object_model_processing (gpointer data)
           if (mdata == NULL)
             {
               g_atomic_int_set (&priv->im_flag, 1);
-              g_usleep (DELAY);
+              g_usleep (CHECK_INTERVAL_US);
               continue;
             }
 
@@ -472,7 +516,14 @@ hyscan_object_model_signaller (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
-/* Функция создает новый объект HyScanObjectModel. */
+/**
+ * hyscan_object_model_new:
+ * @data_type: тип класса работы с параметрами проекта.
+ *
+ * Функция создает новый объект HyScanObjectModel.
+ *
+ * Returns: объект HyScanObjectModel.
+ */
 HyScanObjectModel*
 hyscan_object_model_new (GType data_type)
 {
@@ -480,7 +531,13 @@ hyscan_object_model_new (GType data_type)
                        "data-type", data_type, NULL);
 }
 
-/* Функция устанавливает проект. */
+/**
+ * hyscan_object_model_set_project:
+ * @model: указатель на #HyScanObjectModel
+ * @project: имя проекта
+ *
+ * Функция устанавливает проект.
+ */
 void
 hyscan_object_model_set_project (HyScanObjectModel *model,
                                  HyScanDB          *db,
@@ -509,7 +566,12 @@ hyscan_object_model_set_project (HyScanObjectModel *model,
   g_mutex_unlock (&priv->state_lock);
 }
 
-/* Функция инициирует принудительное обновление списка объектов. */
+/**
+ * hyscan_object_model_refresh:
+ * @model: указатель на #HyScanObjectModel
+ *
+ * Функция инициирует принудительное обновление списка объектов.
+ */
 void
 hyscan_object_model_refresh (HyScanObjectModel *model)
 {
@@ -519,7 +581,14 @@ hyscan_object_model_refresh (HyScanObjectModel *model)
   g_cond_signal (&model->priv->im_cond);
 }
 
-/* Функция создает объект в базе данных. */
+/**
+ * hyscan_object_model_add_object:
+ * @model: указатель на #HyScanObjectModel
+ * @object: создаваемый объект.
+ * 
+ * Функция создает объект в параметрах проекта.
+ *
+ */
 void
 hyscan_object_model_add_object (HyScanObjectModel  *model,
                                 const HyScanObject *object)
@@ -529,7 +598,15 @@ hyscan_object_model_add_object (HyScanObjectModel  *model,
   hyscan_object_model_add_task (model, NULL, object, OBJECT_ADD);
 }
 
-/* Функция изменяет объект в базе данных. */
+/**
+ * hyscan_object_model_modify_object:
+ * @model: указатель на #HyScanObjectModel
+ * @id: идентификатор объекта
+ * @object: новые значения.
+ * 
+ * Функция изменяет объект в параметрах проекта.
+ * В результате этой функции все поля объекта будут перезаписаны.
+ */
 void
 hyscan_object_model_modify_object (HyScanObjectModel  *model,
                                    const gchar        *id,
@@ -540,7 +617,14 @@ hyscan_object_model_modify_object (HyScanObjectModel  *model,
   hyscan_object_model_add_task (model, id, object, OBJECT_MODIFY);
 }
 
-/* Функция удаляет объект из базы данных. */
+/**
+ * hyscan_object_model_remove_object:
+ * @model: указатель на #HyScanObjectModel
+ * @id: идентификатор объекта.
+ * 
+ * Функция удаляет объект из параметров проекта.
+ *
+ */
 void
 hyscan_object_model_remove_object (HyScanObjectModel *model,
                                    const gchar       *id)
@@ -550,7 +634,15 @@ hyscan_object_model_remove_object (HyScanObjectModel *model,
   hyscan_object_model_add_task (model, id, NULL, OBJECT_REMOVE);
 }
 
-/* Функция возвращает список объектов из внутреннего буфера. */
+/**
+ * hyscan_object_model_get:
+ * @model: указатель на #HyScanObjectModel
+ * 
+ * Функция возвращает список объектов из внутреннего буфера.
+ *
+ * Returns: (transfer full): GHashTable, где ключом является идентификатор объекта,
+ * а значением - структура #HyScanObject.
+ */
 GHashTable*
 hyscan_object_model_get (HyScanObjectModel *model)
 {
@@ -609,7 +701,7 @@ hyscan_object_model_get_id (HyScanObjectModel *model,
   data_class = g_type_class_ref (priv->data_type);
 
   object = g_hash_table_lookup (priv->objects, id);
-  copy = object != NULL ? data_class->object_copy (object) : NULL;
+  copy = data_class->object_copy (object);
   g_mutex_unlock (&priv->objects_lock);
 
   g_type_class_unref (data_class);
@@ -617,6 +709,15 @@ hyscan_object_model_get_id (HyScanObjectModel *model,
   return copy;
 }
 
+/**
+ * hyscan_object_model_copy:
+ * @model: указатель на #HyScanObjectModel
+ * @src: таблица объектов
+ *
+ * Вспомогательная функция для создания копии таблицы объектов.
+ *
+ * Returns: (transfer full): новая таблица, для удаления g_hash_table_unref().
+ */
 GHashTable *
 hyscan_object_model_copy (HyScanObjectModel *model,
                           GHashTable        *src)

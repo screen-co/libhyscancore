@@ -1,5 +1,5 @@
 #include <hyscan-data-writer.h>
-#include <hyscan-mark-data-waterfall.h>
+#include <hyscan-object-data-wfmark.h>
 #include <glib/gprintf.h>
 #include <stdio.h>
 #include <hyscan-mark.h>
@@ -11,20 +11,20 @@ gboolean  mark_lookup (HyScanMarkWaterfall  *mark);
 gboolean  make_track  (HyScanDB *db,
                        gchar    *name);
 
-HyScanMark test_marks[N_MARKS] =
+HyScanMarkWaterfall test_marks[N_MARKS] =
 {
-  {.waterfall = {HYSCAN_MARK_WATERFALL, "test-mark", "this mark is for testing purposes", "tester", 12345678,
-                 100, 10, 1, 10, "gals",
-                 "HYSCAN_SOURCE_SIDE_SCAN_PORT", 0}},
-  {.waterfall = {HYSCAN_MARK_WATERFALL, "ac dc", "i've got some rock'n'roll thunder", "rocker", 87654321,
-                 200, 20, 3, 32, "gals",
-                 "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 2}},
-  {.waterfall = {HYSCAN_MARK_WATERFALL, "rolling stones", "all i hear is doom and gloom", "rocker", 2468,
-                 300, 30, 5, 54, "gals",
-                 "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 4}},
-  {.waterfall = {HYSCAN_MARK_WATERFALL, "modified mark", "this mark was modified", "modder", 1357,
-                 400, 40, 7, 76, "gals",
-                 "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 6}}
+  {HYSCAN_MARK_WATERFALL, "test-mark",      "this mark is for testing purposes", "tester", 12345678,
+   100, 10, 1, 10, "gals",
+   "HYSCAN_SOURCE_SIDE_SCAN_PORT", 0},
+  {HYSCAN_MARK_WATERFALL, "ac dc",          "i've got some rock'n'roll thunder", "rocker", 87654321,
+   200, 20, 3, 32, "gals",
+   "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 2},
+  {HYSCAN_MARK_WATERFALL, "rolling stones", "all i hear is doom and gloom",      "rocker", 2468,
+   300, 30, 5, 54, "gals",
+   "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 4},
+  {HYSCAN_MARK_WATERFALL, "modified mark",  "this mark was modified",            "modder", 1357,
+   400, 40, 7, 76, "gals",
+   "HYSCAN_SOURCE_SIDE_SCAN_STARBOARD", 6}
 };
 
 int
@@ -35,7 +35,7 @@ main (int argc, char **argv)
   gchar *name = "test";                  /* Проект и галс. */
 
   HyScanObjectData *data = NULL;
-  HyScanMark *mark;
+  HyScanMarkWaterfall *mark;
 
   gchar **list;
   guint list_len;
@@ -63,38 +63,38 @@ main (int argc, char **argv)
   make_track (db, name);
 
   /* Начинаем тестирование объекта. */
-  data = g_object_new (HYSCAN_TYPE_MARK_DATA_WATERFALL, "db", db, "project", name, NULL);
+  data = g_object_new (HYSCAN_TYPE_OBJECT_DATA_WFMARK, "db", db, "project", name, NULL);
 
   /* Отправим несколько меток. */
   g_message ("Adding marks...");
-  hyscan_object_data_add (data, &test_marks[0], NULL);
-  hyscan_object_data_add (data, &test_marks[1], NULL);
-  hyscan_object_data_add (data, &test_marks[2], NULL);
+  hyscan_object_data_add (data, (HyScanObject *) &test_marks[0], NULL);
+  hyscan_object_data_add (data, (HyScanObject *) &test_marks[1], NULL);
+  hyscan_object_data_add (data, (HyScanObject *) &test_marks[2], NULL);
 
   /* Проверим, что получилось. */
   list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      mark = hyscan_object_data_get (data, list[i]);
-      if (mark == NULL || !mark_lookup (&mark->waterfall))
+      mark = (HyScanMarkWaterfall *) hyscan_object_data_get (data, list[i]);
+      if (mark == NULL || !mark_lookup (mark))
         g_error ("Failed to get mark <%s>", list[i]);
       else
-        hyscan_mark_free (mark);
+        hyscan_mark_waterfall_free (mark);
     }
 
   /* Изменяем какую-то метку. */
   g_message ("Modifying mark...");
-  hyscan_object_data_modify (data, list[1], &test_marks[3]);
+  hyscan_object_data_modify (data, list[1], (const HyScanObject *) &test_marks[3]);
 
   g_strfreev (list);
   list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      mark = hyscan_object_data_get (data, list[i]);
-      if (mark == NULL || !mark_lookup (&mark->waterfall))
+      mark = (HyScanMarkWaterfall *) hyscan_object_data_get (data, list[i]);
+      if (mark == NULL || !mark_lookup (mark))
         g_error ("Failed to get mark <%s>", list[i]);
       else
-        hyscan_mark_free (mark);
+        hyscan_mark_waterfall_free (mark);
     }
 
   /* Удаляем метку. */
@@ -105,11 +105,11 @@ main (int argc, char **argv)
   list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      mark = hyscan_object_data_get (data, list[i]);
-      if (mark == NULL || !mark_lookup (&mark->waterfall))
+      mark = (HyScanMarkWaterfall *) hyscan_object_data_get (data, list[i]);
+      if (mark == NULL || !mark_lookup (mark))
         g_error ("Failed to get mark <%s>", list[i]);
       else
-        hyscan_mark_free (mark);
+        hyscan_mark_waterfall_free (mark);
     }
   g_strfreev (list);
 

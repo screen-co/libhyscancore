@@ -1,4 +1,4 @@
-/* hyscan-mark-data-waterfall.h
+/* hyscan-object-data-wfmark.h
  *
  * Copyright 2017-2019 Screen LLC, Dmitriev Alexander <m1n7@yandex.ru>
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
@@ -33,39 +33,39 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#ifndef __HYSCAN_MARK_DATA_WATERFALL_H__
-#define __HYSCAN_MARK_DATA_WATERFALL_H__
+#ifndef __HYSCAN_OBJECT_DATA_WFMARK_H__
+#define __HYSCAN_OBJECT_DATA_WFMARK_H__
 
 #include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_MARK_DATA_WATERFALL             (hyscan_mark_data_waterfall_get_type ())
-#define HYSCAN_MARK_DATA_WATERFALL(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_MARK_DATA_WATERFALL, HyScanMarkDataWaterfall))
-#define HYSCAN_IS_MARK_DATA_WATERFALL(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_MARK_DATA_WATERFALL))
-#define HYSCAN_MARK_DATA_WATERFALL_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_MARK_DATA_WATERFALL, HyScanMarkDataWaterfallClass))
-#define HYSCAN_IS_MARK_DATA_WATERFALL_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_MARK_DATA_WATERFALL))
-#define HYSCAN_MARK_DATA_WATERFALL_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_MARK_DATA_WATERFALL, HyScanMarkDataWaterfallClass))
+#define HYSCAN_TYPE_OBJECT_DATA_WFMARK             (hyscan_object_data_wfmark_get_type ())
+#define HYSCAN_OBJECT_DATA_WFMARK(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_OBJECT_DATA_WFMARK, HyScanObjectDataWfmark))
+#define HYSCAN_IS_MARK_DATA_WATERFALL(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_OBJECT_DATA_WFMARK))
+#define HYSCAN_OBJECT_DATA_WFMARK_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_OBJECT_DATA_WFMARK, HyScanObjectDataWfmarkClass))
+#define HYSCAN_IS_MARK_DATA_WATERFALL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_OBJECT_DATA_WFMARK))
+#define HYSCAN_OBJECT_DATA_WFMARK_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_OBJECT_DATA_WFMARK, HyScanObjectDataWfmarkClass))
 
-typedef struct _HyScanMarkDataWaterfall HyScanMarkDataWaterfall;
-typedef struct _HyScanMarkDataWaterfallPrivate HyScanMarkDataWaterfallPrivate;
-typedef struct _HyScanMarkDataWaterfallClass HyScanMarkDataWaterfallClass;
+typedef struct _HyScanObjectDataWfmark HyScanObjectDataWfmark;
+typedef struct _HyScanObjectDataWfmarkPrivate HyScanObjectDataWfmarkPrivate;
+typedef struct _HyScanObjectDataWfmarkClass HyScanObjectDataWfmarkClass;
 
-struct _HyScanMarkDataWaterfall
+struct _HyScanObjectDataWfmark
 {
   HyScanObjectData parent_instance;
   
-  HyScanMarkDataWaterfallPrivate *priv;
+  HyScanObjectDataWfmarkPrivate *priv;
 };
 
-struct _HyScanMarkDataWaterfallClass
+struct _HyScanObjectDataWfmarkClass
 {
   HyScanObjectDataClass parent_class;
 };
 
 HYSCAN_API
-GType                           hyscan_mark_data_waterfall_get_type          (void);
+GType                           hyscan_object_data_wfmark_get_type          (void);
 
 G_END_DECLS
 
-#endif /* __HYSCAN_MARK_DATA_WATERFALL_H__ */
+#endif /* __HYSCAN_OBJECT_DATA_WFMARK_H__ */
