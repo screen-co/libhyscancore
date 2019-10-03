@@ -242,8 +242,13 @@ hyscan_nmea_read_line (HyScanNmeaFileDevice *device)
   g_string_erase (priv->line, 0, -1);
 
   /* Посимвольно добавляем данные из файла в буфер до конца строки / файла. */
-  while ((c = fgetc (priv->fp)) != EOF && c != '\n')
-    g_string_append_c (priv->line, c);
+  while ((c = fgetc (priv->fp)) != EOF)
+    {
+      g_string_append_c (priv->line, c);
+
+      if (c == '\n')
+        break;
+    }
 
   return priv->line->len > 0;
 }
