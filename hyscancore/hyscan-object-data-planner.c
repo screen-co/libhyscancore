@@ -274,6 +274,8 @@ hyscan_object_data_planner_string_to_points (const gchar *string,
   GArray *array;
 
   array = g_array_new (FALSE, FALSE, sizeof (HyScanGeoGeodetic));
+  if (string == NULL)
+    goto exit;
 
   while (*string != '\0') {
     gchar *num_end;
@@ -294,6 +296,7 @@ hyscan_object_data_planner_string_to_points (const gchar *string,
     g_array_append_val (array, point);
   }
 
+exit:
   *points_len = array->len;
 
   return (HyScanGeoGeodetic *) g_array_free (array, FALSE);
@@ -304,26 +307,32 @@ hyscan_object_data_planner_points_to_string (HyScanGeoGeodetic *points,
                                              gsize              points_len)
 {
   gchar *vertices;
-  gchar *vertex, *vertices_end;
+  gchar *vertex;
   gsize i;
   gsize max_len;
+  gint buf_len = 16;
 
   if (points_len == 0)
     return g_strdup ("");
 
-  /* Число символов для записи вершины: -123.12345678,-123.12345678. */
-  max_len = 32 * points_len + 1;
+  /* Число символов для записи вершины: "-123.12345678,-123.12345678 ". */
+  max_len = (buf_len + 1 + buf_len + 1) * points_len + 1;
   vertices = g_new (gchar, max_len);
-  vertices_end = vertices + max_len;
 
   vertex = vertices;
   for (i = 0; i < points_len; ++i)
     {
-      gint n_bytes;
+      g_ascii_dtostr (vertex, buf_len, points[i].lat);
+      vertex += strlen (vertex);
 
-      n_bytes = g_snprintf (vertex, (gulong) (vertices_end - vertex),
-                            "%.8f,%.8f ", points[i].lat, points[i].lon);
-      vertex = vertex + n_bytes;
+      *vertex = ',';
+      vertex += 1;
+
+      g_ascii_dtostr (vertex, buf_len, points[i].lon);
+      vertex += strlen (vertex);
+
+      *vertex = ' ';
+      vertex += 1;
     }
 
   return vertices;
