@@ -335,6 +335,8 @@ hyscan_object_data_planner_points_to_string (HyScanGeoGeodetic *points,
       vertex += 1;
     }
 
+  *vertex = '\0';
+
   return vertices;
 }
 
