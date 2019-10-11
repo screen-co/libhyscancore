@@ -594,6 +594,7 @@ hyscan_object_model_add_object (HyScanObjectModel  *model,
                                 const HyScanObject *object)
 {
   g_return_if_fail (HYSCAN_IS_OBJECT_MODEL (model));
+  g_return_if_fail (object != NULL);
 
   hyscan_object_model_add_task (model, NULL, object, OBJECT_ADD);
 }
@@ -613,6 +614,7 @@ hyscan_object_model_modify_object (HyScanObjectModel  *model,
                                    const HyScanObject *object)
 {
   g_return_if_fail (HYSCAN_IS_OBJECT_MODEL (model));
+  g_return_if_fail (id != NULL && object != NULL);
 
   hyscan_object_model_add_task (model, id, object, OBJECT_MODIFY);
 }
@@ -630,6 +632,7 @@ hyscan_object_model_remove_object (HyScanObjectModel *model,
                                    const gchar       *id)
 {
   g_return_if_fail (HYSCAN_IS_OBJECT_MODEL (model));
+  g_return_if_fail (id != NULL);
 
   hyscan_object_model_add_task (model, id, NULL, OBJECT_REMOVE);
 }
@@ -686,6 +689,7 @@ hyscan_object_model_get_id (HyScanObjectModel *model,
   HyScanObject *object, *copy = NULL;
 
   g_return_val_if_fail (HYSCAN_IS_OBJECT_MODEL (model), NULL);
+  g_return_val_if_fail (id != NULL, NULL);
   priv = model->priv;
 
   g_mutex_lock (&priv->objects_lock);
