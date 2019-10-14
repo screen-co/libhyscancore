@@ -41,6 +41,7 @@
 
 #include "hyscan-planner.h"
 #include <string.h>
+#include <math.h>
 
 /**
  * hyscan_planner_origin_new:
@@ -152,6 +153,58 @@ hyscan_planner_track_free (HyScanPlannerTrack *track)
 }
 
 /**
+ * hyscan_planner_track_geo:
+ * @track: указатель на структуру с галсом #HyScanPlannerTrack
+ *
+ * Создаёт объект #HyScanGeo, в топоцентрической системе координат которого
+ * начало координат совпадает с началом галса @track, а ось OX направлена по
+ * направлению движения на галсе.
+ *
+ * Returns: (transfer-full): новый объект #HyScanGeo
+ */
+HyScanGeo *
+hyscan_planner_track_geo (const HyScanPlannerTrack *track)
+{
+  HyScanGeo *tmp_geo;
+  HyScanGeoGeodetic origin;
+  HyScanGeoCartesian2D start, end;
+
+  origin = track->start;
+  origin.h = 0;
+
+  tmp_geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
+  hyscan_geo_geo2topoXY (tmp_geo, &start, track->start);
+  hyscan_geo_geo2topoXY (tmp_geo, &end, track->end);
+  origin.h = atan2 (end.x - start.x, end.y - start.y) / G_PI * 180.0;
+
+  g_object_unref (tmp_geo);
+
+  return hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
+}
+
+/**
+ * hyscan_planner_track_angle:
+ * @track: указатель на структуру с галсом #HyScanPlannerTrack
+ *
+ * Определяет азимут из начала галса к концу галса.
+ *
+ * Returns: значение азимута в градусах
+ */
+gdouble
+hyscan_planner_track_angle (const HyScanPlannerTrack *track)
+{
+  gdouble lat1, lat2, lon1, lon2, dlon;
+
+  lat1 = track->start.lat / 180.0 * G_PI;
+  lon1 = track->start.lon / 180.0 * G_PI;
+  lat2 = track->end.lat / 180.0 * G_PI;
+  lon2 = track->end.lon / 180.0 * G_PI;
+  dlon = lon2 - lon1;
+
+  return atan2 (sin(dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon)) / G_PI * 180.0;
+}
+
+/**
  * hyscan_planner_zone_new:
  *
  * Создаёт пустую структуру #HyScanPlannerZone
@@ -160,7 +213,7 @@ HyScanPlannerZone *
 hyscan_planner_zone_new (void)
 {
   HyScanPlannerZone *zone;
-  
+
   zone = g_slice_new0 (HyScanPlannerZone);
   zone->type = HYSCAN_PLANNER_ZONE;
 

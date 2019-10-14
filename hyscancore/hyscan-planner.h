@@ -126,6 +126,12 @@ HYSCAN_API
 void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
 
 HYSCAN_API
+HyScanGeo *            hyscan_planner_track_geo          (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+gdouble                hyscan_planner_track_angle        (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
 HyScanPlannerZone *    hyscan_planner_zone_new           (void);
 
 HYSCAN_API
