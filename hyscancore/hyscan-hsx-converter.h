@@ -82,7 +82,7 @@ HYSCAN_API
 HyScanHSXConverter*    hyscan_hsx_converter_new              (const gchar          *result_path);
 
 HYSCAN_API
-void                   hyscan_hsx_converter_set_track        (HyScanHSXConverter   *self,
+gboolean               hyscan_hsx_converter_set_track        (HyScanHSXConverter   *self,
                                                               HyScanDB             *db,
                                                               const gchar          *project_name,
                                                               const gchar          *track_name);
@@ -96,6 +96,10 @@ void                   hyscan_hsx_converter_set_image_prm    (HyScanHSXConverter
                                                               gfloat                black,
                                                               gfloat                white,
                                                               gfloat                gamma);
+
+HYSCAN_API
+void                   hyscan_hsx_converter_set_velosity     (HyScanHSXConverter   *self,
+                                                              gfloat                velosity);
 
 HYSCAN_API
 gboolean               hyscan_hsx_converter_run              (HyScanHSXConverter   *self);

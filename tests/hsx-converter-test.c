@@ -38,16 +38,24 @@
 GMainLoop *main_loop;
 
 void 
+done (HyScanHSXConverter *converter)
+{
+  g_message ("Converter done");
+  g_main_loop_quit (main_loop);
+}
+
+void 
 current_percent (HyScanHSXConverter *converter,
                  gint                percent)
 {
 	printf ("%d%% ", percent);
 
-  if (percent == 100)
-  {
-    hyscan_hsx_converter_stop (converter);
-    g_main_loop_quit (main_loop);
-  }
+  // if (percent == 100)
+  // {
+  //   hyscan_hsx_converter_stop (converter);
+  //   g_main_loop_quit (main_loop);
+  //   g_message ("Converter done");
+  // }
 }
 
 int
@@ -114,11 +122,14 @@ main (int    argc,
                     G_CALLBACK (current_percent),
                     NULL);
 
+  g_signal_connect ((gpointer)converter, "done",
+                    G_CALLBACK (done),
+                    NULL);
+
   hyscan_hsx_converter_set_track (converter, db, project_name, track_name);
   
-  g_usleep (G_TIME_SPAN_SECOND);
   if (!hyscan_hsx_converter_run (converter))
-    g_error ("Can't run Converter");
+   g_error ("Can't run Converter");
 
   g_message ("%s", hyscan_hsx_converter_is_run (converter) ? "RUN" : "STOP");
 
