@@ -149,7 +149,7 @@ hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D *p1,
   if (o4 == 0 && hyscan_cartesian_on_segment (p2, q1, q2))
     return TRUE;
 
-  return FALSE; /* Ни один из предыдущих случае. */
+  return FALSE; /* Ни один из предыдущих случаев. */
 }
 
 static inline gboolean
@@ -420,4 +420,39 @@ hyscan_cartesian_rotate_area (HyScanGeoCartesian2D *area_from,
 
   *rotated_from = rotated_from_ret;
   *rotated_to = rotated_to_ret;
+}
+
+/**
+ * hyscan_cartesian_is_inside_polygon:
+ * @vertices: (array length=@n) (element-type HyScanGeoCartesian2D): массив с вершинами многоугольника
+ * @n: число вершин многоугольника
+ * @p: координаты точки
+ *
+ * Проверяет, находится ли указанная точка @p внутри многоугольника с вершинами @vertices.
+ *
+ * Returns: %TRUE, если точка лежит внутри многоугольника
+ */
+gboolean
+hyscan_cartesian_is_inside_polygon (HyScanGeoCartesian2D  *vertices,
+                                    gint                   n,
+                                    HyScanGeoCartesian2D  *p)
+{
+  HyScanGeoCartesian2D extreme = { G_MAXDOUBLE, p->y }; /* Точка на бесконечности. */
+  gint count = 0, i = 0;
+
+  /* Должно быть как минимум три вершины в многоугольнике. */
+  if (n < 3)
+    return FALSE;
+
+  /* Считаем количество пересечний со сторонами многоугольника. */
+  for (i = 0; i < n; ++i)
+   {
+     gint next = (i + 1) % n;
+
+     if (hyscan_cartesian_segments_intersect (&vertices[i], &vertices[next], p, &extreme))
+       count++;
+   }
+
+  /* Возвращает TRUE, если нечётное число пересечений; иначе FALSE. */
+  return count & 1;  /* То же самое, что (count%2 == 1) */
 }

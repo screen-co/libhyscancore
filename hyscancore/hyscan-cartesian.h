@@ -82,4 +82,9 @@ void             hyscan_cartesian_rotate_area        (HyScanGeoCartesian2D *area
                                                       HyScanGeoCartesian2D *rotated_from,
                                                       HyScanGeoCartesian2D *rotated_to);
 
+HYSCAN_API
+gboolean         hyscan_cartesian_is_inside_polygon  (HyScanGeoCartesian2D *vertices,
+                                                      gint                  n,
+                                                      HyScanGeoCartesian2D *p);
+
 #endif /* __HYSCAN_CARTESIAN_H__ */
