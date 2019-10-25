@@ -82,6 +82,8 @@
 #define HYSCAN_HSX_CONVERTER_DEFAULT_MAX_AMPLITUDE    8191    /* Максимальное значение амплитуды */
 #define HYSCAN_HSX_CONVERTER_DEFAULT_MAX_RSS_SIZE     2048    /* Максимум значений на один борт в RSS строке */
 #define HYSCAN_HSX_CONVERTER_DEFAULT_VELOSITY         1500.0  /* Дефолтное значение скорости звука в воде, м/с */
+#define UNINIT                                        (-500.0)  /* Неинициализированное значение */
+
 
 /* Добавка микросекунд в GDateTime */
 GDateTime*
@@ -148,7 +150,8 @@ typedef struct
 {
   struct
   {
-    gdouble                      time;                  /* Метка времени */
+    gdouble                      in_time;               /* Метка времени из БД */
+    gdouble                      time;                  /* Метка времени с начала суток*/
     gint                        *data;                  /* Указатель на данные */
     guint32                      size;                  /* Размер данных */
   }                              acoustic[HYSCAN_AC_TYPE_LAST];
@@ -165,8 +168,8 @@ typedef struct
   gdouble                        gga_time;              /* Время GGA */
   gdouble                        hdt_time;              /* Время HDT */
 
-  gdouble                        gps_time;              /* Время от датчика GPS */
-  gdouble                        heading;               /* Курс (один из track or heading) */
+  gdouble                        heading;               /* Курс (HDT) */
+  gdouble                        tracking;              /* Курс (COG) */
   gdouble                        quality;               /* Качество */
   gdouble                        speed_knots;           /* Скорость носителя в морских узлах */
   gdouble                        hdop_gps;              /* ссс */
@@ -219,6 +222,7 @@ struct _HyScanHSXConverterPrivate
   volatile gint                  is_run;                /* Флаг работы потока */
 
   HyScanHSXConverterOut          out;                   /* Выходная структура для записи в файл */
+  HyScanHSXConverterOutData      data;                  /* Выходные даннные для записи в файл */
 };
 
 static void       hyscan_hsx_converter_set_property             (GObject                   *object,
@@ -248,6 +252,13 @@ static void       hyscan_hsx_converter_clamp_0_1                (gfloat         
 static gint*      hyscan_hsx_converter_float2int                (gfloat                    *data, 
                                                                  gint                       size, 
                                                                  gint                       mult);
+
+/* Определение индекса, ближайшего по времени */
+static guint32    hyscan_hsx_converter_nearest                  (gint64                     time,
+                                                                 guint32                    lindex,
+                                                                 guint32                    rindex,
+                                                                 gint64                     ltime, 
+                                                                 gint64                     rtime);
 
 static void       hyscan_hsx_converter_sources_clear            (HyScanHSXConverter        *self);
 
@@ -279,17 +290,14 @@ void              hyscan_hsx_converter_range_cb                 (HyScanHSXConver
                                                                  gpointer                   user_data);
 
 static gboolean   hyscan_hsx_converter_process_acoustic         (HyScanHSXConverter        *self,
-                                                                 gint64                     time,
-                                                                 HyScanHSXConverterOutData *out_data);
+                                                                 gint64                     time);
 
 static gboolean   hyscan_hsx_converter_process_nmea             (HyScanHSXConverter        *self,
-                                                                 gint64                     time,
-                                                                 HyScanHSXConverterOutData *out_data);
+                                                                 gint64                     time);
 
-static gboolean   hyscan_hsx_converter_send_out                 (HyScanHSXConverter        *self,
-                                                                 HyScanHSXConverterOutData *out_data);
+static gboolean   hyscan_hsx_converter_send_out                 (HyScanHSXConverter        *self);
 
-static void       hyscan_hsx_converter_clear_out                (HyScanHSXConverterOutData *out_data);
+static void       hyscan_hsx_converter_clear_out_data           (HyScanHSXConverter        *self);
 
 static guint      hyscan_hsx_converter_signals[SIGNAL_LAST]       = { 0 };
 static guint      hyscan_hsx_converter_player[SIGNAL_PLAYER_LAST] = { 0 };
@@ -378,6 +386,7 @@ hyscan_hsx_converter_object_constructed (GObject *object)
   priv->image_prm.white = 1.0;
   priv->image_prm.gamma = 1.0;
 
+  memset (&priv->data, 0, sizeof (HyScanHSXConverterOutData));
   // /* Оформляю подписку на плеер  - НЕ Здесь, т.к. плеер испускает
   //    такой сигнал и при добавлении в него канала данных */
   // hyscan_hsx_converter_player[SIGNAL_PLAYER_PROCESS] =  
@@ -398,12 +407,13 @@ hyscan_hsx_converter_object_finalize (GObject *object)
   HyScanHSXConverterPrivate *priv = self->priv;
 
   hyscan_data_player_shutdown (priv->player);
+  hyscan_hsx_converter_sources_clear (self);
+  hyscan_hsx_converter_out_clear (self);
+
   g_object_unref (priv->player);
   g_object_unref (priv->cache);
   g_object_unref (priv->ampl_factory);
 
-  hyscan_hsx_converter_sources_clear (self);
-  hyscan_hsx_converter_out_clear (self);
   G_OBJECT_CLASS (hyscan_hsx_converter_parent_class)->finalize (object);
 }
 
@@ -484,12 +494,34 @@ hyscan_hsx_converter_float2int (gfloat *data,
   return out;
 }
 
+static guint32
+hyscan_hsx_converter_nearest (gint64  time,
+                              guint32 lindex,
+                              guint32 rindex,
+                              gint64  ltime,
+                              gint64  rtime)
+{
+  if (time <= ltime)
+    return lindex;
+  if (time >= rtime)
+    return rindex;
+
+  if (rtime - time < time - ltime)
+    return rindex;
+
+  return lindex;
+}
+
 static void
 hyscan_hsx_converter_sources_clear (HyScanHSXConverter *self)
 {
   HyScanHSXConverter *hsx_converter = HYSCAN_HSX_CONVERTER (self);
   HyScanHSXConverterPrivate *priv = hsx_converter->priv;
   gint i = 0;
+
+  hyscan_data_player_clear_channels (priv->player); 
+  if (hyscan_hsx_converter_player[SIGNAL_PLAYER_RANGE] != 0)
+    g_signal_handler_disconnect (priv->player, hyscan_hsx_converter_player[SIGNAL_PLAYER_RANGE]);
 
   while (i < HYSCAN_AC_TYPE_LAST)
     g_clear_object (&priv->ampl[i++]);
@@ -518,9 +550,6 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
   gint32 pid = 0, tid = 0;
                             
   cache = priv->cache;
-  hyscan_data_player_clear_channels (priv->player); 
-  if (hyscan_hsx_converter_player[SIGNAL_PLAYER_RANGE] != 0)
-    g_signal_handler_disconnect (priv->player, hyscan_hsx_converter_player[SIGNAL_PLAYER_RANGE]);
 
   hyscan_data_player_set_track (priv->player, db, project_name, track_name);
 
@@ -561,9 +590,6 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
   priv->nmea_data[HYSCAN_NMEA_TYPE_DPT] = 
   hyscan_nmea_data_new (db, cache, project_name, track_name, HYSCAN_NMEA_DATA_DPT);
 */
-  priv->nmea[HYSCAN_NMEA_FIELD_TIME] = HYSCAN_NAV_DATA(
-  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1, HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT));
-
   priv->nmea[HYSCAN_NMEA_FIELD_LAT] = HYSCAN_NAV_DATA(
   hyscan_nmea_parser_new (db, cache, project_name, track_name, 1, HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT));
 
@@ -604,13 +630,13 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
     return FALSE;
   if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_SIDE_SCAN_PORT, 1, HYSCAN_CHANNEL_DATA) < 0)
     return FALSE;
-  g_usleep (G_TIME_SPAN_MILLISECOND * 100);
   if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, HYSCAN_CHANNEL_DATA) < 0)
     return FALSE;
-  g_usleep (G_TIME_SPAN_MILLISECOND * 100);
   if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_NMEA, 1, HYSCAN_CHANNEL_DATA) < 0)
     return FALSE;
-  g_usleep (G_TIME_SPAN_MILLISECOND * 100);
+
+  /* Пауза чтобы отработал range с данными пределов */
+  g_usleep (G_TIME_SPAN_MILLISECOND * 600);
   return TRUE;
 }
 
@@ -652,6 +678,9 @@ hyscan_hsx_converter_out_init (HyScanHSXConverter *self,
       g_warning ("HyScanHSXConverter: can't create file %s", priv->out.file_name);
       return FALSE;
     }
+  
+  memset (&priv->data, 0, sizeof (HyScanHSXConverterOutData));
+  hyscan_hsx_converter_clear_out_data (self);
 
   return hyscan_hsx_converter_make_header (self, project_name);
 }
@@ -722,8 +751,6 @@ hyscan_hsx_converter_proc_cb (HyScanHSXConverter *self,
                               gint64              time,
                               gpointer            user_data)
 {
-  static HyScanHSXConverterOutData data;
-  memset (&data, 0, sizeof (HyScanHSXConverterOutData));
 
   HyScanHSXConverterPrivate *priv = self->priv;
   priv->state.current_percent = (guint) ((time - priv->zero_time) / priv->state.percent_koeff);
@@ -739,16 +766,16 @@ hyscan_hsx_converter_proc_cb (HyScanHSXConverter *self,
       return;
     }
   
-  g_print ("signal_process = time %"G_GINT64_FORMAT"\n", time);
+  // g_print ("signal_process =      time %"G_GINT64_FORMAT"\n", time);
 
-  hyscan_hsx_converter_process_acoustic (self, time, &data);
+  hyscan_hsx_converter_process_acoustic (self, time);
 
-  //hyscan_hsx_converter_process_nmea (self, time, &data);
+  hyscan_hsx_converter_process_nmea (self, time);
 
 
-  hyscan_hsx_converter_send_out (self, &data);
+  hyscan_hsx_converter_send_out (self);
 
-  hyscan_hsx_converter_clear_out (&data);
+  hyscan_hsx_converter_clear_out_data (self);
 }
 
 /* Callback на изменение диапазона данных в плеере */
@@ -768,23 +795,23 @@ hyscan_hsx_converter_range_cb (HyScanHSXConverter *self,
 
   priv->state.percent_koeff = (gdouble)(priv->state.max_time - priv->state.min_time) / 100.0;
 
-  g_print ("min_time %"G_GINT64_FORMAT" max_time %"G_GINT64_FORMAT" percent_koef %f\n", 
-           priv->state.min_time,
-           priv->state.max_time,
-           priv->state.percent_koeff);
+  // g_print ("min_time %"G_GINT64_FORMAT" max_time %"G_GINT64_FORMAT" percent_koef %f\n", 
+       //    priv->state.min_time,
+       //    priv->state.max_time,
+       //    priv->state.percent_koeff);
 
   priv->zero_time = priv->state.min_time;
 }
 
 static gboolean
 hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
-                                       gint64                     time,
-                                       HyScanHSXConverterOutData *out_data)
+                                       gint64                     time)
 {
   HyScanHSXConverterPrivate *priv = self->priv;
+  HyScanHSXConverterOutData *out_data = &priv->data;
   guint rss_elem_cnt = priv->max_rss_size;  
   guint i = 0;
-
+  gboolean is_acoustic_time = FALSE;
   typedef struct
   {
     gboolean exist;
@@ -803,21 +830,41 @@ hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
   for (; i < HYSCAN_AC_TYPE_LAST; i++)
     {
       HyScanDBFindStatus find_status;
-      guint32 index = 0;
+      guint32 lindex = 0, rindex = 0, index = 0;
+      gint64 ltime = 0, rtime = 0;
 
       /* Поиск индекса данных для указанного момента времени.*/
-      find_status = hyscan_amplitude_find_data (priv->ampl[i], time, &index, NULL, NULL, NULL);
+      find_status = hyscan_amplitude_find_data (priv->ampl[i], time, &lindex, &rindex, &ltime, &rtime);
 
-      if (find_status != HYSCAN_DB_FIND_OK)
+      if (find_status == HYSCAN_DB_FIND_FAIL)
         continue;
+
+      /* Проверим что это время от акустических данных */
+      if (lindex == rindex)
+        is_acoustic_time = TRUE;
+
+      index = hyscan_hsx_converter_nearest (time, lindex, rindex, ltime, rtime);
 
       s[i].c_ampls = hyscan_amplitude_get_amplitude (priv->ampl[i], index, &s[i].points, &s[i].time, &s[i].noise);
 
-      if (s[i].c_ampls != NULL && !s[i].noise)
-        s[i].exist = TRUE;
+      if (s[i].c_ampls == NULL)
+        continue;
 
-      g_print ("ampl[%d][%d] %"G_GINT64_FORMAT" got %"G_GINT64_FORMAT"\n", i, s[i].points, time, s[i].time);
+      /* Уже использовали это  время */
+      if (out_data->acoustic[i].in_time == s[i].time)
+        {
+          // g_print ("REPEAT ampl[%d][%d] time %"G_GINT64_FORMAT"\n", i, s[i].points, s[i].time);
+          continue;
+        }
+
+      s[i].exist = !s[i].noise;
+
+      // g_print ("ampl[%d][%d] %"G_GINT64_FORMAT" got %"G_GINT64_FORMAT"\n", i, s[i].points, time, s[i].time);
     }
+
+  /* Не буду обрабатывать по времени неакустических данных (например времени от NMEA) */
+  if (!is_acoustic_time)
+    return FALSE;
 
   /* Минимальный размер массива, к которому нужно привести два массива */
   if (s[0].exist && s[1].exist)
@@ -827,7 +874,7 @@ hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
   else if (!s[0].exist && s[1].exist)
     rss_elem_cnt = MIN (rss_elem_cnt, s[1].points);
   else
-    return FALSE;
+    return FALSE; /* Данные невалидны для текущей итерации */
 
   /* Calc data for board */
   i = 0;
@@ -865,10 +912,10 @@ hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
       hyscan_hsx_converter_clamp_0_1 (s[i].ampl_cut, rss_elem_cnt);
       i_port_amp = hyscan_hsx_converter_float2int (s[i].ampl_cut, rss_elem_cnt, priv->max_ampl_value);
       g_free (s[i].ampl_cut);
-      /* g_print ("c_ampls[%d][%d] fs = %f\n", i, s[i].points, fs); */
       added_time = add_microsec (priv->track_time, s[i].time - priv->zero_time);
       
       out_data->acoustic[i].time = get_seconds (added_time);
+      out_data->acoustic[i].in_time = s[i].time;
       out_data->acoustic[i].data = i_port_amp;
       out_data->acoustic[i].size = rss_elem_cnt;
       out_data->cut_fs = fs;
@@ -881,13 +928,13 @@ hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
 
 static gboolean
 hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
-                                   gint64                     time,
-                                   HyScanHSXConverterOutData *out_data)
+                                   gint64                     time)
 {
   guint32 index;
   gint i = 0;
   HyScanDBFindStatus find_status;
   HyScanHSXConverterPrivate *priv = self->priv;
+  HyScanHSXConverterOutData *out_data = &priv->data;
   static gint64 prev_time[HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT] = {0};
 
   typedef struct
@@ -921,20 +968,24 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
 
       /* Защита от одинаковых данных */
       if (prev_time[i] == s[i].time)
-        s[i].exist = FALSE;
+        {
+          s[i].exist = FALSE;
+          // g_print ("REPEAT NMEA time %"G_GINT64_FORMAT"\n", s[i].time);
+        }
 
       prev_time[i] = s[i].time;
 
       if (s[i].exist)
-        g_print ("NMEA data %d finded like %d in %"G_GINT64_FORMAT" got %"G_GINT64_FORMAT"\n",
-                 i, find_status,time, s[i].time);
+        ;
+        // g_print ("NMEA data %d finded like %d in %"G_GINT64_FORMAT" got %"G_GINT64_FORMAT"\n",
+                // i, find_status,time, s[i].time);
     skip:
       i++;
     }
     
   if (s[HYSCAN_NMEA_FIELD_LAT].exist & s[HYSCAN_NMEA_FIELD_LON].exist)
     {
-      double x = 0.0, y = 0.0;
+      gdouble x = UNINIT, y = UNINIT;
       GDateTime *added_time;
       /* SOME CODE */
 
@@ -945,9 +996,6 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
       out_data->y = y;
     }
 
-  if (s[HYSCAN_NMEA_FIELD_TIME].exist)
-    out_data->gps_time = s[HYSCAN_NMEA_FIELD_TIME].val;
-
   if (s[HYSCAN_NMEA_FIELD_SPEED].exist)
     out_data->speed_knots = s[HYSCAN_NMEA_FIELD_SPEED].val;
 
@@ -957,7 +1005,7 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
       added_time = add_microsec (priv->track_time, s[HYSCAN_NMEA_FIELD_TRACK].time - priv->zero_time);
       out_data->hdt_time = get_seconds (added_time);
       g_date_time_unref (added_time);
-      out_data->heading = s[HYSCAN_NMEA_FIELD_TRACK].val;
+      out_data->tracking = s[HYSCAN_NMEA_FIELD_TRACK].val;
     }
 
   if (s[HYSCAN_NMEA_FIELD_HEADING].exist)
@@ -1012,13 +1060,14 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
 }
 
 static gboolean
-hyscan_hsx_converter_send_out (HyScanHSXConverter        *self,
-                               HyScanHSXConverterOutData *out_data)
+hyscan_hsx_converter_send_out (HyScanHSXConverter *self)
 {
   HyScanHSXConverterPrivate *priv = self->priv;
+  HyScanHSXConverterOutData *out_data = &priv->data;
   gsize written = 0;
   guint i = 0, j = 0;
   gboolean res = FALSE;
+  gdouble depth = 0.0;
   HyScanHSXConverterOutData *od = out_data;
   
   /* Определяю индекс борта с данными или пропускаю RSS строку */ 
@@ -1027,6 +1076,7 @@ hyscan_hsx_converter_send_out (HyScanHSXConverter        *self,
   else
     i = (od->acoustic[HYSCAN_AC_TYPE_PORT].size != 0) ? HYSCAN_AC_TYPE_PORT : HYSCAN_AC_TYPE_STARBOARD;
 
+  depth = (od->depth == UNINIT) ? 0.0 : od->depth;
   res = g_output_stream_printf (priv->out.out_stream,
                                 &written, NULL, NULL,
                                 "RSS 4 %.3f 100 %d %d %.2f 0 %.2f %.2f 0 %d 3 0\n", 
@@ -1034,34 +1084,35 @@ hyscan_hsx_converter_send_out (HyScanHSXConverter        *self,
                                 od->acoustic[HYSCAN_AC_TYPE_PORT].size,
                                 od->acoustic[HYSCAN_AC_TYPE_STARBOARD].size,
                                 od->sound_velosity,
-                                od->depth,
+                                depth,
                                 od->cut_fs,
                                 priv->max_ampl_value);
   if (!res)
     return FALSE;
 
-  // for (; i < HYSCAN_AC_TYPE_LAST; i++)
-  //   {
-  //     for (j = 0; j < od->acoustic[i].size; j++)
-  //       {
-  //         if (!g_output_stream_printf (priv->out.out_stream,
-  //                                      &written, NULL, NULL,
-  //                                      "%d ",od->acoustic[i].data[j]))
-  //           {
-  //             return FALSE;
-  //           }
-  //       }
+  for (; i < HYSCAN_AC_TYPE_LAST; i++)
+    {
+      GString *str = g_string_new (NULL);
+      gchar *words;
 
-  //     if (!g_output_stream_printf (priv->out.out_stream,
-  //                                  &written, NULL, NULL, "\n"))
-  //       {
-  //         return FALSE;
-  //       }
-  //     res = TRUE;
-  //   }
+      for (j = 0; j < od->acoustic[i].size; j++)
+        g_string_append_printf (str, "%d ",od->acoustic[i].data[j]);
+
+      words = g_string_free (str, FALSE);
+
+      if (!g_output_stream_printf (priv->out.out_stream,
+                                   &written, NULL, NULL,
+                                   "%s\n", words))
+        {
+          g_free (words);
+          return FALSE;
+        }
+
+      g_free (words);
+    }
 
 next:    
-  if (od->depth != 0)
+  if (od->depth != UNINIT && od->depth_time != UNINIT)
     {
       if (!g_output_stream_printf (priv->out.out_stream,
                                    &written, NULL, NULL,
@@ -1071,39 +1122,45 @@ next:
         }
     }
 
-  if (od->altitude != 0 || od->roll != 0 || od->pitch != 0)
+  if (od->altitude != UNINIT || od->roll != UNINIT || od->pitch != UNINIT)
     {
-       if (!g_output_stream_printf (priv->out.out_stream,
-                                    &written, NULL, NULL,
-                                    "HCP 1 %.3f %.2f %.2f %.2f\n",
-                                    od->gga_time, od->altitude,
-                                    od->roll, od->pitch))
+      gdouble pitch = (od->pitch == UNINIT) ? 0.0 : od->pitch;
+      gdouble roll  = (od->roll == UNINIT) ? 0.0 : od->roll;
+      gdouble alt   = (od->altitude == UNINIT) ? 0.0 : od->altitude;
+
+      if (!g_output_stream_printf (priv->out.out_stream,
+                                   &written, NULL, NULL,
+                                   "HCP 1 %.3f %.2f %.2f %.2f\n",
+                                   od->gga_time, alt, roll, pitch))
         {
           return FALSE;
         }
     }
 
-  if (od->heading != 0)
-    {
-       if (!g_output_stream_printf (priv->out.out_stream,
-                                    &written, NULL, NULL,
-                                    "GPS 0 %.3f %.1f %.2f %.2f %.0f %.0f\n",
-                                    od->gga_time, od->heading, od->speed_knots,
-                                    od->hdop_gps, od->quality, (gdouble)od->sat_count))
-        {
-          return FALSE;
-        }
-
-       if (!g_output_stream_printf (priv->out.out_stream,
-                                    &written, NULL, NULL,
-                                    "GYR 2 %.3f %.2f\n",
-                                    od->hdt_time, od->heading))
+  if (od->gga_time != UNINIT && od->tracking != UNINIT)
+    { /* Выбор времени gga, т.к. параметров в этом сообщении больше из GGA строки */
+      if (!g_output_stream_printf (priv->out.out_stream,
+                                   &written, NULL, NULL,
+                                   "GPS 0 %.3f %.1f %.2f %.2f %.0f %.0f\n",
+                                   od->gga_time, od->tracking, od->speed_knots,
+                                   od->hdop_gps, od->quality, (gdouble)od->sat_count))
         {
           return FALSE;
         }
     }
 
-  if (od->x != 0 && od->y != 0)
+  if (od->heading != UNINIT)
+    {
+      if (!g_output_stream_printf (priv->out.out_stream,
+                                   &written, NULL, NULL,
+                                   "GYR 2 %.3f %.2f\n",
+                                   od->hdt_time, od->heading))
+        {
+          return FALSE;
+        }
+    }
+
+  if (od->x != UNINIT && od->y != UNINIT)
     {
        if (!g_output_stream_printf (priv->out.out_stream,
                                     &written, NULL, NULL,
@@ -1117,14 +1174,38 @@ next:
 }
 
 static void
-hyscan_hsx_converter_clear_out (HyScanHSXConverterOutData *out_data)
+hyscan_hsx_converter_clear_out_data (HyScanHSXConverter *self)
 {
   gint i = 0;
+  HyScanHSXConverterOutData *out_data = &self->priv->data;
+
   if (out_data == NULL)
     return; 
 
   while (i < HYSCAN_AC_TYPE_LAST)
-    g_free (out_data->acoustic[i++].data);
+  {
+    out_data->acoustic[i].time = 0;
+    out_data->acoustic[i].size = 0;
+    g_clear_pointer (&out_data->acoustic[i++].data, g_free);
+  }
+
+  out_data->depth = UNINIT;
+  out_data->depth_time = UNINIT;
+  out_data->cut_fs = UNINIT;
+  out_data->sound_velosity = HYSCAN_HSX_CONVERTER_DEFAULT_VELOSITY;
+  out_data->rmc_time = UNINIT;
+  out_data->gga_time = UNINIT;
+  out_data->hdt_time = UNINIT;
+  out_data->heading = UNINIT;
+  out_data->quality = UNINIT;
+  out_data->speed_knots = UNINIT;
+  out_data->hdop_gps = UNINIT;
+  out_data->sat_count = UNINIT;
+  out_data->altitude = UNINIT;
+  out_data->roll = UNINIT;
+  out_data->pitch = UNINIT;
+  out_data->x = UNINIT;
+  out_data->y = UNINIT;
 }
 
 /**
@@ -1284,7 +1365,7 @@ hyscan_hsx_converter_run (HyScanHSXConverter *self)
                                        (GThreadFunc)hyscan_hsx_converter_exec,
                                        self);
 
-      g_print ("thread started\n");
+      // g_print ("thread started\n");
 
       /* Оформляю подписку на плеер */
       hyscan_hsx_converter_player[SIGNAL_PLAYER_PROCESS] =  

@@ -48,14 +48,12 @@ void
 current_percent (HyScanHSXConverter *converter,
                  gint                percent)
 {
-	printf ("%d%% ", percent);
-
-  // if (percent == 100)
-  // {
-  //   hyscan_hsx_converter_stop (converter);
-  //   g_main_loop_quit (main_loop);
-  //   g_message ("Converter done");
-  // }
+  static gint prev = 0;
+  if (percent > prev)
+    {
+  	  printf ("%d%% ", percent);
+      prev = percent;
+    }
 }
 
 int
