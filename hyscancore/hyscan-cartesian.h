@@ -38,53 +38,73 @@
 #include <hyscan-geo.h>
 
 HYSCAN_API
-gboolean        hyscan_cartesian_is_point_inside     (HyScanGeoCartesian2D *point,
-                                                      HyScanGeoCartesian2D *area_from,
-                                                      HyScanGeoCartesian2D *area_to);
+gboolean               hyscan_cartesian_is_point_inside    (HyScanGeoCartesian2D       *point,
+                                                            HyScanGeoCartesian2D       *area_from,
+                                                            HyScanGeoCartesian2D       *area_to);
 
 HYSCAN_API
-gboolean         hyscan_cartesian_is_inside          (HyScanGeoCartesian2D *segment_end,
-                                                      HyScanGeoCartesian2D *segment_start,
-                                                      HyScanGeoCartesian2D *area_from,
-                                                      HyScanGeoCartesian2D *area_to);
+gboolean               hyscan_cartesian_is_inside          (HyScanGeoCartesian2D       *segment_end,
+                                                            HyScanGeoCartesian2D       *segment_start,
+                                                            HyScanGeoCartesian2D       *area_from,
+                                                            HyScanGeoCartesian2D       *area_to);
 
 HYSCAN_API
-gdouble          hyscan_cartesian_distance_to_line   (HyScanGeoCartesian2D *p1,
-                                                      HyScanGeoCartesian2D *p2,
-                                                      HyScanGeoCartesian2D *point,
-                                                      HyScanGeoCartesian2D *nearest_point);
+gdouble                hyscan_cartesian_distance_to_line   (HyScanGeoCartesian2D       *p1,
+                                                            HyScanGeoCartesian2D       *p2,
+                                                            HyScanGeoCartesian2D       *point,
+                                                            HyScanGeoCartesian2D       *nearest_point);
 
 HYSCAN_API
-gint             hyscan_cartesian_side               (HyScanGeoCartesian2D *start,
-                                                      HyScanGeoCartesian2D *end,
-                                                      HyScanGeoCartesian2D *point);
+gint                   hyscan_cartesian_side               (HyScanGeoCartesian2D       *start,
+                                                            HyScanGeoCartesian2D       *end,
+                                                            HyScanGeoCartesian2D       *point);
 
 HYSCAN_API
-gdouble          hyscan_cartesian_distance           (HyScanGeoCartesian2D *p1,
-                                                      HyScanGeoCartesian2D *p2);
+gdouble                hyscan_cartesian_distance           (HyScanGeoCartesian2D       *p1,
+                                                            HyScanGeoCartesian2D       *p2);
 
 HYSCAN_API
-void             hyscan_cartesian_normal             (HyScanGeoCartesian2D *p1,
-                                                      HyScanGeoCartesian2D *p2,
-                                                      HyScanGeoCartesian2D *normal);
+void                   hyscan_cartesian_normal             (HyScanGeoCartesian2D       *p1,
+                                                            HyScanGeoCartesian2D       *p2,
+                                                            HyScanGeoCartesian2D       *normal);
 
 HYSCAN_API
-void             hyscan_cartesian_rotate             (HyScanGeoCartesian2D *point,
-                                                      HyScanGeoCartesian2D *center,
-                                                      gdouble               angle,
-                                                      HyScanGeoCartesian2D *rotated);
+void                   hyscan_cartesian_rotate             (HyScanGeoCartesian2D       *point,
+                                                            HyScanGeoCartesian2D       *center,
+                                                            gdouble                     angle,
+                                                            HyScanGeoCartesian2D       *rotated);
 
 HYSCAN_API
-void             hyscan_cartesian_rotate_area        (HyScanGeoCartesian2D *area_from,
-                                                      HyScanGeoCartesian2D *area_to,
-                                                      HyScanGeoCartesian2D *center,
-                                                      gdouble               angle,
-                                                      HyScanGeoCartesian2D *rotated_from,
-                                                      HyScanGeoCartesian2D *rotated_to);
+void                   hyscan_cartesian_rotate_area        (HyScanGeoCartesian2D       *area_from,
+                                                            HyScanGeoCartesian2D       *area_to,
+                                                            HyScanGeoCartesian2D       *center,
+                                                            gdouble                     angle,
+                                                            HyScanGeoCartesian2D       *rotated_from,
+                                                            HyScanGeoCartesian2D       *rotated_to);
 
 HYSCAN_API
-gboolean         hyscan_cartesian_is_inside_polygon  (HyScanGeoCartesian2D *vertices,
-                                                      gint                  n,
-                                                      HyScanGeoCartesian2D *p);
+gboolean               hyscan_cartesian_is_inside_polygon  (HyScanGeoCartesian2D       *vertices,
+                                                            gint                        n,
+                                                            HyScanGeoCartesian2D       *p);
+
+HYSCAN_API
+HyScanGeoCartesian2D * hyscan_cartesian_polygon_cross      (HyScanGeoCartesian2D       *vertices,
+                                                            gsize                       vertices_len,
+                                                            const HyScanGeoCartesian2D *p,
+                                                            const HyScanGeoCartesian2D *q,
+                                                            guint                      *cross_len);
+
+HYSCAN_API
+gboolean               hyscan_cartesian_intersection       (const HyScanGeoCartesian2D *p,
+                                                            const HyScanGeoCartesian2D *q,
+                                                            const HyScanGeoCartesian2D *r,
+                                                            const HyScanGeoCartesian2D *s,
+                                                            HyScanGeoCartesian2D       *intersection);
+
+HYSCAN_API
+gboolean               hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D       *p,
+                                                            HyScanGeoCartesian2D       *q,
+                                                            HyScanGeoCartesian2D       *r,
+                                                            HyScanGeoCartesian2D       *s);
 
 #endif /* __HYSCAN_CARTESIAN_H__ */

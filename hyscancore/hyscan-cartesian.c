@@ -62,11 +62,6 @@
 static inline gboolean   hyscan_cartesian_is_between         (gdouble               val1,
                                                               gdouble               val2,
                                                               gdouble               boundary);
-
-static gboolean          hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D *p1,
-                                                              HyScanGeoCartesian2D *q1,
-                                                              HyScanGeoCartesian2D *p2,
-                                                              HyScanGeoCartesian2D *q2);
 static gboolean          hyscan_cartesian_on_segment         (HyScanGeoCartesian2D *p,
                                                               HyScanGeoCartesian2D *q,
                                                               HyScanGeoCartesian2D *r);
@@ -112,46 +107,6 @@ hyscan_cartesian_orientation (HyScanGeoCartesian2D *p,
   return (val > 0) ? 1 : 2; /* Точки расположены по часовой или против часовой стрелки. */
 }
 
-/* Функция возвращает TRUE, если отрезки 'p1q1' и 'p2q2' пересекаются.
- * https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/ */
-static gboolean
-hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D *p1,
-                                     HyScanGeoCartesian2D *q1,
-                                     HyScanGeoCartesian2D *p2,
-                                     HyScanGeoCartesian2D *q2)
-{
-  gint o1, o2, o3, o4;
-
-  /* Находим 4 ориентации, необходимые для общего и частных случаев. */
-  o1 = hyscan_cartesian_orientation (p1, q1, p2);
-  o2 = hyscan_cartesian_orientation (p1, q1, q2);
-  o3 = hyscan_cartesian_orientation (p2, q2, p1);
-  o4 = hyscan_cartesian_orientation (p2, q2, q1);
-
-  /* Общий случай. */
-  if (o1 != o2 && o3 != o4)
-    return TRUE;
-
-  /* Частные случаи
-   * p1, q1 и p2 на одной прямой и p2 лежит на отрезке p1q1 */
-  if (o1 == 0 && hyscan_cartesian_on_segment (p1, p2, q1))
-    return TRUE;
-
-  /* p1, q1 и q2 на одной прямой и q2 лежит на отрезке p1q1 */
-  if (o2 == 0 && hyscan_cartesian_on_segment (p1, q2, q1))
-    return TRUE;
-
-  /* p2, q2 и p1 на одной прямой и p1 лежит на отрезке p2q2. */
-  if (o3 == 0 && hyscan_cartesian_on_segment (p2, p1, q2))
-    return TRUE;
-
-  /* p2, q2 и q1 на одной прямой и q1 лежит на отрезке p2q2. */
-  if (o4 == 0 && hyscan_cartesian_on_segment (p2, q1, q2))
-    return TRUE;
-
-  return FALSE; /* Ни один из предыдущих случаев. */
-}
-
 static inline gboolean
 hyscan_cartesian_is_between (gdouble val1,
                              gdouble val2,
@@ -159,6 +114,21 @@ hyscan_cartesian_is_between (gdouble val1,
 {
   return (MIN (val1, val2) <= boundary) && (MAX(val1, val2) >= boundary);
 }
+
+/* Сравнивает точки a и b по направлению вектора vector. */
+static gint
+hyscan_cartesian_cmp (HyScanGeoCartesian2D *a,
+                      HyScanGeoCartesian2D *b,
+                      HyScanGeoCartesian2D *vector)
+{
+  if (vector->x != 0)
+    return (a->x - b->x) / vector->x > 0 ? 1 : -1;
+  else if (vector->y != 0)
+    return (a->y - b->y) / vector->y > 0 ? 1 : -1;
+  else
+    return 0;
+}
+
 
 /**
  * hyscan_cartesian_is_point_inside:
@@ -455,4 +425,157 @@ hyscan_cartesian_is_inside_polygon (HyScanGeoCartesian2D  *vertices,
 
   /* Возвращает TRUE, если нечётное число пересечений; иначе FALSE. */
   return count & 1;  /* То же самое, что (count%2 == 1) */
+}
+
+/**
+ * hyscan_cartesian_polygon_cross:
+ * @vertices: (array-length vertices_len): массив с вершинами многоугольника
+ * @vertices_len: длина массива @vertices
+ * @p: точка P на прямой
+ * @q: точка Q на прямой
+ * @cross_len: длина массива найденных точек
+ *
+ * Находит точки пересечния прямой PQ с границей многоугольника. Найденные точки
+ * будут отсортированы по направлению вектора PQ.
+ *
+ * Returns: (transfer full) (array-length cross_len): массив точек пересечения, для удаления g_free
+ */
+HyScanGeoCartesian2D *
+hyscan_cartesian_polygon_cross (HyScanGeoCartesian2D       *vertices,
+                                gsize                       vertices_len,
+                                const HyScanGeoCartesian2D *p,
+                                const HyScanGeoCartesian2D *q,
+                                guint                      *cross_len)
+{
+  HyScanGeoCartesian2D *vertex1, *vertex2;
+  HyScanGeoCartesian2D point;
+  GArray *points;
+  gsize i;
+
+  points = g_array_sized_new (FALSE, FALSE, sizeof (HyScanGeoCartesian2D), vertices_len);
+  for (i = 0; i < vertices_len; ++i)
+    {
+      vertex1 = &vertices[i];
+      vertex2 = &vertices[(i + 1) % vertices_len];
+
+      /* Прямые пересекаются. */
+      if (!hyscan_cartesian_intersection (vertex1, vertex2, p, q, &point))
+        continue;
+
+      /* Точка пересечения лежит на отрезке . */
+      if (MIN (vertex1->x, vertex2->x) > point.x || MAX (vertex1->x, vertex2->x) < point.x)
+        continue;
+
+      g_array_append_val (points, point);
+    }
+
+  if (points->len > 0)
+    {
+      HyScanGeoCartesian2D vector;
+
+      vector.x = q->x - p->x;
+      vector.y = q->y - p->y;
+      g_array_sort_with_data (points, (GCompareDataFunc) hyscan_cartesian_cmp, &vector);
+    }
+
+  *cross_len = points->len;
+
+  return (HyScanGeoCartesian2D *) g_array_free (points, FALSE);
+}
+
+/**
+ * hyscan_cartesian_intersection:
+ * @p: точка P на первой прямой
+ * @q: точка Q на первой прямой
+ * @r: точка R на второй прямой
+ * @s: точка S на второй прямой
+ * @intersection: координаты точки пересечения прямых
+ *
+ * Находит точку пересечения прямых PQ и RS.
+ *
+ * Returns: TRUE, если линии пересекаются, иначе FALSE.
+ */
+gboolean
+hyscan_cartesian_intersection (const HyScanGeoCartesian2D *p,
+                               const HyScanGeoCartesian2D *q,
+                               const HyScanGeoCartesian2D *r,
+                               const HyScanGeoCartesian2D *s,
+                               HyScanGeoCartesian2D       *intersection)
+{
+  gdouble a1, b1, c1, a2, b2, c2;
+  gdouble determinant;
+
+  /* Уравнение линии PQ: a1x + b1y = c1 */
+  a1 = q->y - p->y;
+  b1 = p->x - q->x;
+  c1 = a1 * p->x + b1 * p->y;
+
+  /* Уравнение линии RS: a2x + b2y = c2 */
+  a2 = s->y - r->y;
+  b2 = r->x - s->x;
+  c2 = a2*(r->x) + b2 * (r->y);
+
+  determinant = a1*b2 - a2*b1;
+
+  /* Линии параллельны. */
+  if (determinant == 0)
+    {
+      intersection->x = INFINITY;
+      intersection->y = INFINITY;
+      return FALSE;
+    }
+
+  intersection->x = (b2 * c1 - b1 * c2) / determinant;
+  intersection->y = (a1 * c2 - a2 * c1) / determinant;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_cartesian_segments_intersect:
+ * @p1: точка P
+ * @p1: точка Q
+ * @p2: точка R
+ * @p2: точка S
+ *
+ * Returns: возвращает TRUE, если отрезки 'PQ' и 'RS' пересекаются.
+ **/
+gboolean
+hyscan_cartesian_segments_intersect (HyScanGeoCartesian2D *p,
+                                     HyScanGeoCartesian2D *q,
+                                     HyScanGeoCartesian2D *r,
+                                     HyScanGeoCartesian2D *s)
+{
+  /* Код взят из https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/ */
+
+  gint o1, o2, o3, o4;
+
+  /* Находим 4 ориентации, необходимые для общего и частных случаев. */
+  o1 = hyscan_cartesian_orientation (p, q, r);
+  o2 = hyscan_cartesian_orientation (p, q, s);
+  o3 = hyscan_cartesian_orientation (r, s, p);
+  o4 = hyscan_cartesian_orientation (r, s, q);
+
+  /* Общий случай. */
+  if (o1 != o2 && o3 != o4)
+    return TRUE;
+
+  /* Частные случаи
+   * P, Q и R на одной прямой и R лежит на отрезке PQ */
+  if (o1 == 0 && hyscan_cartesian_on_segment (p, r, q))
+    return TRUE;
+
+  /* P, Q и S на одной прямой и S лежит на отрезке PQ */
+  if (o2 == 0 && hyscan_cartesian_on_segment (p, s, q))
+    return TRUE;
+
+  /* R, S и P на одной прямой и P лежит на отрезке RS. */
+  if (o3 == 0 && hyscan_cartesian_on_segment (r, p, s))
+    return TRUE;
+
+  /* R, S и Q на одной прямой и q1 лежит на отрезке RS. */
+  if (o4 == 0 && hyscan_cartesian_on_segment (r, q, s))
+    return TRUE;
+
+  return FALSE; /* Ни один из предыдущих случаев. */
 }
