@@ -132,6 +132,9 @@ HYSCAN_API
 gdouble                hyscan_planner_track_angle        (const HyScanPlannerTrack  *track);
 
 HYSCAN_API
+gdouble                hyscan_planner_track_length       (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
 HyScanPlannerZone *    hyscan_planner_zone_new           (void);
 
 HYSCAN_API

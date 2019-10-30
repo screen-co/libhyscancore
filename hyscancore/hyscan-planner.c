@@ -42,6 +42,8 @@
 #include "hyscan-planner.h"
 #include <string.h>
 #include <math.h>
+#define DEG2RAD(x) ((x) * G_PI / 180.0)   /* Перевод из градусов в радианы. */
+#define EARTH_RADIUS        6378137.0     /* Радиус Земли. */
 
 /**
  * hyscan_planner_origin_new:
@@ -195,13 +197,44 @@ hyscan_planner_track_angle (const HyScanPlannerTrack *track)
 {
   gdouble lat1, lat2, lon1, lon2, dlon;
 
-  lat1 = track->start.lat / 180.0 * G_PI;
-  lon1 = track->start.lon / 180.0 * G_PI;
-  lat2 = track->end.lat / 180.0 * G_PI;
-  lon2 = track->end.lon / 180.0 * G_PI;
+  lat1 = DEG2RAD (track->start.lat);
+  lon1 = DEG2RAD (track->start.lon);
+  lat2 = DEG2RAD (track->end.lat);
+  lon2 = DEG2RAD (track->end.lon);
   dlon = lon2 - lon1;
 
   return atan2 (sin(dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon)) / G_PI * 180.0;
+}
+
+/**
+ * hyscan_planner_track_length:
+ * @track: указатель на структуру с галсом #HyScanPlannerTrack
+ *
+ * Определяет длину галса.
+ *
+ * Returns: длина галса в метрах
+ */
+gdouble
+hyscan_planner_track_length (const HyScanPlannerTrack *track)
+{
+  gdouble lon1r;
+  gdouble lat1r;
+
+  gdouble lon2r;
+  gdouble lat2r;
+
+  gdouble u;
+  gdouble v;
+
+  lat1r = DEG2RAD (track->start.lat);
+  lon1r = DEG2RAD (track->start.lon);
+  lat2r = DEG2RAD (track->end.lat);
+  lon2r = DEG2RAD (track->end.lon);
+
+  u = sin ((lat2r - lat1r) / 2);
+  v = sin ((lon2r - lon1r) / 2);
+
+  return 2.0 * EARTH_RADIUS * asin (sqrt (u * u + cos (lat1r) * cos (lat2r) * v * v));
 }
 
 /**
