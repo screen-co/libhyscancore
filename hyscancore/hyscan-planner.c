@@ -40,6 +40,7 @@
  */
 
 #include "hyscan-planner.h"
+#include "hyscan-cartesian.h"
 #include <string.h>
 #include <math.h>
 #define DEG2RAD(x) ((x) * G_PI / 180.0)   /* Перевод из градусов в радианы. */
@@ -235,6 +236,80 @@ hyscan_planner_track_length (const HyScanPlannerTrack *track)
   v = sin ((lon2r - lon1r) / 2);
 
   return 2.0 * EARTH_RADIUS * asin (sqrt (u * u + cos (lat1r) * cos (lat2r) * v * v));
+}
+
+/**
+ * hyscan_planner_track_extend:
+ * @track: указатель на галс #HyScanPlannerTrack
+ * @zone: указатель на зону полигона #HyScanPlannerZone
+ *
+ * Функция создаёт копию галса @track, растягивая (или сжимая) галс до
+ * границ указанного полигона @zone.
+ *
+ * Направление исходного галса сохраняется.
+ *
+ * Returns: (transfer full): указатель на растянутую (сжатую) копию галса.
+ * Для удаления hyscan_planner_track_free().
+ */
+HyScanPlannerTrack *
+hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
+                             const HyScanPlannerZone   *zone)
+{
+  HyScanPlannerTrack *modified_track;
+  HyScanGeoCartesian2D *vertices;
+  HyScanGeoCartesian2D *points;
+  HyScanGeoCartesian2D start, end;
+  HyScanGeo *geo;
+  gsize i, vertices_len;
+  gsize end_i;
+  guint points_len;
+  gdouble dx, dy;
+
+  modified_track = hyscan_planner_track_copy (track);
+  geo = hyscan_planner_track_geo (track);
+
+  vertices_len = zone->points_len;
+  vertices = g_new (HyScanGeoCartesian2D, zone->points_len);
+  for (i = 0; i < zone->points_len; ++i)
+    hyscan_geo_geo2topoXY (geo, &vertices[i], zone->points[i]);
+
+  hyscan_geo_geo2topoXY (geo, &start, track->start);
+  hyscan_geo_geo2topoXY (geo, &end, track->end);
+
+  /* Находим точки пересечения отрезка с прямой. */
+  points = hyscan_cartesian_polygon_cross (vertices, vertices_len, &start, &end, &points_len);
+  if (points_len < 2)
+    goto exit;
+
+  dx = end.x - start.x;
+  dy = end.y - start.y;
+
+  /* Ищем индекс точки пересечения, следующей за концом галса. */
+  end_i = points_len;
+  for (i = 0; i < points_len; i += 2)
+    {
+      gdouble end_tx, end_ty;
+
+      end_tx = dx != 0 ? (points[i].x - end.x) / dx : -1;
+      end_ty = dy != 0 ? (points[i].y - end.y) / dy : -1;
+      if (end_i == points_len && (end_tx >= 0 || end_ty >= 0))
+        end_i = i;
+    }
+
+  /* Индекс точки конца галса должен быть нечётным. */
+  if (end_i == 0)
+    end_i = 1;
+  else if (end_i % 2 == 0)
+    end_i -= 1;
+
+  hyscan_geo_topoXY2geo (geo, &modified_track->start, points[end_i - 1], 0);
+  hyscan_geo_topoXY2geo (geo, &modified_track->end, points[end_i], 0);
+
+exit:
+  g_object_unref (geo);
+  g_free (points);
+
+  return modified_track;
 }
 
 /**
