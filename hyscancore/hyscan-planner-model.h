@@ -78,6 +78,10 @@ void                   hyscan_planner_model_set_origin       (HyScanPlannerModel
 HYSCAN_API
 HyScanPlannerOrigin *  hyscan_planner_model_get_origin       (HyScanPlannerModel       *pmodel);
 
+HYSCAN_API
+void                   hyscan_planner_model_assign_number    (HyScanPlannerModel       *pmodel,
+                                                              const gchar              *track0_id);
+
 G_END_DECLS
 
 #endif /* __HYSCAN_PLANNER_MODEL_H__ */

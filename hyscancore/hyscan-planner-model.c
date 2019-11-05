@@ -46,6 +46,9 @@
  */
 
 #include "hyscan-planner-model.h"
+#include <math.h>
+#define DEG2RAD(x) ((x) * G_PI / 180.0)   /* Перевод из градусов в радианы. */
+#define EARTH_RADIUS        6378137.0     /* Радиус Земли. */
 
 struct _HyScanPlannerModelPrivate
 {
@@ -208,4 +211,170 @@ hyscan_planner_model_get_origin (HyScanPlannerModel *pmodel)
     }
 
   return object;
+}
+
+static gdouble
+hyscan_planner_model_distance (HyScanGeoGeodetic *point1,
+                               HyScanGeoGeodetic *point2)
+{
+  gdouble lon1r;
+  gdouble lat1r;
+
+  gdouble lon2r;
+  gdouble lat2r;
+
+  gdouble u;
+  gdouble v;
+
+  lat1r = DEG2RAD (point1->lat);
+  lon1r = DEG2RAD (point1->lon);
+  lat2r = DEG2RAD (point2->lat);
+  lon2r = DEG2RAD (point2->lon);
+
+  u = sin ((lat2r - lat1r) / 2);
+  v = sin ((lon2r - lon1r) / 2);
+
+  return 2.0 * EARTH_RADIUS * asin (sqrt (u * u + cos (lat1r) * cos (lat2r) * v * v));
+}
+
+/**
+ * hyscan_planner_model_assign_number:
+ * @pmodel:
+ * @track0_id:
+ *
+ * Устанавливает порядок обхода галсов начиная с @track0_id таким образом, что
+ * минимизируется время перехода между галсами.
+ *
+ * todo: сделать через решение задачи коммивояжёра.
+ */
+void
+hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
+                                    const gchar        *track0_id)
+{
+  GHashTable *objects;
+  HyScanPlannerTrack *track;
+  gchar *track_id;
+
+  const gchar *zone_id;
+  GHashTableIter iter;
+  GArray *track_ids;
+  gdouble *distances;
+  gint i, j, n;
+  gint *sorted;
+  gboolean *invert;
+  gint position;
+
+  objects = hyscan_object_model_get (HYSCAN_OBJECT_MODEL (pmodel));
+  if (objects == NULL)
+    goto exit;
+
+  track = g_hash_table_lookup (objects, track0_id);
+  if (track == NULL || track->type != HYSCAN_PLANNER_TRACK)
+    goto exit;
+  zone_id = track->zone_id;
+
+  /* Находим все галсы, которые надо упорядочить. */
+  track_ids = g_array_new (FALSE, FALSE, sizeof (gchar *));
+  g_hash_table_iter_init (&iter, objects);
+  while (g_hash_table_iter_next (&iter, (gpointer *) &track_id, (gpointer *) &track))
+    {
+      if (track->type != HYSCAN_PLANNER_TRACK || g_strcmp0 (track->zone_id, zone_id) != 0)
+        continue;
+
+      g_array_append_val (track_ids, track_id);
+    }
+
+  /* Составляем симметричную матрицу переходов с галса на галс. */
+  n = track_ids->len;
+  distances = g_new (gdouble, n * n);
+  for (i = 0; i < n; i++)
+    {
+      HyScanPlannerTrack *track_i, *track_j;
+      track_i = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, i));
+
+      for (j = i + 1; j < n; j++)
+        {
+          gdouble distance0, distance1, distance2, distance3;
+
+          track_j = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, j));
+
+          /* Берём минимальное расстояние среди всех возможных переходов. */
+          distance0 = hyscan_planner_model_distance (&track_i->start, &track_j->end);
+          distance1 = hyscan_planner_model_distance (&track_i->start, &track_j->start);
+          distance2 = hyscan_planner_model_distance (&track_i->end, &track_j->end);
+          distance3 = hyscan_planner_model_distance (&track_i->end, &track_j->start);
+
+          distances[i * n + j] =
+          distances[j * n + i] = MIN (MIN (distance0, distance1), MIN (distance2, distance3));
+        }
+
+      /* Диагональный элемент. */
+      distances[i * n + i] = G_MAXDOUBLE;
+    }
+
+  /* Находим индекс первого галса. */
+  for (i = 0; g_strcmp0 (track0_id, g_array_index (track_ids, gchar *, i)) != 0 && i < n; i++)
+    ;
+  sorted = g_new0 (gint, track_ids->len);
+  invert = g_new0 (gboolean, track_ids->len);
+  position = 0;
+  sorted[i] = ++position;
+
+  /* Находим индексы следующих галсов, минимизируя расстояние до следующего галса. */
+  while (position < n)
+    {
+      gdouble min_distance = G_MAXDOUBLE;
+      gdouble invert_next = FALSE;
+      gint next = 0;
+      HyScanPlannerTrack *track_i, *track_j;
+      HyScanGeoGeodetic *end;
+
+      track_i = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, i));
+      end = invert[i] ? &track_i->start : &track_i->end;
+
+      for (j = 0; j < n; j++)
+        {
+          gboolean distance, distance_inv;
+
+          if (sorted[j] != 0)
+            continue;
+
+          track_j = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, j));
+
+          distance = hyscan_planner_model_distance (end, &track_j->start);
+          distance_inv = hyscan_planner_model_distance (end, &track_j->end);
+          if (MIN (distance, distance_inv) > min_distance)
+            continue;
+
+          next = j;
+          invert_next = (distance_inv < distance);
+          min_distance = invert_next ? distance_inv : distance;
+        }
+
+      i = next;
+      invert[i] = invert_next;
+      sorted[i] = ++position;
+    }
+
+  /* Обновляем номера галсов в БД. */
+  for (i = 0; i < n; i++)
+    {
+      track_id = g_array_index (track_ids, gchar *, i);
+      track = g_hash_table_lookup (objects, track_id);
+      track->number = sorted[i];
+      if (invert[i])
+        {
+          HyScanGeoGeodetic tmp;
+          tmp = track->start;
+          track->start = track->end;
+          track->end = tmp;
+        }
+      hyscan_object_model_modify_object (HYSCAN_OBJECT_MODEL (pmodel), track_id, (HyScanObject *) track);
+    }
+
+  g_free (invert);
+  g_free (sorted);
+
+exit:
+  g_clear_pointer (&objects, g_hash_table_destroy);
 }
