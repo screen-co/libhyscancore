@@ -158,22 +158,24 @@ hyscan_planner_track_free (HyScanPlannerTrack *track)
 /**
  * hyscan_planner_track_geo:
  * @track: указатель на структуру с галсом #HyScanPlannerTrack
+ * @angle: (out) (optional): используемое направление оси OY, градусы
  *
  * Создаёт объект #HyScanGeo, в топоцентрической системе координат которого
- * начало координат совпадает с началом галса @track, а ось OX направлена по
+ * начало координат совпадает с началом галса @track, а ось OY направлена по
  * направлению движения на галсе.
  *
  * Returns: (transfer-full): новый объект #HyScanGeo
  */
 HyScanGeo *
-hyscan_planner_track_geo (const HyScanPlannerTrack *track)
+hyscan_planner_track_geo (const HyScanPlannerTrack *track,
+                          gdouble                  *angle)
 {
   HyScanGeo *tmp_geo;
   HyScanGeoGeodetic origin;
   HyScanGeoCartesian2D start, end;
 
   origin = track->start;
-  origin.h = 0;
+  origin.h = 0.0;
 
   tmp_geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
   hyscan_geo_geo2topoXY (tmp_geo, &start, track->start);
@@ -182,6 +184,9 @@ hyscan_planner_track_geo (const HyScanPlannerTrack *track)
 
   g_object_unref (tmp_geo);
 
+  if (angle != NULL)
+    *angle = origin.h < 90.0 ? origin.h + 270.0 : origin.h - 90.0;
+
   return hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 }
 
@@ -189,7 +194,7 @@ hyscan_planner_track_geo (const HyScanPlannerTrack *track)
  * hyscan_planner_track_angle:
  * @track: указатель на структуру с галсом #HyScanPlannerTrack
  *
- * Определяет азимут из начала галса к концу галса.
+ * Определяет приближенное значение азимута из начала галса к концу галса.
  *
  * Returns: значение азимута в градусах
  */
@@ -204,7 +209,7 @@ hyscan_planner_track_angle (const HyScanPlannerTrack *track)
   lon2 = DEG2RAD (track->end.lon);
   dlon = lon2 - lon1;
 
-  return atan2 (sin(dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon)) / G_PI * 180.0;
+  return atan2 (sin (dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon)) / G_PI * 180.0;
 }
 
 /**
@@ -266,7 +271,7 @@ hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
   gdouble dx, dy;
 
   modified_track = hyscan_planner_track_copy (track);
-  geo = hyscan_planner_track_geo (track);
+  geo = hyscan_planner_track_geo (track, NULL);
 
   vertices_len = zone->points_len;
   vertices = g_new (HyScanGeoCartesian2D, zone->points_len);
