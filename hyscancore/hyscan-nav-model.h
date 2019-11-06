@@ -92,21 +92,25 @@ HYSCAN_API
 HyScanNavModel *         hyscan_nav_model_new              (void);
 
 HYSCAN_API
-void                     hyscan_nav_model_set_sensor       (HyScanNavModel     *model,
-                                                            HyScanSensor       *sensor);
+void                     hyscan_nav_model_set_sensor       (HyScanNavModel            *model,
+                                                            HyScanSensor              *sensor);
 
 HYSCAN_API
-void                     hyscan_nav_model_set_sensor_name  (HyScanNavModel     *model,
-                                                            const gchar        *name);
+void                     hyscan_nav_model_set_sensor_name  (HyScanNavModel            *model,
+                                                            const gchar               *name);
 
 HYSCAN_API
-void                     hyscan_nav_model_set_delay        (HyScanNavModel     *model,
-                                                            gdouble             delay);
+void                     hyscan_nav_model_set_offset       (HyScanNavModel            *model,
+                                                            const HyScanAntennaOffset *offset);
 
 HYSCAN_API
-gboolean                 hyscan_nav_model_get              (HyScanNavModel     *model,
-                                                            HyScanNavModelData *data,
-                                                            gdouble            *time_delta);
+void                     hyscan_nav_model_set_delay        (HyScanNavModel            *model,
+                                                            gdouble                    delay);
+
+HYSCAN_API
+gboolean                 hyscan_nav_model_get              (HyScanNavModel            *model,
+                                                            HyScanNavModelData        *data,
+                                                            gdouble                   *time_delta);
 
 G_END_DECLS
 
