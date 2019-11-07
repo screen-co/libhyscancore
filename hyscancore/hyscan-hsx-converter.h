@@ -32,14 +32,6 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-/**
- * SECTION: hyscan-hsx-converter
- * @Short_description: класс конвертер данных в формат HSX (текстовый)
- * @Title: HyScanHSXConverter
- *
- *
- */
-
 #ifndef __HYSCAN_HSX_CONVERTER_H__
 #define __HYSCAN_HSX_CONVERTER_H__
 
