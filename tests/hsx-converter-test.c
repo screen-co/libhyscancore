@@ -124,12 +124,14 @@ main (int    argc,
                     G_CALLBACK (done),
                     NULL);
 
-  hyscan_hsx_converter_set_track (converter, db, project_name, track_name);
-  
+  if (!hyscan_hsx_converter_set_track (converter, db, project_name, track_name))
+    g_error ("Can't set track %s", track_name);
+
+
   if (!hyscan_hsx_converter_run (converter))
    g_error ("Can't run Converter");
 
-  g_message ("%s", hyscan_hsx_converter_is_run (converter) ? "RUN" : "STOP");
+  g_message ("%s", hyscan_hsx_converter_is_run (converter) ? "Converter is Run" : "Converter is STOP");
 
   /* Создание цикла обработки событий. Выход осуществляется по завершении работы всех тестов.*/
   main_loop = g_main_loop_new (NULL, TRUE);
