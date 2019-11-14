@@ -533,11 +533,14 @@ hyscan_nav_model_read_rmc (HyScanNavModel    *model,
   parsed &= hyscan_nmea_parser_parse_string (priv->parser_date, sentence, &fix_date);
   parsed &= hyscan_nmea_parser_parse_string (priv->parser_lat, sentence, &fix->sensor_pos.coord.lat);
   parsed &= hyscan_nmea_parser_parse_string (priv->parser_lon, sentence, &fix->sensor_pos.coord.lon);
-  parsed &= hyscan_nmea_parser_parse_string (priv->parser_track, sentence, &fix->sensor_pos.coord.h);
-  parsed &= hyscan_nmea_parser_parse_string (priv->parser_speed, sentence, &fix->speed);
 
   if (!parsed)
     return FALSE;
+
+  if (!hyscan_nmea_parser_parse_string (priv->parser_track, sentence, &fix->sensor_pos.coord.h))
+    fix->sensor_pos.coord.h = 0;
+  if (!hyscan_nmea_parser_parse_string (priv->parser_speed, sentence, &fix->speed))
+    fix->speed = 0;
 
   fix->time = fix_date + fix_time;
 
