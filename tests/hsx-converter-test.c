@@ -146,9 +146,9 @@ main (int    argc,
 
   track_names = g_strsplit (track_name, ",", -1);
 
-  while (track_names[i++] != NULL)
+  while (track_names[i] != NULL)
     {
-      if (!hyscan_hsx_converter_set_track (converter, db, project_name, *track_names))
+      if (!hyscan_hsx_converter_set_track (converter, db, project_name, track_names[i]))
         g_error ("Can't set track %s", track_name);
 
       if (!hyscan_hsx_converter_run (converter))
@@ -156,11 +156,12 @@ main (int    argc,
 
       g_message ("%s", hyscan_hsx_converter_is_run (converter) ? "Converter is Run" : "Converter is STOP");
 
-      g_timeout_add (500, mark_update, NULL);
+      g_timeout_add (800, mark_update, NULL);
 
-      g_print ("Track %s under convert\n", *track_names);
+      g_print ("Track %s under convert\n", track_names[i]);
 
       g_main_loop_run (main_loop);
+      i++;
     }
 
   g_object_unref (converter);
