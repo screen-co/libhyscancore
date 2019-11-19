@@ -46,7 +46,6 @@ done (HyScanHSXConverter *converter)
   g_print ("\nConverter done");
   g_print ("\n");
   cur_perc = 0;
-  prev = 0;
   g_main_loop_quit (main_loop);
 }
 
@@ -62,7 +61,7 @@ current_percent (HyScanHSXConverter *converter,
 gboolean
 mark_update (gpointer ptr)
 {
-  if (cur_perc > prev)
+  if (cur_perc != prev)
     {
       g_print ("Current percent: %d%%\r", cur_perc);
       prev = cur_perc;

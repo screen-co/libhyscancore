@@ -80,6 +80,9 @@ gboolean               hyscan_hsx_converter_set_track        (HyScanHSXConverter
                                                               const gchar          *track_name);
 
 HYSCAN_API
+gboolean               hyscan_hsx_converter_set_out_path     (HyScanHSXConverter   *self,                                                            const gchar          *path);
+
+HYSCAN_API
 void                   hyscan_hsx_converter_set_max_ampl     (HyScanHSXConverter   *self,
                                                               guint                 ampl_val);
 

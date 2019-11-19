@@ -343,6 +343,8 @@ static gboolean   hyscan_hsx_converter_send_out                 (HyScanHSXConver
 /* Очистка выходного буфера */
 static void       hyscan_hsx_converter_clear_out_data           (HyScanHSXConverter        *self);
 
+static gchar*     hyscan_hsx_converter_check_out_path           (const gchar               *path);
+
 static guint      hyscan_hsx_converter_signals[SIGNAL_LAST]       = { 0 };
 static guint      hyscan_hsx_converter_player[SIGNAL_PLAYER_LAST] = { 0 };
 
@@ -359,7 +361,7 @@ hyscan_hsx_converter_class_init (HyScanHSXConverterClass *klass)
 
   g_object_class_install_property (object_class, PROP_RESULT_PATH,
     g_param_spec_string ("result-path", "ResultPath", "ResultPath", NULL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                         G_PARAM_WRITABLE));
 
    /**
    * HyScanHSXConverter::exec:
@@ -419,7 +421,7 @@ hyscan_hsx_converter_object_constructed (GObject *object)
 {
   HyScanHSXConverter *hsx_converter = HYSCAN_HSX_CONVERTER (object);
   HyScanHSXConverterPrivate *priv = hsx_converter->priv;
-
+ 
   priv->player          = hyscan_data_player_new ();
   priv->cache           = HYSCAN_CACHE (hyscan_cached_new (64));
   priv->ampl_factory    = hyscan_factory_amplitude_new (priv->cache);
@@ -589,12 +591,6 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
 
   hyscan_factory_amplitude_set_project (priv->ampl_factory, db, project_name);
 
-  /* Создание объектов амплитуд */
-/*  priv->ampl[HYSCAN_AC_TYPE_PORT] = hyscan_factory_amplitude_produce (
-                                    priv->ampl_factory, HYSCAN_SOURCE_SIDE_SCAN_PORT);
-  priv->ampl[HYSCAN_AC_TYPE_STARBOARD] = hyscan_factory_amplitude_produce (
-                                        priv->ampl_factory, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD);*/
-
   /* Получение времени создания галса */
   pid = hyscan_db_project_open (db, project_name);
   tid = hyscan_db_track_open (db, pid, track_name);
@@ -732,6 +728,7 @@ hyscan_hsx_converter_out_clear (HyScanHSXConverter *self)
 
   if (priv->out.out_stream != NULL)
     {
+      g_debug ("Clear out_stream");
       g_output_stream_flush (priv->out.out_stream, NULL, NULL);
       g_output_stream_close (priv->out.out_stream, NULL, NULL);
       g_clear_object (&priv->out.out_stream);
@@ -857,9 +854,12 @@ hyscan_hsx_converter_exec_emit (HyScanHSXConverter *self,
   g_signal_emit (self, hyscan_hsx_converter_signals[SIGNAL_EXEC],
                  0 , priv->state.current_percent);
 
+ /*g_print ("in_time %"G_GINT64_FORMAT" perc %d%%\n", time, priv->state.current_percent);*/
+
   if (priv->state.current_percent == 100)
     {
       hyscan_hsx_converter_stop (self);
+      hyscan_data_player_stop (priv->player);
 
       g_signal_emit (self, hyscan_hsx_converter_signals[SIGNAL_DONE],
                      0 , priv->state.current_percent);
@@ -901,6 +901,7 @@ hyscan_hsx_converter_range_cb (HyScanHSXConverter *self,
                           min : priv->state.min_time;
 
   priv->zero_time = priv->state.min_time;
+  /*g_print ("zero_time %"G_GINT64_FORMAT"\n", priv->zero_time);*/
 
   priv->state.max_time = (priv->state.max_time == 0 || priv->state.max_time < max) ?
                           max : priv->state.max_time;
@@ -1520,20 +1521,9 @@ hyscan_hsx_converter_clear_out_data (HyScanHSXConverter *self)
   out_data->y = UNINIT;
 }
 
-/**
- * hyscan_hsx_converter_new:
- * @path: путь к выходным файлам конвертера
- *
- * Функция создает объект конвертера.
- * Путь для выходного файла может быть задан %NULL или "." или "",
- * тогда путь замещается рабочей директорией.
- *  
- * Returns: %HyScanHSXConverter - указатель на объект, или %NULL при наличии ошибок.
- */
-HyScanHSXConverter*
-hyscan_hsx_converter_new (const gchar *path)
+static gchar*
+hyscan_hsx_converter_check_out_path (const gchar *path)
 {
-  HyScanHSXConverter *converter = NULL;
   gchar *_path;
 
   if (path == NULL) 
@@ -1552,7 +1542,11 @@ hyscan_hsx_converter_new (const gchar *path)
       _path = g_get_current_dir ();
       end = g_strrstr (_path, G_DIR_SEPARATOR_S);
       if (end == NULL)
-        goto exit;
+        {
+          g_free (_path);
+          return NULL;   
+        }
+
       _path_1 = g_strndup (_path, end - _path);
       g_free (_path);
       _path = _path_1;
@@ -1564,15 +1558,35 @@ hyscan_hsx_converter_new (const gchar *path)
     {
       g_warning ("HyScanHSXConverter: path '%s' - not exist", _path);
       g_free (_path);
-      return converter;
+      return NULL;
     }
 
-  converter = g_object_new (HYSCAN_TYPE_HSX_CONVERTER, "result-path", _path, NULL);
+  return _path;
+}
 
-exit:  
+/**
+ * hyscan_hsx_converter_new:
+ * @path: путь к выходным файлам конвертера
+ *
+ * Функция создает объект конвертера.
+ * Путь для выходного файла может быть задан %NULL или "." или "",
+ * тогда путь замещается рабочей директорией.
+ *  
+ * Returns: %HyScanHSXConverter - указатель на объект, или %NULL при наличии ошибок.
+ */
+HyScanHSXConverter*
+hyscan_hsx_converter_new (const gchar *path)
+{
+  gchar *_path = NULL;
+  HyScanHSXConverter* conv = NULL;
+
+  if ((_path = hyscan_hsx_converter_check_out_path (path)) == NULL)
+    return NULL;
+
+  conv =  g_object_new (HYSCAN_TYPE_HSX_CONVERTER, "result-path", _path, NULL);
   g_free (_path);
 
-  return converter;
+  return conv;
 }
 
 /**
@@ -1624,6 +1638,37 @@ error:
   hyscan_hsx_converter_out_clear (self);
   g_warning ("HyScanHSXConverter: Can't init. Stop set track.");
   return FALSE; 
+}
+
+/**
+ * hyscan_hsx_converter_set_out_path:
+ * @self: указатель на себя
+ * @path: путь к выходным файлам конвертера
+ *
+ * Функция задаёт выходную директорию файлов.
+ * Путь выходной директории может быть задан %NULL или "." или "" или "..",
+ * тогда путь замещается рабочей директорией, или директорией на уровень выше.
+ *  
+ * Returns: %TRUE - удачная установка выходной директории, или %FALSE при наличии ошибок.
+ */
+gboolean
+hyscan_hsx_converter_set_out_path (HyScanHSXConverter   *self,
+                                   const gchar          *path)
+{
+  gchar *_path = NULL;
+  GValue v = G_VALUE_INIT;
+
+  g_return_val_if_fail (HYSCAN_IS_HSX_CONVERTER (self), FALSE);
+
+  if ((_path = hyscan_hsx_converter_check_out_path (path)) == NULL)
+    return FALSE;
+
+  g_value_init (&v, G_TYPE_STRING);
+  g_assert (G_VALUE_HOLDS_STRING (&v));
+  g_value_set_string (&v, _path);
+  g_object_set_property (G_OBJECT (self), "result-path", &v);
+
+  return TRUE;
 }
 
 /**
