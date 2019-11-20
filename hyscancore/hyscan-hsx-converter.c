@@ -83,6 +83,7 @@
 #include <math.h>
 #include <string.h>
 #include <proj_api.h>
+#include <locale.h>
 
 #define HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT       14        /* Количество типов NMEA данных */
 #define HYSCAN_HSX_CONVERTER_DEFAULT_MAX_AMPLITUDE    8191      /* Максимальное значение амплитуды по умолчанию */
@@ -432,6 +433,7 @@ hyscan_hsx_converter_object_constructed (GObject *object)
   priv->image_prm.white = 1.0;
   priv->image_prm.gamma = 1.0;
 
+  setlocale (LC_NUMERIC, "C");
   memset (&priv->data, 0, sizeof (HyScanHSXConverterOutData));
 }
 
@@ -453,6 +455,8 @@ hyscan_hsx_converter_object_finalize (GObject *object)
   pj_free (priv->transform.proj_dst);
   g_free (priv->transform.param_dst);
   g_free (priv->out.path);
+
+  setlocale (LC_NUMERIC, "");
 
   G_OBJECT_CLASS (hyscan_hsx_converter_parent_class)->finalize (object);
 }
@@ -859,7 +863,6 @@ hyscan_hsx_converter_exec_emit (HyScanHSXConverter *self,
   if (priv->state.current_percent == 100)
     {
       hyscan_hsx_converter_stop (self);
-      hyscan_data_player_stop (priv->player);
 
       g_signal_emit (self, hyscan_hsx_converter_signals[SIGNAL_DONE],
                      0 , priv->state.current_percent);
@@ -1852,6 +1855,8 @@ hyscan_hsx_converter_stop (HyScanHSXConverter *self)
       if (hyscan_hsx_converter_player[SIGNAL_PLAYER_PROCESS] != 0)
         g_signal_handler_disconnect (priv->player, hyscan_hsx_converter_player[SIGNAL_PLAYER_PROCESS]); 
 
+      hyscan_data_player_stop (priv->player);
+      
       g_debug ("HyScanHSXConverter: convert thread joined");
     }
   return (priv->conv_thread == NULL);
