@@ -222,6 +222,8 @@ struct _HyScanHSXConverterPrivate
   HyScanHSXConverterImagePrm     image_prm;             /* Структура для коррекции отсчетов амплитуд */
 
   HyScanNavData                 *nmea[HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT];
+  guint                          nmea_channel[HYSCAN_NMEA_TYPE_LAST];
+                                                        /* Номера каналов для NMEA источников */
                                                         /* Парсеры данных NMEA */
   HyScanHSXConverterProj         transform;             /* Объекты для преобразования координат */
   struct
@@ -585,8 +587,8 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
 {
   HyScanCache *cache = NULL;
   HyScanHSXConverterPrivate *priv = self->priv;
-  gint32 pid = 0, tid = 0, tidp = 0;
-  gchar **track_params = NULL;
+  gint32 pid = 0, tid = 0, ch_port = 0, ch_starboard = 0;
+  gchar **channels = NULL;
   gint i = 0;
                             
   cache = priv->cache;
@@ -599,88 +601,106 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
   pid = hyscan_db_project_open (db, project_name);
   tid = hyscan_db_track_open (db, pid, track_name);
   priv->track_time = hyscan_db_track_get_ctime (db, tid);
-  
-  {
-    tidp = hyscan_db_track_param_open (db, tid);
-    track_params = hyscan_db_param_object_list (db, tidp);
-    while (track_params[i] != NULL)
-      {
-        HyScanSourceType  source = HYSCAN_SOURCE_LAST;
-        HyScanChannelType type = HYSCAN_CHANNEL_LAST;
-        guint             channel = 0;
-        hyscan_channel_get_types_by_id (track_params[i], &source, &type, &channel);
-        if (type != HYSCAN_CHANNEL_DATA)
-          goto skip;
+  channels = hyscan_db_channel_list (db, tid); 
 
-        if (source == HYSCAN_SOURCE_SIDE_SCAN_PORT)
-          {
-            priv->ampl[HYSCAN_AC_TYPE_PORT] = hyscan_factory_amplitude_produce (
-                                              priv->ampl_factory, track_name, source);
-          }
-        if (source == HYSCAN_SOURCE_SIDE_SCAN_STARBOARD)
-          {
-            priv->ampl[HYSCAN_AC_TYPE_STARBOARD] = hyscan_factory_amplitude_produce (
-                                                   priv->ampl_factory, track_name, source);
-          }
+  while (channels[i] != NULL)
+    {
+      HyScanSourceType  source = HYSCAN_SOURCE_LAST;
+      HyScanChannelType type = HYSCAN_CHANNEL_LAST;
+      guint             channel = 0;
+      hyscan_channel_get_types_by_id (channels[i], &source, &type, &channel);
+      if (type != HYSCAN_CHANNEL_DATA)
+        goto skip;
 
-        if (source == HYSCAN_SOURCE_NMEA)
-          { /* Разбиение по каналам мало похоже на правду */
-            if (channel == 1)
-              {
-                priv->nmea[HYSCAN_NMEA_FIELD_LAT] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1, 
-                  HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT));
-
-                priv->nmea[HYSCAN_NMEA_FIELD_LON] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LON));
-
-                priv->nmea[HYSCAN_NMEA_FIELD_SPEED] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_SPEED));
-                
-                priv->nmea[HYSCAN_NMEA_FIELD_TRACK] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TRACK));
-
-                priv->nmea[HYSCAN_NMEA_FIELD_HEADING] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_HDT, HYSCAN_NMEA_FIELD_HEADING));
-
-                priv->nmea[HYSCAN_NMEA_FIELD_FIX_QUAL] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_FIX_QUAL));
-                
-                priv->nmea[HYSCAN_NMEA_FIELD_N_SATS] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_N_SATS));
-
-                priv->nmea[HYSCAN_NMEA_FIELD_HDOP] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_HDOP));
-
-                priv->nmea[HYSCAN_NMEA_FIELD_ALTITUDE] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 1,
-                  HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_ALTITUDE));
-
-              }
-            else if (channel == 2)
-              {
-                priv->nmea[HYSCAN_NMEA_FIELD_DEPTH] = HYSCAN_NAV_DATA (
-                  hyscan_nmea_parser_new (db, cache, project_name, track_name, 2,
-                  HYSCAN_NMEA_DATA_DPT, HYSCAN_NMEA_FIELD_DEPTH));
-              }
-          }
-
-      skip:
-        i++;
-      }
-    g_strfreev (track_params);
-  }
-
+      if (source == HYSCAN_SOURCE_SIDE_SCAN_PORT)
+        {
+          priv->ampl[HYSCAN_AC_TYPE_PORT] = hyscan_factory_amplitude_produce (
+                                            priv->ampl_factory, track_name, source);
+          ch_port = channel;
+        }
+      if (source == HYSCAN_SOURCE_SIDE_SCAN_STARBOARD)
+        {
+          priv->ampl[HYSCAN_AC_TYPE_STARBOARD] = hyscan_factory_amplitude_produce (
+                                                 priv->ampl_factory, track_name, source);
+          ch_starboard = channel;
+        }
+       
+      
+    skip:
+      i++;
+    }
+  g_strfreev (channels);
   hyscan_db_close (db, tid);
   hyscan_db_close (db, pid);
   
+  /* Создание парсеров NMEA */
+  if (priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC] > 0)
+    {
+      g_debug ("For RMC set channel %d", priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC]);
+      priv->nmea[HYSCAN_NMEA_FIELD_LAT] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC], 
+                                HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT));
+
+      priv->nmea[HYSCAN_NMEA_FIELD_LON] = HYSCAN_NAV_DATA(
+        hyscan_nmea_parser_new (db, cache, project_name, track_name, 
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC],
+                                HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LON));
+
+      priv->nmea[HYSCAN_NMEA_FIELD_SPEED] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC], 
+                                HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_SPEED));
+      
+      priv->nmea[HYSCAN_NMEA_FIELD_TRACK] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC], 
+                                HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TRACK));
+    }
+
+  if (priv->nmea_channel[HYSCAN_NMEA_TYPE_HDT] > 0)
+    {
+      g_debug ("For HDT set channel %d", priv->nmea_channel[HYSCAN_NMEA_TYPE_HDT]);
+      priv->nmea[HYSCAN_NMEA_FIELD_HEADING] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_HDT], 
+                                HYSCAN_NMEA_DATA_HDT, HYSCAN_NMEA_FIELD_HEADING));
+    }
+
+  if (priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA] > 0)
+    {
+      g_debug ("For GGA set channel %d", priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA]);
+      priv->nmea[HYSCAN_NMEA_FIELD_FIX_QUAL] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA],
+                                HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_FIX_QUAL));
+
+      
+      priv->nmea[HYSCAN_NMEA_FIELD_N_SATS] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA],
+                                HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_N_SATS));
+
+      priv->nmea[HYSCAN_NMEA_FIELD_HDOP] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA],
+                                HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_HDOP));
+
+      priv->nmea[HYSCAN_NMEA_FIELD_ALTITUDE] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA],
+                                HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_ALTITUDE));
+    }
+
+  if (priv->nmea_channel[HYSCAN_NMEA_TYPE_DPT] > 0)
+    {
+      g_debug ("For DPT set channel %d", priv->nmea_channel[HYSCAN_NMEA_TYPE_DPT]);
+      priv->nmea[HYSCAN_NMEA_FIELD_DEPTH] = HYSCAN_NAV_DATA (
+        hyscan_nmea_parser_new (db, cache, project_name, track_name,
+                                priv->nmea_channel[HYSCAN_NMEA_TYPE_DPT],
+                                HYSCAN_NMEA_DATA_DPT, HYSCAN_NMEA_FIELD_DEPTH));
+    }
+
   /* Если нет акустики и навигации - конвертировать нечего */
   if ((priv->ampl[HYSCAN_AC_TYPE_PORT] == NULL) &
       (priv->ampl[HYSCAN_AC_TYPE_STARBOARD] == NULL) &
@@ -701,23 +721,32 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
   /* В плеер только те источники, которые есть в галсе */
   if (priv->ampl[HYSCAN_AC_TYPE_PORT] != NULL)
     {
-      if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_SIDE_SCAN_PORT, 1, HYSCAN_CHANNEL_DATA) < 0)
-        return FALSE;
+      if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_SIDE_SCAN_PORT, 
+                                          ch_port, HYSCAN_CHANNEL_DATA) < 0)
+        {
+          return FALSE;
+        }
     }
   if (priv->ampl[HYSCAN_AC_TYPE_STARBOARD] != NULL)
     {
-      if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, HYSCAN_CHANNEL_DATA) < 0)
-        return FALSE;
+      if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 
+                                          ch_starboard, HYSCAN_CHANNEL_DATA) < 0)
+        {
+          return FALSE;
+        }
     }
-  if (priv->nmea[HYSCAN_NMEA_FIELD_LAT] != NULL)
+
+  for (i = 0; i < HYSCAN_NMEA_TYPE_LAST; ++i)
     {
-      if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_NMEA, 1, HYSCAN_CHANNEL_DATA) < 0)
-        return FALSE;
-    }
-  if (priv->nmea[HYSCAN_NMEA_FIELD_DEPTH] != NULL)
-    {
-      if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_NMEA, 2, HYSCAN_CHANNEL_DATA) < 0)
-        return FALSE;
+      if (priv->nmea_channel[i] > 0)
+        {
+          if (hyscan_data_player_add_channel (priv->player, HYSCAN_SOURCE_NMEA,
+                                              priv->nmea_channel[i],
+                                              HYSCAN_CHANNEL_DATA) < 0)
+            {
+              return FALSE;
+            }
+        }
     }
 
   /* Пауза чтобы отработал range с данными пределов */
@@ -1453,11 +1482,13 @@ next:
     }
 
   if (od->gga_time != UNINIT && od->tracking != UNINIT)
-    { /* Выбор времени gga, т.к. параметров в этом сообщении больше из GGA строки */
+    { 
+      gdouble speed = (od->speed_knots == UNINIT) ? 0.0 : od->speed_knots;
+      /* Выбор времени gga, т.к. параметров в этом сообщении больше из GGA строки */
       if (!g_output_stream_printf (priv->out.out_stream,
                                    &written, NULL, NULL,
                                    "GPS 0 %.3f %.1f %.2f %.2f %.0f %.0f\n",
-                                   od->gga_time, od->tracking, od->speed_knots,
+                                   od->gga_time, od->tracking, speed,
                                    od->hdop_gps, od->quality, (gdouble)od->sat_count))
         {
           return FALSE;
@@ -1793,6 +1824,42 @@ hyscan_hsx_converter_init_crs (HyScanHSXConverter *self,
   return TRUE;
 }
 
+
+void
+hyscan_hsx_converter_set_nmea_channel (HyScanHSXConverter *self,
+                                       HyScanNmeaDataType  nmea_type,
+                                       guint               channel)
+{
+  HyScanHSXConverterPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_HSX_CONVERTER (self));
+  priv = self->priv;  
+
+  switch (nmea_type)
+    {
+    case HYSCAN_NMEA_DATA_RMC:
+      priv->nmea_channel[HYSCAN_NMEA_TYPE_RMC] = channel;
+      break;
+
+    case HYSCAN_NMEA_DATA_GGA:
+      priv->nmea_channel[HYSCAN_NMEA_TYPE_GGA] = channel;
+      break;
+
+    case HYSCAN_NMEA_DATA_DPT:
+      priv->nmea_channel[HYSCAN_NMEA_TYPE_DPT] = channel;
+      break;
+
+    case HYSCAN_NMEA_DATA_HDT:
+      priv->nmea_channel[HYSCAN_NMEA_TYPE_HDT] = channel;
+      break;
+
+    case HYSCAN_NMEA_DATA_INVALID:
+    case HYSCAN_NMEA_DATA_ANY:
+      break;
+    }
+}
+
+
 /**
  * hyscan_hsx_converter_run:
  * @self: указатель на себя
@@ -1856,7 +1923,7 @@ hyscan_hsx_converter_stop (HyScanHSXConverter *self)
         g_signal_handler_disconnect (priv->player, hyscan_hsx_converter_player[SIGNAL_PLAYER_PROCESS]); 
 
       hyscan_data_player_stop (priv->player);
-      
+
       g_debug ("HyScanHSXConverter: convert thread joined");
     }
   return (priv->conv_thread == NULL);

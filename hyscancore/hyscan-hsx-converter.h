@@ -38,6 +38,7 @@
 #include <hyscan-api.h>
 #include <glib-object.h>
 #include <hyscan-db.h>
+#include <hyscan-nmea-data.h>
 
 G_BEGIN_DECLS
 
@@ -101,6 +102,10 @@ gboolean               hyscan_hsx_converter_init_crs         (HyScanHSXConverter
                                                               const gchar          *src_projection_id,
                                                               const gchar          *src_datum_id);
 
+HYSCAN_API
+void                   hyscan_hsx_converter_set_nmea_channel (HyScanHSXConverter   *self,
+                                                              HyScanNmeaDataType    nmea_type,
+                                                              guint                 channel);
 HYSCAN_API
 gboolean               hyscan_hsx_converter_run              (HyScanHSXConverter   *self);
 

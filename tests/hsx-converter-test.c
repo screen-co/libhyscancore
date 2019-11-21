@@ -80,6 +80,10 @@ main (int    argc,
   gchar **track_names = NULL;
   HyScanDB *db = NULL;
   gint i = 0;
+  guint dpt_chan = 0;
+  guint rmc_chan = 0;
+  guint gga_chan = 0;
+  guint hdt_chan = 0;
   HyScanHSXConverter *converter = NULL;
   {
     gchar **args;
@@ -90,6 +94,10 @@ main (int    argc,
         { "project-name", 'p', 0, G_OPTION_ARG_STRING, &project_name, "Project name", NULL },
         { "track-name", 't', 0, G_OPTION_ARG_STRING, &track_name, "Track names, through ','", NULL },
         { "result-path", 'r', 0, G_OPTION_ARG_STRING, &result_path, "Path for output files", NULL },
+        { "dpt-channel", 0, 0, G_OPTION_ARG_INT, &dpt_chan, "Channel number for depth data", NULL },
+        { "rmc-channel", 0, 0, G_OPTION_ARG_INT, &rmc_chan, "Channel number for RMC NMEA data", NULL },
+        { "gga-channel", 0, 0, G_OPTION_ARG_INT, &gga_chan, "Channel number for GGA NMEA data", NULL },
+        { "hdt-channel", 0, 0, G_OPTION_ARG_INT, &hdt_chan, "Channel number for HDT NMEA data", NULL },
         { NULL }
       };
 
@@ -133,6 +141,10 @@ main (int    argc,
   if (!hyscan_hsx_converter_init_crs (converter, NULL, NULL))
     g_error ("Can't init proj4 ctx");
   
+  hyscan_hsx_converter_set_nmea_channel (converter, HYSCAN_NMEA_DATA_RMC, rmc_chan);
+  hyscan_hsx_converter_set_nmea_channel (converter, HYSCAN_NMEA_DATA_GGA, gga_chan);
+  hyscan_hsx_converter_set_nmea_channel (converter, HYSCAN_NMEA_DATA_HDT, hdt_chan);
+  hyscan_hsx_converter_set_nmea_channel (converter, HYSCAN_NMEA_DATA_DPT, dpt_chan);
   g_signal_connect ((gpointer)converter, "exec",
                     G_CALLBACK (current_percent),
                     NULL);
