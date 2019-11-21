@@ -66,6 +66,7 @@ typedef struct
   HyScanGeoCartesian2D position;        /* Координаты (X, Y), м. */
   gdouble              vx;              /* Скорость по оси X, м/c. */
   gdouble              vy;              /* Скорость по оси Y, м/c. */
+  gdouble              heading;         /* Курс, радианы. */
 } VesselPos;
 
 /* Параметры для рассчёта положения судна. */
@@ -84,6 +85,7 @@ typedef struct
 
 
 static gint freq = 10;                  /* Частота выдачи NMEA-данных, Гц. */
+gboolean hdt_off = FALSE;               /* Отключен вывод HDT-сообщений. */
 static gdouble slat = 55.0;             /* Широта начальной точки. */
 static gdouble slon = 33.0;             /* Долгота начальной точки. */
 static gint axis_accel = 0;             /* Ось джойстика для считывания ускорения, Y. */
@@ -191,13 +193,28 @@ history_push (VesselPos pos)
   history[history_idx] = pos;
 }
 
+static gchar *
+nmea_wrap (const gchar *inner)
+{
+  gint checksum = 0;
+  const gchar *ch;
+  gchar *sentence;
+
+  /* Подсчитываем чек-сумму. */
+  for (ch = inner; *ch != '\0'; ch++)
+    checksum ^= *ch;
+
+  sentence = g_strdup_printf ("$%s*%02X\r", inner, checksum);
+
+  return sentence;
+}
+
 /* Отправляем RMC-строку по UDP. */
 static gboolean
 send_rmc (gpointer user_data)
 {
   gchar inner[80];
-  gchar sentence[80];
-  gchar *ch;
+  gchar *sentence;
   gdouble cur_time;
   HyScanGeoGeodetic coord;
   VesselPos state_c;
@@ -208,6 +225,7 @@ send_rmc (gpointer user_data)
   gint lat, lon;
   gdouble lat_min, lon_min;
   gdouble speed, track;
+  gboolean north, east;
   const gchar *date = "19112019";
 
   history_get (&state_c);
@@ -224,6 +242,10 @@ send_rmc (gpointer user_data)
 
   sec = cur_time;
 
+  north = coord.lat > 0;
+  east = coord.lon > 0;
+  coord.lat = fabs (coord.lat);
+  coord.lon = fabs (coord.lon);
   lat = coord.lat;
   lat_min = (coord.lat - lat) * 60;
   lon = coord.lon;
@@ -238,22 +260,26 @@ send_rmc (gpointer user_data)
 
   g_snprintf (inner, sizeof (inner),
               "GPRMC,%02d%02d%05.2f,A,"
-              "%02d%08.5f,N,%03d%08.5f,E,"
+              "%02d%08.5f,%c,%03d%08.5f,%c,"
               "%05.1f,%05.1f,"
               "%s,011.5,E",
               hour, min, sec,
-              lat, lat_min, lon, lon_min,
+              lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W',
               speed, track,
               date);
 
-  gint checksum = 0;
 
-  /* Подсчитываем чек-сумму. */
-  for (ch = inner; *ch != '\0'; ch++)
-    checksum ^= *ch;
-
-  g_snprintf (sentence, sizeof (sentence), "$%s*%02X\r", inner, checksum);
+  sentence = nmea_wrap (inner);
   g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
+  g_free (sentence);
+
+  if (!hdt_off)
+    {
+      g_snprintf (inner, sizeof (inner), "GPHDT,%.2f,T", state_c.heading / G_PI * 180.0);
+      sentence = nmea_wrap (inner);
+      g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
+      g_free (sentence);
+    }
 
   return G_SOURCE_CONTINUE;
 }
@@ -332,7 +358,7 @@ update_position ()
   /* Ускорение двигателя. */
   vessel.v_angle += -js_copy.x * G_PI_4 * dt;
   vessel.accel += - ACCELERATION_CHNG_SPD * js_copy.y * dt;
-  vessel.accel = CLAMP (vessel.accel, -MAX_ACCELERATION, MAX_ACCELERATION);
+  vessel.accel = CLAMP (vessel.accel, 0, MAX_ACCELERATION);
   vessel.speed += vessel.accel * dt;
 
   /* Сопротивление воды. */
@@ -372,6 +398,7 @@ update_position ()
     final_pos.vx = speed_x;
     final_pos.vy = speed_y;
     final_pos.position = vessel.position;
+    final_pos.heading = FIT_ANGLE (G_PI * 2 - vessel.v_angle);
 
     history_push (final_pos);
   }
@@ -435,6 +462,7 @@ int main (int argc, char *argv[])
         { "port",      'p', 0, G_OPTION_ARG_INT,    &port,       "Destination UDP port",             NULL },
 
         { "freq",      'f', 0, G_OPTION_ARG_INT,    &freq,       "NMEA frequency, Hz (default 10)",  NULL },
+        { "hdt-off",    0 , 0, G_OPTION_ARG_NONE,   &hdt_off,    "Disable HDT messages",             NULL },
         { "delay",      0 , 0, G_OPTION_ARG_INT,    &delay_ms,   "Add delay to NMEA sentences, ms",  NULL },
 
         { "slat",      'n', 0, G_OPTION_ARG_DOUBLE, &slat,       "Start latitude",                   NULL },
@@ -496,7 +524,8 @@ int main (int argc, char *argv[])
 
   /* Начальное состояние судна. */
   vessel.time = g_get_monotonic_time();
-  vessel.flow_vx = flow_rate * sin (flow_dir / G_PI * 180.0);
+  vessel.flow_vx = flow_rate * sin (flow_dir / 180 * G_PI);
+  vessel.flow_vy = flow_rate * cos (flow_dir / 180 * G_PI);
 
   /* Main loop. */
   {
