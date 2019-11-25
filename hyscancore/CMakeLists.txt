@@ -84,6 +84,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nav-model.c
              hyscan-nmea-file-device.c
              hyscan-data-player.c
+             hyscan-hsx-converter.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 

@@ -34,6 +34,7 @@ add_executable (data-player-test data-player-test.c)
 if (UNIX)
   add_executable (nmea-joystick nmea-joystick.c)
 endif()
+add_executable (hsx-converter-test hsx-converter-test.c)
 
 target_link_libraries (cancellable-test ${TEST_LIBRARIES})
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})

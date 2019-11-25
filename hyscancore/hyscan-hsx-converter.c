@@ -442,12 +442,14 @@ hyscan_hsx_converter_object_finalize (GObject *object)
   hyscan_hsx_converter_sources_clear (self);
   hyscan_hsx_converter_out_clear (self);
 
+
   g_object_unref (priv->player);
   g_object_unref (priv->cache);
   g_object_unref (priv->ampl_factory);
   pj_free (priv->transform.proj_src);
   pj_free (priv->transform.proj_dst);
   g_free (priv->transform.param_dst);
+  g_free (priv->out.path);
 
   G_OBJECT_CLASS (hyscan_hsx_converter_parent_class)->finalize (object);
 }
@@ -576,11 +578,12 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
 {
   HyScanCache *cache = NULL;
   HyScanHSXConverterPrivate *priv = self->priv;
-  gint32 pid = 0, tid = 0;
+  gint32 pid = 0, tid = 0, tidp = 0;
+  gchar **track_params = NULL;
+  gint i = 0;
                             
   cache = priv->cache;
 
-  /* TODO узнать список доступных каналов */
   hyscan_data_player_set_track (priv->player, db, project_name, track_name);
 
   hyscan_amplitude_factory_set_track (priv->ampl_factory, db, project_name, track_name);
@@ -601,9 +604,9 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
     track_params = hyscan_db_param_object_list (db, tidp);
     while (track_params[i] != NULL)
       {
-        HyScanSourceType  source;
-        HyScanChannelType type;
-        guint             channel;
+        HyScanSourceType  source = HYSCAN_SOURCE_LAST;
+        HyScanChannelType type = HYSCAN_CHANNEL_LAST;
+        guint             channel = 0;
         hyscan_channel_get_types_by_id (track_params[i], &source, &type, &channel);
         if (type != HYSCAN_CHANNEL_DATA)
           goto skip;
@@ -668,8 +671,6 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
               }
           }
 
-        g_print ("Param name '%s'\n", track_params[i]);
-
       skip:
         i++;
       }
@@ -680,8 +681,8 @@ hyscan_hsx_converter_sources_init (HyScanHSXConverter *self,
   hyscan_db_close (db, pid);
   
   /* Если нет акустики и навигации - конвертировать нечего */
-  if ((priv->ampl[HYSCAN_AC_TYPE_PORT] == NULL) |
-      (priv->ampl[HYSCAN_AC_TYPE_STARBOARD] == NULL) |
+  if ((priv->ampl[HYSCAN_AC_TYPE_PORT] == NULL) &
+      (priv->ampl[HYSCAN_AC_TYPE_STARBOARD] == NULL) &
       (priv->nmea[HYSCAN_NMEA_FIELD_LAT] == NULL))
     {
       return FALSE;
@@ -751,6 +752,15 @@ hyscan_hsx_converter_out_init (HyScanHSXConverter *self,
                                          G_DIR_SEPARATOR_S,
                                          project_name, track_name);
 
+  if (g_file_test (priv->out.file_name, G_FILE_TEST_EXISTS))
+    res = g_unlink (priv->out.file_name);
+
+  if (res != 0)
+    {
+      g_warning ("HyScanHSXConverter: can't delete existing '%s'", priv->out.file_name);
+      return FALSE;
+    }
+
   priv->out.file = g_file_new_for_path (priv->out.file_name);
 
   priv->out.out_stream = G_OUTPUT_STREAM (g_file_replace (priv->out.file,
@@ -779,6 +789,7 @@ hyscan_hsx_converter_make_header (HyScanHSXConverter *self,
   HyScanHSXConverterPrivate *priv = self->priv;
   GString *data = g_string_new (NULL);
   gchar *wdata = NULL;
+  gboolean res = FALSE;
   gchar *add = NULL;
   
   g_string_append (data, "FTP NEW 2\nHSX 8\nVER 12.0.0.0\n");
@@ -813,7 +824,10 @@ hyscan_hsx_converter_make_header (HyScanHSXConverter *self,
   g_string_append_printf (data,"SSI 4 100 %d %d\nEOH\n", priv->max_rss_size, priv->max_rss_size);
 
   wdata = g_string_free (data, FALSE);
-  return  g_output_stream_write_all (priv->out.out_stream, wdata, strlen (wdata), NULL, NULL, NULL);
+  res = g_output_stream_write_all (priv->out.out_stream, wdata, strlen (wdata), NULL, NULL, NULL);
+  g_free (wdata);
+
+  return res;
 }
 
 static gpointer
@@ -824,7 +838,7 @@ hyscan_hsx_converter_exec (HyScanHSXConverter *self)
   while (g_atomic_int_get (&priv->is_run) == 1)
     {
       hyscan_data_player_seek_next (priv->player);
-      g_usleep (G_TIME_SPAN_MILLISECOND * 20);
+      g_usleep (G_TIME_SPAN_MILLISECOND * 10);
     }
 
   return NULL;
@@ -843,9 +857,11 @@ hyscan_hsx_converter_exec_emit (HyScanHSXConverter *self,
 
   if (priv->state.current_percent == 100)
     {
+      hyscan_hsx_converter_stop (self);
+
       g_signal_emit (self, hyscan_hsx_converter_signals[SIGNAL_DONE],
                      0 , priv->state.current_percent);
-      hyscan_hsx_converter_stop (self);
+
       return FALSE;
     }
   return TRUE;
@@ -897,9 +913,9 @@ hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
   HyScanHSXConverterPrivate *priv = self->priv;
   HyScanHSXConverterOutData *out_data = &priv->data;
   guint rss_elem_cnt = priv->max_rss_size;  
-  guint i;
+  guint i = 0;
   gboolean is_acoustic_time = FALSE;
-  guint32 li,ri;
+  guint32 li = 0,ri = 0;
 
   typedef struct
   {
@@ -1055,7 +1071,7 @@ static gboolean
 hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
                                    gint64                     time)
 {
-  guint32 index;
+  guint32 index = 0, rindex = 0;
   gint i = 0;
   HyScanDBFindStatus find_status;
   HyScanHSXConverterPrivate *priv = self->priv;
@@ -1073,7 +1089,6 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
   while (i < HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT)
     memset (&s[i++], 0, sizeof (InData));
 
-  i = 0;
   while (i < HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT)
     {
       /* Пропуск неинициализированных парсеров */
@@ -1497,21 +1512,35 @@ hyscan_hsx_converter_clear_out_data (HyScanHSXConverter *self)
  * hyscan_hsx_converter_new:
  * @path: путь к выходным файлам конвертера
  *
- * Функция создает объект конвертера. Выходная папка должна
- * быть передана и не должна быть пустой строкой. 
- * TODO - добавить проверку на папку и её сущестрование.
+ * Функция создает объект конвертера.
+ * Путь для выходного файла может быть задан %NULL или "." или "",
+ * тогда путь замещается рабочей директорией.
+ *  
+ * Returns: %HyScanHSXConverter - указатель на объект, или %NULL при наличии ошибок.
  */
 HyScanHSXConverter*
 hyscan_hsx_converter_new (const gchar *path)
 {
   HyScanHSXConverter *converter = NULL;
+  gchar *_path;
 
-  if (path == NULL)
-    return FALSE;
-  if (g_strcmp0 (path, "") == 0)
-    return FALSE;
+  if (path == NULL) 
+    _path = g_get_current_dir ();
+  else if (g_strcmp0 (path, "") == 0 || g_strcmp0 (path,".") == 0)
+    _path = g_get_current_dir ();
+  else
+    _path = g_strdup (path);
 
-  converter = g_object_new (HYSCAN_TYPE_HSX_CONVERTER, "result-path", path, NULL);
+  if (!g_file_test (_path, G_FILE_TEST_IS_DIR))
+    {
+      g_warning ("%s - not exist", _path);
+      g_free (_path);
+      return converter;
+    }
+
+  converter = g_object_new (HYSCAN_TYPE_HSX_CONVERTER, "result-path", _path, NULL);
+  g_free (_path);
+
   return converter;
 }
 
@@ -1538,6 +1567,13 @@ hyscan_hsx_converter_set_track (HyScanHSXConverter *self,
 {
   g_return_val_if_fail (HYSCAN_IS_HSX_CONVERTER (self), FALSE);
 
+  g_debug ("HyScanHSXConverter: set track %s", track_name);
+
+  if (db == NULL || project_name == NULL || track_name == NULL)
+    {
+      g_warning ("HyScanHSXConverter: convert params invalid.");
+      return FALSE; 
+    }
   if (hyscan_hsx_converter_is_run (self))
     {
       g_warning ("HyScanHSXConverter: convert thread is execute. Stop it before set track.");
@@ -1628,7 +1664,22 @@ hyscan_hsx_converter_set_velosity (HyScanHSXConverter *self,
   priv->sound_velosity = velosity;
 }
 
-/* a string that describes the source coordinate reference system (CRS) */
+/**
+ * hyscan_hsx_converter_init_crs:
+ * @self: указатель на себя
+ * @src_projection_id: имя проекции исходной системы координат.
+ * @src_datum_id: имя датума исходной системы координат.
+ * 
+ * Функция устанавливает исходную систему координат навигационных данных.
+ * Для установки параметров по умолчанию (proj = latlon, datum = WGS84)
+ * следует указать @src_projection_id и @src_datum_id в %NULL.
+ *
+ * Для параметра @src_projection_id типы проекций можно узнать вызовом 'proj -l'
+ * Для параметра @src_datum_id типы проекций можно узнать вызовом 'proj -ld'
+ * 
+ * Returns: %TRUE если установка выполнена успешно, 
+ * %FALSE - иначе.
+ */
 gboolean
 hyscan_hsx_converter_init_crs (HyScanHSXConverter *self,
                                const gchar        *src_projection_id,
@@ -1656,7 +1707,8 @@ hyscan_hsx_converter_init_crs (HyScanHSXConverter *self,
   g_return_val_if_fail (priv->transform.proj_src != NULL, FALSE);
 
   g_free (priv->transform.param_dst);
-  /* Здесь сохраним только тип проекции и датум. Зона будет расчитываться динамически для текущих широты и долготы */
+  /* Здесь сохраним только тип проекции и датум. 
+     Зона будет расчитываться динамически для текущих широты и долготы */
   priv->transform.param_dst = g_strdup ("+proj=utm +datum=WGS84");
 
   return TRUE;
@@ -1668,6 +1720,8 @@ hyscan_hsx_converter_init_crs (HyScanHSXConverter *self,
  *
  * Функция запускает процес конвертации данных.
  *
+ * Returns: %TRUE поток конвертации запущен, 
+ * %FALSE - поток конвертации не запущен.
  */
 gboolean
 hyscan_hsx_converter_run (HyScanHSXConverter *self)
@@ -1684,14 +1738,12 @@ hyscan_hsx_converter_run (HyScanHSXConverter *self)
                                        (GThreadFunc)hyscan_hsx_converter_exec,
                                        self);
 
-      // g_print ("thread started\n");
-
       /* Оформляю подписку на плеер */
       hyscan_hsx_converter_player[SIGNAL_PLAYER_PROCESS] =  
         g_signal_connect_swapped (priv->player, "process", 
                                   G_CALLBACK (hyscan_hsx_converter_proc_cb),
                                   self);
-      //g_debug ("HyScanHSXConverter: convert thread started");
+      g_debug ("HyScanHSXConverter: convert thread started");
     }
 
   return (priv->conv_thread != NULL);
@@ -1703,6 +1755,8 @@ hyscan_hsx_converter_run (HyScanHSXConverter *self)
  *
  * Функция останавливает поток конвертации данных.
  *
+ * Returns: %TRUE поток конвертации остановлен, 
+ * %FALSE - поток конвертации не остановлен.
  */
 gboolean
 hyscan_hsx_converter_stop (HyScanHSXConverter *self)
@@ -1711,10 +1765,10 @@ hyscan_hsx_converter_stop (HyScanHSXConverter *self)
   g_return_val_if_fail (HYSCAN_IS_HSX_CONVERTER (self), FALSE);
 
   priv = self->priv;
- /* Остановим поток опроса гл*/
+ /* Остановим поток */
   if (NULL != priv->conv_thread)
     {
-      /* Завершим поток опроса гидролокатора */
+      /* Завершим поток */
       g_atomic_int_set (&priv->is_run, 0);
       g_thread_join (priv->conv_thread);
       priv->conv_thread = NULL;
