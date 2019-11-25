@@ -64,7 +64,6 @@ main (int    argc,
   gchar *project_name = NULL;
   gchar *result_path = NULL;
   gchar *track_name = NULL;
-
   HyScanDB *db;
   HyScanHSXConverter *converter;
 
@@ -116,6 +115,9 @@ main (int    argc,
   if (converter == NULL)
     g_error ("Can't create Converter");
 
+  if (!hyscan_hsx_converter_init_crs (converter, "latlon", "WGS84"))
+    g_error ("Can't init proj4 ctx");
+  
   g_signal_connect ((gpointer)converter, "exec",
                     G_CALLBACK (current_percent),
                     NULL);

@@ -66,6 +66,7 @@ target_link_libraries (data-player-test ${TEST_LIBRARIES})
 if (UNIX)
   target_link_libraries (nmea-joystick ${TEST_LIBRARIES})
 endif()
+target_link_libraries (hsx-converter-test ${TEST_LIBRARIES} ${PROJ4_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")

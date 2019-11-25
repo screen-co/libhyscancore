@@ -77,6 +77,7 @@
 #include <glib.h>
 #include <math.h>
 #include <string.h>
+#include <proj_api.h>
 
 #define HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT       14      /* HyScanNMEAField types count */
 #define HYSCAN_HSX_CONVERTER_DEFAULT_MAX_AMPLITUDE    8191    /* Максимальное значение амплитуды */
@@ -226,6 +227,14 @@ typedef struct
   gfloat                         gamma;                 /* Гамма */
 }HyScanHSXConverterImagePrm;
 
+typedef struct
+{
+  projPJ                         proj_src;              /* СК исходная */
+  projPJ                         proj_dst;              /* СК конечная */
+  gchar                         *param_dst;             /* Проекция и датум конечной СК */
+  gint                           zone_number;           /* Номер зоны конечной СК */
+}HyScanHSXConverterProj;
+
 struct _HyScanHSXConverterPrivate
 {
   HyScanCache                   *cache;                 /* Кеш */
@@ -244,7 +253,7 @@ struct _HyScanHSXConverterPrivate
 
   HyScanNavData                 *nmea[HYSCAN_HSX_CONVERTER_NMEA_PARSERS_COUNT];
                                                         /* Парсеры данных NMEA */
-  
+  HyScanHSXConverterProj         transform;             /* Объекты для преобразования координат */
   struct
   {
     gint64                       min_time;              /* Минимальное время для всех источников */
@@ -330,6 +339,29 @@ static gboolean   hyscan_hsx_converter_process_acoustic         (HyScanHSXConver
 static gboolean   hyscan_hsx_converter_process_nmea             (HyScanHSXConverter        *self,
                                                                  gint64                     time);
 
+static gint       hyscan_hsx_converter_latlon2utm               (gdouble                    lat,
+                                                                 gdouble                    lon,
+                                                                 const gint                 ref_ellipsoid,
+                                                                 gdouble                   *easting,
+                                                                 gdouble                   *northing,
+                                                                 gint                      *zone_num,
+                                                                 gchar                    **zone);
+
+static gchar*     utm_letter_designator                         (const gdouble              lat);
+
+static guint      hyscan_hsx_converter_zone_number              (const gdouble              lat,
+                                                                 const gdouble              lon,
+                                                                 gint                      *err);
+
+static gint       hyscan_hsx_converter_latlon2dst_proj          (HyScanHSXConverter        *self,
+                                                                 gdouble                    lat,
+                                                                 gdouble                    lon,
+                                                                 gdouble                   *easting,
+                                                                 gdouble                   *northing,
+                                                                 gint                      *zone_num,
+                                                                 gchar                    **zone);
+
+>>>>>>> 69afb49... Добавлена реализация преобразования latlon2UTM через PROJ4 проект.
 static gboolean   hyscan_hsx_converter_send_out                 (HyScanHSXConverter        *self);
 
 static void       hyscan_hsx_converter_clear_out_data           (HyScanHSXConverter        *self);
@@ -437,6 +469,9 @@ hyscan_hsx_converter_object_finalize (GObject *object)
   g_object_unref (priv->player);
   g_object_unref (priv->cache);
   g_object_unref (priv->ampl_factory);
+  pj_free (priv->transform.proj_src);
+  pj_free (priv->transform.proj_dst);
+  g_free (priv->transform.param_dst);
 
   G_OBJECT_CLASS (hyscan_hsx_converter_parent_class)->finalize (object);
 }
@@ -958,6 +993,9 @@ hyscan_hsx_converter_process_acoustic (HyScanHSXConverter        *self,
   else
     return FALSE; /* Данные невалидны для текущей итерации */
 
+  /* TODO - Здесь добавить получение глубины и запомнить её со временем ГЛИ в out_data */
+  /* blablablablabla */
+
   /* Calc data for board */
   i = 0;
   for (; i < HYSCAN_AC_TYPE_LAST; i++)
@@ -1061,16 +1099,15 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
       if (prev_time[i] == s[i].time)
         {
           s[i].exist = FALSE;
-          // g_print ("REPEAT NMEA time %"G_GINT64_FORMAT"\n", s[i].time);
+          g_print ("REPEAT NMEA time %"G_GINT64_FORMAT"\n", s[i].time);
         }
 
       prev_time[i] = s[i].time;
 
-      if (s[i].exist)
-        ;
-        // g_print ("NMEA data %d finded like %d in %"G_GINT64_FORMAT" got %"G_GINT64_FORMAT"\n",
-                // i, find_status,time, s[i].time);
-    skip:
+/*      if (s[i].exist)
+        g_print ("NMEA data %d finded like %d in %"G_GINT64_FORMAT" got %"G_GINT64_FORMAT"\n",
+                 i, find_status,time, s[i].time);
+*/    skip:
       i++;
     }
     
@@ -1078,9 +1115,18 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
     {
       gdouble x = UNINIT, y = UNINIT;
       GDateTime *added_time;
-      if (hyscan_hsx_converter_latlon2utm (s[HYSCAN_NMEA_FIELD_LAT].val,
+      
+/*      if (hyscan_hsx_converter_latlon2utm (s[HYSCAN_NMEA_FIELD_LAT].val,
                                            s[HYSCAN_NMEA_FIELD_LON].val,
                                            22, &x, &y, NULL, NULL) == 0)
+        {
+          out_data->x = x;
+          out_data->y = y;
+        }*/
+
+      if (hyscan_hsx_converter_latlon2dst_proj (self, s[HYSCAN_NMEA_FIELD_LAT].val,
+                                                s[HYSCAN_NMEA_FIELD_LON].val,
+                                                &x, &y, NULL, NULL) == 0)
         {
           out_data->x = x;
           out_data->y = y;
@@ -1151,7 +1197,7 @@ hyscan_hsx_converter_process_nmea (HyScanHSXConverter        *self,
  * Convert function was taken from
  * https://github.com/rsieger/LatLongConverter
  * (from ConvertPosition.cpp)
- * and revriten to Glib/C by Maxim Pylaev - maks_shv@mail.ru
+ * and revritten to Glib/C by Maxim Pylaev - maks_shv@mail.ru
 */
 static gint
 hyscan_hsx_converter_latlon2utm (gdouble      lat,
@@ -1181,12 +1227,7 @@ hyscan_hsx_converter_latlon2utm (gdouble      lat,
 
   gint    zone_number        = 0;
 
-
-  if ((lat < -80.) || (lat > 84.))
-      err = -1;
-
-  if ((lon < -180.) || ( lon >= 180.))
-      err = -2;
+  zone_number = hyscan_hsx_converter_zone_number (lat, lon, &err);
 
   if ( err != 0 )
     {
@@ -1196,52 +1237,33 @@ hyscan_hsx_converter_latlon2utm (gdouble      lat,
       return (err);
     }
 
+  lat_rad     = lat*deg2rad;
+  lan_rad    = lon*deg2rad;
 
-    zone_number = (gint)((lon + 180.) / 6.) + 1;
+  N = a/sqrt(1.-ecc_squared*sin(lat_rad)*sin(lat_rad));
+  T = tan(lat_rad)*tan(lat_rad);
+  C = ecc_prime_squared*cos(lat_rad)*cos(lat_rad);
+  A = cos(lat_rad)*(lan_rad-deg2rad*(((gdouble) zone_number-1.)*6.-180.+3.));
+  M = a*((1.-ecc_squared/4.-3.*ecc_squared*ecc_squared/64.-5.*ecc_squared*ecc_squared*ecc_squared/256.)*
+      lat_rad-(3.*ecc_squared/8.+3.*ecc_squared*ecc_squared/32.+45.*ecc_squared*ecc_squared*ecc_squared/1024.)*
+      sin(2.*lat_rad)+(15.*ecc_squared*ecc_squared/256.+45.*ecc_squared*ecc_squared*ecc_squared/1024.)*
+      sin(4.*lat_rad)-(35.*ecc_squared*ecc_squared*ecc_squared/3072.)*sin(6.*lat_rad));
 
-    lat_rad     = lat*deg2rad;
-    lan_rad    = lon*deg2rad;
+  utm_easting  = k0*N*(A+(1.-T+C)*A*A*A/6.+(5.-18.*T+T*T+72.*C-58.*ecc_prime_squared)*A*A*A*A*A/120.)+500000.;
+  utm_northing = k0*(M+N*tan(lat_rad)*(A*A/2.+(5.-T+9.*C+4.*C*C)*A*A*A*A/24.+(61.-58.*T+T*T+600.*C-330.*ecc_prime_squared)*A*A*A*A*A*A/720.));
 
-    if ((lat >= 56.0) && (lat < 64.0) && ( lon >= 3.0) && ( lon < 12.0))
-      zone_number = 32;
+  if (lat < 0)
+    utm_northing += 10000000.; /* 10000000 meter offset for southern hemisphere */
 
-    /* Special zones for Svalbard */
-    if ((lat >= 72.0) && (lat < 84.0))
-      {
-        if ((lon >= 0.0) && (lon <  9.0)) 
-          zone_number = 31;
-        else if ((lon >= 9.0) && (lon < 21.0))
-          zone_number = 33;
-        else if ((lon >= 21.0) && (lon < 33.0))
-          zone_number = 35;
-        else if ((lon >= 33.0) && (lon < 42.0))
-          zone_number = 37;
-      }
+  *northing = utm_northing;
+  *easting  = utm_easting;
 
-    N = a/sqrt(1.-ecc_squared*sin(lat_rad)*sin(lat_rad));
-    T = tan(lat_rad)*tan(lat_rad);
-    C = ecc_prime_squared*cos(lat_rad)*cos(lat_rad);
-    A = cos(lat_rad)*(lan_rad-deg2rad*(((gdouble) zone_number-1.)*6.-180.+3.));
-    M = a*((1.-ecc_squared/4.-3.*ecc_squared*ecc_squared/64.-5.*ecc_squared*ecc_squared*ecc_squared/256.)*
-        lat_rad-(3.*ecc_squared/8.+3.*ecc_squared*ecc_squared/32.+45.*ecc_squared*ecc_squared*ecc_squared/1024.)*
-        sin(2.*lat_rad)+(15.*ecc_squared*ecc_squared/256.+45.*ecc_squared*ecc_squared*ecc_squared/1024.)*
-        sin(4.*lat_rad)-(35.*ecc_squared*ecc_squared*ecc_squared/3072.)*sin(6.*lat_rad));
+  if (zone_num != NULL)
+    *zone_num = zone_number;
+  if (zone != NULL)
+    *zone     = utm_letter_designator (lat);
 
-    utm_easting  = k0*N*(A+(1.-T+C)*A*A*A/6.+(5.-18.*T+T*T+72.*C-58.*ecc_prime_squared)*A*A*A*A*A/120.)+500000.;
-    utm_northing = k0*(M+N*tan(lat_rad)*(A*A/2.+(5.-T+9.*C+4.*C*C)*A*A*A*A/24.+(61.-58.*T+T*T+600.*C-330.*ecc_prime_squared)*A*A*A*A*A*A/720.));
-
-    if (lat < 0)
-      utm_northing += 10000000.; /* 10000000 meter offset for southern hemisphere */
-
-    *northing = utm_northing;
-    *easting  = utm_easting;
-
-    if (zone_num != NULL)
-      *zone_num = zone_number;
-    if (zone != NULL)
-      *zone     = utm_letter_designator (lat);
-
-    return (err);
+  return (err);
 }
 
 static gchar* 
@@ -1304,6 +1326,105 @@ utm_letter_designator (const gdouble lat)
     return g_strdup ("Z"); 
 >>>>>>> 48a8eef... Исправление расчета времени RSS строки. Дополнение полей данных.
 }
+
+static guint
+hyscan_hsx_converter_zone_number (const gdouble  lat,
+                                  const gdouble  lon,
+                                  gint          *err)
+{
+  guint zone_number = 0;
+  gint er = 0;
+
+  if ((lat < -80.) || (lat > 84.))
+    er = -1;
+
+  if ((lon < -180.) || ( lon >= 180.))
+    er = -2;
+
+  if (er != 0)
+    {
+      if (err != NULL)
+        *err = er;
+      return zone_number;
+    }
+
+  zone_number = (gint)((lon + 180.) / 6.) + 1;
+
+  if ((lat >= 56.0) && (lat < 64.0) && ( lon >= 3.0) && ( lon < 12.0))
+    zone_number = 32;
+
+  /* Special zones for Svalbard */
+  if ((lat >= 72.0) && (lat < 84.0))
+    {
+      if ((lon >= 0.0) && (lon <  9.0)) 
+        zone_number = 31;
+      else if ((lon >= 9.0) && (lon < 21.0))
+        zone_number = 33;
+      else if ((lon >= 21.0) && (lon < 33.0))
+        zone_number = 35;
+      else if ((lon >= 33.0) && (lon < 42.0))
+        zone_number = 37;
+    }
+
+  if (err != NULL)
+    *err = er;
+
+  return zone_number;
+}
+
+static gint
+hyscan_hsx_converter_latlon2dst_proj (HyScanHSXConverter *self,
+                                      gdouble             lat,
+                                      gdouble             lon,
+                                      gdouble            *easting,
+                                      gdouble            *northing,
+                                      gint               *zone_num,
+                                      gchar             **zone)
+{
+  HyScanHSXConverterPrivate *priv = self->priv;
+  gchar *init_str = NULL;
+  gint err = 0;
+  gint _zone = 0;
+  gdouble x, y;
+
+  _zone = hyscan_hsx_converter_zone_number (lat, lon, &err);
+  if (err != 0)
+    return err;
+
+  if ((priv->transform.proj_dst != NULL) && (_zone == priv->transform.zone_number))
+    goto calc;
+
+  g_clear_pointer (&priv->transform.proj_dst, pj_free);
+
+  init_str = g_strdup_printf ("%s +zone=%i", priv->transform.param_dst, _zone);
+  priv->transform.proj_dst = pj_init_plus (init_str);
+  g_free (init_str);
+  g_return_val_if_fail (priv->transform.proj_dst != NULL, -1);
+
+  priv->transform.zone_number = _zone;
+
+calc:
+  x = lon * DEG_TO_RAD;
+  y = lat * DEG_TO_RAD;
+
+  if ((err = pj_transform (priv->transform.proj_src,
+                           priv->transform.proj_dst,
+                           1, 1, &x, &y, NULL )) != 0)
+    {
+      g_warning ("Can`t convert lat/lon coord's' %f %f to UTM", lat, lon);
+      return err;
+    }
+
+  if (zone_num != NULL)
+    *zone_num = _zone;
+  if (zone != NULL)
+    *zone     = utm_letter_designator (lat);
+
+  *easting = x;
+  *northing = y;
+  return err;
+}
+
 
 static gboolean
 hyscan_hsx_converter_send_out (HyScanHSXConverter *self)
@@ -1589,6 +1710,37 @@ hyscan_hsx_converter_set_velosity (HyScanHSXConverter *self,
   priv = self->priv;
 
   priv->sound_velosity = velosity;
+}
+
+/* a string that describes the source coordinate reference system (CRS) */
+gboolean
+hyscan_hsx_converter_init_crs (HyScanHSXConverter *self,
+                               const gchar        *src_projection_id,
+                               const gchar        *src_datum_id)
+{
+  HyScanHSXConverterPrivate *priv;
+  gchar *init_str = NULL;
+
+  g_return_val_if_fail (HYSCAN_IS_HSX_CONVERTER (self), FALSE);
+  priv = self->priv;
+
+  if (priv->transform.proj_src != NULL)
+    pj_free (priv->transform.proj_src);
+
+  if (priv->transform.proj_dst != NULL)
+    pj_free (priv->transform.proj_dst);
+
+
+  init_str = g_strdup_printf ("+proj=%s +datum=%s", src_projection_id, src_datum_id);
+  priv->transform.proj_src = pj_init_plus (init_str);
+  g_free (init_str);
+  g_return_val_if_fail (priv->transform.proj_src != NULL, FALSE);
+
+  g_free (priv->transform.param_dst);
+  /* Здесь сохраним только тип проекции и датум. Зона будет расчитываться динамически для текущих широты и долготы */
+  priv->transform.param_dst = g_strdup ("+proj=utm +datum=WGS84");
+
+  return TRUE;
 }
 
 /**

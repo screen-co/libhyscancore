@@ -102,6 +102,11 @@ void                   hyscan_hsx_converter_set_velosity     (HyScanHSXConverter
                                                               gfloat                velosity);
 
 HYSCAN_API
+gboolean               hyscan_hsx_converter_init_crs         (HyScanHSXConverter   *self,
+                                                              const gchar          *src_projection_id,
+                                                              const gchar          *src_datum_id);
+
+HYSCAN_API
 gboolean               hyscan_hsx_converter_run              (HyScanHSXConverter   *self);
 
 HYSCAN_API
@@ -109,6 +114,7 @@ gboolean               hyscan_hsx_converter_stop             (HyScanHSXConverter
 
 HYSCAN_API
 gboolean               hyscan_hsx_converter_is_run           (HyScanHSXConverter   *self);
+
 
 G_END_DECLS
 
