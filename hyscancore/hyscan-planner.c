@@ -196,7 +196,7 @@ hyscan_planner_track_geo (const HyScanPlannerTrack *track,
  *
  * Определяет приближенное значение азимута из начала галса к концу галса.
  *
- * Returns: значение азимута в градусах
+ * Returns: значение азимута в радианах
  */
 gdouble
 hyscan_planner_track_angle (const HyScanPlannerTrack *track)
@@ -209,7 +209,7 @@ hyscan_planner_track_angle (const HyScanPlannerTrack *track)
   lon2 = DEG2RAD (track->end.lon);
   dlon = lon2 - lon1;
 
-  return atan2 (sin (dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon)) / G_PI * 180.0;
+  return atan2 (sin (dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon));
 }
 
 /**
