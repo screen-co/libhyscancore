@@ -62,6 +62,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-tile-queue.c
              hyscan-track-rect.c
              hyscan-mark.c
+             hyscan-track-data.c
              hyscan-object-data.c
              hyscan-object-data-wfmark.c
              hyscan-object-data-geomark.c
@@ -135,6 +136,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-tile-color.h
                hyscan-waterfall-tile.h
                hyscan-mark.h
+               hyscan-track-data.h
                hyscan-object-data.h
                hyscan-object-data-wfmark.h
                hyscan-object-data-geomark.h
