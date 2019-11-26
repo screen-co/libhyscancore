@@ -73,6 +73,7 @@
 #include "hyscan-geo.h"
 #include "hyscan-nmea-data.h"
 #include "hyscan-nmea-parser.h"
+#include "hyscan-track-data.h"
 #include <hyscan-buffer.h>
 #include <math.h>
 #include <stdio.h>
@@ -81,7 +82,7 @@
 #define HDT_WAIT_TIME              5.0         /* Время, в течение которого истинный курс (HDT) считается актуальным. */
 #define SIGNAL_LOST_DELTA          2.0         /* Время между двумя фиксами, которое считается обрывом. */
 #define DELAY_TIME                 1.0         /* Время задержки вывода данных по умолчанию. */
-#define FIXES_N                    10          /* Количество последних хранимых фиксов. */
+#define FIXES_N                    30          /* Количество последних хранимых фиксов. */
 
 #define MERIDIAN_LENGTH            20003930.0  /* Длина меридиана, метры. */
 #define NAUTICAL_MILE              1852.0      /* Морская миля, метры. */
@@ -89,6 +90,7 @@
 #define DEG2RAD(deg)             (deg / 180.0 * G_PI)
 #define RAD2DEG(rad)             (rad / G_PI * 180.0)
 #define KNOTS2METER(knots)       ((knots) * NAUTICAL_MILE / 3600)
+#define METER2KNOTS(meter)       ((meter) / NAUTICAL_MILE * 3600)
 #define KNOTS2ANGLE(knots, arc)  (180.0 / (arc) * (knots) * NAUTICAL_MILE / 3600)
 #define KNOTS2LAT(knots)         KNOTS2ANGLE (knots, MERIDIAN_LENGTH)
 #define KNOTS2LON(knots, lat)    KNOTS2ANGLE (knots, MERIDIAN_LENGTH * cos (DEG2RAD (lat)))
@@ -154,6 +156,14 @@ struct _HyScanNavModelPrivate
   HyScanNMEAParser            *parser_track;   /* Парсер курса. */
   HyScanNMEAParser            *parser_heading; /* Парсер истинного курса. */
   HyScanNMEAParser            *parser_speed;   /* Парсер скорости. */
+
+  struct
+  {
+    HyScanNMEAParser          *time;           /* Парсер времени. */
+    HyScanNMEAParser          *lat;            /* Парсер широты. */
+    HyScanNMEAParser          *lon;            /* Парсер долготы. */
+  }                            gga_parser;     /* Парсер GGA. */
+
 
   guint                        interval;       /* Желаемая частота эмитирования сигналов "changed", милисекунды. */
   guint                        process_tag;    /* ID таймера отправки сигналов "changed". */
@@ -311,6 +321,9 @@ hyscan_nav_model_object_constructed (GObject *object)
   priv->parser_track = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TRACK);
   priv->parser_heading = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_HDT, HYSCAN_NMEA_FIELD_HEADING);
   priv->parser_speed = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_SPEED);
+  priv->gga_parser.time = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_TIME);
+  priv->gga_parser.lat = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_LAT);
+  priv->gga_parser.lon = hyscan_nmea_parser_new_empty (HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_LON);
 
   priv->process_tag = g_timeout_add (priv->interval, (GSourceFunc) hyscan_nav_model_process, model);
 }
@@ -347,6 +360,9 @@ hyscan_nav_model_object_finalize (GObject *object)
   g_object_unref (priv->parser_track);
   g_object_unref (priv->parser_heading);
   g_object_unref (priv->parser_speed);
+  g_object_unref (priv->gga_parser.lat);
+  g_object_unref (priv->gga_parser.lon);
+  g_object_unref (priv->gga_parser.time);
 
   G_OBJECT_CLASS (hyscan_nav_model_parent_class)->finalize (object);
 }
@@ -565,6 +581,105 @@ hyscan_nav_model_read_rmc (HyScanNavModel    *model,
   return TRUE;
 }
 
+/* Парсит GGA-строку. */
+static gboolean
+hyscan_nav_model_read_gga (HyScanNavModel    *model,
+                           const gchar       *sentence,
+                           HyScanNavModelFix *fix)
+{
+  HyScanNavModelPrivate *priv = model->priv;
+
+  gboolean parsed;
+  gdouble fix_time;
+
+  g_return_val_if_fail (sentence != NULL, FALSE);
+
+  parsed  = hyscan_nmea_parser_parse_string (priv->gga_parser.time, sentence, &fix_time);
+  parsed &= hyscan_nmea_parser_parse_string (priv->gga_parser.lat, sentence, &fix->sensor_pos.coord.lat);
+  parsed &= hyscan_nmea_parser_parse_string (priv->gga_parser.lon, sentence, &fix->sensor_pos.coord.lon);
+
+  if (!parsed)
+    return FALSE;
+
+  fix->sensor_pos.coord.h = 0;
+  fix->speed = 0;
+  fix->time = fix_time;
+
+  /* Рассчитываем скорость и курс по предыдущим 5 координатам для GGA. */
+  {
+    GList *link;
+    gint i;
+    HyScanNavModelFix *prev_fix = NULL;
+
+    gdouble lat1, lon1, lat2, lon2, time1, time2;
+    gdouble dtime;
+    gdouble speed = 0, track_sum = 0;
+
+    g_mutex_lock (&priv->fixes_lock);
+
+    lat2 = fix->sensor_pos.coord.lat;
+    lon2 = fix->sensor_pos.coord.lon;
+    time2 = fix->time;
+    for (link = g_list_last (priv->fixes), i = 0; link != NULL && i < 20; link = link->prev, i++)
+      {
+        prev_fix = link->data;
+
+        time1 = prev_fix->time;
+        lat1 = prev_fix->sensor_pos.coord.lat;
+        lon1 = prev_fix->sensor_pos.coord.lon;
+
+        dtime = time2 - time1;
+
+        track_sum += hyscan_track_data_calc_track (lat1, lon1, lat2, lon2);
+        if (dtime > 0)
+          speed += hyscan_track_data_calc_dist (lat1, lon1, lat2, lon2) / dtime;
+        else
+          speed += 0;
+
+        /* Не углубляемся в прошлое слишком далеко. */
+        if (fix->time - prev_fix->time > 5)
+          break;
+
+        lat2 = lat1;
+        lon2 = lon1;
+      }
+
+    if (prev_fix != NULL && i > 0)
+      {
+        lat1 = prev_fix->sensor_pos.coord.lat;
+        lon1 = prev_fix->sensor_pos.coord.lon;
+        lat2 = fix->sensor_pos.coord.lat;
+        lon2 = fix->sensor_pos.coord.lon;
+        dtime = fix->time - prev_fix->time;
+        speed = hyscan_track_data_calc_dist (lat1, lon1, lat2, lon2) / dtime;
+        fix->speed = METER2KNOTS (speed);
+
+        fix->sensor_pos.coord.h = track_sum / i;
+      }
+    g_mutex_unlock (&priv->fixes_lock);
+  }
+
+  /* Расчитываем скорости по широте и долготе. */
+  if (fix->speed > 0)
+    {
+      gdouble bearing = DEG2RAD (fix->sensor_pos.coord.h);
+
+      fix->speed_lat = KNOTS2LAT (fix->speed * cos (bearing));
+      fix->speed_lon = KNOTS2LON (fix->speed * sin (bearing), fix->sensor_pos.coord.lat);
+    }
+  else
+    {
+      fix->speed_lat = 0;
+      fix->speed_lon = 0;
+    }
+
+  fix->sensor_pos.heading = fix->sensor_pos.coord.h;
+  fix->true_heading = FALSE;
+  fix->params_set = FALSE;
+
+  return TRUE;
+}
+
 static inline gboolean
 hyscan_nav_model_read_hdt (HyScanNavModel *model,
                            const gchar    *sentence,
@@ -608,8 +723,13 @@ hyscan_nav_model_sensor_data (HyScanSensor     *sensor,
       HyScanNavModelFix fix;
       gdouble heading;
 
+#ifndef HYSCAN_GGA_HACK
       if (hyscan_nav_model_read_rmc (model, sentences[i], &fix))
         hyscan_nav_model_add_fix (model, &fix);
+#else
+      if (hyscan_nav_model_read_gga (model, sentences[i], &fix))
+        hyscan_nav_model_add_fix (model, &fix);
+#endif
 
       else if (hyscan_nav_model_read_hdt (model, sentences[i], &heading))
         hyscan_nav_model_set_heading (model, heading);

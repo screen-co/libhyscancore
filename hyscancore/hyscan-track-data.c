@@ -1,6 +1,7 @@
 #include "hyscan-track-data.h"
 #include <math.h>
 
+#define EARTH_RADIUS 6378137.0               /* Радиус Земли. */
 #define DEG2RAD(x) (x / 180.0 * G_PI)
 #define RAD2DEG(x) (x * 180.0 / G_PI)
 #define VALID_LAT(x) (fabs (x) <= 90.0)
@@ -88,8 +89,8 @@ hyscan_track_data_object_constructed (GObject *object)
   HyScanTrackData *track_data = HYSCAN_TRACK_DATA (object);
   HyScanTrackDataPrivate *priv = track_data->priv;
 
-  priv->after = 3;
-  priv->before = 3;
+  priv->after = 10;
+  priv->before = 10;
 
   G_OBJECT_CLASS (hyscan_track_data_parent_class)->constructed (object);
 }
@@ -104,28 +105,6 @@ hyscan_track_data_object_finalize (GObject *object)
   g_clear_object (&priv->lon);
 
   G_OBJECT_CLASS (hyscan_track_data_parent_class)->finalize (object);
-}
-
-static gdouble
-hyscan_track_data_get_angle (gdouble lat1,
-                             gdouble lon1,
-                             gdouble lat2,
-                             gdouble lon2)
-{
-  gdouble dlon;
-  gdouble angle;
-
-  lat1 = DEG2RAD (lat1);
-  lon1 = DEG2RAD (lon1);
-  lat2 = DEG2RAD (lat2);
-  lon2 = DEG2RAD (lon2);
-  dlon = lon2 - lon1;
-
-  angle = atan2 (sin (dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon));
-  if (angle < 0)
-    angle += G_PI * 2.0;
-
-  return RAD2DEG (angle);
 }
 
 
@@ -165,7 +144,7 @@ hyscan_track_data_get (HyScanNavData     *ndata,
       if (VALID_LAT (lat0) && VALID_LON (lon0))
         {
           j++;
-          track += hyscan_track_data_get_angle (lat0, lon0, lat1, lon1);
+          track += hyscan_track_data_calc_track (lat0, lon0, lat1, lon1);
         }
 
       lat0 = lat1;
@@ -294,4 +273,52 @@ hyscan_track_data_new (HyScanNavData *lat,
                        "lat", lat,
                        "lon", lon,
                        NULL);
+}
+
+gdouble
+hyscan_track_data_calc_track (gdouble      lat1,
+                              gdouble      lon1,
+                              gdouble      lat2,
+                              gdouble      lon2)
+{
+  gdouble dlon;
+  gdouble angle;
+
+  lat1 = DEG2RAD (lat1);
+  lon1 = DEG2RAD (lon1);
+  lat2 = DEG2RAD (lat2);
+  lon2 = DEG2RAD (lon2);
+  dlon = lon2 - lon1;
+
+  angle = atan2 (sin (dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon));
+  if (angle < 0)
+    angle += G_PI * 2.0;
+
+  return RAD2DEG (angle);
+}
+
+gdouble
+hyscan_track_data_calc_dist (gdouble lat1,
+                             gdouble lon1,
+                             gdouble lat2,
+                             gdouble lon2)
+{
+  gdouble lon1r;
+  gdouble lat1r;
+
+  gdouble lon2r;
+  gdouble lat2r;
+
+  gdouble u;
+  gdouble v;
+
+  lat1r = DEG2RAD (lat1);
+  lon1r = DEG2RAD (lon1);
+  lat2r = DEG2RAD (lat2);
+  lon2r = DEG2RAD (lon2);
+
+  u = sin ((lat2r - lat1r) / 2);
+  v = sin ((lon2r - lon1r) / 2);
+
+  return 2.0 * EARTH_RADIUS * asin (sqrt (u * u + cos (lat1r) * cos (lat2r) * v * v));
 }

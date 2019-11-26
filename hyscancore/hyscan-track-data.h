@@ -32,8 +32,20 @@ HYSCAN_API
 GType           hyscan_track_data_get_type (void);
 
 HYSCAN_API
-HyScanNavData * hyscan_track_data_new      (HyScanNavData *lat,
-                                            HyScanNavData *lon);
+HyScanNavData * hyscan_track_data_new        (HyScanNavData *lat,
+                                              HyScanNavData *lon);
+
+HYSCAN_API
+gdouble         hyscan_track_data_calc_track (gdouble      lat1,
+                                              gdouble      lon1,
+                                              gdouble      lat2,
+                                              gdouble      lon2);
+
+HYSCAN_API
+gdouble         hyscan_track_data_calc_dist  (gdouble      lat1,
+                                              gdouble      lon1,
+                                              gdouble      lat2,
+                                              gdouble      lon2);
 
 G_END_DECLS
 

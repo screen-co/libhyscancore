@@ -45,6 +45,7 @@
  */
 
 #include "hyscan-nmea-parser.h"
+#include "hyscan-track-data.h"
 #include <hyscan-nmea-data.h>
 #include <string.h>
 #include <math.h>
@@ -573,6 +574,25 @@ hyscan_nmea_parser_new (HyScanDB        *db,
                         guint            field_type)
 {
   HyScanNMEAParser *parser;
+
+#ifdef HYSCAN_GGA_HACK
+  if (field_type == HYSCAN_NMEA_FIELD_TRACK)
+    {
+      HyScanNMEAParser *lat_parser, *lon_parser;
+      HyScanNavData *track_data;
+
+      lat_parser = hyscan_nmea_parser_new (db, cache, project, track, source_channel, HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_LAT);
+      lon_parser = hyscan_nmea_parser_new (db, cache, project, track, source_channel, HYSCAN_NMEA_DATA_GGA, HYSCAN_NMEA_FIELD_LON);
+      track_data = hyscan_track_data_new (HYSCAN_NAV_DATA (lat_parser), HYSCAN_NAV_DATA (lon_parser));
+
+      g_object_unref (lat_parser);
+      g_object_unref (lon_parser);
+
+      return (HyScanNMEAParser *) track_data;
+    }
+    if (data_type == HYSCAN_NMEA_DATA_RMC)
+      data_type = HYSCAN_NMEA_DATA_GGA;
+#endif
 
   parser = g_object_new (HYSCAN_TYPE_NMEA_PARSER,
                          "db", db,
