@@ -327,7 +327,7 @@ hyscan_nmea_parser_parse_date (const gchar *sentence,
   month = (sentence[2]-'0') * 10 + (sentence[3]-'0');
   year =  (sentence[4]-'0') * 10 + (sentence[5]-'0');
 
-  dt = g_date_time_new_utc (year, month, day, 0, 0, 0);
+  dt = g_date_time_new_utc (2000 + year, month, day, 0, 0, 0);
   val = g_date_time_to_unix (dt);
   g_date_time_unref (dt);
 

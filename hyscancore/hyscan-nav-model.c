@@ -613,6 +613,7 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
 
     gdouble lat1, lon1, lat2, lon2, time1, time2;
     gdouble dtime;
+    gdouble track0 = 0.0;
     gdouble speed = 0, track_sum = 0;
 
     g_mutex_lock (&priv->fixes_lock);
@@ -622,15 +623,26 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
     time2 = fix->time;
     for (link = g_list_last (priv->fixes), i = 0; link != NULL && i < 20; link = link->prev, i++)
       {
+        gdouble itrack;
         prev_fix = link->data;
 
         time1 = prev_fix->time;
         lat1 = prev_fix->sensor_pos.coord.lat;
         lon1 = prev_fix->sensor_pos.coord.lon;
 
+        if (i == 0)
+          track0 = prev_fix->sensor_pos.coord.h;
+
         dtime = time2 - time1;
 
-        track_sum += hyscan_track_data_calc_track (lat1, lon1, lat2, lon2);
+        /* Считаем курс относительно текущего направления track0. */
+        itrack = hyscan_track_data_calc_track (lat1, lon1, lat2, lon2);
+        if (itrack - track0 > 180)
+          itrack -= 360;
+        else if (track0 - itrack > 180)
+          itrack += 360;
+        track_sum += itrack;
+
         if (dtime > 0)
           speed += hyscan_track_data_calc_dist (lat1, lon1, lat2, lon2) / dtime;
         else
@@ -638,7 +650,10 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
 
         /* Не углубляемся в прошлое слишком далеко. */
         if (fix->time - prev_fix->time > 5)
-          break;
+          {
+            i++;
+            break;
+          }
 
         lat2 = lat1;
         lon2 = lon1;
@@ -652,9 +667,16 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
         lon2 = fix->sensor_pos.coord.lon;
         dtime = fix->time - prev_fix->time;
         speed = hyscan_track_data_calc_dist (lat1, lon1, lat2, lon2) / dtime;
+        fix->sensor_pos.coord.h = hyscan_track_data_calc_track (lat1, lon1, lat2, lon2);
         fix->speed = METER2KNOTS (speed);
-
-        fix->sensor_pos.coord.h = track_sum / i;
+        //
+        // track_sum /= i;
+        // if (track_sum < 0)
+        //   track_sum += 360;
+        // else if (track_sum > 360)
+        //   track_sum -= 360;
+        // fix->sensor_pos.coord.h = track_sum;
+        // fix->sensor_pos.coord.h = least_squares (lat_arr, lon_arr);
       }
     g_mutex_unlock (&priv->fixes_lock);
   }

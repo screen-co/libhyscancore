@@ -6,6 +6,7 @@
 #define RAD2DEG(x) (x * 180.0 / G_PI)
 #define VALID_LAT(x) (fabs (x) <= 90.0)
 #define VALID_LON(x) (fabs (x) <= 180.0)
+#define FIT_ANGLE(x) ((x) < 0 ? (x) + 360 : ((x) >= 360 ? (x) - 360 : (x)))
 
 enum
 {
@@ -143,8 +144,17 @@ hyscan_track_data_get (HyScanNavData     *ndata,
 
       if (VALID_LAT (lat0) && VALID_LON (lon0))
         {
+          gdouble track_avg, track_i;
+
+          track_avg = j > 0 ? (track / j) : 0.0;
+          track_i = hyscan_track_data_calc_track (lat0, lon0, lat1, lon1);
+          if (track_i - track_avg > 180)
+            track_i -= 360;
+          else if (track_i - track_avg < -180)
+            track_i += 360;
+
           j++;
-          track += hyscan_track_data_calc_track (lat0, lon0, lat1, lon1);
+          track += track_i;
         }
 
       lat0 = lat1;
@@ -155,7 +165,7 @@ hyscan_track_data_get (HyScanNavData     *ndata,
     return FALSE;
 
   if (value != NULL)
-    *value = track / j;
+    *value = FIT_ANGLE (track / j);
 
   return TRUE;
 }
@@ -174,7 +184,7 @@ hyscan_track_data_find_data (HyScanNavData *ndata,
 
   priv = HYSCAN_TRACK_DATA (ndata)->priv;
 
-  return hyscan_track_data_find_data (priv->lat, time, lindex, rindex, ltime, rtime);
+  return hyscan_nav_data_find_data (priv->lat, time, lindex, rindex, ltime, rtime);
 }
 
 static gboolean
