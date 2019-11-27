@@ -84,6 +84,8 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-object-data-planner.c
              hyscan-nav-model.c
              hyscan-nmea-file-device.c
+             hyscan-data-player.c
+             hyscan-hsx-converter.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -91,7 +93,8 @@ target_link_libraries (${HYSCAN_CORE_LIBRARY}
                        ${GLIB2_LIBRARIES}
                        ${MATH_LIBRARIES}
                        ${HYSCAN_LIBRARIES}
-                       ${ZLIB_LIBRARIES})
+                       ${ZLIB_LIBRARIES}
+                       ${PROJ4_LIBRARIES})
 
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES SOVERSION ${HYSCAN_CORE_VERSION})
@@ -157,6 +160,8 @@ install (FILES hyscan-core-schemas.h
                hyscan-object-data-planner.h
                hyscan-nav-model.h
                hyscan-nmea-file-device.h
+               hyscan-data-player.h
+               hyscan-hsx-converter.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

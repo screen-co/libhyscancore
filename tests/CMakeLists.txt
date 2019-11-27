@@ -30,9 +30,11 @@ add_executable (nmea-file-device-test nmea-file-device-test.c)
 add_executable (nav-model-test nav-model-test.c)
 add_executable (nmea-file2udp nmea-file2udp.c)
 add_executable (planner-test planner-test.c)
+add_executable (data-player-test data-player-test.c)
 if (UNIX)
   add_executable (nmea-joystick nmea-joystick.c)
 endif()
+add_executable (hsx-converter-test hsx-converter-test.c)
 
 target_link_libraries (cancellable-test ${TEST_LIBRARIES})
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
@@ -61,9 +63,11 @@ target_link_libraries (nmea-file-device-test ${TEST_LIBRARIES})
 target_link_libraries (nav-model-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
 target_link_libraries (planner-test ${TEST_LIBRARIES})
+target_link_libraries (data-player-test ${TEST_LIBRARIES})
 if (UNIX)
   target_link_libraries (nmea-joystick ${TEST_LIBRARIES})
 endif()
+target_link_libraries (hsx-converter-test ${TEST_LIBRARIES} ${PROJ4_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
@@ -95,6 +99,8 @@ add_test (NAME NavModelTest COMMAND nav-model-test --default-data
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME PlannerTest COMMAND planner-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME DataPlayerTest COMMAND data-player-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 install (TARGETS cancellable-test
                  data-writer-test
@@ -121,6 +127,7 @@ install (TARGETS cancellable-test
                  nav-model-test
                  nmea-file2udp
                  planner-test
+                 data-player-test
          COMPONENT test
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
