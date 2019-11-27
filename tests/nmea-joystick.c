@@ -86,6 +86,7 @@ typedef struct
 
 static gint freq = 10;                  /* Частота выдачи NMEA-данных, Гц. */
 gboolean hdt_off = FALSE;               /* Отключен вывод HDT-сообщений. */
+gboolean rmc_off = FALSE;               /* Отключен вывод RMC-сообщений. */
 static gdouble slat = 55.0;             /* Широта начальной точки. */
 static gdouble slon = 33.0;             /* Долгота начальной точки. */
 static gint axis_accel = 0;             /* Ось джойстика для считывания ускорения, Y. */
@@ -213,7 +214,8 @@ nmea_wrap (const gchar *inner)
 static gboolean
 send_rmc (gpointer user_data)
 {
-  gchar inner[80];
+  static gchar *inner = NULL;
+  gsize inner_len = 300;
   gchar *sentence;
   gdouble cur_time;
   HyScanGeoGeodetic coord;
@@ -226,7 +228,10 @@ send_rmc (gpointer user_data)
   gdouble lat_min, lon_min;
   gdouble speed, track;
   gboolean north, east;
-  const gchar *date = "19112019";
+  const gchar *date = "191119";
+
+  if (inner == NULL)
+    inner = g_new0 (gchar, inner_len);
 
   history_get (&state_c);
   g_debug ("Delay: %f\n", (g_get_monotonic_time () - state_c.time) * 1e-6);
@@ -258,24 +263,36 @@ send_rmc (gpointer user_data)
   else if (track == -0.0)  /* Меняем "-0" на "0". */
     track = 0.0;
 
-  g_snprintf (inner, sizeof (inner),
-              "GPRMC,%02d%02d%05.2f,A,"
+  if (!rmc_off)
+    {
+      g_snprintf (inner, inner_len,
+                  "GPRMC,%02d%02d%05.2f,A,"
+                  "%02d%08.5f,%c,%03d%08.5f,%c,"
+                  "%05.1f,%05.1f,"
+                  "%s,011.5,E",
+                  hour, min, sec,
+                  lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W',
+                  speed, track,
+                  date);
+
+      sentence = nmea_wrap (inner);
+      g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
+      g_free (sentence);
+    }
+
+  g_snprintf (inner, inner_len,
+              "GPGGA,%02d%02d%05.2f,"
               "%02d%08.5f,%c,%03d%08.5f,%c,"
-              "%05.1f,%05.1f,"
-              "%s,011.5,E",
+              "2,6,1.2,18.893,M,-25.669,M,2.0,0031",
               hour, min, sec,
-              lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W',
-              speed, track,
-              date);
-
-
+              lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W');
   sentence = nmea_wrap (inner);
   g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
   g_free (sentence);
 
   if (!hdt_off)
     {
-      g_snprintf (inner, sizeof (inner), "GPHDT,%.2f,T", state_c.heading / G_PI * 180.0);
+      g_snprintf (inner, inner_len, "GPHDT,%.2f,T", state_c.heading / G_PI * 180.0);
       sentence = nmea_wrap (inner);
       g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
       g_free (sentence);
@@ -463,6 +480,7 @@ int main (int argc, char *argv[])
 
         { "freq",      'f', 0, G_OPTION_ARG_INT,    &freq,       "NMEA frequency, Hz (default 10)",  NULL },
         { "hdt-off",    0 , 0, G_OPTION_ARG_NONE,   &hdt_off,    "Disable HDT messages",             NULL },
+        { "rmc-off",    0 , 0, G_OPTION_ARG_NONE,   &rmc_off,    "Disable RMC messages",             NULL },
         { "delay",      0 , 0, G_OPTION_ARG_INT,    &delay_ms,   "Add delay to NMEA sentences, ms",  NULL },
 
         { "slat",      'n', 0, G_OPTION_ARG_DOUBLE, &slat,       "Start latitude",                   NULL },
