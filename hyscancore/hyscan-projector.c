@@ -285,6 +285,14 @@ hyscan_projector_new (HyScanAmplitude *amplitude)
   return self;
 }
 
+HyScanAmplitude *
+hyscan_projector_get_amplitude (HyScanProjector *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROJECTOR (self), NULL);
+
+  return g_object_ref (self->priv->dc);
+}
+
 gboolean
 hyscan_projector_check_source (HyScanProjector   *self,
                                HyScanAmplitude   *additional,

@@ -95,6 +95,9 @@ GType                   hyscan_projector_get_type               (void);
 HYSCAN_API
 HyScanProjector        *hyscan_projector_new                    (HyScanAmplitude   *dc);
 
+HYSCAN_API
+HyScanAmplitude *       hyscan_projector_get_amplitude          (HyScanProjector   *projector);
+
 /**
  *
  * Функция проверяет источник данных.
