@@ -201,10 +201,14 @@ hyscan_object_data_wfmark_init_object (HyScanObjectData *data,
                                        gint32            param_id,
                                        HyScanDB         *db)
 {
+  static GMutex mutex;
   HyScanObjectDataWfmarkPrivate *priv = HYSCAN_OBJECT_DATA_WFMARK (data)->priv;
   HyScanParamList *list = hyscan_param_list_new ();
   hyscan_param_list_add (list, "/schema/id");
   hyscan_param_list_add (list, "/schema/version");
+
+  /* Блокируем для других потоков создание test_object, чтобы спокойно его прочитать и удалить. */
+  g_mutex_lock (&mutex);
 
   /*status = */
   if (!hyscan_db_param_object_create (db, param_id, "test_object", WATERFALL_MARK_SCHEMA))
@@ -222,6 +226,8 @@ hyscan_object_data_wfmark_init_object (HyScanObjectData *data,
 
   /*status = */
   hyscan_db_param_object_remove (db, param_id, "test_object");
+
+  g_mutex_unlock (&mutex);
 
   g_object_unref (list);
 }

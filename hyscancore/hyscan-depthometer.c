@@ -423,3 +423,17 @@ hyscan_depthometer_check (HyScanDepthometer *meter,
 
   return -1.0;
 }
+
+/**
+ * hyscan_depthometer_get_nav_data:
+ * @depthometer: #HyScanDepthometer
+ *
+ * Returns: указатель на HyscanNavData, для удаления g_object_unref()
+ */
+HyScanNavData *
+hyscan_depthometer_get_nav_data (HyScanDepthometer *depthometer)
+{
+  g_return_val_if_fail (HYSCAN_IS_DEPTHOMETER (depthometer), NULL);
+
+  return g_object_ref (depthometer->priv->source);
+}
