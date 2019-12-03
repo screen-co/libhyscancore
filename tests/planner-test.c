@@ -186,13 +186,13 @@ test_tracks (HyScanDB *db,
 
   /* Добавляем плановый галс. */
   track_new.type = HYSCAN_PLANNER_TRACK;
-  track_new.start.lat = 55.312;
-  track_new.start.lon = 38.452;
-  track_new.end.lat = 55.313;
-  track_new.end.lon = 38.453;
+  track_new.plan.start.lat = 55.312;
+  track_new.plan.start.lon = 38.452;
+  track_new.plan.end.lat = 55.313;
+  track_new.plan.end.lon = 38.453;
+  track_new.plan.velocity = 1.3;
   track_new.name = "Track 1";
   track_new.number = 0;
-  track_new.speed = 1.3;
   track_new.zone_id = zone_id;
   status = hyscan_object_data_add (planner, (HyScanObject *) &track_new, &track_id);
   g_assert_true (status);
@@ -208,14 +208,14 @@ test_tracks (HyScanDB *db,
   /* Меняем параметры галса. */
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
-  track_obj->speed = 1.0;
+  track_obj->plan.velocity = 1.0;
   hyscan_object_data_modify (planner, track_id, (const HyScanObject *) track_obj);
   hyscan_planner_track_free (track_obj);
 
   /* Проверяем, что параметры обновились. */
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
-  g_assert (ABS (track_obj->speed - 1.0) < 1e-4);
+  g_assert (ABS (track_obj->plan.velocity - 1.0) < 1e-4);
   hyscan_planner_track_free (track_obj);
 
   /* Проверяем несуществующие галсы. */

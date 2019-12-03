@@ -113,6 +113,7 @@
       </key>
     </node>
     <key id="zone-id" name="The identifier of the zone containing track" type="string"/>
+    <key id="records" name="Comma separated identifiers of recorded track identifiers" type="string"/>
     <key id="number" name="Index number of the track inside its zone" type="integer"/>
     <key id="speed" name="Ship speed along the track, m/s" type="double"/>
     <key id="name" name="Track short name" type="string"/>

@@ -42,7 +42,7 @@
 #define TRACK_INFO_SCHEMA_VERSION              20180100
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
-#define TRACK_SCHEMA_VERSION                   20190100
+#define TRACK_SCHEMA_VERSION                   20200200
 
 #define LOG_SCHEMA_ID                          3957463010395734756
 #define LOG_SCHEMA_VERSION                     20190100

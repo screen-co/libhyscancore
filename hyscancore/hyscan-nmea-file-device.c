@@ -314,14 +314,14 @@ hyscan_nmea_file_device_process (HyScanNmeaFileDevice *device)
     goto exit;
 
   /* Определяем начальную метку времени. */
-  priv->line_time = G_MINDOUBLE;
+  priv->line_time = -G_MAXDOUBLE;
   while (hyscan_nmea_read_line (device))
     {
       if (hyscan_nmea_file_device_parse_time (device, priv->line->str, &priv->line_time))
         break;
     }
 
-  if (priv->line_time == G_MINDOUBLE)
+  if (priv->line_time == G_MAXDOUBLE)
     goto exit;
 
   priv->next_tick = ceil (priv->line_time);

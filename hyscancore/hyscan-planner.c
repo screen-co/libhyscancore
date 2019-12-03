@@ -130,17 +130,16 @@ hyscan_planner_track_copy (const HyScanPlannerTrack *track)
   copy = hyscan_planner_track_new ();
   copy->zone_id = g_strdup (track->zone_id);
   copy->name = g_strdup (track->name);
+  copy->records = g_strdupv (track->records);
   copy->number = track->number;
-  copy->speed = track->speed;
-  copy->start = track->start;
-  copy->end = track->end;
+  copy->plan = track->plan;
 
   return copy;
 }
 
 /**
  * hyscan_planner_track_free:
- * @track: указатель на структуру HyScanPlannerTrack
+ * @track: указатель на структуру #HyScanPlannerTrack
  *
  * Удаляет структуру #HyScanPlannerTrack
  */
@@ -152,7 +151,37 @@ hyscan_planner_track_free (HyScanPlannerTrack *track)
 
   g_free (track->zone_id);
   g_free (track->name);
+  g_strfreev (track->records);
   g_slice_free (HyScanPlannerTrack, track);
+}
+
+/**
+ * hyscan_planner_track_add_record:
+ * @track: указатель на #HyScanPlannerTrack
+ * @record_id: идентификатор записанного галса
+ */
+void
+hyscan_planner_track_add_record (HyScanPlannerTrack *track,
+                                 const gchar        *record_id)
+{
+  guint len;
+
+  len = track->records != NULL ? g_strv_length (track->records) + 2 : 2;
+  track->records = g_realloc_n (track->records, len, sizeof (gchar *));
+  track->records[len - 2] = g_strdup (record_id);
+  track->records[len - 1] = NULL;
+}
+
+/**
+ * hyscan_planner_track_get_plan:
+ * @track: указатель на #HyScanPlannerTrack
+ *
+ * Returns: (transfer full): параметры галса, для удаления hyscan_track_plan_free().
+ */
+HyScanTrackPlan *
+hyscan_planner_track_get_plan (HyScanPlannerTrack *track)
+{
+  return hyscan_track_plan_copy (&track->plan);
 }
 
 /**
@@ -167,19 +196,19 @@ hyscan_planner_track_free (HyScanPlannerTrack *track)
  * Returns: (transfer-full): новый объект #HyScanGeo
  */
 HyScanGeo *
-hyscan_planner_track_geo (const HyScanPlannerTrack *track,
-                          gdouble                  *angle)
+hyscan_planner_track_geo (const HyScanTrackPlan *plan,
+                          gdouble               *angle)
 {
   HyScanGeo *tmp_geo;
   HyScanGeoGeodetic origin;
   HyScanGeoCartesian2D start, end;
 
-  origin = track->start;
+  origin = plan->start;
   origin.h = 0.0;
 
   tmp_geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
-  hyscan_geo_geo2topoXY (tmp_geo, &start, track->start);
-  hyscan_geo_geo2topoXY (tmp_geo, &end, track->end);
+  hyscan_geo_geo2topoXY (tmp_geo, &start, plan->start);
+  hyscan_geo_geo2topoXY (tmp_geo, &end, plan->end);
   origin.h = atan2 (end.x - start.x, end.y - start.y) / G_PI * 180.0;
 
   g_object_unref (tmp_geo);
@@ -203,10 +232,10 @@ hyscan_planner_track_angle (const HyScanPlannerTrack *track)
 {
   gdouble lat1, lat2, lon1, lon2, dlon;
 
-  lat1 = DEG2RAD (track->start.lat);
-  lon1 = DEG2RAD (track->start.lon);
-  lat2 = DEG2RAD (track->end.lat);
-  lon2 = DEG2RAD (track->end.lon);
+  lat1 = DEG2RAD (track->plan.start.lat);
+  lon1 = DEG2RAD (track->plan.start.lon);
+  lat2 = DEG2RAD (track->plan.end.lat);
+  lon2 = DEG2RAD (track->plan.end.lon);
   dlon = lon2 - lon1;
 
   return atan2 (sin (dlon) * cos (lat2), cos (lat1) * sin (lat2) - sin (lat1) * cos (lat2) * cos (dlon));
@@ -214,14 +243,14 @@ hyscan_planner_track_angle (const HyScanPlannerTrack *track)
 
 /**
  * hyscan_planner_track_length:
- * @track: указатель на структуру с галсом #HyScanPlannerTrack
+ * @plan: указатель на структуру с галсом #HyScanTrackPlan
  *
  * Определяет длину галса.
  *
  * Returns: длина галса в метрах
  */
 gdouble
-hyscan_planner_track_length (const HyScanPlannerTrack *track)
+hyscan_planner_track_length (const HyScanTrackPlan *plan)
 {
   gdouble lon1r;
   gdouble lat1r;
@@ -232,10 +261,10 @@ hyscan_planner_track_length (const HyScanPlannerTrack *track)
   gdouble u;
   gdouble v;
 
-  lat1r = DEG2RAD (track->start.lat);
-  lon1r = DEG2RAD (track->start.lon);
-  lat2r = DEG2RAD (track->end.lat);
-  lon2r = DEG2RAD (track->end.lon);
+  lat1r = DEG2RAD (plan->start.lat);
+  lon1r = DEG2RAD (plan->start.lon);
+  lat2r = DEG2RAD (plan->end.lat);
+  lon2r = DEG2RAD (plan->end.lon);
 
   u = sin ((lat2r - lat1r) / 2);
   v = sin ((lon2r - lon1r) / 2);
@@ -271,15 +300,15 @@ hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
   gdouble dx, dy;
 
   modified_track = hyscan_planner_track_copy (track);
-  geo = hyscan_planner_track_geo (track, NULL);
+  geo = hyscan_planner_track_geo (&track->plan, NULL);
 
   vertices_len = zone->points_len;
   vertices = g_new (HyScanGeoCartesian2D, zone->points_len);
   for (i = 0; i < zone->points_len; ++i)
     hyscan_geo_geo2topoXY (geo, &vertices[i], zone->points[i]);
 
-  hyscan_geo_geo2topoXY (geo, &start, track->start);
-  hyscan_geo_geo2topoXY (geo, &end, track->end);
+  hyscan_geo_geo2topoXY (geo, &start, track->plan.start);
+  hyscan_geo_geo2topoXY (geo, &end, track->plan.end);
 
   /* Находим точки пересечения отрезка с прямой. */
   points = hyscan_cartesian_polygon_cross (vertices, vertices_len, &start, &end, &points_len);
@@ -307,8 +336,8 @@ hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
   else if (end_i % 2 == 0)
     end_i -= 1;
 
-  hyscan_geo_topoXY2geo (geo, &modified_track->start, points[end_i - 1], 0);
-  hyscan_geo_topoXY2geo (geo, &modified_track->end, points[end_i], 0);
+  hyscan_geo_topoXY2geo (geo, &modified_track->plan.start, points[end_i - 1], 0);
+  hyscan_geo_topoXY2geo (geo, &modified_track->plan.end, points[end_i], 0);
 
 exit:
   g_object_unref (geo);

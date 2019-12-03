@@ -578,10 +578,11 @@ hyscan_dummy_device_sonar_tvg_disable (HyScanSonar      *sonar,
 }
 
 static gboolean
-hyscan_dummy_device_sonar_start (HyScanSonar     *sonar,
-                                 const gchar     *project_name,
-                                 const gchar     *track_name,
-                                 HyScanTrackType  track_type)
+hyscan_dummy_device_sonar_start (HyScanSonar           *sonar,
+                                 const gchar           *project_name,
+                                 const gchar           *track_name,
+                                 HyScanTrackType        track_type,
+                                 const HyScanTrackPlan *track_plan)
 {
   HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
   HyScanDummyDevicePrivate *priv = dummy->priv;

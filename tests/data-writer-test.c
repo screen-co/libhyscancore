@@ -892,14 +892,14 @@ main (int    argc,
   log_add_data (writer, FALSE);
 
   date_time = CTIME + n_tracks++;
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, date_time))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, NULL, date_time))
     g_error ("can't start writer");
   hyscan_data_writer_stop (writer);
 
   /* Галс с данными. */
   g_message ("creating data track-1");
   date_time = CTIME + n_tracks++;
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY, date_time))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY, NULL, date_time))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -915,7 +915,7 @@ main (int    argc,
   /* Галс с данными. */
   g_message ("creating data track-2");
   date_time = CTIME + n_tracks++;
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY, date_time))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY, NULL, date_time))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -930,7 +930,7 @@ main (int    argc,
 
   /* Дублирование галса. */
   g_message ("duplicate track-0");
-  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, -1))
+  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, NULL, -1))
     g_error ("can duplicate track");
 
   /* Отключаем запись. */

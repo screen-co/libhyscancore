@@ -660,7 +660,7 @@ check_sonar_start (void)
 {
   HyScanTrackType track_type = HYSCAN_TRACK_SURVEY;
 
-  if (!hyscan_sonar_start (sonar, project_name, track_name, track_type))
+  if (!hyscan_sonar_start (sonar, project_name, track_name, track_type, NULL))
     g_error ("call failed");
 
   if (!hyscan_dummy_device_check_start (device1, project_name, track_name, track_type) ||

@@ -57,10 +57,9 @@ typedef struct _HyScanPlannerOrigin HyScanPlannerOrigin;
  * @id: уникальный идентификатор
  * @zone_id: идентификатор зоны, в котрой находится галс
  * @number: порядковый номер галса
- * @speed: скорость движения судна, м/с
+ * @plan: запланированные параметры движения
  * @name: название
- * @start: геокоординаты начала
- * @start: геокоординаты конца
+ * @records: NULL-терминированный список идентификаторов записанных галсов
  *
  * Параметры запланированного галса
  */
@@ -69,10 +68,9 @@ struct _HyScanPlannerTrack
   HyScanObjectType         type;
   gchar                   *zone_id;
   guint                    number;
-  gdouble                  speed;
+  HyScanTrackPlan          plan;
   gchar                   *name;
-  HyScanGeoGeodetic        start;
-  HyScanGeoGeodetic        end;
+  gchar                  **records;
 };
 
 /**
@@ -126,14 +124,21 @@ HYSCAN_API
 void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
 
 HYSCAN_API
-HyScanGeo *            hyscan_planner_track_geo          (const HyScanPlannerTrack  *track,
+void                   hyscan_planner_track_add_record   (HyScanPlannerTrack        *track,
+                                                          const gchar               *record_id);
+
+HYSCAN_API
+HyScanTrackPlan *      hyscan_planner_track_get_plan     (HyScanPlannerTrack        *track);
+
+HYSCAN_API
+HyScanGeo *            hyscan_planner_track_geo          (const HyScanTrackPlan     *plan,
                                                           gdouble                   *angle);
 
 HYSCAN_API
 gdouble                hyscan_planner_track_angle        (const HyScanPlannerTrack  *track);
 
 HYSCAN_API
-gdouble                hyscan_planner_track_length       (const HyScanPlannerTrack  *track);
+gdouble                hyscan_planner_track_length       (const HyScanTrackPlan     *plan);
 
 HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_extend       (const HyScanPlannerTrack  *track,
