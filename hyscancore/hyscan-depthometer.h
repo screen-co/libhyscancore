@@ -85,6 +85,9 @@ HYSCAN_API
 gdouble                 hyscan_depthometer_check               (HyScanDepthometer      *depthometer,
                                                                 gint64                  time);
 
+HYSCAN_API
+HyScanNavData *         hyscan_depthometer_get_nav_data        (HyScanDepthometer      *depthometer);
+
 G_END_DECLS
 
 #endif /* __HYSCAN_DEPTHOMETER_H__ */
