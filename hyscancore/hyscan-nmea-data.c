@@ -766,7 +766,7 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
  * hyscan_nmea_data_split_sentence:
  * @sentence: указатель на строку
  * @length: длина строки
-
+ *
  * Функция разбивает строку, содержащую несколько NMEA-сообщений, на отдельные
  * строки. В канале HYSCAN_SOURCE_NMEA_ANY по одному индексу может находиться
  * сразу несколько сообщений. Эта функция генерирует нуль-терминированный вектор
