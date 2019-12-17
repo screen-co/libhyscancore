@@ -244,25 +244,28 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
     gint       GGA;
     gint       DPT;
     gint       HDT;
+    gint       HPR;
     gboolean (*func) (const gchar *sentence,
                       gdouble     *value);
   } fields[] =
   {
-    /* .RMC, .GGA, .DPT, .HDT, .func */
-    { 1,   1,  -1, -1, hyscan_nmea_parser_parse_time},   /* HYSCAN_NMEA_FIELD_TIME      */
-    { 3,   2,  -1, -1, hyscan_nmea_parser_parse_latlon}, /* HYSCAN_NMEA_FIELD_LAT       */
-    { 5,   4,  -1, -1, hyscan_nmea_parser_parse_latlon}, /* HYSCAN_NMEA_FIELD_LON       */
-    { 7,  -1,  -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_SPEED     */
-    { 8,  -1,  -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_TRACK     */
-    {-1,  -1,  -1,  1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_HEADING */
-    { 9,  -1,  -1, -1, hyscan_nmea_parser_parse_date},   /* HYSCAN_NMEA_FIELD_DATE      */
-    { 10, -1,  -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_MAG_VAR   */
-    {-1,   6,  -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_FIX_QUAL  */
-    {-1,   7,  -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_N_SATS    */
-    {-1,   8,  -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_HDOP      */
-    {-1,   9,  -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_ALTITUDE  */
-    {-1,   11, -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_HOG       */
-    {-1,  -1,   1, -1, hyscan_nmea_parser_parse_value}   /* HYSCAN_NMEA_FIELD_DEPTH     */
+    /* .RMC, .GGA, .DPT, .HDT, .HPR, .func */
+    { 1,   1,  -1, -1, -1, hyscan_nmea_parser_parse_time},   /* HYSCAN_NMEA_FIELD_TIME      */
+    { 3,   2,  -1, -1, -1, hyscan_nmea_parser_parse_latlon}, /* HYSCAN_NMEA_FIELD_LAT       */
+    { 5,   4,  -1, -1, -1, hyscan_nmea_parser_parse_latlon}, /* HYSCAN_NMEA_FIELD_LON       */
+    { 7,  -1,  -1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_SPEED     */
+    { 8,  -1,  -1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_TRACK     */
+    {-1,  -1,  -1,  1,  1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_HEADING   */
+    { 9,  -1,  -1, -1, -1, hyscan_nmea_parser_parse_date},   /* HYSCAN_NMEA_FIELD_DATE      */
+    { 10, -1,  -1, -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_MAG_VAR   */
+    {-1,   6,  -1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_FIX_QUAL  */
+    {-1,   7,  -1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_N_SATS    */
+    {-1,   8,  -1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_HDOP      */
+    {-1,   9,  -1, -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_ALTITUDE  */
+    {-1,   11, -1, -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_HOG       */
+    {-1,  -1,   1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_DEPTH     */
+    {-1,  -1,  -1, -1,  3, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_PITCH     */
+    {-1,  -1,  -1, -1,  5, hyscan_nmea_parser_parse_value}   /* HYSCAN_NMEA_FIELD_ROLL      */
   };
 
   priv->parse_func = fields[priv->field_type].func;
@@ -275,6 +278,8 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
     priv->field_n = fields[priv->field_type].DPT;
   else if (priv->data_type == HYSCAN_NMEA_DATA_HDT)
     priv->field_n = fields[priv->field_type].HDT;
+  else if (priv->data_type == HYSCAN_NMEA_DATA_HPR)
+    priv->field_n = fields[priv->field_type].HPR;
 
   if (priv->field_n == -1)
     return FALSE;
@@ -444,6 +449,10 @@ hyscan_nmea_parser_parse_helper (HyScanNMEAParserPrivate *priv,
       break;
     case HYSCAN_NMEA_DATA_HDT:
       signature = "HDT";
+      go_back = 3;
+      break;
+    case HYSCAN_NMEA_DATA_HPR:
+      signature = "HPR";
       go_back = 3;
       break;
     default:

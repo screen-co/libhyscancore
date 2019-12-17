@@ -82,6 +82,7 @@ typedef enum
   HYSCAN_NMEA_DATA_GGA       = 1 << 2,
   HYSCAN_NMEA_DATA_DPT       = 1 << 3,
   HYSCAN_NMEA_DATA_HDT       = 1 << 4,
+  HYSCAN_NMEA_DATA_HPR       = 1 << 5,
 } HyScanNmeaDataType;
 
 HYSCAN_API
