@@ -57,12 +57,12 @@
 #define HYSCAN_PROFILE_OFFSET_INFO_GROUP "_"
 #define HYSCAN_PROFILE_OFFSET_NAME "name"
 
-#define HYSCAN_PROFILE_OFFSET_X "x"
-#define HYSCAN_PROFILE_OFFSET_Y "y"
-#define HYSCAN_PROFILE_OFFSET_Z "z"
-#define HYSCAN_PROFILE_OFFSET_PSI "psi"
-#define HYSCAN_PROFILE_OFFSET_GAMMA "gamma"
-#define HYSCAN_PROFILE_OFFSET_THETA "theta"
+#define HYSCAN_PROFILE_OFFSET_STARBOARD "starboard"
+#define HYSCAN_PROFILE_OFFSET_FORWARD "forward"
+#define HYSCAN_PROFILE_OFFSET_VERTICAL "vertical"
+#define HYSCAN_PROFILE_OFFSET_YAW "yaw"
+#define HYSCAN_PROFILE_OFFSET_PITCH "pitch"
+#define HYSCAN_PROFILE_OFFSET_ROLL "roll"
 
 struct _HyScanProfileOffsetPrivate
 {
@@ -145,12 +145,12 @@ hyscan_profile_offset_read (HyScanProfile *profile,
       if (hyscan_profile_offset_info_group (self, file, *iter))
         continue;
 
-      offset.x = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_X, NULL);
-      offset.y = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_Y, NULL);
-      offset.z = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_Z, NULL);
-      offset.psi = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_PSI, NULL);
-      offset.gamma = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_GAMMA, NULL);
-      offset.theta = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_THETA, NULL);
+      offset.starboard = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_STARBOARD, NULL);
+      offset.forward = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_FORWARD, NULL);
+      offset.vertical = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_VERTICAL, NULL);
+      offset.yaw = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_YAW, NULL);
+      offset.pitch = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_PITCH, NULL);
+      offset.roll = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_ROLL, NULL);
 
       /* Если название группы совпадает с названием того или иного
        * HyScanSourceType, то это локатор. Иначе -- датчик. */

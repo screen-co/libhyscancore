@@ -132,12 +132,12 @@ create_complex_data (HyScanDataWriter *writer,
   acoustic_info.adc_vref = 1.0;
   acoustic_info.adc_offset = 0;
 
-  offset.x = 0.0;
-  offset.y = 0.0;
-  offset.z = 0.0;
-  offset.psi = 0.0;
-  offset.gamma = 0.0;
-  offset.theta = 0.0;
+  offset.starboard = 0.0;
+  offset.forward = 0.0;
+  offset.vertical = 0.0;
+  offset.yaw = 0.0;
+  offset.pitch = 0.0;
+  offset.roll = 0.0;
 
   hyscan_data_writer_sonar_set_offset (writer, source, &offset);
 
@@ -307,12 +307,12 @@ create_amplitude_data (HyScanDataWriter *writer,
   acoustic_info.adc_vref = 1.0;
   acoustic_info.adc_offset = 0;
 
-  offset.x = 0.0;
-  offset.y = 0.0;
-  offset.z = 0.0;
-  offset.psi = 0.0;
-  offset.gamma = 0.0;
-  offset.theta = 0.0;
+  offset.starboard = 0.0;
+  offset.forward = 0.0;
+  offset.vertical = 0.0;
+  offset.yaw = 0.0;
+  offset.pitch = 0.0;
+  offset.roll = 0.0;
 
   hyscan_data_writer_sonar_set_offset (writer, source, &offset);
 

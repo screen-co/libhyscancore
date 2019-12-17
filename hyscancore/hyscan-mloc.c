@@ -211,11 +211,11 @@ hyscan_mloc_get (HyScanmLoc            *self,
   hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
   /* Сдвигаю куда следует. Тут небольшой костыль, т.к. система координат в гео
-   * и в остальном хайскане не совпадает. В хайскане Y+ - это на правый борт,
+   * и в остальном хайскане не совпадает. В хайскане Starboard+ - это на правый борт,
    * а в гео - левее. */
-  topo.x = -priv->position.x + antenna->x + shiftx;
-  topo.y = priv->position.y - antenna->y - shifty;
-  topo.z = -priv->position.z + antenna->z + shiftz;
+  topo.x = -priv->position.forward + antenna->forward + shiftx;
+  topo.y = priv->position.starboard - antenna->starboard - shifty;
+  topo.z = -priv->position.vertical + antenna->vertical + shiftz;
 
   /* Перевожу обратно в геодезичесие. */
   hyscan_geo_topo2geo (priv->geo, position, topo);

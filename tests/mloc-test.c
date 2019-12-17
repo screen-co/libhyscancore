@@ -58,9 +58,9 @@ main (int argc, char **argv)
     HyScanGeoGeodetic result;
     gboolean found;
 
-    pos.x = 5;
-    pos.y = 10;
-    pos.z = 15;
+    pos.forward = 5;
+    pos.starboard = 10;
+    pos.vertical = 15;
 
     found = hyscan_mloc_get (mloc, NULL, 138920512, &pos, 50, 0, 0, &result);
     g_message ("%i", found);

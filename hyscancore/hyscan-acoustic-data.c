@@ -395,10 +395,7 @@ hyscan_acoustic_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  status = hyscan_core_params_load_antenna_offset (priv->db, param_id,
-                                                     ACOUSTIC_CHANNEL_SCHEMA_ID,
-                                                     ACOUSTIC_CHANNEL_SCHEMA_VERSION,
-                                                     &priv->offset);
+  status = hyscan_core_params_load_acoustic_offset (priv->db, param_id, &priv->offset);
   if (!status)
     {
       g_warning ("HyScanAcousticData: '%s.%s.%s': can't read antenna offset",

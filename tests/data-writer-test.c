@@ -118,12 +118,12 @@ antenna_get_offset (guint n_channel)
 
   if (n_channel % 2)
     {
-      offset.x = 1.0 * n_channel;
-      offset.y = 2.0 * n_channel;
-      offset.z = 3.0 * n_channel;
-      offset.psi = 4.0 * n_channel;
-      offset.gamma = 5.0 * n_channel;
-      offset.theta = 6.0 * n_channel;
+      offset.starboard = 1.0 * n_channel;
+      offset.forward = 2.0 * n_channel;
+      offset.vertical = 3.0 * n_channel;
+      offset.yaw = 4.0 * n_channel;
+      offset.pitch = 5.0 * n_channel;
+      offset.roll = 6.0 * n_channel;
     }
 
   return offset;
@@ -257,15 +257,27 @@ antenna_check_offset (HyScanDB *db,
 
   offset1 = antenna_get_offset (n_channel);
 
-  if (!hyscan_core_params_load_antenna_offset (db, param_id, schema_id, TRACK_SCHEMA_VERSION, &offset2))
-    g_error ("error in schema");
+  if (schema_id == SENSOR_CHANNEL_SCHEMA_ID)
+    {
+      if (!hyscan_core_params_load_sensor_offset (db, param_id, &offset2))
+        g_error ("error in schema");
+    }
+  else if (schema_id == ACOUSTIC_CHANNEL_SCHEMA_ID)
+    {
+      if (!hyscan_core_params_load_acoustic_offset (db, param_id, &offset2))
+        g_error ("error in schema");
+    }
+  else
+    {
+      g_error ("unknown schema");
+    }
 
-  if ((fabs (offset1.x - offset2.x) > 1e-6) ||
-      (fabs (offset1.y - offset2.y) > 1e-6) ||
-      (fabs (offset1.z - offset2.z) > 1e-6) ||
-      (fabs (offset1.psi - offset2.psi) > 1e-6) ||
-      (fabs (offset1.gamma - offset2.gamma) > 1e-6) ||
-      (fabs (offset1.theta - offset2.theta) > 1e-6))
+  if ((fabs (offset1.starboard - offset2.starboard) > 1e-6) ||
+      (fabs (offset1.forward - offset2.forward) > 1e-6) ||
+      (fabs (offset1.vertical - offset2.vertical) > 1e-6) ||
+      (fabs (offset1.yaw - offset2.yaw) > 1e-6) ||
+      (fabs (offset1.pitch - offset2.pitch) > 1e-6) ||
+      (fabs (offset1.roll - offset2.roll) > 1e-6))
     {
       g_error ("error in parameters");
     }

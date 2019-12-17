@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="offset">
-    <key id="x" name="X" type="double"/>
-    <key id="y" name="Y" type="double"/>
-    <key id="z" name="Z" type="double"/>
-    <key id="psi" name="Psi" type="double"/>
-    <key id="gamma" name="Gamma" type="double"/>
-    <key id="theta" name="Theta" type="double"/>
+    <key id="starboard" name="Starboard offset" type="double"/>
+    <key id="forward" name="Forward offset" type="double"/>
+    <key id="vertical" name="Vertical offset" type="double"/>
+    <key id="yaw" name="Yaw offset" type="double"/>
+    <key id="pitch" name="Pitch offset" type="double"/>
+    <key id="roll" name="Roll offset" type="double"/>
   </schema>
 
   <schema id="antenna">
@@ -38,7 +38,7 @@
         <default>1715033709558529337</default>
       </key>
       <key id="version" name="Track schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
     <key id="id" name="Track id" type="string"/>
@@ -56,7 +56,7 @@
         <default>3957463010395734756</default>
       </key>
       <key id="version" name="Log channel schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
   </schema>
@@ -67,7 +67,7 @@
         <default>5474665919775311270</default>
       </key>
       <key id="version" name="Sensor channel schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
     <node id="offset" schema="offset"/>
@@ -80,7 +80,7 @@
         <default>3533456721320349085</default>
       </key>
       <key id="version" name="Acoustic channel schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
     <node id="offset" schema="offset"/>
@@ -99,7 +99,7 @@
         <default>4522835908161425227</default>
       </key>
       <key id="version" name="Signal schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
     <node id="data" schema="data"/>
@@ -111,7 +111,7 @@
         <default>8911020404930317035</default>
       </key>
       <key id="version" name="TVG schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20190100</default>
       </key>
     </node>
     <node id="data" schema="data"/>

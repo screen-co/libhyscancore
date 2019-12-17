@@ -415,7 +415,7 @@ hyscan_projector_find_index_by_coord (HyScanProjector   *self,
    * сдвижку вдоль судна. Все вычисления будем проводить в double,
    * а приведем к gint64 перед самым использованием. */
 
-  time = (coord - priv->offset.x) / priv->ship_speed;
+  time = (coord - priv->offset.forward) / priv->ship_speed;
   time *= G_TIME_SPAN_SECOND;
   time += priv->zero_time;
 
@@ -448,7 +448,7 @@ hyscan_projector_index_to_coord (HyScanProjector   *self,
   coord /= G_TIME_SPAN_SECOND;
 
   /* Теперь надо учесть сдвиг датчика относительно центра масс. */
-  coord += priv->offset.x;
+  coord += priv->offset.forward;
 
   *along = coord;
   return TRUE;
@@ -469,7 +469,7 @@ hyscan_projector_coord_to_index (HyScanProjector   *self,
   priv = self->priv;
 
   /* Задача обратная к той, что решается в функции hyscan_projector_index_to_coord. */
-  along -= priv->offset.x;
+  along -= priv->offset.forward;
   along *= G_TIME_SPAN_SECOND;
   time = along / priv->ship_speed + priv->zero_time;
 

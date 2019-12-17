@@ -184,12 +184,12 @@ hyscan_hw_connector_load_offset (GKeyFile            *offsets,
   if (!g_key_file_has_group (offsets, source))
     return FALSE;
 
-  offset->x = g_key_file_get_double (offsets, source, "offset-x", NULL);
-  offset->y = g_key_file_get_double (offsets, source, "offset-y", NULL);
-  offset->z = g_key_file_get_double (offsets, source, "offset-z", NULL);
-  offset->psi = g_key_file_get_double (offsets, source, "offset-psi", NULL);
-  offset->gamma = g_key_file_get_double (offsets, source, "offset-gamma", NULL);
-  offset->theta = g_key_file_get_double (offsets, source, "offset-theta", NULL);
+  offset->starboard = g_key_file_get_double (offsets, source, "offset-starboard", NULL);
+  offset->forward = g_key_file_get_double (offsets, source, "offset-forward", NULL);
+  offset->vertical = g_key_file_get_double (offsets, source, "offset-vertical", NULL);
+  offset->yaw = g_key_file_get_double (offsets, source, "offset-yaw", NULL);
+  offset->pitch = g_key_file_get_double (offsets, source, "offset-pitch", NULL);
+  offset->roll = g_key_file_get_double (offsets, source, "offset-roll", NULL);
 
   return TRUE;
 }

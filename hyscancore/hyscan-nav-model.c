@@ -455,9 +455,9 @@ hyscan_nav_model_shift_fix (HyScanNavModel    *model,
       return;
     }
 
-  /* Смещение курса судна: по часовой стрелке на sensor_offset->psi. */
-  fix->ship_pos.coord.h = fix->sensor_pos.coord.h + RAD2DEG (priv->sensor_offset->psi);
-  fix->ship_pos.heading = fix->sensor_pos.heading + RAD2DEG (priv->sensor_offset->psi);
+  /* Смещение курса судна: по часовой стрелке на sensor_offset->yaw. */
+  fix->ship_pos.coord.h = fix->sensor_pos.coord.h - RAD2DEG (priv->sensor_offset->yaw);
+  fix->ship_pos.heading = fix->sensor_pos.heading - RAD2DEG (priv->sensor_offset->yaw);
 
   /* Начало СК по центру антенны,
    * направление OX вперёд по истинному курсу, OY - на левый борт (правая СК). */
@@ -467,8 +467,8 @@ hyscan_nav_model_shift_fix (HyScanNavModel    *model,
   hyscan_geo_set_origin (priv->geo, origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
   /* Смещение центра судна: назад на sensor_offset->x и влево на sensor_offset->y. */
-  offset.x = -priv->sensor_offset->x;
-  offset.y =  priv->sensor_offset->y;
+  offset.x = -priv->sensor_offset->forward;
+  offset.y =  priv->sensor_offset->starboard;
   hyscan_geo_topoXY2geo (priv->geo, &shifted, offset, 0);
 
   fix->ship_pos.coord.lat = shifted.lat;
@@ -1041,7 +1041,7 @@ hyscan_nav_model_set_offset (HyScanNavModel            *model,
 
   g_mutex_lock (&priv->sensor_lock);
   g_clear_pointer (&priv->sensor_offset, hyscan_antenna_offset_free);
-  if (offset != NULL && (offset->x != 0 || offset->y != 0 || offset->psi != 0))
+  if (offset != NULL && (offset->starboard != 0 || offset->forward != 0 || offset->yaw != 0))
     priv->sensor_offset = hyscan_antenna_offset_copy (offset);
   g_mutex_unlock (&priv->sensor_lock);
 }

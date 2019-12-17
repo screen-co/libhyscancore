@@ -850,23 +850,23 @@ hyscan_dummy_device_check_antenna_offset (HyScanDummyDevice   *dummy,
    if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_ANTENNA_SET_OFFSET)
      return FALSE;
 
-   if ((offset->x != priv->offset.x) ||
-       (offset->y != priv->offset.y) ||
-       (offset->z != priv->offset.z) ||
-       (offset->psi != priv->offset.psi) ||
-       (offset->gamma != priv->offset.gamma) ||
-       (offset->theta != priv->offset.theta))
+   if ((offset->starboard != priv->offset.starboard) ||
+       (offset->forward != priv->offset.forward) ||
+       (offset->vertical != priv->offset.vertical) ||
+       (offset->yaw != priv->offset.yaw) ||
+       (offset->pitch != priv->offset.pitch) ||
+       (offset->roll != priv->offset.roll))
      {
        return FALSE;
      }
 
    priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
-   priv->offset.x = G_MAXDOUBLE;
-   priv->offset.y = G_MAXDOUBLE;
-   priv->offset.z = G_MAXDOUBLE;
-   priv->offset.psi = G_MAXDOUBLE;
-   priv->offset.gamma = G_MAXDOUBLE;
-   priv->offset.theta = G_MAXDOUBLE;
+   priv->offset.starboard = G_MAXDOUBLE;
+   priv->offset.forward = G_MAXDOUBLE;
+   priv->offset.vertical = G_MAXDOUBLE;
+   priv->offset.yaw = G_MAXDOUBLE;
+   priv->offset.pitch = G_MAXDOUBLE;
+   priv->offset.roll = G_MAXDOUBLE;
 
    return TRUE;
 }
@@ -1368,12 +1368,12 @@ hyscan_dummy_device_get_sensor_offset (const gchar *sensor)
   HyScanAntennaOffset offset;
   guint seed = g_str_hash (sensor);
 
-  offset.x = 1.0 * seed;
-  offset.y = 2.0 * seed;
-  offset.z = 3.0 * seed;
-  offset.psi = 4.0 * seed;
-  offset.gamma = 5.0 * seed;
-  offset.theta = 6.0 * seed;
+  offset.starboard = 1.0 * seed;
+  offset.forward = 2.0 * seed;
+  offset.vertical = 3.0 * seed;
+  offset.yaw = 4.0 * seed;
+  offset.pitch = 5.0 * seed;
+  offset.roll = 6.0 * seed;
 
   return hyscan_antenna_offset_copy (&offset);
 }
@@ -1393,12 +1393,12 @@ hyscan_dummy_device_get_source_offset (HyScanSourceType source)
 {
   HyScanAntennaOffset offset;
 
-  offset.x = 1.0 * source;
-  offset.y = 2.0 * source;
-  offset.z = 3.0 * source;
-  offset.psi = 4.0 * source;
-  offset.gamma = 5.0 * source;
-  offset.theta = 6.0 * source;
+  offset.starboard = 1.0 * source;
+  offset.forward = 2.0 * source;
+  offset.vertical = 3.0 * source;
+  offset.yaw = 4.0 * source;
+  offset.pitch = 5.0 * source;
+  offset.roll = 6.0 * source;
 
   return hyscan_antenna_offset_copy (&offset);
 }

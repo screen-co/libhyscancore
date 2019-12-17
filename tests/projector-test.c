@@ -68,12 +68,12 @@ main (int argc, char **argv)
   writer = hyscan_data_writer_new ();
   buffer = hyscan_buffer_new ();
 
-  position.x = -10.0;
-  position.y = 0.0;
-  position.z = 0.0;
-  position.psi = 0.0;
-  position.gamma = 0.0;
-  position.theta = 0.0;
+  position.forward = -10.0;
+  position.starboard = 0.0;
+  position.vertical = 0.0;
+  position.yaw = 0.0;
+  position.pitch = 0.0;
+  position.roll = 0.0;
 
   hyscan_data_writer_sonar_set_offset (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, &position);
 

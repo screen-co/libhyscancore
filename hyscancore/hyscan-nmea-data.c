@@ -304,10 +304,7 @@ hyscan_nmea_data_object_constructed (GObject *object)
       goto exit;
     }
 
-  status = hyscan_core_params_load_antenna_offset (priv->db, param_id,
-                                                     SENSOR_CHANNEL_SCHEMA_ID,
-                                                     SENSOR_CHANNEL_SCHEMA_VERSION,
-                                                     &priv->offset);
+  status = hyscan_core_params_load_sensor_offset (priv->db, param_id, &priv->offset);
   if (!status)
     {
       g_warning ("HyScanNMEAData: '%s.%s.%s': can't read antenna offset",
@@ -804,7 +801,7 @@ hyscan_nmea_data_check_sentence (const gchar *sentence)
  * hyscan_nmea_data_split_sentence:
  * @sentence: указатель на строку
  * @length: длина строки
-
+ *
  * Функция разбивает строку, содержащую несколько NMEA-сообщений, на отдельные
  * строки. В канале HYSCAN_SOURCE_NMEA_ANY по одному индексу может находиться
  * сразу несколько сообщений. Эта функция генерирует нуль-терминированный вектор
