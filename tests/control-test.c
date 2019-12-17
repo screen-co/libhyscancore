@@ -109,12 +109,12 @@ verify_sensor (const HyScanSensorInfoSensor *sensor1,
   if ((sensor1->offset != NULL) ||
       (sensor2->offset != NULL))
     {
-      if ((sensor1->offset->x != sensor2->offset->x) ||
-          (sensor1->offset->y != sensor2->offset->y) ||
-          (sensor1->offset->z != sensor2->offset->z) ||
-          (sensor1->offset->psi != sensor2->offset->psi) ||
-          (sensor1->offset->gamma != sensor2->offset->gamma) ||
-          (sensor1->offset->theta != sensor2->offset->theta))
+      if ((sensor1->offset->starboard != sensor2->offset->starboard) ||
+          (sensor1->offset->forward != sensor2->offset->forward) ||
+          (sensor1->offset->vertical != sensor2->offset->vertical) ||
+          (sensor1->offset->yaw != sensor2->offset->yaw) ||
+          (sensor1->offset->pitch != sensor2->offset->pitch) ||
+          (sensor1->offset->roll != sensor2->offset->roll))
         {
           g_error ("offset failed");
         }
@@ -144,12 +144,12 @@ verify_source (const HyScanSonarInfoSource *source1,
   if ((source1->offset != NULL) ||
       (source2->offset != NULL))
     {
-      if ((source1->offset->x != source2->offset->x) ||
-          (source1->offset->y != source2->offset->y) ||
-          (source1->offset->z != source2->offset->z) ||
-          (source1->offset->psi != source2->offset->psi) ||
-          (source1->offset->gamma != source2->offset->gamma) ||
-          (source1->offset->theta != source2->offset->theta))
+      if ((source1->offset->starboard != source2->offset->starboard) ||
+          (source1->offset->forward != source2->offset->forward) ||
+          (source1->offset->vertical != source2->offset->vertical) ||
+          (source1->offset->yaw != source2->offset->yaw) ||
+          (source1->offset->pitch != source2->offset->pitch) ||
+          (source1->offset->roll != source2->offset->roll))
         {
           g_error ("offset failed");
         }
@@ -221,12 +221,12 @@ void
 verify_offset (const HyScanAntennaOffset *offset1,
                const HyScanAntennaOffset *offset2)
 {
-  if ((offset1->x != offset2->x) ||
-      (offset1->y != offset2->y) ||
-      (offset1->z != offset2->z) ||
-      (offset1->psi != offset2->psi) ||
-      (offset1->gamma != offset2->gamma) ||
-      (offset1->theta != offset2->theta))
+  if ((offset1->starboard != offset2->starboard) ||
+      (offset1->forward != offset2->forward) ||
+      (offset1->vertical != offset2->vertical) ||
+      (offset1->yaw != offset2->yaw) ||
+      (offset1->pitch != offset2->pitch) ||
+      (offset1->roll != offset2->roll))
     {
       g_error ("offset failed");
     }

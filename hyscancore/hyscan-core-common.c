@@ -52,12 +52,12 @@ hyscan_core_params_set_antenna_offset (HyScanDB            *db,
 
   param_list = hyscan_param_list_new ();
 
-  hyscan_param_list_set_double (param_list, "/offset/x", offset->x);
-  hyscan_param_list_set_double (param_list, "/offset/y", offset->y);
-  hyscan_param_list_set_double (param_list, "/offset/z", offset->z);
-  hyscan_param_list_set_double (param_list, "/offset/psi", offset->psi);
-  hyscan_param_list_set_double (param_list, "/offset/gamma", offset->gamma);
-  hyscan_param_list_set_double (param_list, "/offset/theta", offset->theta);
+  hyscan_param_list_set_double (param_list, "/offset/starboard", offset->starboard);
+  hyscan_param_list_set_double (param_list, "/offset/forward", offset->forward);
+  hyscan_param_list_set_double (param_list, "/offset/vertical", offset->vertical);
+  hyscan_param_list_set_double (param_list, "/offset/yaw", offset->yaw);
+  hyscan_param_list_set_double (param_list, "/offset/pitch", offset->pitch);
+  hyscan_param_list_set_double (param_list, "/offset/roll", offset->roll);
 
   status = hyscan_db_param_set (db, param_id, NULL, param_list);
 
@@ -215,7 +215,7 @@ exit:
 }
 
 /* Функция загружает смещение приёмной антенны. */
-gboolean
+static gboolean
 hyscan_core_params_load_antenna_offset (HyScanDB            *db,
                                         gint32               param_id,
                                         gint64               schema_id,
@@ -229,12 +229,12 @@ hyscan_core_params_load_antenna_offset (HyScanDB            *db,
 
   hyscan_param_list_add (param_list, "/schema/id");
   hyscan_param_list_add (param_list, "/schema/version");
-  hyscan_param_list_add (param_list, "/offset/x");
-  hyscan_param_list_add (param_list, "/offset/y");
-  hyscan_param_list_add (param_list, "/offset/z");
-  hyscan_param_list_add (param_list, "/offset/psi");
-  hyscan_param_list_add (param_list, "/offset/gamma");
-  hyscan_param_list_add (param_list, "/offset/theta");
+  hyscan_param_list_add (param_list, "/offset/starboard");
+  hyscan_param_list_add (param_list, "/offset/forward");
+  hyscan_param_list_add (param_list, "/offset/vertical");
+  hyscan_param_list_add (param_list, "/offset/yaw");
+  hyscan_param_list_add (param_list, "/offset/pitch");
+  hyscan_param_list_add (param_list, "/offset/roll");
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     goto exit;
@@ -245,12 +245,12 @@ hyscan_core_params_load_antenna_offset (HyScanDB            *db,
       goto exit;
     }
 
-  offset->x = hyscan_param_list_get_double (param_list, "/offset/x");
-  offset->y = hyscan_param_list_get_double (param_list, "/offset/y");
-  offset->z = hyscan_param_list_get_double (param_list, "/offset/z");
-  offset->psi = hyscan_param_list_get_double (param_list, "/offset/psi");
-  offset->gamma = hyscan_param_list_get_double (param_list, "/offset/gamma");
-  offset->theta = hyscan_param_list_get_double (param_list, "/offset/theta");
+  offset->starboard = hyscan_param_list_get_double (param_list, "/offset/starboard");
+  offset->forward = hyscan_param_list_get_double (param_list, "/offset/forward");
+  offset->vertical = hyscan_param_list_get_double (param_list, "/offset/vertical");
+  offset->yaw = hyscan_param_list_get_double (param_list, "/offset/yaw");
+  offset->pitch = hyscan_param_list_get_double (param_list, "/offset/pitch");
+  offset->roll = hyscan_param_list_get_double (param_list, "/offset/roll");
 
   status = TRUE;
 
@@ -258,6 +258,30 @@ exit:
   g_object_unref (param_list);
 
   return status;
+}
+
+/* Функция загружает смещение приёмной антенны датчика. */
+gboolean
+hyscan_core_params_load_sensor_offset (HyScanDB            *db,
+                                       gint32               param_id,
+                                       HyScanAntennaOffset *offset)
+{
+  return hyscan_core_params_load_antenna_offset (db, param_id,
+                                                 SENSOR_CHANNEL_SCHEMA_ID,
+                                                 SENSOR_CHANNEL_SCHEMA_VERSION,
+                                                 offset);
+}
+
+/* Функция загружает смещение приёмной антенны гидроакустических данных. */
+gboolean
+hyscan_core_params_load_acoustic_offset (HyScanDB            *db,
+                                         gint32               param_id,
+                                         HyScanAntennaOffset *offset)
+{
+  return hyscan_core_params_load_antenna_offset (db, param_id,
+                                                 ACOUSTIC_CHANNEL_SCHEMA_ID,
+                                                 ACOUSTIC_CHANNEL_SCHEMA_VERSION,
+                                                 offset);
 }
 
 /* Функция загружает параметры данных датчика. */

@@ -69,10 +69,13 @@ gboolean       hyscan_core_params_check_log_schema             (HyScanDB        
                                                                 gint32                     param_id);
 
 HYSCAN_API
-gboolean       hyscan_core_params_load_antenna_offset          (HyScanDB                  *db,
+gboolean       hyscan_core_params_load_sensor_offset           (HyScanDB                  *db,
                                                                 gint32                     param_id,
-                                                                gint64                     schema_id,
-                                                                gint64                     schema_version,
+                                                                HyScanAntennaOffset       *offset);
+
+HYSCAN_API
+gboolean       hyscan_core_params_load_acoustic_offset         (HyScanDB                  *db,
+                                                                gint32                     param_id,
                                                                 HyScanAntennaOffset       *offset);
 
 HYSCAN_API
