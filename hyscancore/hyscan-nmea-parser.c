@@ -264,8 +264,8 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
     {-1,   9,  -1, -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_ALTITUDE  */
     {-1,   11, -1, -1, -1, hyscan_nmea_parser_parse_meters}, /* HYSCAN_NMEA_FIELD_HOG       */
     {-1,  -1,   1, -1, -1, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_DEPTH     */
-    {-1,  -1,  -1, -1,  3, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_PITCH     */
-    {-1,  -1,  -1, -1,  5, hyscan_nmea_parser_parse_value}   /* HYSCAN_NMEA_FIELD_ROLL      */
+    {-1,  -1,  -1, -1,  2, hyscan_nmea_parser_parse_value},  /* HYSCAN_NMEA_FIELD_PITCH     */
+    {-1,  -1,  -1, -1,  3, hyscan_nmea_parser_parse_value}   /* HYSCAN_NMEA_FIELD_ROLL      */
   };
 
   priv->parse_func = fields[priv->field_type].func;
@@ -278,7 +278,7 @@ hyscan_nmea_parser_setup (HyScanNMEAParserPrivate *priv)
     priv->field_n = fields[priv->field_type].DPT;
   else if (priv->data_type == HYSCAN_NMEA_DATA_HDT)
     priv->field_n = fields[priv->field_type].HDT;
-  else if (priv->data_type == HYSCAN_NMEA_DATA_HPR)
+  else if (priv->data_type == HYSCAN_NMEA_DATA_HYHPR)
     priv->field_n = fields[priv->field_type].HPR;
 
   if (priv->field_n == -1)
@@ -451,9 +451,9 @@ hyscan_nmea_parser_parse_helper (HyScanNMEAParserPrivate *priv,
       signature = "HDT";
       go_back = 3;
       break;
-    case HYSCAN_NMEA_DATA_HPR:
-      signature = "HPR";
-      go_back = 3;
+    case HYSCAN_NMEA_DATA_HYHPR:
+      signature = "HYHPR";
+      go_back = 1;
       break;
     default:
       signature = "$";
