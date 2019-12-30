@@ -164,12 +164,47 @@ void
 hyscan_planner_track_add_record (HyScanPlannerTrack *track,
                                  const gchar        *record_id)
 {
-  guint len;
+  guint n_records, n_blocks;
 
-  len = track->records != NULL ? g_strv_length (track->records) + 2 : 2;
-  track->records = g_realloc_n (track->records, len, sizeof (gchar *));
-  track->records[len - 2] = g_strdup (record_id);
-  track->records[len - 1] = NULL;
+  /* Новый размер массива + NULL-терминирование. */
+  n_records = track->records != NULL ? g_strv_length (track->records) + 1 : 1;
+  n_blocks = n_records + 1;
+  track->records = g_realloc_n (track->records, n_blocks, sizeof (gchar *));
+  track->records[n_records - 1] = g_strdup (record_id);
+  track->records[n_records] = NULL;
+}
+
+/**
+ * hyscan_planner_track_delete_record:
+ * @track: указатель на #HyScanPlannerTrack
+ * @record_id: идентификатор записанного галса
+ */
+void
+hyscan_planner_track_delete_record (HyScanPlannerTrack *track,
+                                    const gchar        *record_id)
+{
+  guint i;
+  guint n_records;
+
+  if (track->records == NULL)
+    return;
+
+  n_records = g_strv_length (track->records);
+  for (i = 0; i < n_records; i++)
+    {
+      if (g_strcmp0 (record_id, track->records[i]) != 0)
+        continue;
+
+      g_free  (track->records[i]);
+      track->records[i] = track->records[n_records - 1];
+      track->records[n_records - 1] = NULL;
+      break;
+    }
+
+  /* Если это был последний элемент, то удаляем весь массив. */
+  if (g_strv_length (track->records) == 0)
+    g_clear_pointer (&track->records, g_strfreev);
+
 }
 
 /**
@@ -187,10 +222,10 @@ hyscan_planner_track_get_plan (HyScanPlannerTrack *track)
 /**
  * hyscan_planner_track_geo:
  * @track: указатель на структуру с галсом #HyScanPlannerTrack
- * @angle: (out) (optional): используемое направление оси OY, градусы
+ * @angle: (out) (optional): используемое направление оси OX, градусы
  *
  * Создаёт объект #HyScanGeo, в топоцентрической системе координат которого
- * начало координат совпадает с началом галса @track, а ось OY направлена по
+ * начало координат совпадает с началом галса @track, а ось OX направлена по
  * направлению движения на галсе.
  *
  * Returns: (transfer-full): новый объект #HyScanGeo
@@ -207,14 +242,21 @@ hyscan_planner_track_geo (const HyScanTrackPlan *plan,
   origin.h = 0.0;
 
   tmp_geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
-  hyscan_geo_geo2topoXY (tmp_geo, &start, plan->start);
-  hyscan_geo_geo2topoXY (tmp_geo, &end, plan->end);
-  origin.h = atan2 (end.x - start.x, end.y - start.y) / G_PI * 180.0;
+  if (!hyscan_geo_geo2topoXY (tmp_geo, &start, plan->start) ||
+      !hyscan_geo_geo2topoXY (tmp_geo, &end, plan->end))
+    {
+      g_warning ("HyScanPlanner: failed to transform coordinates");
+
+      g_object_unref (tmp_geo);
+      return NULL;
+    }
+
+  origin.h = atan2 (-end.y + start.y, end.x - start.x) / G_PI * 180.0;
 
   g_object_unref (tmp_geo);
 
   if (angle != NULL)
-    *angle = origin.h < 90.0 ? origin.h + 270.0 : origin.h - 90.0;
+    *angle = origin.h < 0 ? origin.h + 360.0 : origin.h;
 
   return hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 }
@@ -252,24 +294,14 @@ hyscan_planner_track_angle (const HyScanPlannerTrack *track)
 gdouble
 hyscan_planner_track_length (const HyScanTrackPlan *plan)
 {
-  gdouble lon1r;
-  gdouble lat1r;
+  HyScanGeo *geo;
+  HyScanGeoCartesian2D end;
 
-  gdouble lon2r;
-  gdouble lat2r;
+  geo = hyscan_planner_track_geo (plan, NULL);
+  hyscan_geo_geo2topoXY (geo, &end, plan->end);
+  g_object_unref (geo);
 
-  gdouble u;
-  gdouble v;
-
-  lat1r = DEG2RAD (plan->start.lat);
-  lon1r = DEG2RAD (plan->start.lon);
-  lat2r = DEG2RAD (plan->end.lat);
-  lon2r = DEG2RAD (plan->end.lon);
-
-  u = sin ((lat2r - lat1r) / 2);
-  v = sin ((lon2r - lon1r) / 2);
-
-  return 2.0 * EARTH_RADIUS * asin (sqrt (u * u + cos (lat1r) * cos (lat2r) * v * v));
+  return end.x;
 }
 
 /**
@@ -342,6 +374,7 @@ hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
 exit:
   g_object_unref (geo);
   g_free (points);
+  g_free (vertices);
 
   return modified_track;
 }

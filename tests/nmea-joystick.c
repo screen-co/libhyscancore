@@ -42,6 +42,7 @@
 #include <math.h>
 #include <gio/gio.h>
 #include <string.h>
+#include <hyscan-nmea-helper.h>
 
 #define METER_PER_SECOND_TO_KNOTS 1.94384 /* Коэффициент перевода из метров в секунды в узлы. */
 #define UPDATE_INTERVAL           50      /* Период пересчёта положения судна, мс. */
@@ -194,106 +195,51 @@ history_push (VesselPos pos)
   history[history_idx] = pos;
 }
 
-static gchar *
-nmea_wrap (const gchar *inner)
-{
-  gint checksum = 0;
-  const gchar *ch;
-  gchar *sentence;
-
-  /* Подсчитываем чек-сумму. */
-  for (ch = inner; *ch != '\0'; ch++)
-    checksum ^= *ch;
-
-  sentence = g_strdup_printf ("$%s*%02X\r", inner, checksum);
-
-  return sentence;
-}
-
 /* Отправляем RMC-строку по UDP. */
 static gboolean
 send_rmc (gpointer user_data)
 {
-  static gchar *inner = NULL;
-  gsize inner_len = 300;
+  GSocket *socket = G_SOCKET (user_data);
   gchar *sentence;
-  gdouble cur_time;
+
   HyScanGeoGeodetic coord;
   VesselPos state_c;
-  GSocket *socket = G_SOCKET (user_data);
-
-  gint hour, min;
-  gdouble sec;
-  gint lat, lon;
-  gdouble lat_min, lon_min;
-  gdouble speed, track;
-  gboolean north, east;
-  const gchar *date = "191119";
-
-  if (inner == NULL)
-    inner = g_new0 (gchar, inner_len);
+  gdouble speed;
+  gint64 unix_time;
 
   history_get (&state_c);
   g_debug ("Delay: %f\n", (g_get_monotonic_time () - state_c.time) * 1e-6);
 
   hyscan_geo_topoXY2geo (geo, &coord, state_c.position, 0);
 
-  cur_time = state_c.time * 1e-6;
-  hour = cur_time / 3600;
-  cur_time -= hour * 3600;
+  speed = hypot (state_c.vx, state_c.vy);
+  coord.h = -atan2 (state_c.vy, state_c.vx) / G_PI * 180.0;
+  if (coord.h < 0.0)
+    coord.h += 360.0;
+  else if (coord.h == -0.0)  /* Меняем "-0" на "0". */
+    coord.h = 0.0;
 
-  min = cur_time / 60;
-  cur_time -= min * 60;
-
-  sec = cur_time;
-
-  north = coord.lat > 0;
-  east = coord.lon > 0;
-  coord.lat = fabs (coord.lat);
-  coord.lon = fabs (coord.lon);
-  lat = coord.lat;
-  lat_min = (coord.lat - lat) * 60;
-  lon = coord.lon;
-  lon_min = (coord.lon - lon) * 60;
-
-  speed = hypot (state_c.vx, state_c.vy) * METER_PER_SECOND_TO_KNOTS;
-  track = -atan2 (state_c.vy, state_c.vx) / G_PI * 180.0;
-  if (track < 0.0)
-    track += 360.0;
-  else if (track == -0.0)  /* Меняем "-0" на "0". */
-    track = 0.0;
-
+  unix_time = state_c.time;
   if (!rmc_off)
     {
-      g_snprintf (inner, inner_len,
-                  "GPRMC,%02d%02d%05.2f,A,"
-                  "%02d%08.5f,%c,%03d%08.5f,%c,"
-                  "%05.1f,%05.1f,"
-                  "%s,011.5,E",
-                  hour, min, sec,
-                  lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W',
-                  speed, track,
-                  date);
-
-      sentence = nmea_wrap (inner);
+      sentence = hyscan_nmea_helper_make_rmc (coord, speed, unix_time);
       g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
       g_free (sentence);
     }
 
-  g_snprintf (inner, inner_len,
-              "GPGGA,%02d%02d%05.2f,"
-              "%02d%08.5f,%c,%03d%08.5f,%c,"
-              "2,6,1.2,18.893,M,-25.669,M,2.0,0031",
-              hour, min, sec,
-              lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W');
-  sentence = nmea_wrap (inner);
+  sentence = hyscan_nmea_helper_make_gga (coord, unix_time);
   g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
   g_free (sentence);
 
   if (!hdt_off)
     {
+      static gchar *inner = NULL;
+      gsize inner_len = 300;
+      if (inner == NULL)
+        inner = g_new0 (gchar, inner_len);
+
       g_snprintf (inner, inner_len, "GPHDT,%.2f,T", state_c.heading / G_PI * 180.0);
-      sentence = nmea_wrap (inner);
+      sentence = hyscan_nmea_helper_wrap (inner);
       g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
       g_free (sentence);
     }

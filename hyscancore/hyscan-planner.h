@@ -48,6 +48,10 @@ G_BEGIN_DECLS
 #define HYSCAN_PLANNER_TRACK    0x2f0365da
 #define HYSCAN_PLANNER_ORIGIN   0x0fe285b7
 
+#define HYSCAN_IS_PLANNER_ZONE(x)   ((x) != NULL && (x)->type == HYSCAN_PLANNER_ZONE)
+#define HYSCAN_IS_PLANNER_TRACK(x)  ((x) != NULL && (x)->type == HYSCAN_PLANNER_TRACK)
+#define HYSCAN_IS_PLANNER_ORIGIN(x) ((x) != NULL && (x)->type == HYSCAN_PLANNER_ORIGIN)
+
 typedef struct _HyScanPlannerTrack HyScanPlannerTrack;
 typedef struct _HyScanPlannerZone HyScanPlannerZone;
 typedef struct _HyScanPlannerOrigin HyScanPlannerOrigin;
@@ -125,6 +129,10 @@ void                   hyscan_planner_track_free         (HyScanPlannerTrack    
 
 HYSCAN_API
 void                   hyscan_planner_track_add_record   (HyScanPlannerTrack        *track,
+                                                          const gchar               *record_id);
+
+HYSCAN_API
+void                   hyscan_planner_track_delete_record(HyScanPlannerTrack        *track,
                                                           const gchar               *record_id);
 
 HYSCAN_API

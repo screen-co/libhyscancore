@@ -170,11 +170,11 @@ static const gchar *
 hyscan_object_data_planner_get_schema_id (HyScanObjectData   *data,
                                           const HyScanObject *object)
 {
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     return PLANNER_ZONE_SCHEMA;
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     return PLANNER_TRACK_SCHEMA;
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     return PLANNER_ORIGIN_SCHEMA;
   else
     return NULL;
@@ -189,11 +189,11 @@ hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
 
   unique_id = HYSCAN_OBJECT_DATA_CLASS (hyscan_object_data_planner_parent_class)->generate_id (data, object);
 
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     id = g_strconcat (PREFIX_ZONE, unique_id, NULL);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     id = g_strconcat (PREFIX_TRACK, unique_id, NULL);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     id = g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
 
   g_free (unique_id);
@@ -225,11 +225,11 @@ hyscan_object_data_planner_object_destroy (HyScanObject *object)
   if (object == NULL)
     return;
 
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     hyscan_planner_zone_free ((HyScanPlannerZone *) object);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     hyscan_planner_track_free ((HyScanPlannerTrack *) object);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     hyscan_planner_origin_free ((HyScanPlannerOrigin *) object);
   else
     g_warn_if_reached ();
@@ -241,11 +241,11 @@ hyscan_object_data_planner_object_copy (const HyScanObject *object)
   if (object == NULL)
     return NULL;
 
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     return (HyScanObject *) hyscan_planner_zone_copy ((HyScanPlannerZone *) object);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     return (HyScanObject *) hyscan_planner_track_copy ((HyScanPlannerTrack *) object);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     return (HyScanObject *) hyscan_planner_origin_copy ((HyScanPlannerOrigin *) object);
   else
     g_return_val_if_reached (NULL);
@@ -477,11 +477,11 @@ hyscan_object_data_planner_set_full (HyScanObjectData   *mdata,
                                      HyScanParamList    *write_plist,
                                      const HyScanObject *object)
 {
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     return hyscan_object_data_planner_set_zone (mdata, write_plist, (const HyScanPlannerZone *) object);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     return hyscan_object_data_planner_set_track (mdata, write_plist, (const HyScanPlannerTrack *) object);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     return hyscan_object_data_planner_set_origin (mdata, write_plist, (const HyScanPlannerOrigin *) object);
 
   return FALSE;

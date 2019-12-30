@@ -204,7 +204,7 @@ hyscan_planner_model_get_origin (HyScanPlannerModel *pmodel)
   if (object == NULL)
     return NULL;
 
-  if (object->type != HYSCAN_PLANNER_ORIGIN)
+  if (!HYSCAN_IS_PLANNER_ORIGIN (object))
     {
       hyscan_object_model_remove_object (HYSCAN_OBJECT_MODEL (pmodel), HYSCAN_PLANNER_ORIGIN_ID);
       object = NULL;
@@ -269,16 +269,16 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
     goto exit;
 
   track = g_hash_table_lookup (objects, track0_id);
-  if (track == NULL || track->type != HYSCAN_PLANNER_TRACK)
+  if (!HYSCAN_IS_PLANNER_TRACK (track))
     goto exit;
   zone_id = track->zone_id;
 
   /* Находим все галсы, которые надо упорядочить. */
-  track_ids = g_array_new (FALSE, FALSE, sizeof (gchar *));
+  track_ids = g_array_new (FALSE, FALSE, sizeof (const gchar *));
   g_hash_table_iter_init (&iter, objects);
   while (g_hash_table_iter_next (&iter, (gpointer *) &track_id, (gpointer *) &track))
     {
-      if (track->type != HYSCAN_PLANNER_TRACK || g_strcmp0 (track->zone_id, zone_id) != 0)
+      if (!HYSCAN_IS_PLANNER_TRACK (track) || g_strcmp0 (track->zone_id, zone_id) != 0)
         continue;
 
       g_array_append_val (track_ids, track_id);
@@ -372,8 +372,10 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
       hyscan_object_model_modify_object (HYSCAN_OBJECT_MODEL (pmodel), track_id, (HyScanObject *) track);
     }
 
+  g_free (distances);
   g_free (invert);
   g_free (sorted);
+  g_array_free (track_ids, TRUE);
 
 exit:
   g_clear_pointer (&objects, g_hash_table_destroy);

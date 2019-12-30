@@ -38,9 +38,11 @@
 #include <gio/gio.h>
 
 #define PROJECT_NAME "planner-project"
-
-static gint n_zones;
-static gint n_points;
+#define ASSERT_POINTS_EQUAL(a,b)  G_STMT_START { \
+                                    HyScanGeoGeodetic *x = &(a), *y = &(b);  \
+                                    g_assert (ABS (x->lat - y->lat) < 1e-6); \
+                                    g_assert (ABS (x->lon - y->lon) < 1e-6); \
+                                  } G_STMT_END
 
 static gchar *
 create_project (HyScanDB *db)
@@ -121,7 +123,7 @@ test_zones (HyScanDB *db,
   g_strfreev (zones);
 
   zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, zone_id);
-  g_assert (zone->type == HYSCAN_PLANNER_ZONE);
+  g_assert (HYSCAN_IS_PLANNER_ZONE (zone));
   g_assert_cmpstr (zone->name, ==, new_zone.name);
   g_assert_cmpint (zone->ctime, ==, new_zone.ctime);
   g_assert_cmpint (zone->mtime, ==, new_zone.mtime);
@@ -140,10 +142,16 @@ test_zones (HyScanDB *db,
   g_assert (zone != NULL);
   g_assert_cmpint (zone->points_len, ==, points_len);
   for (i = 0; i < zone->points_len; ++i)
-    {
-      g_assert (ABS (zone->points[i].lat - points[i].lat) < 1e-4);
-      g_assert (ABS (zone->points[i].lon - points[i].lon) < 1e-4);
-    }
+    ASSERT_POINTS_EQUAL (zone->points[i], points[i]);
+
+  /* Дублируем и удаляем вершины. */
+  hyscan_planner_zone_vertex_dup (zone, 1);
+  g_assert_cmpint (zone->points_len, ==, points_len + 1);
+  ASSERT_POINTS_EQUAL (zone->points[1], zone->points[2]);
+
+  hyscan_planner_zone_vertex_remove (zone, 2);
+  g_assert_cmpint (zone->points_len, ==, points_len);
+
   hyscan_planner_zone_free (zone);
 
   /* Проверяем несуществующие зоны. */
@@ -170,12 +178,11 @@ test_tracks (HyScanDB *db,
   gchar *zone_id = NULL;
   gchar **tracks;
   HyScanPlannerTrack *track_obj;
-  HyScanPlannerTrack track_new;
-  HyScanPlannerZone zone;
+  HyScanPlannerTrack track_new = {.type = HYSCAN_PLANNER_TRACK};
+  HyScanPlannerZone zone = {.type = HYSCAN_PLANNER_ZONE};
 
   planner = hyscan_object_data_planner_new (db, project_name);
 
-  zone.type = HYSCAN_PLANNER_ZONE;
   zone.name = "Тест";
   zone.points = NULL;
   zone.points_len = 0;
@@ -185,7 +192,6 @@ test_tracks (HyScanDB *db,
   g_assert_true (status);
 
   /* Добавляем плановый галс. */
-  track_new.type = HYSCAN_PLANNER_TRACK;
   track_new.plan.start.lat = 55.312;
   track_new.plan.start.lon = 38.452;
   track_new.plan.end.lat = 55.313;
@@ -209,13 +215,21 @@ test_tracks (HyScanDB *db,
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
   track_obj->plan.velocity = 1.0;
+  hyscan_planner_track_add_record (track_obj, "rec1");
+  hyscan_planner_track_add_record (track_obj, "rec2");
+  hyscan_planner_track_add_record (track_obj, "rec3");
+  hyscan_planner_track_delete_record (track_obj, "rec3");
   hyscan_object_data_modify (planner, track_id, (const HyScanObject *) track_obj);
   hyscan_planner_track_free (track_obj);
 
   /* Проверяем, что параметры обновились. */
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
-  g_assert (ABS (track_obj->plan.velocity - 1.0) < 1e-4);
+  g_assert_cmpfloat (ABS (track_obj->plan.velocity - 1.0), <, 1e-4);
+  g_assert_cmpint (g_strv_length (track_obj->records), ==, 2);
+  g_assert (g_strv_contains ((const gchar * const *) track_obj->records, "rec1"));
+  g_assert (g_strv_contains ((const gchar * const *) track_obj->records, "rec2"));
+  g_assert (!g_strv_contains ((const gchar * const *) track_obj->records, "rec3"));
   hyscan_planner_track_free (track_obj);
 
   /* Проверяем несуществующие галсы. */
@@ -234,6 +248,140 @@ test_tracks (HyScanDB *db,
   g_object_unref (planner);
 }
 
+void
+test_origin (HyScanDB *db,
+             gchar    *project_name)
+{
+  HyScanObjectData *planner;
+  gboolean status;
+  gchar *origin_id = NULL;
+  HyScanPlannerOrigin *origin_obj;
+  HyScanPlannerOrigin origin = {.type = HYSCAN_PLANNER_ORIGIN};
+
+  planner = hyscan_object_data_planner_new (db, project_name);
+
+  /* Записываем положение точки отсчета. */
+  origin.origin.lat = 50.0;
+  origin.origin.lon = 40.0;
+  status = hyscan_object_data_add (planner, (HyScanObject *) &origin, &origin_id);
+  g_assert_true (status);
+
+  /* Меняем параметры ТО. */
+  origin_obj = (HyScanPlannerOrigin *) hyscan_object_data_get (planner, origin_id);
+  g_assert (origin_obj != NULL);
+  g_assert_cmpint (origin.type, ==, HYSCAN_PLANNER_ORIGIN);
+
+  g_assert_cmpfloat (ABS (origin_obj->origin.lat - origin.origin.lat), <, 1e-6);
+  g_assert_cmpfloat (ABS (origin_obj->origin.lon - origin.origin.lon), <, 1e-6);
+
+  hyscan_object_data_modify (planner, origin_id, (const HyScanObject *) origin_obj);
+  hyscan_planner_origin_free (origin_obj);
+
+  g_free (origin_id);
+  g_object_unref (planner);
+}
+
+static void
+test_extend (void)
+{
+  HyScanPlannerTrack track_in = {
+    .type = HYSCAN_PLANNER_TRACK,
+    .plan = { .start = { 36.983408,  55.937443 }, .end = { 36.983409, 55.937443 }}
+  };
+  HyScanPlannerTrack track_out = {
+    .type = HYSCAN_PLANNER_TRACK,
+    .plan = { .start = { 36.983401,  55.937440 }, .end = { 36.983409, 55.937440 }}
+  };
+  gdouble angle, angle_ext;
+  HyScanPlannerTrack *track_ext, *track_ext2;
+  HyScanPlannerZone zone = { .type = HYSCAN_PLANNER_ZONE };
+  HyScanGeoGeodetic points[] = {
+    { 36.983409,  55.937442 },
+    { 36.983408,  55.937442 },
+    { 36.983407,  55.937442 },
+
+    { 36.983407,  55.937443 },
+    { 36.983407,  55.937444 },
+    { 36.983407,  55.937445 },
+
+    { 36.983409,  55.937445 },
+  };
+
+  zone.points = points;
+  zone.points_len = G_N_ELEMENTS (points);
+
+  track_ext = hyscan_planner_track_extend (&track_in, &zone);
+
+  angle = hyscan_planner_track_angle (&track_in);
+  angle_ext = hyscan_planner_track_angle (track_ext);
+  g_assert_cmpfloat (ABS (angle - angle_ext), <, 1e-3);
+
+  /* Повторное преоборазование не должно ничего поменять. */
+  track_ext2 = hyscan_planner_track_extend (track_ext, &zone);
+  ASSERT_POINTS_EQUAL (track_ext->plan.start, track_ext2->plan.start);
+  ASSERT_POINTS_EQUAL (track_ext->plan.end, track_ext2->plan.end);
+
+  hyscan_planner_track_free (track_ext);
+  hyscan_planner_track_free (track_ext2);
+
+  /* Галс за пределами зоны - никаких изменений не должно быть. */
+  track_ext = hyscan_planner_track_extend (&track_out, &zone);
+  ASSERT_POINTS_EQUAL (track_ext->plan.start, track_out.plan.start);
+  ASSERT_POINTS_EQUAL (track_ext->plan.end, track_out.plan.end);
+  hyscan_planner_track_free (track_ext);
+}
+
+static void
+test_angle_length (void)
+{
+  struct
+  {
+    HyScanTrackPlan plan;
+    gdouble         angle;
+    gdouble         length;
+  } data[] = {
+    { {.start = {  36.983409,  55.937442 }, .end = { 36.983433,  55.937123 } }, 275.38,   28.44 },
+    { {.start = {  36.983433,  55.937123 }, .end = { 36.983409,  55.937442 } },  95.38,   28.44 },
+    { {.start = {  -8.807154,  13.235269 }, .end = { -8.797848,  13.227887 } }, 321.90, 1311.08 },
+    { {.start = {  50.983433, -90.937123 }, .end = { 50.977422, -90.998773 } }, 261.22, 4380.84 },
+  };
+
+  guint i;
+
+  for (i = 0; i < G_N_ELEMENTS (data); i++)
+    {
+      HyScanPlannerTrack track = { .type = HYSCAN_PLANNER_TRACK };
+      gdouble angle, length;
+      HyScanGeo *geo;
+      HyScanGeoCartesian2D start, end;
+
+      track.plan = data[i].plan;
+
+      angle = hyscan_planner_track_angle (&track);
+      angle = (angle < 0.0 ? angle + 2 * G_PI : angle) / G_PI * 180.0;
+      length = hyscan_planner_track_length (&track.plan);
+
+      g_assert_cmpfloat (ABS (angle - data[i].angle), <, 1e-2);
+      g_assert_cmpfloat (ABS (length - data[i].length), <, 1e-1);
+
+      geo = hyscan_planner_track_geo (&track.plan, &angle);
+      hyscan_geo_geo2topoXY (geo, &start, track.plan.start);
+      hyscan_geo_geo2topoXY (geo, &end, track.plan.end);
+
+      /* HyScanGeo переводит точку старта в (0, 0), движение вдоль оси X (y = 0). */
+      g_assert_cmpfloat (ABS (0.0 - start.x), <, 1e-1);
+      g_assert_cmpfloat (ABS (0.0 - start.y), <, 1e-1);
+      g_assert_cmpfloat (ABS (0.0 - end.y), <, 1e-1);
+
+      /* Поскольку HyScanGeo использует не сферический геоид,
+       * то отличие в длине и азимуте будут более существенными. */
+      g_assert_cmpfloat (ABS (length - end.x), <, 1e-2 * length);
+      g_assert_cmpfloat (ABS (angle - data[i].angle), <, 5e-1);
+
+      g_object_unref (geo);
+    }
+}
+
 int
 main (int    argc,
       char **argv)
@@ -246,12 +394,6 @@ main (int    argc,
     gchar **args;
     GError *error = NULL;
     GOptionContext *context;
-    GOptionEntry entries[] =
-      {
-        { "zones", 'z', 0, G_OPTION_ARG_INT, &n_zones, "Number of zones", NULL },
-        { "points", 'n', 0, G_OPTION_ARG_INT, &n_points, "Number of points per zone", NULL },
-        { NULL }
-      };
 
 #ifdef G_OS_WIN32
     args = g_win32_get_command_line ();
@@ -261,7 +403,6 @@ main (int    argc,
 
     context = g_option_context_new ("<db-uri>");
     g_option_context_set_help_enabled (context, TRUE);
-    g_option_context_add_main_entries (context, entries, NULL);
     g_option_context_set_ignore_unknown_options (context, FALSE);
     if (!g_option_context_parse_strv (context, &args, &error))
       {
@@ -290,6 +431,9 @@ main (int    argc,
   project_name = create_project (db);
   test_zones (db, project_name);
   test_tracks (db, project_name);
+  test_origin (db, project_name);
+  test_angle_length ();
+  test_extend ();
 
   /* Удаляем после себя проект. */
   hyscan_db_project_remove (db, project_name);
