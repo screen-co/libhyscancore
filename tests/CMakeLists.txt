@@ -3,7 +3,6 @@ set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
                     ${HYSCAN_LIBRARIES}
                     ${HYSCAN_CORE_LIBRARY})
 
-add_executable (cancellable-test cancellable-test.c)
 add_executable (data-writer-test data-writer-test.c)
 add_executable (acoustic-data-test acoustic-data-test.c)
 add_executable (factory-test factory-test.c)
@@ -36,7 +35,6 @@ if (UNIX)
 endif()
 add_executable (hsx-converter-test hsx-converter-test.c)
 
-target_link_libraries (cancellable-test ${TEST_LIBRARIES})
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
 target_link_libraries (factory-test ${TEST_LIBRARIES})
@@ -71,8 +69,6 @@ target_link_libraries (hsx-converter-test ${TEST_LIBRARIES} ${PROJ4_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
-add_test (NAME CancellableTest COMMAND cancellable-test
-          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME DataWriterTest COMMAND data-writer-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ObjectModelTest COMMAND mark-model-test file://db
@@ -102,8 +98,7 @@ add_test (NAME PlannerTest COMMAND planner-test file://db
 add_test (NAME DataPlayerTest COMMAND data-player-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
-install (TARGETS cancellable-test
-                 data-writer-test
+install (TARGETS data-writer-test
                  acoustic-data-test
                  nmea-data-test
                  forward-look-data-test
