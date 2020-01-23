@@ -90,5 +90,6 @@ include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/hyscancore")
 
 add_definitions (-DG_LOG_DOMAIN="HyScanCore")
 add_definitions (-DGETTEXT_PACKAGE="hyscancore")
+add_definitions (-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H)
 add_subdirectory (hyscancore)
 add_subdirectory (tests)
