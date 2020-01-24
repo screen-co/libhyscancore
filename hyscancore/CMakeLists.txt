@@ -127,8 +127,8 @@ install (FILES hyscan-core-schemas.h
                hyscan-depthometer.h
                hyscan-control.h
                hyscan-control-proxy.h
-               hyscan-amplitude-factory.h
-               hyscan-depth-factory.h
+               hyscan-factory-amplitude.h
+               hyscan-factory-depth.h
                hyscan-projector.h
                hyscan-track-rect.h
                hyscan-mloc.h

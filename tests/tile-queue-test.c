@@ -74,7 +74,7 @@ main (int argc, char **argv)
     g_option_context_set_ignore_unknown_options (context, FALSE);
     if (!g_option_context_parse_strv (context, &args, &error))
       {
-        g_message (error->message);
+        g_message("%s", error->message);
         return -1;
       }
 
