@@ -465,6 +465,22 @@ hyscan_planner_zone_vertex_remove (HyScanPlannerZone *zone,
  * Вставляет после вершины @index копию этой вершины.
  */
 void
+hyscan_planner_zone_vertex_append (HyScanPlannerZone *zone,
+                                   HyScanGeoGeodetic  point)
+{
+  zone->points_len++;
+  zone->points = g_realloc_n (zone->points, zone->points_len, sizeof (*zone->points));
+  zone->points[zone->points_len - 1] = point;
+}
+
+/**
+ * hyscan_planner_zone_vertex_dup:
+ * @zone: указатель на структуру #HyScanPlannerZone
+ * @index: индекс вершины, которую надо продублировать
+ *
+ * Вставляет после вершины @index копию этой вершины.
+ */
+void
 hyscan_planner_zone_vertex_dup (HyScanPlannerZone *zone,
                                 gsize              index)
 {

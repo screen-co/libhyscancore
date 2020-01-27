@@ -166,6 +166,10 @@ void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone     
                                                           gsize                      index);
 
 HYSCAN_API
+void                   hyscan_planner_zone_vertex_append (HyScanPlannerZone         *zone,
+                                                          HyScanGeoGeodetic          point);
+
+HYSCAN_API
 void                   hyscan_planner_zone_vertex_dup    (HyScanPlannerZone         *zone,
                                                           gsize                      index);
 

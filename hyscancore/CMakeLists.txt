@@ -79,6 +79,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-proj.c
              hyscan-cartesian.c
              hyscan-planner.c
+             hyscan-planner-export.c
              hyscan-planner-model.c
              hyscan-object-data-planner.c
              hyscan-nav-model.c
@@ -95,7 +96,8 @@ target_link_libraries (${HYSCAN_CORE_LIBRARY}
                        ${MATH_LIBRARIES}
                        ${HYSCAN_LIBRARIES}
                        ${ZLIB_LIBRARIES}
-                       ${PROJ4_LIBRARIES})
+                       ${PROJ4_LIBRARIES}
+                       ${LIBXML2_LIBRARIES})
 
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")
 set_target_properties (${HYSCAN_CORE_LIBRARY} PROPERTIES SOVERSION ${HYSCAN_CORE_VERSION})
@@ -156,6 +158,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-proj.h
                hyscan-cartesian.h
                hyscan-planner.h
+               hyscan-planner-export.h
                hyscan-planner-model.h
                hyscan-object-data-planner.h
                hyscan-nav-model.h
