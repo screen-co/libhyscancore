@@ -74,8 +74,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-profile-hw.c
              hyscan-profile-offset.c
              hyscan-geo-projection.c
-             hyscan-mercator.c
-             hyscan-pseudo-mercator.c
+             hyscan-proj.c
              hyscan-cartesian.c
              hyscan-task-queue.c
              hyscan-planner.c
@@ -149,8 +148,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-profile-hw.h
                hyscan-profile-offset.h
                hyscan-geo-projection.h
-               hyscan-mercator.h
-               hyscan-pseudo-mercator.h
+               hyscan-proj.h
                hyscan-cartesian.h
                hyscan-task-queue.h
                hyscan-planner.h

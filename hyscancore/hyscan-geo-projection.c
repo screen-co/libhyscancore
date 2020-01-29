@@ -50,8 +50,6 @@
  * Границы проекции на плоскости можно получить с помощью
  * hyscan_geo_projection_get_limits().
  *
- * Проекция Меркатора реализована в классах #HyScanMercator и #HyScanPseudoMercator.
- *
  */
 
 #include "hyscan-geo-projection.h"
@@ -65,7 +63,7 @@ hyscan_geo_projection_default_init (HyScanGeoProjectionInterface *iface)
 
 /**
  * hyscan_geo_projection_value_to_geo:
- * @mercator: указатель на проекцию #HyScanGeoProjection
+ * @geo_projection: указатель на проекцию #HyScanGeoProjection
  * @coords: (out): соответствующая географическая координата
  * @x: координата x в прямоугольной СК проекции
  * @y: координата y в прямоугольной СК проекции
@@ -89,7 +87,7 @@ hyscan_geo_projection_value_to_geo (HyScanGeoProjection *geo_projection,
 
 /**
  * hyscan_geo_projection_geo_to_value:
- * @mercator: указатель на проекцию #HyScanGeoProjection
+ * @geo_projection: указатель на проекцию #HyScanGeoProjection
  * @coords: географические координаты точки
  * @c2d: (out): координаты в прямоугольной СК
  *
@@ -112,7 +110,7 @@ hyscan_geo_projection_geo_to_value (HyScanGeoProjection  *geo_projection,
 
 /**
  * hyscan_geo_projection_get_limits:
- * @mercator: указатель на проекцию #HyScanGeoProjection
+ * @geo_projection: указатель на проекцию #HyScanGeoProjection
  * @min_x: (out): минимальное значение x проекции
  * @max_x: (out): максимальное значение x проекции
  * @min_y: (out): минимальное значение y проекции
@@ -139,7 +137,7 @@ hyscan_geo_projection_get_limits (HyScanGeoProjection *geo_projection,
 
 /**
  * hyscan_geo_projection_get_scale:
- * @mercator: указатель на проекцию #geo_projection
+ * @geo_projection: указатель на проекцию #geo_projection
  * @coords: географические координаты #HyScanGeoGeodetic
  *
  * Определяет масштаб проекции в указнной точке @coords. Масштаб показывает,

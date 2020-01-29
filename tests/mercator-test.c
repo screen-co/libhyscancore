@@ -32,8 +32,7 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#include <hyscan-mercator.h>
-#include <hyscan-pseudo-mercator.h>
+#include <hyscan-proj.h>
 #include <math.h>
 
 #define RADIUS_EARTH 6378137.0
@@ -52,15 +51,15 @@ test_hash (void)
   HyScanGeoProjection *proj_pseudo_1, *proj_pseudo_2;
 
   hyscan_geo_init_ellipsoid (&p, HYSCAN_GEO_ELLIPSOID_WGS84);
-  proj_wgs84_1 = HYSCAN_GEO_PROJECTION (hyscan_mercator_new (p));
-  proj_wgs84_2 = HYSCAN_GEO_PROJECTION (hyscan_mercator_new (p));
+  proj_wgs84_1 = HYSCAN_GEO_PROJECTION (hyscan_proj_new (HYSCAN_PROJ_MERC));
+  proj_wgs84_2 = HYSCAN_GEO_PROJECTION (hyscan_proj_new (HYSCAN_PROJ_MERC));
 
   hyscan_geo_init_ellipsoid_user (&p, RADIUS_EARTH, 0.0);
-  proj_sphere_1 = HYSCAN_GEO_PROJECTION (hyscan_mercator_new (p));
-  proj_sphere_2 = HYSCAN_GEO_PROJECTION (hyscan_mercator_new (p));
+  proj_sphere_1 = HYSCAN_GEO_PROJECTION (hyscan_proj_new (HYSCAN_PROJ_MERC " +ellps=sphere"));
+  proj_sphere_2 = HYSCAN_GEO_PROJECTION (hyscan_proj_new (HYSCAN_PROJ_MERC " +ellps=sphere"));
 
-  proj_pseudo_1 = hyscan_pseudo_mercator_new ();
-  proj_pseudo_2 = hyscan_pseudo_mercator_new ();
+  proj_pseudo_1 = hyscan_proj_new (HYSCAN_PROJ_WEBMERC);
+  proj_pseudo_2 = hyscan_proj_new (HYSCAN_PROJ_WEBMERC);
 
   g_assert_cmpint (hyscan_geo_projection_hash (proj_wgs84_1), ==, hyscan_geo_projection_hash (proj_wgs84_2));
   g_assert_cmpint (hyscan_geo_projection_hash (proj_sphere_1), ==, hyscan_geo_projection_hash (proj_sphere_2));
@@ -155,7 +154,7 @@ test_mercator_scale (HyScanGeoProjection *projection)
   scale0 = hyscan_geo_projection_get_scale (projection, coords);
 
   /* Масштаб равен 1 на экваторе... */
-  g_assert_cmpfloat (1.0, ==, scale0);
+  g_assert_cmpfloat (ABS (1.0 - scale0), <, 0.01);
 
   /* В остальном ведёт себя так же, как псевдомеркатор. */
   test_pseudo_mercator_scale (projection);
@@ -165,7 +164,6 @@ int main (int     argc,
           gchar **argv)
 {
   HyScanGeoProjection *projection;
-  HyScanGeoEllipsoidParam p;
 
   TestData data_sphere[] = {
     { {.lat = 52.36, .lon = 4.9}, .x = 545465.50, .y = 6865481.66},
@@ -178,36 +176,15 @@ int main (int     argc,
   };
 
   g_message ("EPSG:3857: WGS84 pseudo-Mercator (sphere) [https://epsg.io/3857]");
-  hyscan_geo_init_ellipsoid_user (&p, RADIUS_EARTH, 0.0);
-  projection = HYSCAN_GEO_PROJECTION (hyscan_mercator_new (p));
+  projection = hyscan_proj_new (HYSCAN_PROJ_WEBMERC);
   test_projection (projection, data_sphere, G_N_ELEMENTS (data_sphere), 1e-2);
-  test_mercator_scale (projection);
+  test_pseudo_mercator_scale (projection);
   g_object_unref (projection);
 
   g_message ("EPSG:3395: WGS84 Mercator projection (spheroid) [https://epsg.io/3395]");
-  hyscan_geo_init_ellipsoid (&p, HYSCAN_GEO_ELLIPSOID_WGS84);
-  projection = HYSCAN_GEO_PROJECTION (hyscan_mercator_new (p));
+  projection = hyscan_proj_new (HYSCAN_PROJ_MERC);
   test_projection (projection, data_spheroid, G_N_ELEMENTS (data_spheroid), 1e-2);
   test_mercator_scale (projection);
-  g_object_unref (projection);
-
-  g_message ("EPSG:3395: WGS84 pseudo-Mercator projection (sphere) "
-             "[https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Pseudo-code]");
-  projection = HYSCAN_GEO_PROJECTION (hyscan_pseudo_mercator_new ());
-  /* В HyScanPseudoMercator границы от 0 до 1, поэтому немного меняем сферические данные. */
-  {
-    gsize i;
-    gdouble equator_l;
-
-    equator_l = (2 * G_PI * RADIUS_EARTH);
-    for (i = 0; i < G_N_ELEMENTS (data_sphere); ++i)
-      {
-        data_sphere[i].x = data_sphere[i].x / equator_l + 0.5;
-        data_sphere[i].y = data_sphere[i].y / equator_l + 0.5;
-      }
-  }
-  test_projection (projection, data_sphere, G_N_ELEMENTS (data_sphere), 1e-2 / RADIUS_EARTH);
-  test_pseudo_mercator_scale (projection);
   g_object_unref (projection);
 
   test_hash ();
