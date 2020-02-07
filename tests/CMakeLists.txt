@@ -30,6 +30,7 @@ add_executable (nav-model-test nav-model-test.c)
 add_executable (nmea-file2udp nmea-file2udp.c)
 add_executable (planner-test planner-test.c)
 add_executable (data-player-test data-player-test.c)
+add_executable (nav-smooth-test nav-smooth-test.c)
 if (UNIX)
   add_executable (nmea-joystick nmea-joystick.c)
 endif()
@@ -62,6 +63,7 @@ target_link_libraries (nav-model-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
 target_link_libraries (planner-test ${TEST_LIBRARIES})
 target_link_libraries (data-player-test ${TEST_LIBRARIES})
+target_link_libraries (nav-smooth-test ${TEST_LIBRARIES})
 if (UNIX)
   target_link_libraries (nmea-joystick ${TEST_LIBRARIES})
 endif()
@@ -96,6 +98,8 @@ add_test (NAME NavModelTest COMMAND nav-model-test --default-data
 add_test (NAME PlannerTest COMMAND planner-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME DataPlayerTest COMMAND data-player-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME NavSmoothTest COMMAND nav-smooth-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 install (TARGETS data-writer-test

@@ -49,6 +49,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-forward-look-player.c
              hyscan-geo.c
              hyscan-nav-data.c
+             hyscan-nav-smooth.c
              # hyscan-nav-filter.c
              hyscan-nmea-parser.c
              hyscan-depthometer.c
@@ -122,6 +123,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-forward-look-player.h
                hyscan-geo.h
                hyscan-nav-data.h
+               hyscan-nav-smooth.h
                hyscan-nmea-parser.h
                hyscan-depthometer.h
                hyscan-control.h
