@@ -68,7 +68,13 @@ HYSCAN_API
 GType              hyscan_profile_db_get_type            (void);
 
 HYSCAN_API
-HyScanProfileDB*   hyscan_profile_db_new                 (const gchar       *file);
+HyScanProfileDB *  hyscan_profile_db_new                 (const gchar       *file);
+
+HYSCAN_API
+void               hyscan_profile_db_set_uri             (HyScanProfileDB   *profile,
+                                                          const gchar       *uri);
+HYSCAN_API
+const gchar *      hyscan_profile_db_get_uri             (HyScanProfileDB   *profile);
 
 HYSCAN_API
 HyScanDB *         hyscan_profile_db_connect             (HyScanProfileDB   *profile);

@@ -72,11 +72,13 @@ struct _HyScanProfileOffsetPrivate
 
 static void     hyscan_profile_offset_object_finalize  (GObject             *object);
 static void     hyscan_profile_offset_clear            (HyScanProfileOffset *profile);
-static gboolean hyscan_profile_offset_read             (HyScanProfile       *profile,
-                                                        GKeyFile            *file);
 static gboolean hyscan_profile_offset_info_group       (HyScanProfileOffset *profile,
                                                         GKeyFile            *kf,
                                                         const gchar         *group);
+static gboolean hyscan_profile_offset_read             (HyScanProfile       *profile,
+                                                        GKeyFile            *file);
+static gboolean hyscan_profile_offset_write            (HyScanProfile       *profile,
+                                                        GKeyFile            *file);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanProfileOffset, hyscan_profile_offset, HYSCAN_TYPE_PROFILE);
 
@@ -88,6 +90,7 @@ hyscan_profile_offset_class_init (HyScanProfileOffsetClass *klass)
 
   oclass->finalize = hyscan_profile_offset_object_finalize;
   pklass->read = hyscan_profile_offset_read;
+  pklass->write = hyscan_profile_offset_write;
 }
 
 static void
@@ -116,9 +119,40 @@ hyscan_profile_offset_clear (HyScanProfileOffset *profile)
   g_clear_pointer (&priv->sensors, g_hash_table_unref);
 
   priv->sources = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                        NULL, (GDestroyNotify)hyscan_antenna_offset_free);
+                                         NULL, (GDestroyNotify)hyscan_antenna_offset_free);
   priv->sensors = g_hash_table_new_full (g_str_hash, g_str_equal,
                                          g_free, (GDestroyNotify)hyscan_antenna_offset_free);
+}
+
+/* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
+static gboolean
+hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
+                                  GKeyFile            *kf,
+                                  const gchar         *group)
+{
+  gchar *name;
+
+  if (!g_str_equal (group, HYSCAN_PROFILE_OFFSET_INFO_GROUP))
+    return FALSE;
+
+  name = g_key_file_get_locale_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL, NULL);
+  hyscan_profile_set_name (HYSCAN_PROFILE (profile), name);
+
+  g_free (name);
+  return TRUE;
+}
+
+static void
+hyscan_profile_offset_write_helper (GKeyFile            *kf,
+                                    const gchar         *group,
+                                    HyScanAntennaOffset *offset)
+{
+  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_STARBOARD, offset->starboard);
+  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_FORWARD, offset->forward);
+  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_VERTICAL, offset->vertical);
+  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_YAW, offset->yaw);
+  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_PITCH, offset->pitch);
+  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_ROLL, offset->roll);
 }
 
 /* Функция парсинга профиля. */
@@ -155,9 +189,9 @@ hyscan_profile_offset_read (HyScanProfile *profile,
       /* Если название группы совпадает с названием того или иного
        * HyScanSourceType, то это локатор. Иначе -- датчик. */
       if (hyscan_channel_get_types_by_id (*iter, &source, &type, &channel))
-        g_hash_table_insert (priv->sources, GINT_TO_POINTER (source), hyscan_antenna_offset_copy (&offset));
+        hyscan_profile_offset_add_source (self, source, offset);
       else
-        g_hash_table_insert (priv->sensors, g_strdup (*iter), hyscan_antenna_offset_copy (&offset));
+        hyscan_profile_offset_add_sensor (self, *iter, offset);
     }
 
   g_strfreev (groups);
@@ -165,24 +199,35 @@ hyscan_profile_offset_read (HyScanProfile *profile,
   return TRUE;
 }
 
-/* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
+/* Функция парсинга профиля. */
 static gboolean
-hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
-                                  GKeyFile            *kf,
-                                  const gchar         *group)
+hyscan_profile_offset_write (HyScanProfile *profile,
+                             GKeyFile      *file)
 {
-  gchar *name;
+  gpointer k;
+  HyScanAntennaOffset *v;
+  GHashTableIter iter;
+  HyScanProfileOffset *self = HYSCAN_PROFILE_OFFSET (profile);
+  HyScanProfileOffsetPrivate *priv = self->priv;
 
-  if (!g_str_equal (group, HYSCAN_PROFILE_OFFSET_INFO_GROUP))
-    return FALSE;
+  g_hash_table_iter_init (&iter, priv->sources);
+  while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
+    {
+      hyscan_profile_offset_write_helper (file,
+                                          hyscan_source_get_id_by_type ((HyScanSourceType)k),
+                                          v);
+    }
 
-  name = g_key_file_get_locale_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL, NULL);
-  hyscan_profile_set_name (HYSCAN_PROFILE (profile), name);
+  g_hash_table_iter_init (&iter, priv->sensors);
+  while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
+    {
+      hyscan_profile_offset_write_helper (file,
+                                          (const gchar*)k,
+                                          v);
+    }
 
-  g_free (name);
   return TRUE;
 }
-
 
 /**
  * hyscan_profile_offset_new:
@@ -201,7 +246,7 @@ hyscan_profile_offset_new (const gchar *file)
 }
 
 /**
- * hyscan_profile_offset_get_sources:
+ * hyscan_profile_offset_list_sources:
  * @profile: #HyScanProfileOffset
  *
  * Функция возвращает список #HyScanAntennaOffset для локаторов.
@@ -210,7 +255,7 @@ hyscan_profile_offset_new (const gchar *file)
  * таблица смещений для локаторов.
  */
 GHashTable *
-hyscan_profile_offset_get_sources (HyScanProfileOffset *profile)
+hyscan_profile_offset_list_sources (HyScanProfileOffset *profile)
 {
   g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), NULL);
 
@@ -218,7 +263,7 @@ hyscan_profile_offset_get_sources (HyScanProfileOffset *profile)
 }
 
 /**
- * hyscan_profile_offset_get_sensors:
+ * hyscan_profile_offset_list_sensors:
  * @profile: #HyScanProfileOffset
  *
  * Функция возвращает список #HyScanAntennaOffset для датчиков.
@@ -227,11 +272,83 @@ hyscan_profile_offset_get_sources (HyScanProfileOffset *profile)
  * таблица смещений для датчиков.
  */
 GHashTable *
-hyscan_profile_offset_get_sensors (HyScanProfileOffset *profile)
+hyscan_profile_offset_list_sensors (HyScanProfileOffset *profile)
 {
   g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), NULL);
 
   return g_hash_table_ref (profile->priv->sensors);
+}
+
+/**
+ * hyscan_profile_offset_add_source:
+ * @profile: #HyScanProfileOffset
+ * @source: тип данных
+ * @offset: значения сдвигов
+ *
+ * Функция добавляет (или обновляет) значения смещений для типа данных.
+ */
+void
+hyscan_profile_offset_add_source (HyScanProfileOffset *profile,
+                                  HyScanSourceType     source,
+                                  HyScanAntennaOffset  offset)
+{
+  g_return_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile));
+
+  g_hash_table_insert (profile->priv->sources, GINT_TO_POINTER (source),
+                       hyscan_antenna_offset_copy (&offset));
+}
+
+/**
+ * hyscan_profile_offset_add_sensor:
+ * @profile: #HyScanProfileOffset
+ * @sensor: название датчика
+ * @offset: значения сдвигов
+ *
+ * Функция добавляет (или обновляет) значения смещений для датчика.
+ */
+void
+hyscan_profile_offset_add_sensor (HyScanProfileOffset *profile,
+                                  const gchar         *sensor,
+                                  HyScanAntennaOffset  offset)
+{
+  g_return_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile));
+
+  g_hash_table_insert (profile->priv->sensors, g_strdup (sensor),
+                       hyscan_antenna_offset_copy (&offset));
+}
+
+/**
+ * hyscan_profile_offset_remove_source:
+ * @profile: #HyScanProfileOffset
+ * @source: тип данных
+ * @offset: значения сдвигов
+ *
+ * Функция удаляет значения смещений для типа данных.
+ */
+gboolean
+hyscan_profile_offset_remove_source (HyScanProfileOffset *profile,
+                                     HyScanSourceType     source)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), FALSE);
+
+  return g_hash_table_remove (profile->priv->sources, GINT_TO_POINTER (source));
+}
+
+/**
+ * hyscan_profile_offset_remove_sensor:
+ * @profile: #HyScanProfileOffset
+ * @sensor: название датчика
+ * @offset: значения сдвигов
+ *
+ * Функция удаляет значения смещений для датчика.
+ */
+gboolean
+hyscan_profile_offset_remove_sensor (HyScanProfileOffset *profile,
+                                     const gchar         *sensor)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile), FALSE);
+
+  return g_hash_table_remove (profile->priv->sensors, sensor);
 }
 
 /**
