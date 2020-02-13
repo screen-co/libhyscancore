@@ -483,12 +483,13 @@ hyscan_acoustic_data_object_constructed (GObject *object)
   priv->cache_buffer = hyscan_buffer_new ();
 
   db_uri = hyscan_db_get_uri (priv->db);
-  priv->cache_token = g_strdup_printf ("ACOUSTIC.%s.%s.%s.%u.%u",
+  priv->cache_token = g_strdup_printf ("ACOUSTIC.%s.%s.%s.%u.%u.%s",
                                        db_uri,
                                        priv->project_name,
                                        priv->track_name,
                                        priv->source,
-                                       priv->channel);
+                                       priv->channel,
+                                       priv->noise ? "N" : "A");
   g_free (db_uri);
 
   status = TRUE;
