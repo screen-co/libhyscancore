@@ -52,7 +52,6 @@
 #define HYSCAN_PROFILE_DB_GROUP_NAME "db"
 #define HYSCAN_PROFILE_DB_URI_KEY "uri"
 #define HYSCAN_PROFILE_DB_NAME_KEY "name"
-#define HYSCAN_PROFILE_DB_UNNAMED_VALUE "unnamed"
 
 enum
 {
@@ -63,14 +62,15 @@ enum
 
 struct _HyScanProfileDBPrivate
 {
-  gchar *name;   /* Имя БД. */
-  gchar *uri;    /* Идентификатор БД.*/
+  gchar *uri; /* Путь к БД.*/
 };
 
-static void   hyscan_profile_db_object_finalize (GObject                      *object);
-static void   hyscan_profile_db_clear           (HyScanProfileDB              *profile);
-static gboolean hyscan_profile_db_read          (HyScanProfile                *profile,
-                                                 GKeyFile                     *file);
+static void     hyscan_profile_db_object_finalize (GObject         *object);
+static void     hyscan_profile_db_clear           (HyScanProfileDB *profile);
+static gboolean hyscan_profile_db_read            (HyScanProfile   *profile,
+                                                   GKeyFile        *file);
+static gboolean hyscan_profile_db_write           (HyScanProfile   *profile,
+                                                   GKeyFile        *file);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanProfileDB, hyscan_profile_db, HYSCAN_TYPE_PROFILE,
                          G_ADD_PRIVATE (HyScanProfileDB));
@@ -82,8 +82,8 @@ hyscan_profile_db_class_init (HyScanProfileDBClass *klass)
   HyScanProfileClass *pklass = HYSCAN_PROFILE_CLASS (klass);
 
   oclass->finalize = hyscan_profile_db_object_finalize;
-
   pklass->read = hyscan_profile_db_read;
+  pklass->write = hyscan_profile_db_write;
 }
 
 static void
@@ -108,7 +108,6 @@ hyscan_profile_db_clear (HyScanProfileDB *profile)
   HyScanProfileDBPrivate *priv = profile->priv;
 
   g_clear_pointer (&priv->uri, g_free);
-  g_clear_pointer (&priv->name, g_free);
 }
 
 /* Функция парсинга профиля. */
@@ -118,21 +117,42 @@ hyscan_profile_db_read (HyScanProfile *profile,
 {
   HyScanProfileDB *self = HYSCAN_PROFILE_DB (profile);
   HyScanProfileDBPrivate *priv = self->priv;
+  gchar *name;
 
   /* Очистка профиля. */
   hyscan_profile_db_clear (self);
 
-  priv->name = g_key_file_get_locale_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
-                                             HYSCAN_PROFILE_DB_NAME_KEY, NULL, NULL);
+  name = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+                                HYSCAN_PROFILE_DB_NAME_KEY, NULL);
   priv->uri = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
                                      HYSCAN_PROFILE_DB_URI_KEY, NULL);
+
+  hyscan_profile_set_name (profile, name);
+
   if (priv->uri == NULL)
     {
       g_warning ("HyScanProfileDB: %s", "uri not found.");
       return FALSE;
     }
 
-  hyscan_profile_set_name (profile, priv->name != NULL ? priv->name : priv->uri);
+  g_free (name);
+
+  return TRUE;
+}
+
+/* Функция парсинга профиля. */
+static gboolean
+hyscan_profile_db_write (HyScanProfile *profile,
+                         GKeyFile      *file)
+{
+  HyScanProfileDB *self = HYSCAN_PROFILE_DB (profile);
+  HyScanProfileDBPrivate *priv = self->priv;
+
+  g_key_file_set_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+                         HYSCAN_PROFILE_DB_NAME_KEY,
+                         hyscan_profile_get_name (profile));
+  g_key_file_set_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+                         HYSCAN_PROFILE_DB_URI_KEY, priv->uri);
 
   return TRUE;
 }
@@ -153,13 +173,30 @@ hyscan_profile_db_new (const gchar *file)
                        NULL);
 }
 
+void
+hyscan_profile_db_set_uri (HyScanProfileDB *self,
+                           const gchar     *uri)
+{
+  g_return_if_fail (HYSCAN_IS_PROFILE_DB (self));
+  g_return_if_fail (uri != NULL);
+
+  g_clear_pointer (&self->priv->uri, g_free);
+  self->priv->uri = g_strdup (uri);
+}
+
+const gchar *
+hyscan_profile_db_get_uri (HyScanProfileDB *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE_DB (self), NULL);
+
+  return self->priv->uri;
+}
+
 /**
  * hyscan_profile_read:
- * @self: указатель на #HyScanProfile
+ * @self: #HyScanProfileDB
  *
- * Функция производит чтение профиля. Текущая реализация запрещает читать
- * профиль более одного раза. Объект профиля должен быть полностью настроен
- * перед вызовом этой функции.
+ * Функция производит подключение к базе.
  *
  * Returns: (transfer full): #HyScanDB или NULL в случае ошибки.
  */
