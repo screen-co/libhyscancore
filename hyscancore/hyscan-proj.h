@@ -37,7 +37,7 @@
 
 #include <hyscan-geo-projection.h>
 
-#define HYSCAN_PROJ_MERC    "+proj=merc"
+#define HYSCAN_PROJ_MERC    "+proj=merc +ellps=WGS84"
 #define HYSCAN_PROJ_WEBMERC "+proj=merc +a=6378137 +b=6378137"
 
 G_BEGIN_DECLS
