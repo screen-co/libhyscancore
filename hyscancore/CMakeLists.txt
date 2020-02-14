@@ -87,6 +87,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nmea-helper.c
              hyscan-data-player.c
              hyscan-hsx-converter.c
+             hyscan-quality.c
              hyscan-units.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
@@ -166,6 +167,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-nmea-helper.h
                hyscan-data-player.h
                hyscan-hsx-converter.h
+               hyscan-quality.h
                hyscan-units.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
