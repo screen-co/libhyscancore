@@ -69,6 +69,9 @@ struct _HyScanProfileClass
 
   gboolean     (*read)      (HyScanProfile *self,
                              GKeyFile      *file);
+
+  gboolean     (*write)     (HyScanProfile *self,
+                             GKeyFile      *file);
 };
 
 HYSCAN_API
@@ -76,6 +79,9 @@ GType                  hyscan_profile_get_type         (void);
 
 HYSCAN_API
 gboolean               hyscan_profile_read             (HyScanProfile *profile);
+
+HYSCAN_API
+gboolean               hyscan_profile_write            (HyScanProfile *profile);
 
 HYSCAN_API
 const gchar *          hyscan_profile_get_file         (HyScanProfile *profile);

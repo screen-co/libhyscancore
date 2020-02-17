@@ -142,7 +142,7 @@ hyscan_proj_object_constructed (GObject *object)
   if (priv->proj_topo == NULL)
     g_warning ("HyScanProj: %s", pj_strerrno (pj_errno));
 
-  priv->proj_lonlat = pj_init_plus ("+proj=latlong");
+  priv->proj_lonlat = pj_init_plus ("+proj=latlong +ellps=WGS84");
 
   hyscan_proj_set_limits (proj);
 }
@@ -153,6 +153,7 @@ hyscan_proj_object_finalize (GObject *object)
   HyScanProj *proj = HYSCAN_PROJ (object);
   HyScanProjPrivate *priv = proj->priv;
 
+  g_free (priv->definition);
   pj_free (priv->proj_topo);
   pj_free (priv->proj_lonlat);
 }

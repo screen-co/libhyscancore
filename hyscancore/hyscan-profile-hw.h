@@ -36,7 +36,8 @@
 #define __HYSCAN_PROFILE_HW_H__
 
 #include <hyscan-control.h>
-#include "hyscan-profile.h"
+#include <hyscan-profile.h>
+#include <hyscan-profile-hw-device.h>
 
 G_BEGIN_DECLS
 
@@ -75,6 +76,13 @@ void                   hyscan_profile_hw_set_driver_paths (HyScanProfileHW *prof
 
 HYSCAN_API
 GList *                hyscan_profile_hw_list             (HyScanProfileHW *profile);
+
+HYSCAN_API
+const gchar *          hyscan_profile_hw_add              (HyScanProfileHW       *profile,
+                                                           HyScanProfileHWDevice *device);
+HYSCAN_API
+gboolean               hyscan_profile_hw_remove           (HyScanProfileHW       *profile,
+                                                           const gchar           *id);
 
 HYSCAN_API
 gboolean               hyscan_profile_hw_check            (HyScanProfileHW *profile);
