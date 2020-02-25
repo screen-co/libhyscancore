@@ -29,6 +29,7 @@ struct _HyScanLabel
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
+  gchar            *icon_name;
   guint64           label;
   gint64            ctime;
   gint64            mtime;
@@ -48,6 +49,10 @@ void                 hyscan_label_set_text                     (HyScanLabel     
                                                                 const gchar            *name,
                                                                 const gchar            *description,
                                                                 const gchar            *oper);
+
+HYSCAN_API
+void                 hyscan_label_set_icon_name                (HyScanLabel            *self,
+                                                                const gchar            *icon_name);
 
 HYSCAN_API
 void                 hyscan_label_set_ctime                    (HyScanLabel            *self,

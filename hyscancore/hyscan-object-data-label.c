@@ -67,6 +67,7 @@ hyscan_object_data_label_object_constructed (GObject *object)
   hyscan_param_list_add (priv->read_plist, "/name");
   hyscan_param_list_add (priv->read_plist, "/description");
   hyscan_param_list_add (priv->read_plist, "/operator");
+  hyscan_param_list_add (priv->read_plist, "/icon");
   hyscan_param_list_add (priv->read_plist, "/label");
   hyscan_param_list_add (priv->read_plist, "/ctime");
   hyscan_param_list_add (priv->read_plist, "/mtime");
@@ -107,9 +108,11 @@ hyscan_object_data_label_get_full (HyScanObjectData *data,
   label = (HyScanLabel*) hyscan_label_new ();
 
   hyscan_label_set_text  (label,
-                          hyscan_param_list_get_string (read_plist,  "/name"),
-                          hyscan_param_list_get_string (read_plist,  "/description"),
-                          hyscan_param_list_get_string (read_plist,  "/operator"));
+                          hyscan_param_list_get_string (read_plist, "/name"),
+                          hyscan_param_list_get_string (read_plist, "/description"),
+                          hyscan_param_list_get_string (read_plist, "/operator"));
+  hyscan_label_set_icon_name (label,
+                              hyscan_param_list_get_string (read_plist, "/icon"));
   hyscan_label_set_label (label,
                           hyscan_param_list_get_integer (read_plist, "/label"));
   hyscan_label_set_ctime (label,
@@ -133,6 +136,7 @@ hyscan_object_data_label_set_full (HyScanObjectData   *data,
   hyscan_param_list_set_string (write_plist, "/name", label->name);
   hyscan_param_list_set_string (write_plist, "/description", label->description);
   hyscan_param_list_set_string (write_plist, "/operator", label->operator_name);
+  hyscan_param_list_set_string (write_plist, "/icon", label->icon_name);
   hyscan_param_list_set_integer (write_plist, "/label", label->label);
   hyscan_param_list_set_integer (write_plist, "/ctime", label->ctime);
   hyscan_param_list_set_integer (write_plist, "/mtime", label->mtime);

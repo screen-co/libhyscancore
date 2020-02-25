@@ -42,6 +42,7 @@ hyscan_label_copy (const HyScanLabel *self)
 
   copy = hyscan_label_new ();
   hyscan_label_set_text (copy, self->name, self->description, self->operator_name);
+  hyscan_label_set_icon_name (copy, self->icon_name);
   copy->label = self->label;
   copy->ctime = self->ctime;
   copy->mtime = self->mtime;
@@ -86,6 +87,21 @@ hyscan_label_set_text (HyScanLabel *self,
   self->name = g_strdup (name);
   self->description = g_strdup (description);
   self->operator_name = g_strdup (oper);
+}
+
+/**
+ * hyscan_label_set_icon_name:
+ * @self: указатель на HyScanLabel
+ * @icon_name: название группы
+ *
+ * Устанавливает имя иконки группы для отображения в представлении.
+ */
+void
+hyscan_label_set_icon_name (HyScanLabel *self,
+                            const gchar *icon_name)
+{
+  g_free (self->icon_name);
+  self->icon_name = g_strdup (icon_name);
 }
 
 /**
