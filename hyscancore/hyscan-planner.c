@@ -380,6 +380,34 @@ exit:
 }
 
 /**
+ * hyscan_planner_plan_equal:
+ * @plan1: первый план галса
+ * @plan2: второй план галса
+ *
+ * Проверяет, что планы галса совпадают. Все параметры планов сравниваются
+ * с некоторой допустимой ошибкой, так что функция не гарантируется точное
+ * совпадение значений параметров.
+ *
+ * Returns: %TRUE, если планы одинаковые; иначе %FALSE
+ */
+gboolean
+hyscan_planner_plan_equal (const HyScanTrackPlan *plan1,
+                           const HyScanTrackPlan *plan2)
+{
+  if (plan1 == NULL && plan2 == NULL)
+    return TRUE;
+
+  if (plan1 == NULL || plan2 == NULL)
+    return FALSE;
+
+  return fabs (plan1->velocity - plan2->velocity) < .001 &&
+         fabs (plan1->start.lat - plan2->start.lat) < 1e-6 &&
+         fabs (plan1->start.lon - plan2->start.lon) < 1e-6 &&
+         fabs (plan1->end.lat - plan2->end.lat) < 1e-6 &&
+         fabs (plan1->end.lon - plan2->end.lon) < 1e-6;
+}
+
+/**
  * hyscan_planner_zone_new:
  *
  * Создаёт пустую структуру #HyScanPlannerZone

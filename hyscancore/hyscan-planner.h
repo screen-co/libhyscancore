@@ -36,9 +36,7 @@
 #define __HYSCAN_PLANNER_H__
 
 #include <hyscan-geo.h>
-#include <hyscan-nav-model.h>
-#include <hyscan-db.h>
-#include "hyscan-object-data.h"
+#include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
@@ -151,6 +149,10 @@ gdouble                hyscan_planner_track_length       (const HyScanTrackPlan 
 HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_extend       (const HyScanPlannerTrack  *track,
                                                           const HyScanPlannerZone   *zone);
+
+HYSCAN_API
+gboolean               hyscan_planner_plan_equal         (const HyScanTrackPlan     *plan1,
+                                                          const HyScanTrackPlan     *plan2);
 
 HYSCAN_API
 HyScanPlannerZone *    hyscan_planner_zone_new           (void);
