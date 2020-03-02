@@ -113,6 +113,7 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
   hyscan_param_list_set_double (param_list, "/data/rate", info->data_rate);
   hyscan_param_list_set_double (param_list, "/signal/frequency", info->signal_frequency);
   hyscan_param_list_set_double (param_list, "/signal/bandwidth", info->signal_bandwidth);
+  hyscan_param_list_set_double (param_list, "/signal/heterodyne", info->signal_heterodyne);
   hyscan_param_list_set_double (param_list, "/antenna/offset/vertical", info->antenna_voffset);
   hyscan_param_list_set_double (param_list, "/antenna/offset/horizontal", info->antenna_hoffset);
   hyscan_param_list_set_double (param_list, "/antenna/aperture/vertical", info->antenna_vaperture);
@@ -332,6 +333,7 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
   hyscan_param_list_add (param_list, "/data/rate");
   hyscan_param_list_add (param_list, "/signal/frequency");
   hyscan_param_list_add (param_list, "/signal/bandwidth");
+  hyscan_param_list_add (param_list, "/signal/heterodyne");
   hyscan_param_list_add (param_list, "/antenna/offset/vertical");
   hyscan_param_list_add (param_list, "/antenna/offset/horizontal");
   hyscan_param_list_add (param_list, "/antenna/aperture/vertical");
@@ -354,6 +356,7 @@ hyscan_core_params_load_acoustic_data_info (HyScanDB               *db,
   info->data_rate = hyscan_param_list_get_double (param_list, "/data/rate");
   info->signal_frequency = hyscan_param_list_get_double (param_list, "/signal/frequency");
   info->signal_bandwidth = hyscan_param_list_get_double (param_list, "/signal/bandwidth");
+  info->signal_heterodyne = hyscan_param_list_get_double (param_list, "/signal/heterodyne");
   info->antenna_voffset = hyscan_param_list_get_double (param_list, "/antenna/offset/vertical");
   info->antenna_hoffset = hyscan_param_list_get_double (param_list, "/antenna/offset/horizontal");
   info->antenna_vaperture = hyscan_param_list_get_double (param_list, "/antenna/aperture/vertical");
