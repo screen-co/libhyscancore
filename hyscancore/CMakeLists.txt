@@ -56,6 +56,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-profile-offset.c
              hyscan-profile-hw-device.c
              hyscan-profile-hw.c
+             hyscan-task-queue.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -98,6 +99,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-profile-offset.h
                hyscan-profile-hw-device.h
                hyscan-profile-hw.h
+               hyscan-task-queue.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
