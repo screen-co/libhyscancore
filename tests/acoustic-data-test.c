@@ -122,7 +122,8 @@ create_complex_data (HyScanDataWriter *writer,
   acoustic_info.data_type = type;
   acoustic_info.data_rate = discretization;
   acoustic_info.signal_frequency = frequency;
-  acoustic_info.signal_bandwidth = 0.1 * frequency;
+  acoustic_info.signal_bandwidth = frequency;
+  acoustic_info.signal_heterodyne = frequency;
   acoustic_info.antenna_voffset = 0.0;
   acoustic_info.antenna_hoffset = 0.0;
   acoustic_info.antenna_vaperture = 40.0;
@@ -297,7 +298,8 @@ create_amplitude_data (HyScanDataWriter *writer,
   acoustic_info.data_type = type;
   acoustic_info.data_rate = discretization;
   acoustic_info.signal_frequency = frequency;
-  acoustic_info.signal_bandwidth = 0.1 * frequency;
+  acoustic_info.signal_bandwidth = frequency;
+  acoustic_info.signal_heterodyne = frequency;
   acoustic_info.antenna_voffset = 0.0;
   acoustic_info.antenna_hoffset = 0.0;
   acoustic_info.antenna_vaperture = 40.0;
@@ -379,9 +381,6 @@ check_complex_data (HyScanDB         *db,
                                      source, channel, noise);
   amplitude = HYSCAN_AMPLITUDE (reader);
   info = hyscan_amplitude_get_info (amplitude);
-
-  if (info.signal_frequency != frequency)
-    g_error ("data frequency mismatch");
 
   n_signal_points = discretization * duration;
   n_data_points = 100 * n_signal_points;

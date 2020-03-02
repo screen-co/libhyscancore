@@ -80,7 +80,7 @@
         <default>3533456721320349085</default>
       </key>
       <key id="version" name="Acoustic channel schema version" type="integer" access="r">
-        <default>20190100</default>
+        <default>20200100</default>
       </key>
     </node>
     <node id="offset" schema="offset"/>
@@ -90,6 +90,7 @@
     <node id="signal">
       <key id="frequency" name="Center frequency" type="double"/>
       <key id="bandwidth" name="Bandwidth" type="double"/>
+      <key id="heterodyne" name="Heterodyne frequency" type="double"/>
     </node>
   </schema>
 
