@@ -57,6 +57,10 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-profile-hw-device.c
              hyscan-profile-hw.c
              hyscan-task-queue.c
+             hyscan-mark.c
+             hyscan-object-data.c
+             hyscan-object-data-wfmark.c
+             hyscan-object-data-geomark.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -100,6 +104,10 @@ install (FILES hyscan-core-schemas.h
                hyscan-profile-hw-device.h
                hyscan-profile-hw.h
                hyscan-task-queue.h
+               hyscan-mark.h
+               hyscan-object-data.h
+               hyscan-object-data-wfmark.h
+               hyscan-object-data-geomark.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
