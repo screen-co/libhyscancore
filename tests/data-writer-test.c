@@ -140,16 +140,17 @@ acoustic_get_info (guint n_channel)
 
   info.signal_frequency = 1.0 * n_channel;
   info.signal_bandwidth = 2.0 * n_channel;
+  info.signal_heterodyne = 3.0 * n_channel;
 
-  info.antenna_voffset = 3.0 * n_channel;
-  info.antenna_hoffset = 4.0 * n_channel;
-  info.antenna_vaperture = 5.0 * n_channel;
-  info.antenna_haperture = 6.0 * n_channel;
-  info.antenna_frequency = 7.0 * n_channel;
-  info.antenna_bandwidth = 8.0 * n_channel;
+  info.antenna_voffset = 4.0 * n_channel;
+  info.antenna_hoffset = 5.0 * n_channel;
+  info.antenna_vaperture = 6.0 * n_channel;
+  info.antenna_haperture = 7.0 * n_channel;
+  info.antenna_frequency = 8.0 * n_channel;
+  info.antenna_bandwidth = 9.0 * n_channel;
 
-  info.adc_vref = 9.0 * n_channel;
-  info.adc_offset = 10 * n_channel;
+  info.adc_vref = 10.0 * n_channel;
+  info.adc_offset = 11 * n_channel;
 
   return info;
 }
@@ -309,6 +310,7 @@ acoustic_check_info (HyScanDB *db,
       (fabs (info1.data_rate - info2.data_rate) > 1e-6) ||
       (fabs (info1.signal_frequency - info2.signal_frequency) > 1e-6) ||
       (fabs (info1.signal_bandwidth - info2.signal_bandwidth) > 1e-6) ||
+      (fabs (info1.signal_heterodyne - info2.signal_heterodyne) > 1e-6) ||
       (fabs (info1.antenna_voffset - info2.antenna_voffset) > 1e-6) ||
       (fabs (info1.antenna_hoffset - info2.antenna_hoffset) > 1e-6) ||
       (fabs (info1.antenna_vaperture - info2.antenna_vaperture) > 1e-6) ||
