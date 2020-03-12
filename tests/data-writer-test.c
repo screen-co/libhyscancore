@@ -148,13 +148,13 @@ acoustic_get_info (guint n_channel)
   info.antenna_haperture = 7.0 * n_channel;
   info.antenna_frequency = 8.0 * n_channel;
   info.antenna_bandwidth = 9.0 * n_channel;
+  info.antenna_group = 10 * n_channel;
 
-  info.adc_vref = 10.0 * n_channel;
-  info.adc_offset = 11 * n_channel;
+  info.adc_vref = 11.0 * n_channel;
+  info.adc_offset = 12 * n_channel;
 
   return info;
 }
-
 
 /* Функция проверяет параметры проекта. */
 void project_check_info (HyScanDB *db,
@@ -307,17 +307,18 @@ acoustic_check_info (HyScanDB *db,
     g_error ("can't read parameters");
 
   if ((info1.data_type != info2.data_type) ||
-      (fabs (info1.data_rate - info2.data_rate) > 1e-6) ||
-      (fabs (info1.signal_frequency - info2.signal_frequency) > 1e-6) ||
-      (fabs (info1.signal_bandwidth - info2.signal_bandwidth) > 1e-6) ||
-      (fabs (info1.signal_heterodyne - info2.signal_heterodyne) > 1e-6) ||
-      (fabs (info1.antenna_voffset - info2.antenna_voffset) > 1e-6) ||
-      (fabs (info1.antenna_hoffset - info2.antenna_hoffset) > 1e-6) ||
-      (fabs (info1.antenna_vaperture - info2.antenna_vaperture) > 1e-6) ||
-      (fabs (info1.antenna_haperture - info2.antenna_haperture) > 1e-6) ||
-      (fabs (info1.antenna_frequency - info2.antenna_frequency) > 1e-6) ||
-      (fabs (info1.antenna_bandwidth - info2.antenna_bandwidth) > 1e-6) ||
-      (fabs (info1.adc_vref - info2.adc_vref) > 1e-6) ||
+      (info1.data_rate != info2.data_rate) ||
+      (info1.signal_frequency != info2.signal_frequency) ||
+      (info1.signal_bandwidth != info2.signal_bandwidth) ||
+      (info1.signal_heterodyne != info2.signal_heterodyne) ||
+      (info1.antenna_voffset != info2.antenna_voffset) ||
+      (info1.antenna_hoffset != info2.antenna_hoffset) ||
+      (info1.antenna_vaperture != info2.antenna_vaperture) ||
+      (info1.antenna_haperture != info2.antenna_haperture) ||
+      (info1.antenna_frequency != info2.antenna_frequency) ||
+      (info1.antenna_bandwidth != info2.antenna_bandwidth) ||
+      (info1.antenna_group != info2.antenna_group) ||
+      (info1.adc_vref != info2.adc_vref) ||
       (info1.adc_offset != info2.adc_offset))
     {
       g_error ("error in parameters");

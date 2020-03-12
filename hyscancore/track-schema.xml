@@ -20,6 +20,7 @@
     </node>
     <key id="frequency" name="Center frequency" type="double"/>
     <key id="bandwidth" name="Bandwidth" type="double"/>
+    <key id="group" name="Group" type="integer"/>
   </schema>
 
   <schema id="data">
@@ -80,7 +81,7 @@
         <default>3533456721320349085</default>
       </key>
       <key id="version" name="Acoustic channel schema version" type="integer" access="r">
-        <default>20200100</default>
+        <default>20200200</default>
       </key>
     </node>
     <node id="offset" schema="offset"/>
