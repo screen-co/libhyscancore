@@ -157,7 +157,7 @@ HyScanSensorInfoSensor * hyscan_dummy_device_get_sensor_info          (const gch
 
 HyScanSonarInfoSource *  hyscan_dummy_device_get_source_info          (HyScanSourceType                source);
 
-HyScanAcousticDataInfo * hyscan_dummy_device_get_acoustic_info        (HyScanSourceType                source);
+HyScanAcousticDataInfo   hyscan_dummy_device_get_acoustic_info        (HyScanSourceType                source);
 
 gchar *                  hyscan_dummy_device_get_sensor_data          (const gchar                    *sensor,
                                                                        gint64                         *time);

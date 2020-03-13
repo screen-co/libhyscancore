@@ -684,9 +684,8 @@ hyscan_acoustic_data_load_signals (HyScanAcousticDataPrivate *priv)
           signal_info.image = g_memdup (image, size);
           signal_info.n_points = size / sizeof (HyScanComplexFloat);
           signal_info.convolution = hyscan_convolution_new ();
-          hyscan_convolution_set_image (signal_info.convolution,
-                                        signal_info.image,
-                                        signal_info.n_points);
+          hyscan_convolution_set_image_td (signal_info.convolution, 0,
+                                           signal_info.image, signal_info.n_points);
         }
 
       g_array_append_val (priv->signals, signal_info);
@@ -834,7 +833,8 @@ hyscan_acoustic_data_convolution (HyScanAcousticDataPrivate *priv,
   data = hyscan_buffer_get_complex_float (priv->complex_buffer, &n_points);
   if (data != NULL)
     {
-      return hyscan_convolution_convolve (signal->convolution, data, n_points,
+      return hyscan_convolution_convolve (signal->convolution, 0,
+                                          data, n_points,
                                           priv->conv_scale / CONV_SCALE);
     }
 

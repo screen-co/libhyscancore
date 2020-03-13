@@ -240,12 +240,14 @@ verify_acoustic_info (const HyScanAcousticDataInfo *info1,
       (info1->data_rate != info2->data_rate) ||
       (info1->signal_frequency != info2->signal_frequency) ||
       (info1->signal_bandwidth != info2->signal_bandwidth) ||
+      (info1->signal_heterodyne != info2->signal_heterodyne) ||
       (info1->antenna_voffset != info2->antenna_voffset) ||
       (info1->antenna_hoffset != info2->antenna_hoffset) ||
       (info1->antenna_vaperture != info2->antenna_vaperture) ||
       (info1->antenna_haperture != info2->antenna_haperture) ||
       (info1->antenna_frequency != info2->antenna_frequency) ||
       (info1->antenna_bandwidth != info2->antenna_bandwidth) ||
+      (info1->antenna_group != info2->antenna_group) ||
       (info1->adc_vref != info2->adc_vref) ||
       (info1->adc_offset != info2->adc_offset))
     {
@@ -742,8 +744,8 @@ check_sonar_data (HyScanSourceType source)
   HyScanAntennaOffset  offset;
   HyScanAntennaOffset *orig_offset;
 
-  HyScanAcousticDataInfo *orig_info;
-  HyScanAcousticDataInfo  info;
+  HyScanAcousticDataInfo orig_info;
+  HyScanAcousticDataInfo info;
 
   HyScanComplexFloat *orig_cdata;
   const HyScanComplexFloat *cdata;
@@ -770,7 +772,7 @@ check_sonar_data (HyScanSourceType source)
 
   /* Проверяем параметры каналов данных. */
   info = hyscan_acoustic_data_get_info (reader);
-  verify_acoustic_info (orig_info, &info);
+  verify_acoustic_info (&orig_info, &info);
 
   orig_cdata = hyscan_dummy_device_get_complex_float_data (source, &orig_n_points, &orig_time);
   orig_fdata = hyscan_dummy_device_get_float_data (source, &orig_n_points, &orig_time);
@@ -804,7 +806,6 @@ check_sonar_data (HyScanSourceType source)
     }
 
   hyscan_antenna_offset_free (orig_offset);
-  hyscan_acoustic_data_info_free (orig_info);
 
   g_free (orig_cdata);
   g_free (orig_fdata);

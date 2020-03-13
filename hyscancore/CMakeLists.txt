@@ -73,11 +73,11 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-profile-db.c
              hyscan-profile-hw-device.c
              hyscan-profile-hw.c
+             hyscan-task-queue.c
              hyscan-profile-offset.c
              hyscan-geo-projection.c
              hyscan-proj.c
              hyscan-cartesian.c
-             hyscan-task-queue.c
              hyscan-planner.c
              hyscan-planner-model.c
              hyscan-object-data-planner.c
@@ -148,11 +148,11 @@ install (FILES hyscan-core-schemas.h
                hyscan-profile-db.h
                hyscan-profile-hw-device.h
                hyscan-profile-hw.h
+               hyscan-task-queue.h
                hyscan-profile-offset.h
                hyscan-geo-projection.h
                hyscan-proj.h
                hyscan-cartesian.h
-               hyscan-task-queue.h
                hyscan-planner.h
                hyscan-planner-model.h
                hyscan-object-data-planner.h
