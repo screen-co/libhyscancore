@@ -68,14 +68,14 @@ HYSCAN_API
 GType                  hyscan_profile_hw_get_type         (void);
 
 HYSCAN_API
-HyScanProfileHW *      hyscan_profile_hw_new              (const gchar     *file);
+HyScanProfileHW *      hyscan_profile_hw_new              (const gchar           *file);
 
 HYSCAN_API
-void                   hyscan_profile_hw_set_driver_paths (HyScanProfileHW *profile,
-                                                           gchar          **driver_paths);
+void                   hyscan_profile_hw_set_driver_paths (HyScanProfileHW       *profile,
+                                                           gchar                **driver_paths);
 
 HYSCAN_API
-GList *                hyscan_profile_hw_list             (HyScanProfileHW *profile);
+GList *                hyscan_profile_hw_list             (HyScanProfileHW       *profile);
 
 HYSCAN_API
 const gchar *          hyscan_profile_hw_add              (HyScanProfileHW       *profile,
@@ -85,14 +85,14 @@ gboolean               hyscan_profile_hw_remove           (HyScanProfileHW      
                                                            const gchar           *id);
 
 HYSCAN_API
-gboolean               hyscan_profile_hw_check            (HyScanProfileHW *profile);
+gboolean               hyscan_profile_hw_check            (HyScanProfileHW       *profile);
 
 HYSCAN_API
-HyScanControl *        hyscan_profile_hw_connect          (HyScanProfileHW *profile);
+HyScanControl *        hyscan_profile_hw_connect          (HyScanProfileHW       *profile);
 
 HYSCAN_API
-HyScanControl *        hyscan_profile_hw_connect_simple   (const gchar     *file,
-                                                           gchar          **driver_paths);
+HyScanControl *        hyscan_profile_hw_connect_simple   (const gchar           *file,
+                                                           gchar                **driver_paths);
 
 G_END_DECLS
 
