@@ -82,6 +82,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-planner-export.c
              hyscan-planner-model.c
              hyscan-object-data-planner.c
+             hyscan-nav-state.c
              hyscan-nav-model.c
              hyscan-nmea-file-device.c
              hyscan-nmea-helper.c
@@ -162,6 +163,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-planner-export.h
                hyscan-planner-model.h
                hyscan-object-data-planner.h
+               hyscan-nav-state.h
                hyscan-nav-model.h
                hyscan-nmea-file-device.h
                hyscan-nmea-helper.h

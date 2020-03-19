@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * This file is part of HyScanGui library.
+ * This file is part of HyScanCore library.
  *
- * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanGui is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,7 +21,7 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanGui имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
  * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
@@ -36,7 +36,7 @@
 #define __HYSCAN_NAV_MODEL_H__
 
 #include <hyscan-sensor.h>
-#include <hyscan-geo.h>
+#include <hyscan-nav-state.h>
 
 G_BEGIN_DECLS
 
@@ -50,28 +50,6 @@ G_BEGIN_DECLS
 typedef struct _HyScanNavModel HyScanNavModel;
 typedef struct _HyScanNavModelPrivate HyScanNavModelPrivate;
 typedef struct _HyScanNavModelClass HyScanNavModelClass;
-
-/**
- * HyScanNavModelData:
- * @loaded: признак того, что навигационные данные присутствуют
- * @time: текущее время, с
- * @coord: положение объекта: широта и долгота; поле h содержит путевой угол (COG) в радианах
- * @speed: скорость движения, м/с
- * @true_heading: признак того, что указан истинный курс (HDT)
- * @heading: истинный курс, если @true_heading = %TRUE, иначе путевой угол, радианы
- *
- * Навигационные данные
- */
-typedef struct
-{
-  gboolean          loaded;
-
-  gdouble           time;
-  HyScanGeoGeodetic coord;
-  gboolean          true_heading;
-  gdouble           heading;
-  gdouble           speed;
-} HyScanNavModelData;
 
 struct _HyScanNavModel
 {
@@ -106,11 +84,6 @@ void                     hyscan_nav_model_set_offset       (HyScanNavModel      
 HYSCAN_API
 void                     hyscan_nav_model_set_delay        (HyScanNavModel            *model,
                                                             gdouble                    delay);
-
-HYSCAN_API
-gboolean                 hyscan_nav_model_get              (HyScanNavModel            *model,
-                                                            HyScanNavModelData        *data,
-                                                            gdouble                   *time_delta);
 
 G_END_DECLS
 
