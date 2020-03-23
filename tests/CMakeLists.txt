@@ -22,9 +22,9 @@ add_executable (mark-data-waterfall-test mark-data-waterfall-test.c)
 add_executable (mark-model-test mark-model-test.c)
 add_executable (mloc-test mloc-test.c)
 add_executable (view-log view-log.c)
+add_executable (task-queue-test task-queue-test.c)
 add_executable (mercator-test mercator-test.c)
 add_executable (cartesian-test cartesian-test.c)
-add_executable (task-queue-test task-queue-test.c)
 add_executable (nmea-file-device-test nmea-file-device-test.c)
 add_executable (nav-model-test nav-model-test.c)
 add_executable (nmea-file2udp nmea-file2udp.c)
@@ -55,9 +55,9 @@ target_link_libraries (mark-data-waterfall-test ${TEST_LIBRARIES})
 target_link_libraries (mark-model-test ${TEST_LIBRARIES})
 target_link_libraries (mloc-test ${TEST_LIBRARIES})
 target_link_libraries (view-log ${TEST_LIBRARIES})
+target_link_libraries (task-queue-test ${TEST_LIBRARIES})
 target_link_libraries (mercator-test ${TEST_LIBRARIES})
 target_link_libraries (cartesian-test ${TEST_LIBRARIES})
-target_link_libraries (task-queue-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-file-device-test ${TEST_LIBRARIES})
 target_link_libraries (nav-model-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
@@ -87,11 +87,11 @@ add_test (NAME GeoTest COMMAND geo-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ControlTest COMMAND control-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME TaskQueueTest COMMAND task-queue-test
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME MercatorTest COMMAND mercator-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME CartesianTest COMMAND cartesian-test
-          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-add_test (NAME TaskQueueTest COMMAND task-queue-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME NavModelTest COMMAND nav-model-test --default-data
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
@@ -119,9 +119,9 @@ install (TARGETS data-writer-test
                  mark-model-test
                  mloc-test
                  view-log
+                 task-queue-test
                  mercator-test
                  cartesian-test
-                 task-queue-test
                  nmea-file-device-test
                  nav-model-test
                  nmea-file2udp

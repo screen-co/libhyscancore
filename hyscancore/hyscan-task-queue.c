@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * This file is part of HyScanGui library.
+ * This file is part of HyScanCore library.
  *
- * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanGui is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,9 +21,9 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanGui имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
@@ -40,16 +40,16 @@
  * HyScanTaskQueue позволяет выполнять последовательную обработку задач в порядке
  * очереди. Работа с очередью сводится к следующим шагам.
  *
- * 1. Функция hyscan_task_queue_new() создает новый объек очереди.
- * 1. Задачи сначала по одной регистрируются в очередь с помощью функции
+ * 1. Функция hyscan_task_queue_new() создаёт новый объект очереди.
+ * 2. Задачи сначала по одной регистрируются в очередь с помощью функции
  *    hyscan_task_queue_push(). В этот момент они еще не поступают в обработку.
- * 2. Чтобы передать группу зарегистрированных задач в обработку, необходимо
+ * 3. Чтобы передать группу зарегистрированных задач в обработку, необходимо
  *    вызвать функцию hyscan_task_queue_push_end().
- * 3. Перед началом обработки отменяются все текущие задачи, которых не оказалось
+ * 4. Перед началом обработки отменяются все текущие задачи, которых не оказалось
  *    в новой группе. Идентичность задач определяется функцией #GCompareFunc,
  *    переданной при создании очереди.
- * 4. Шаги 1-3 повторяются.
- * 5. Для завершения работы очереди необходимо вызвать hyscan_task_queue_shutdown().
+ * 5. Шаги 1-3 повторяются.
+ * 6. Для завершения работы очереди необходимо вызвать hyscan_task_queue_shutdown().
  *
  * В функции обработки задачи #HyScanTaskQueueFunc рекомендуется реализовать
  * возможность отмены обработки при помощи объекта #GCancellable. Это сделает
@@ -74,7 +74,8 @@ enum
 };
 
 /* Обертка для пользовательской задачи. */
-typedef struct {
+typedef struct
+{
   GObject            *task;                 /* Объект задачи. */
   GCompareFunc        cmp_func;             /* Функция для сравнения двух объектов. */
   GDestroyNotify      destroy_func;         /* Функция удаления данных задачи. */
@@ -93,7 +94,7 @@ struct _HyScanTaskQueuePrivate
   GQueue             *queue;                /* Очередь задач, ожидающих обработки. */
   GList              *processing_tasks;     /* Список задач, находящихся в обработке. */
   guint               processing_count;     /* Длина списка processing_tasks. */
-  GMutex              queue_lock;           /* Мутекс для ограничения доступа к редактиронию переменных состояния очереди. */
+  GMutex              queue_lock;           /* Блокировка доступа к полям очереди. */
 
   GThreadPool        *pool;                 /* Пул обработки задач. */
   gpointer            user_data;            /* Пользовательские данные для пула задач. */
@@ -110,6 +111,8 @@ static void     hyscan_task_queue_free_wrap                (gpointer            
 static void     hyscan_task_queue_process                  (HyScanTaskQueueWrap   *wrap,
                                                             HyScanTaskQueue       *queue);
 static gboolean hyscan_task_queue_try_next                 (HyScanTaskQueue       *queue);
+static gint     hyscan_task_queue_cmp                      (HyScanTaskQueueWrap   *a,
+                                                            HyScanTaskQueueWrap   *b);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanTaskQueue, hyscan_task_queue, G_TYPE_OBJECT)
 
@@ -240,20 +243,23 @@ hyscan_task_queue_process (HyScanTaskQueueWrap *wrap,
   /* Выполняем задачу. */
   priv->task_func (wrap->task, priv->user_data, wrap->cancellable);
 
-  /* Удаляем задачу из очереди. */
   g_mutex_lock (&priv->queue_lock);
+
+  /* Удаляем задачу из очереди. */
   priv->processing_tasks = g_list_remove (priv->processing_tasks, wrap);
-  g_atomic_int_add (&priv->processing_count, -1);
+  priv->processing_count--;
+
+  /* Пробуем обработать следующую задачу. */
+  hyscan_task_queue_try_next (queue);
+
   g_mutex_unlock (&priv->queue_lock);
 
   /* Освобождаем память от задачи. */
   hyscan_task_queue_free_wrap (wrap);
-
-  /* Пробуем обработать следующую задачу. */
-  hyscan_task_queue_try_next (queue);
 }
 
-/* Пробует отправить на обработку следующую задачу. Возвращает %TRUE, если отправила. */
+/* Пробует отправить на обработку следующую задачу. Возвращает %TRUE, если отправила.
+ * Функция должна вызываться за мьютексом priv->queue_lock. */
 static gboolean
 hyscan_task_queue_try_next (HyScanTaskQueue *queue)
 {
@@ -266,30 +272,21 @@ hyscan_task_queue_try_next (HyScanTaskQueue *queue)
     return FALSE;
 
   /* Не обрабатываем одновременно более n задач. */
-  if (g_atomic_int_get (&priv->processing_count) > (gint) priv->max_concurrent)
+  if (priv->processing_count > priv->max_concurrent)
     return FALSE;
-
-  /* Блокируем другим потокам доступ к очереди задач. */
-  g_mutex_lock (&priv->queue_lock);
 
   /* Добавляем задачу task из начала очереди в обработку. */
   wrap = g_queue_pop_head (priv->queue);
   if (wrap == NULL)
-    {
-      g_mutex_unlock (&priv->queue_lock);
-      return FALSE;
-    }
+    return FALSE;
 
   priv->processing_tasks = g_list_append (priv->processing_tasks, wrap);
-  g_atomic_int_inc (&priv->processing_count);
+  priv->processing_count++;
   if (!g_thread_pool_push (priv->pool, wrap, &error))
     {
       g_warning ("HyScanTaskQueue: %s", error->message);
       g_clear_error (&error);
     }
-
-  /* Операции с очередью сделаны — разблокируем доступ. */
-  g_mutex_unlock (&priv->queue_lock);
 
   return TRUE;
 }
@@ -303,13 +300,40 @@ hyscan_task_queue_cmp (HyScanTaskQueueWrap *a,
 }
 
 /**
+ * hyscan_task_queue_new:
+ * @task_func: функция обработки задачи
+ * @user_data: пользовательские данные
+ * @cmp_func: функция сравнения задач
+ *
+ * Создаёт новый объект #HyScanTaskQueue. Очередь будет использовать функцию
+ * @task_func для обработки поступающих задач, передавая ей в качестве параметров
+ * задачу и пользовательские данные @user_data. Функция @cmp_func позволяет
+ * не добавлять повторно в очередь задачу, которая там уже есть.
+ *
+ * Returns: #HyScanTaskQueue. Перед удалением необходимо завершить работу очереди
+ * с помощью #hyscan_task_queue_shutdown.
+ */
+HyScanTaskQueue *
+hyscan_task_queue_new (HyScanTaskQueueFunc task_func,
+                       gpointer            user_data,
+                       GCompareFunc        cmp_func)
+{
+  return g_object_new (HYSCAN_TYPE_TASK_QUEUE,
+                       "destroy-func", g_object_unref,
+                       "task-func", task_func,
+                       "task-data", user_data,
+                       "cmp-func", cmp_func,
+                       NULL);
+}
+
+/**
  * hyscan_task_queue_new_full:
  * @task_func: функция обработки задачи
  * @user_data: пользовательские данные
  * @cmp_func: функция сравнения задач
  * @destroy_func: функция удаления задачи
  *
- * Создает новый объект #HyScanTaskQueue. Очередь будет использовать функцию
+ * Создаёт новый объект #HyScanTaskQueue. Очередь будет использовать функцию
  * @task_func для обработки поступающих задач, передавая ей в качестве параметров
  * задачу и пользовательские данные @user_data. Функция @cmp_func позволяет
  * не добавлять повторно в очередь задачу, которая там уже есть.
@@ -332,30 +356,45 @@ hyscan_task_queue_new_full (HyScanTaskQueueFunc task_func,
 }
 
 /**
- * hyscan_task_queue_new:
- * @task_func: функция обработки задачи
- * @user_data: пользовательские данные
- * @cmp_func: функция сравнения задач
+ * hyscan_task_queue_push:
+ * @queue: указатель на #HyScanTaskQueue
+ * @task: указатель на объект задачи #GObject
  *
- * Создает новый объект #HyScanTaskQueue. Очередь будет использовать функцию
- * @task_func для обработки поступающих задач, передавая ей в качестве параметров
- * задачу и пользовательские данные @user_data. Функция @cmp_func позволяет
- * не добавлять повторно в очередь задачу, которая там уже есть.
- *
- * Returns: #HyScanTaskQueue. Перед удалением необходимо завершить работу очереди
- * с помощью #hyscan_task_queue_shutdown.
+ * Добавляет задачу в предварительную очередь.
  */
-HyScanTaskQueue *
-hyscan_task_queue_new (HyScanTaskQueueFunc task_func,
-                       gpointer            user_data,
-                       GCompareFunc        cmp_func)
+void
+hyscan_task_queue_push (HyScanTaskQueue *queue,
+                        GObject         *task)
 {
-  return g_object_new (HYSCAN_TYPE_TASK_QUEUE,
-                       "destroy-func", g_object_unref,
-                       "task-func", task_func,
-                       "task-data", user_data,
-                       "cmp-func", cmp_func,
-                       NULL);
+  g_return_if_fail (HYSCAN_IS_TASK_QUEUE (queue));
+
+  hyscan_task_queue_push_full (queue, g_object_ref (task));
+}
+
+/**
+ * hyscan_task_queue_push_full:
+ * @queue: указатель на #HyScanTaskQueue
+ * @task: указатель на объект задачи
+ *
+ * Добавляет задачу в предварительную очередь.
+ */
+void
+hyscan_task_queue_push_full (HyScanTaskQueue *queue,
+                             gpointer         task)
+{
+  HyScanTaskQueueWrap *wrapper;
+  HyScanTaskQueuePrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_TASK_QUEUE (queue));
+  priv = queue->priv;
+
+  wrapper = g_new (HyScanTaskQueueWrap, 1);
+  wrapper->cancellable = g_cancellable_new ();
+  wrapper->cmp_func = priv->cmp_func;
+  wrapper->destroy_func = priv->destroy_func;
+  wrapper->task = task;
+
+  g_queue_push_tail (queue->priv->prequeue, wrapper);
 }
 
 /**
@@ -404,54 +443,38 @@ hyscan_task_queue_push_end (HyScanTaskQueue *queue)
   g_queue_free (priv->prequeue);
   priv->prequeue = g_queue_new ();
 
-  /* Операции с очередью сделаны — разблокируем доступ. */
-  g_mutex_unlock (&priv->queue_lock);
-
   /* Запускаем задачи, пока они запускаются. */
   while (hyscan_task_queue_try_next (queue))
     ;
+
+  /* Операции с очередью сделаны — разблокируем доступ. */
+  g_mutex_unlock (&priv->queue_lock);
 }
 
 /**
- * hyscan_task_queue_push:
+ * hyscan_task_queue_processing:
  * @queue: указатель на #HyScanTaskQueue
- * @task: указатель на объект задачи #GObject
  *
- * Добавляет задачу в предварительную очередь.
- */
-void
-hyscan_task_queue_push (HyScanTaskQueue *queue,
-                        GObject         *task)
-{
-  g_return_if_fail (HYSCAN_IS_TASK_QUEUE (queue));
-
-  hyscan_task_queue_push_full (queue, g_object_ref (task));
-}
-
-/**
- * hyscan_task_queue_push_full:
- * @queue: указатель на #HyScanTaskQueue
- * @task: указатель на объект задачи
+ * Проверяет статус обработки задач. Функция возвращает %FALSE, если обработка
+ * всех ранее поступивших задач была завершена.
  *
- * Добавляет задачу в предварительную очередь.
+ * Returns: %TRUE, если некоторые задачи ещё обрабатываются; %FALSE, если
+ *   обработка задач завершена.
  */
-void
-hyscan_task_queue_push_full (HyScanTaskQueue *queue,
-                             gpointer         task)
+gboolean
+hyscan_task_queue_processing (HyScanTaskQueue *queue)
 {
-  HyScanTaskQueueWrap *wrapper;
   HyScanTaskQueuePrivate *priv;
+  gboolean processing;
 
-  g_return_if_fail (HYSCAN_IS_TASK_QUEUE (queue));
+  g_return_val_if_fail (HYSCAN_IS_TASK_QUEUE (queue), FALSE);
   priv = queue->priv;
 
-  wrapper = g_new (HyScanTaskQueueWrap, 1);
-  wrapper->cancellable = g_cancellable_new ();
-  wrapper->cmp_func = priv->cmp_func;
-  wrapper->destroy_func = priv->destroy_func;
-  wrapper->task = task;
+  g_mutex_lock (&priv->queue_lock);
+  processing = (priv->processing_count > 0);
+  g_mutex_unlock (&priv->queue_lock);
 
-  g_queue_push_tail (queue->priv->prequeue, wrapper);
+  return processing;
 }
 
 /**
@@ -459,7 +482,7 @@ hyscan_task_queue_push_full (HyScanTaskQueue *queue,
  * @queue: указатель на #HyScanTaskQueue
  *
  * Останавливает выполнение задач в очереди. Должна быть вызвана перед
- * удаление объекта g_object_unref().
+ * удалением объекта g_object_unref().
  */
 void
 hyscan_task_queue_shutdown (HyScanTaskQueue *queue)

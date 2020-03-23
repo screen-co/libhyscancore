@@ -130,6 +130,7 @@ create_complex_data (HyScanDataWriter *writer,
   acoustic_info.antenna_haperture = 2.0;
   acoustic_info.antenna_frequency = frequency;
   acoustic_info.antenna_bandwidth = 0.1 * frequency;
+  acoustic_info.antenna_group = 0;
   acoustic_info.adc_vref = 1.0;
   acoustic_info.adc_offset = 0;
 
@@ -306,6 +307,7 @@ create_amplitude_data (HyScanDataWriter *writer,
   acoustic_info.antenna_haperture = 2.0;
   acoustic_info.antenna_frequency = frequency;
   acoustic_info.antenna_bandwidth = 0.1 * frequency;
+  acoustic_info.antenna_group = source;
   acoustic_info.adc_vref = 1.0;
   acoustic_info.adc_offset = 0;
 

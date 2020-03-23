@@ -733,7 +733,7 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   for (i = 0; hyscan_dummy_device_sources[i] != HYSCAN_SOURCE_INVALID; i++)
     {
       HyScanSourceType source;
-      HyScanAcousticDataInfo *info;
+      HyScanAcousticDataInfo info;
       HyScanComplexFloat *cdata;
       gfloat *fdata;
       guint32 n_points;
@@ -745,13 +745,12 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
       hyscan_sonar_driver_send_signal (dummy, source, 1, time, data);
-      hyscan_sonar_driver_send_acoustic_data (dummy, source, 1, FALSE, time, info, data);
+      hyscan_sonar_driver_send_acoustic_data (dummy, source, 1, FALSE, time, &info, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
       hyscan_sonar_driver_send_tvg (dummy, source, 1, time, data);
 
-      hyscan_acoustic_data_info_free (info);
       g_free (cdata);
       g_free (fdata);
     }
@@ -1575,10 +1574,9 @@ exit:
  *
  * Функция возвращает эталонные значения параметров акустических данных.
  *
- * Returns: (transfer full): Параметры акустических данных #HyScanAcousticDataInfo.
- * Для удаления #hyscan_acoustic_data_info_free.
+ * Returns: Параметры акустических данных #HyScanAcousticDataInfo.
  */
-HyScanAcousticDataInfo *
+HyScanAcousticDataInfo
 hyscan_dummy_device_get_acoustic_info (HyScanSourceType source)
 {
   HyScanAcousticDataInfo info;
@@ -1587,16 +1585,18 @@ hyscan_dummy_device_get_acoustic_info (HyScanSourceType source)
   info.data_rate = 2.0 * source;
   info.signal_frequency = 3.0 * source;
   info.signal_bandwidth = 4.0 * source;
-  info.antenna_voffset = 5.0 * source;
-  info.antenna_hoffset = 6.0 * source;
-  info.antenna_vaperture = 7.0 * source;
-  info.antenna_haperture = 8.0 * source;
-  info.antenna_frequency = 9.0 * source;
-  info.antenna_bandwidth = 10.0 * source;
-  info.adc_vref = 11.0 * source;
-  info.adc_offset = 12.0 * source;
+  info.signal_heterodyne = 5.0 * source;
+  info.antenna_voffset = 6.0 * source;
+  info.antenna_hoffset = 7.0 * source;
+  info.antenna_vaperture = 8.0 * source;
+  info.antenna_haperture = 9.0 * source;
+  info.antenna_frequency = 10.0 * source;
+  info.antenna_bandwidth = 11.0 * source;
+  info.antenna_group = 12 * source;
+  info.adc_vref = 13.0 * source;
+  info.adc_offset = 14.0 * source;
 
-  return hyscan_acoustic_data_info_copy (&info);
+  return info;
 }
 
 /**

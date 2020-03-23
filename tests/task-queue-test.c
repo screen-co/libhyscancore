@@ -34,15 +34,35 @@
 
 #include <hyscan-task-queue.h>
 
-#define DATA_KEY "label"
+#define DATA_KEY "label"                     /* Ключ таблицы данных GObject'а, где хранится идентификатор объекта. */
 
-static gchar *test_user_data = "user data";
-static guint  total_tasks = 1000;
-static guint  created_tasks = 0;
-static guint  processed_tasks = 0;
+static gchar *test_user_data = "user data";  /* Пользовательские данные очереди. */
+static guint  total_tasks = 1000;            /* Число задач для тестирования. */
+static guint  created_tasks = 0;             /* Счётчик созданных задач. */
+static guint  processed_tasks = 0;           /* Счётчик обработанных задач. */
+
+static void              object_task_func          (GObject         *task,
+                                                    gpointer         user_data,
+                                                    GCancellable    *cancellable);
+static gint              object_task_cmp           (gconstpointer    task1,
+                                                    gconstpointer    task2);
+static void              object_task_destroy       (gpointer         task);
+static GObject *         object_task_new           (gint             i);
+static void              task_func                 (gpointer         task,
+                                                    gpointer         user_data,
+                                                    GCancellable    *cancellable);
+static void              task_destroy              (gpointer         task);
+static gpointer          task_new                  (gint             i);
+static void              test_queue                (HyScanTaskQueue *queue);
+static void              long_task_func            (gpointer         task,
+                                                    gpointer         user_data,
+                                                    GCancellable    *cancellable);
+static void              test_task_queue_gpointer  (void);
+static void              test_task_queue_gobject   (void);
+static void              test_task_queue_duplicate (void);
 
 /* Функция обработки GObject-задания. */
-void
+static void
 object_task_func (GObject      *task,
                   gpointer      user_data,
                   GCancellable *cancellable)
@@ -53,16 +73,16 @@ object_task_func (GObject      *task,
 }
 
 /* Функция сравнения двух GObject-заданий. */
-gint
-object_task_cmp (GObject *task1,
-                 GObject *task2)
+static gint
+object_task_cmp (gconstpointer task1,
+                 gconstpointer task2)
 {
-  return g_strcmp0 (g_object_get_data (task1, DATA_KEY),
-                    g_object_get_data (task2, DATA_KEY));
+  return g_strcmp0 (g_object_get_data (G_OBJECT (task1), DATA_KEY),
+                    g_object_get_data (G_OBJECT (task2), DATA_KEY));
 }
 
 /* Функция выполняется при удалении GObject-задания. */
-void
+static void
 object_task_destroy (gpointer task)
 {
   g_atomic_int_add (&created_tasks, -1);
@@ -71,7 +91,7 @@ object_task_destroy (gpointer task)
 }
 
 /* Функция создаёт новое GObject-задание. */
-GObject *
+static GObject *
 object_task_new (gint i)
 {
   GObject *task;
@@ -84,7 +104,7 @@ object_task_new (gint i)
 }
 
 /* Функция обрабатывает задание. */
-void
+static void
 task_func (gpointer      task,
            gpointer      user_data,
            GCancellable *cancellable)
@@ -95,7 +115,7 @@ task_func (gpointer      task,
 }
 
 /* Функция удаляет задание. */
-void
+static void
 task_destroy (gpointer task)
 {
   g_atomic_int_add (&created_tasks, -1);
@@ -103,16 +123,16 @@ task_destroy (gpointer task)
 }
 
 /* Функция создаёт новое задание. */
-gpointer
+static gpointer
 task_new (gint i)
 {
   ++created_tasks;
   return g_strdup_printf ("task %d", i);
 }
 
-/* Тест для очереди задач из gpointer'ов. */
-HyScanTaskQueue *
-task_queue_new (void)
+/* Тест очереди задач из gpointer'ов. */
+static void
+test_task_queue_gpointer (void)
 {
   HyScanTaskQueue *queue;
   guint i;
@@ -126,18 +146,17 @@ task_queue_new (void)
       hyscan_task_queue_push_full (queue, task);
   }
 
-  return queue;
+  test_queue (queue);
 }
 
-/* Создаёт очередь задач из GObject'ов. */
-HyScanTaskQueue *
-object_task_queue_new (void)
+/* Тест очереди задач из GObject'ов. */
+static void
+test_task_queue_gobject (void)
 {
   HyScanTaskQueue *queue;
   guint i;
 
-  queue = hyscan_task_queue_new ((HyScanTaskQueueFunc) object_task_func, test_user_data,
-                                 (GCompareFunc) object_task_cmp);
+  queue = hyscan_task_queue_new ((HyScanTaskQueueFunc) object_task_func, test_user_data, object_task_cmp);
 
   for (i = 0; i < total_tasks; ++i) {
       gpointer task;
@@ -146,11 +165,11 @@ object_task_queue_new (void)
       hyscan_task_queue_push_full (queue, task);
   }
 
-  return queue;
+  test_queue (queue);
 }
 
-/* Тест для очереди задач из GObject'ов. */
-void
+/* Тест проверяет, что все задачи были обработаны и удалены. */
+static void
 test_queue (HyScanTaskQueue *queue)
 {
   processed_tasks = 0;
@@ -161,7 +180,8 @@ test_queue (HyScanTaskQueue *queue)
   hyscan_task_queue_push_end (queue);
 
   /* Ждём, пока обработка задач завершится. */
-  g_usleep (G_USEC_PER_SEC);
+  while (hyscan_task_queue_processing (queue))
+    g_usleep (20 * G_TIME_SPAN_MILLISECOND);
 
   hyscan_task_queue_shutdown (queue);
   g_object_unref (queue);
@@ -171,19 +191,58 @@ test_queue (HyScanTaskQueue *queue)
   g_assert_cmpint (processed_tasks, ==, total_tasks);
 }
 
+/* Функция обрабатывает задание. */
+static void
+long_task_func (gpointer      task,
+                gpointer      user_data,
+                GCancellable *cancellable)
+{
+  static gint processing = 0;
+
+  g_atomic_int_inc (&processing);
+
+  if (g_atomic_int_get (&processing) > 1)
+    g_error ("The same task must not be processed in parallel.");
+
+  g_usleep (100 * G_TIME_SPAN_MILLISECOND);
+
+  g_atomic_int_add (&processing, -1);
+}
+
+/* Тест: добавление в очередь задачи, идентичной той, что уже обрабатывается,
+ * не приводит к её повторной обработке. */
+static void
+test_task_queue_duplicate (void)
+{
+  HyScanTaskQueue *queue;
+
+  queue = hyscan_task_queue_new_full (long_task_func, test_user_data, (GCompareFunc) g_strcmp0, g_free);
+
+  hyscan_task_queue_push_full (queue, g_strdup ("Long task"));
+  hyscan_task_queue_push_end (queue);
+
+  hyscan_task_queue_push_full (queue, g_strdup ("Long task"));
+  hyscan_task_queue_push_end (queue);
+
+  while (hyscan_task_queue_processing (queue))
+    g_usleep (20 * G_TIME_SPAN_MILLISECOND);
+
+  hyscan_task_queue_shutdown (queue);
+  g_object_unref (queue);
+}
+
 int
 main (int    argc,
       char **argv)
 {
-  HyScanTaskQueue *queue;
+  g_message ("Test task queue of gpointer's");
+  test_task_queue_gpointer ();
 
-  g_message ("Test task queue full...");
-  queue = task_queue_new ();
-  test_queue (queue);
-  
-  g_message ("Test task queue of GObject's...");
-  queue = object_task_queue_new ();
-  test_queue (queue);
+  g_message ("Test task queue of GObject's");
+  test_task_queue_gobject ();
+
+  g_message ("Test duplicate task");
+  test_task_queue_duplicate ();
 
   return 0;
 }

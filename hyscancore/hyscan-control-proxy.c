@@ -914,9 +914,9 @@ hyscan_control_proxy_sender (gpointer user_data)
 
               image = hyscan_buffer_get_complex_float (ibuffer, &n_points);
               if ((image != NULL) && (n_points > 1))
-                hyscan_convolution_set_image (buffer->signal.conv, image, n_points);
+                hyscan_convolution_set_image_td (buffer->signal.conv, 0, image, n_points);
               else
-                hyscan_convolution_set_image (buffer->signal.conv, NULL, 0);
+                hyscan_convolution_set_image_td (buffer->signal.conv, 0, NULL, 0);
             }
 
           /* Обработка данных. */
@@ -935,7 +935,7 @@ hyscan_control_proxy_sender (gpointer user_data)
               guint32 i, j, k;
 
               original = hyscan_buffer_get_complex_float (acoustic->data, &o_points);
-              hyscan_convolution_convolve (buffer->signal.conv, original, o_points, 10.0);
+              hyscan_convolution_convolve (buffer->signal.conv, 0, original, o_points, 10.0);
 
               /* Вычисление амплитуды с усреднением. */
               a_points = o_points / p_scale;
