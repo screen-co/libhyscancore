@@ -54,14 +54,16 @@ enum
   PROP_O,
   PROP_AMPLITUDE,
   PROP_NAV_DATA,
+  PROP_ESTIMATOR,
 };
 
 struct _HyScanQualityPrivate
 {
-  HyScanAmplitude *amplitude;
-  HyScanNavData   *nav_data;
-  HyScanProjector *projector;
-  GArray          *buffer;
+  HyScanAmplitude     *amplitude;
+  HyScanNavData       *nav_data;
+  HyScanProjector     *projector;
+  HyScanDataEstimator *estimator;
+  GArray              *buffer;
 };
 
 static void    hyscan_quality_set_property             (GObject               *object,
@@ -89,6 +91,9 @@ hyscan_quality_class_init (HyScanQualityClass *klass)
   g_object_class_install_property (object_class, PROP_NAV_DATA,
     g_param_spec_object ("nav-data", "Navigation", "HyScanNavData with track value", HYSCAN_TYPE_NAV_DATA,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class, PROP_ESTIMATOR,
+    g_param_spec_object ("estimator", "Estimator", "HyScanDataEstimator", HYSCAN_TYPE_DATA_ESTIMATOR,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -115,6 +120,10 @@ hyscan_quality_set_property (GObject      *object,
     case PROP_AMPLITUDE:
       priv->amplitude = g_value_dup_object (value);
       break;
+      
+    case PROP_ESTIMATOR:
+      priv->estimator = g_value_dup_object (value);
+      break;
 
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -140,9 +149,10 @@ hyscan_quality_object_finalize (GObject *object)
   HyScanQuality *quality = HYSCAN_QUALITY (object);
   HyScanQualityPrivate *priv = quality->priv;
   
-  g_object_unref (priv->amplitude);
-  g_object_unref (priv->nav_data);
-  g_object_unref (priv->projector);
+  g_clear_object (&priv->amplitude);
+  g_clear_object (&priv->nav_data);
+  g_clear_object (&priv->projector);
+  g_clear_object (&priv->estimator);
   g_array_free (priv->buffer, TRUE);
 
   G_OBJECT_CLASS (hyscan_quality_parent_class)->finalize (object);
@@ -202,6 +212,41 @@ hyscan_quality_get_track_var (HyScanQuality *quality,
   return hyscan_stats_var_circular (angle_avg, (const gdouble *) buffer->data, buffer->len) / 180 * G_PI;
 }
 
+static gboolean
+hyscan_quality_get_values_estimator (HyScanQuality *quality,
+                                     guint32        index,
+                                     const guint32 *counts,
+                                     gdouble       *values,
+                                     guint          n_values)
+{
+  HyScanQualityPrivate *priv = quality->priv;
+  const guint32 *quality_values;
+  guint32 n_points, i, j;
+  guint32 max_quality;
+
+  quality_values = hyscan_data_estimator_get_acust_quality (priv->estimator, index, &n_points);
+  if (quality_values == NULL)
+    return FALSE;
+
+  max_quality = hyscan_data_estimator_get_max_quality (priv->estimator);
+  for (i = 0; i < n_values; i++)
+    {
+      guint32 section_quality;
+      guint32 first, last;
+
+      first = i == 0 ? 0 : (counts[i - 1] + 1);
+      last = counts[i];
+
+      section_quality = 0;
+      for (j = first; j <= last; j++)
+        section_quality += quality_values[j];
+
+      values[i] = (gdouble) section_quality / max_quality / (last - first);
+    }
+
+  return TRUE;
+}
+
 /**
  * hyscan_quality_new:
  * @amplitude: амплитудные данные
@@ -221,6 +266,23 @@ hyscan_quality_new (HyScanAmplitude *amplitude,
                        "nav-data", nav_data,
                        NULL);
 }
+/**
+ * hyscan_quality_new_estimator:
+ * @amplitude: амплитудные данные
+ * @ndata: навигационные данные с курсом
+ *
+ * Функция создаёт объект оценки качества
+ *
+ * Returns: (transfer full): объект оценки качества, для удаления g_object_unref().
+ *
+ */
+HyScanQuality *
+hyscan_quality_new_estimator (HyScanDataEstimator *estimator)
+{
+  return g_object_new (HYSCAN_TYPE_QUALITY,
+                       "estimator", estimator,
+                       NULL);
+}
 
 /**
  * hyscan_quality_get_values:
@@ -236,7 +298,6 @@ hyscan_quality_new (HyScanAmplitude *amplitude,
  *
  * Returns: %TRUE в случае успеха
  */
-
 gboolean
 hyscan_quality_get_values (HyScanQuality         *quality,
                            guint32                index,
@@ -252,6 +313,9 @@ hyscan_quality_get_values (HyScanQuality         *quality,
   g_return_val_if_fail (HYSCAN_IS_QUALITY (quality), FALSE);
 
   priv = quality->priv;
+  
+  if (priv->estimator != NULL)
+    return hyscan_quality_get_values_estimator (quality, index, counts, values, n_values);
 
   /* Вариация курса. */
   angle_diff = hyscan_quality_get_track_var (quality, index);

@@ -37,6 +37,7 @@
 
 #include <hyscan-amplitude.h>
 #include <hyscan-nav-data.h>
+#include <hyscan-data-estimator.h>
 
 G_BEGIN_DECLS
 
@@ -64,18 +65,21 @@ struct _HyScanQualityClass
 };
 
 HYSCAN_API
-GType                  hyscan_quality_get_type   (void);
+GType                  hyscan_quality_get_type       (void);
 
 HYSCAN_API
-HyScanQuality *        hyscan_quality_new        (HyScanAmplitude       *amplitude,
-                                                  HyScanNavData         *nav_data);
+HyScanQuality *        hyscan_quality_new            (HyScanAmplitude       *amplitude,
+                                                      HyScanNavData         *nav_data);
 
 HYSCAN_API
-gboolean               hyscan_quality_get_values (HyScanQuality         *quality,
-                                                  guint32                index,
-                                                  const guint32         *counts,
-                                                  gdouble               *values,
-                                                  guint                  n_values);
+HyScanQuality *        hyscan_quality_new_estimator   (HyScanDataEstimator  *estimator);
+
+HYSCAN_API
+gboolean               hyscan_quality_get_values      (HyScanQuality         *quality,
+                                                       guint32                index,
+                                                       const guint32         *counts,
+                                                       gdouble               *values,
+                                                       guint                  n_values);
 
 G_END_DECLS
 

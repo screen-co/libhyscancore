@@ -407,14 +407,15 @@ hyscan_cartesian_is_inside_polygon (HyScanGeoCartesian2D  *vertices,
                                     gint                   n,
                                     HyScanGeoCartesian2D  *p)
 {
-  HyScanGeoCartesian2D extreme = { G_MAXDOUBLE, p->y }; /* Точка на бесконечности. */
+  HyScanGeoCartesian2D extreme = { G_MAXDOUBLE, G_MAXDOUBLE }; /* Точка на бесконечности. */
   gint count = 0, i = 0;
 
   /* Должно быть как минимум три вершины в многоугольнике. */
   if (n < 3)
     return FALSE;
 
-  /* Считаем количество пересечний со сторонами многоугольника. */
+  /* todo: работает некорректно, если пересечение попало на вершину. */
+  /* Считаем количество пересечений со сторонами многоугольника. */
   for (i = 0; i < n; ++i)
    {
      gint next = (i + 1) % n;
@@ -435,7 +436,7 @@ hyscan_cartesian_is_inside_polygon (HyScanGeoCartesian2D  *vertices,
  * @q: точка Q на прямой
  * @cross_len: длина массива найденных точек
  *
- * Находит точки пересечния прямой PQ с границей многоугольника. Найденные точки
+ * Находит точки пересечения прямой PQ с границей многоугольника. Найденные точки
  * будут отсортированы по направлению вектора PQ.
  *
  * Returns: (transfer full) (array-length cross_len): массив точек пересечения, для удаления g_free
