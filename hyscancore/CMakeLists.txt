@@ -88,6 +88,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-nmea-helper.c
              hyscan-data-player.c
              hyscan-hsx-converter.c
+             hyscan-value-grid.c
              hyscan-quality.c
              hyscan-data-estimator.c
              hyscan-units.c
@@ -170,6 +171,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-nmea-helper.h
                hyscan-data-player.h
                hyscan-hsx-converter.h
+               hyscan-value-grid.h
                hyscan-quality.h
                hyscan-data-estimator.h
                hyscan-units.h

@@ -407,7 +407,8 @@ hyscan_cartesian_is_inside_polygon (HyScanGeoCartesian2D  *vertices,
                                     gint                   n,
                                     HyScanGeoCartesian2D  *p)
 {
-  HyScanGeoCartesian2D extreme = { G_MAXDOUBLE, G_MAXDOUBLE }; /* Точка на бесконечности. */
+  HyScanGeoCartesian2D extreme = { G_MAXDOUBLE, p->y }; /* Точка на бесконечности. */
+
   gint count = 0, i = 0;
 
   /* Должно быть как минимум три вершины в многоугольнике. */
