@@ -305,6 +305,48 @@ hyscan_planner_track_length (const HyScanTrackPlan *plan)
 }
 
 /**
+ * hyscan_planner_track_transit:
+ * @plan1: план первого галса
+ * @plan2: план второго галса
+ *
+ * Оценивает длину траектории перехода с конца галса @plan1 к началу галса @plan2.
+ *
+ * Returns: оценочная длина перехода от первого ко второму плана галса.
+ */
+gdouble
+hyscan_planner_track_transit (const HyScanTrackPlan *plan1,
+                              const HyScanTrackPlan *plan2)
+{
+  HyScanGeo *geo;
+  HyScanGeoCartesian2D end;
+  gdouble dist;
+
+/* Рассмотрим несколько вариантов для оценки длины перехода между галсами:
+ * (1) расстояние перехода меньше тактического диаметра → судно делает U-разворот,
+ * (2) расстояние перехода много больше тактического диаметра → судно покрывает расстояние и делает U-разворот,
+ * (3) для промежуточных вариантов линейно интерполируем. */
+
+/* Тактический диаметр для судна длиной L = 2 метра: ~4L = 8 метров. */
+#define TACTICAL_DIAMETER 8
+/* Длина U-разворота для тактического диаметра = πD / 2. */
+#define U_TURN_LENGTH 12.5
+
+  geo = hyscan_planner_track_geo (plan2, NULL);
+  if (!hyscan_geo_geo2topoXY (geo, &end, plan1->end))
+    end.x = end.y = 0;
+  g_object_unref (geo);
+
+  dist = hypot (end.x, end.y);
+  if (dist < TACTICAL_DIAMETER)
+    return U_TURN_LENGTH;
+
+  if (dist > 4 * U_TURN_LENGTH)
+    return dist + U_TURN_LENGTH;
+
+  return U_TURN_LENGTH + (dist - TACTICAL_DIAMETER) * (4 * U_TURN_LENGTH) / (4 * U_TURN_LENGTH - TACTICAL_DIAMETER);
+}
+
+/**
  * hyscan_planner_track_extend:
  * @track: указатель на галс #HyScanPlannerTrack
  * @zone: указатель на зону полигона #HyScanPlannerZone

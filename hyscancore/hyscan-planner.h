@@ -147,6 +147,10 @@ HYSCAN_API
 gdouble                hyscan_planner_track_length       (const HyScanTrackPlan     *plan);
 
 HYSCAN_API
+gdouble                hyscan_planner_track_transit      (const HyScanTrackPlan     *plan1,
+                                                          const HyScanTrackPlan     *plan2);
+
+HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_extend       (const HyScanPlannerTrack  *track,
                                                           const HyScanPlannerZone   *zone);
 
