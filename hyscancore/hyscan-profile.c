@@ -49,6 +49,7 @@
  */
 
 #include "hyscan-profile.h"
+#include <glib/gstdio.h>
 
 enum
 {
@@ -207,7 +208,7 @@ hyscan_profile_read (HyScanProfile *self)
  * hyscan_profile_write:
  * @self: указатель на #HyScanProfile
  *
- * Функция производит запись профиля. При записи профиль будет очищен.
+ * Функция производит запись профиля.
  * Returns: результат записи профиля.
  */
 gboolean
@@ -221,6 +222,21 @@ hyscan_profile_write (HyScanProfile *self)
     return FALSE;
 
   return hyscan_profile_write_real (self, self->priv->file);
+}
+
+/**
+ * hyscan_profile_write:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция удаляет профиль с диска. По сути, это просто обертка над g_remove().
+ * Returns: результат записи профиля.
+ */
+gboolean
+hyscan_profile_delete (HyScanProfile *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
+
+  return 0 == g_remove (self->priv->file);
 }
 
 /**
@@ -273,4 +289,36 @@ hyscan_profile_get_name (HyScanProfile *self)
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), NULL);
 
   return self->priv->name;
+}
+
+
+/**
+ * hyscan_profile_make_id:
+ * @buffer: указатель на массив
+ * @size: размер массива
+ *
+ * Функция генерирует случайный нуль-терминированный идентификатор.
+ *
+ * Returns: (transfer none): указатель на переданный массив.
+ */
+gchar *
+hyscan_profile_make_id (gchar *buffer,
+                        guint  size)
+{
+  guint i;
+  gint rnd;
+
+  for (i = 0; i < size; i++)
+    {
+      rnd = g_random_int_range (0, 62);
+      if (rnd < 10)
+        buffer[i] = '0' + rnd;
+      else if (rnd < 36)
+        buffer[i] = 'a' + rnd - 10;
+      else
+        buffer[i] = 'A' + rnd - 36;
+    }
+  buffer[i] = '\0';
+
+  return buffer;
 }

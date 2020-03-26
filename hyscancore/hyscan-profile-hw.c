@@ -56,26 +56,13 @@
 #define HYSCAN_PROFILE_HW_INFO_GROUP "_"
 #define HYSCAN_PROFILE_HW_NAME "name"
 
-typedef struct
-{
-  gchar                 *group;  /* Название группы. */
-  HyScanProfileHWDevice *device; /* Указатель на объект девайса. */
-} HyScanProfileHWItem;
-
 struct _HyScanProfileHWPrivate
 {
-  gchar    **drivers; /* Список путей с драйверами. */
-  GList     *devices; /* Список оборудования {HyScanProfileHWItem}. */
+  gchar     **drivers; /* Список путей с драйверами. */
+  GHashTable *devices; /* Список оборудования {gchar* : HyScanProfileHWDevice}. */
 };
 
 static void     hyscan_profile_hw_object_finalize         (GObject               *object);
-static void     hyscan_profile_hw_make_id                 (gchar                 *buffer,
-                                                           guint                  size);
-static HyScanProfileHWItem * hyscan_profile_hw_item_new   (const gchar           *id,
-                                                           HyScanProfileHWDevice *device);
-static void     hyscan_profile_hw_item_free               (gpointer               data);
-static gint     hyscan_profile_hw_item_find               (gconstpointer          data,
-                                                           gconstpointer          udata);
 static gboolean hyscan_profile_hw_info_group              (HyScanProfile         *profile,
                                                            GKeyFile              *kf,
                                                            const gchar           *group);
@@ -102,6 +89,9 @@ static void
 hyscan_profile_hw_init (HyScanProfileHW *profile)
 {
   profile->priv = hyscan_profile_hw_get_instance_private (profile);
+
+  profile->priv->devices = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                  g_free, g_object_unref);
 }
 
 static void
@@ -111,72 +101,11 @@ hyscan_profile_hw_object_finalize (GObject *object)
   HyScanProfileHWPrivate *priv = profile->priv;
 
   g_strfreev (priv->drivers);
-  hyscan_profile_hw_clear (profile);
+  g_hash_table_unref (priv->devices);
 
   G_OBJECT_CLASS (hyscan_profile_hw_parent_class)->finalize (object);
 }
 
-/* Функция создаёт уникальный идентификатор. */
-static void
-hyscan_profile_hw_make_id (gchar *buffer,
-                           guint  size)
-{
-  guint i;
-  gint rnd;
-
-  for (i = 0; i < size; i++)
-    {
-      rnd = g_random_int_range (0, 62);
-      if (rnd < 10)
-        buffer[i] = '0' + rnd;
-      else if (rnd < 36)
-        buffer[i] = 'a' + rnd - 10;
-      else
-        buffer[i] = 'A' + rnd - 36;
-    }
-  buffer[i] = '\0';
-}
-
-static HyScanProfileHWItem *
-hyscan_profile_hw_item_new (const gchar           *id,
-                            HyScanProfileHWDevice *device)
-{
-  HyScanProfileHWItem * item = g_new0 (HyScanProfileHWItem, 1);
-
-  item->group = g_strdup (id);
-  item->device = g_object_ref (device);
-
-  return item;
-}
-
-/* Функция освобождает HyScanProfileHWItem. */
-static void
-hyscan_profile_hw_item_free (gpointer data)
-{
-  HyScanProfileHWItem *item = data;
-
-  if (item == NULL)
-    return;
-
-  g_clear_pointer (&item->group, g_free);
-  g_clear_object (&item->device);
-  g_free (item);
-}
-
-/* Функция ищет HyScanProfileHWItem по названию группы. */
-static gint
-hyscan_profile_hw_item_find (gconstpointer data,
-                             gconstpointer udata)
-{
-  const HyScanProfileHWItem *item = data;
-  const gchar *id = udata;
-
-  if (item->group != NULL)
-    return g_strcmp0 (item->group, id);
-
-  g_warning ("HyScanProfileHW: found item without group");
-  return -1;
-}
 
 /* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
 static gboolean
@@ -196,14 +125,6 @@ hyscan_profile_hw_info_group (HyScanProfile *profile,
   return TRUE;
 }
 
-/* Функция очищает профиль. */
-static void
-hyscan_profile_hw_clear (HyScanProfileHW *self)
-{
-  HyScanProfileHWPrivate *priv = self->priv;
-  g_list_free_full (priv->devices, hyscan_profile_hw_item_free);
-}
-
 /* Функция парсинга профиля. */
 static gboolean
 hyscan_profile_hw_read (HyScanProfile *profile,
@@ -214,7 +135,7 @@ hyscan_profile_hw_read (HyScanProfile *profile,
   gchar **groups, **iter;
 
   /* Очищаем, если что-то было. */
-  hyscan_profile_hw_clear (self);
+  g_hash_table_remove_all (priv->devices);
 
   groups = g_key_file_get_groups (file, NULL);
   for (iter = groups; iter != NULL && *iter != NULL; ++iter)
@@ -224,7 +145,7 @@ hyscan_profile_hw_read (HyScanProfile *profile,
       if (hyscan_profile_hw_info_group (profile, file, *iter))
         continue;
 
-      device = hyscan_profile_hw_device_new (file);
+      device = hyscan_profile_hw_device_new ();
       hyscan_profile_hw_device_set_paths (device, priv->drivers);
       hyscan_profile_hw_device_set_group (device, *iter);
       hyscan_profile_hw_device_read (device, file);
@@ -244,17 +165,16 @@ hyscan_profile_hw_write (HyScanProfile *profile,
                          GKeyFile      *file)
 {
   HyScanProfileHW *self = HYSCAN_PROFILE_HW (profile);
-  GList *link;
+  GHashTableIter iter;
+  gpointer v;
 
   g_key_file_set_string (file, HYSCAN_PROFILE_HW_INFO_GROUP,
                          HYSCAN_PROFILE_HW_NAME,
                          hyscan_profile_get_name (profile));
 
-  for (link = self->priv->devices; link != NULL; link = link->next)
-    {
-      HyScanProfileHWItem * item = link->data;
-      hyscan_profile_hw_device_write (item->device, file);
-    }
+  g_hash_table_iter_init (&iter, self->priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &v))
+    hyscan_profile_hw_device_write ((HyScanProfileHWDevice*) v, file);
 
   return TRUE;
 }
@@ -288,7 +208,7 @@ hyscan_profile_hw_set_driver_paths (HyScanProfileHW  *self,
 {
   g_return_if_fail (HYSCAN_IS_PROFILE_HW (self));
 
-  g_strfreev (self->priv->drivers);
+  g_clear_pointer (&self->priv->drivers, g_strfreev);
   self->priv->drivers = g_strdupv (driver_paths);
 }
 
@@ -305,7 +225,7 @@ hyscan_profile_hw_list (HyScanProfileHW *self)
 {
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW (self), NULL);
 
-  return g_list_copy (self->priv->devices);
+  return g_hash_table_get_values (self->priv->devices);
 }
 
 /**
@@ -335,24 +255,17 @@ hyscan_profile_hw_add (HyScanProfileHW       *self,
 
   id = hyscan_profile_hw_device_get_group (device);
 
-  /* Если не задана группа, генерируем её. */
-  if (id == NULL || g_str_equal (id, HYSCAN_PROFILE_HW_NAME))
+  /* Если группа не задана, совпадает со специальным полем или уже существует
+   * в профиле, перегенерируем её. */
+  while (id == NULL || g_str_equal (id, HYSCAN_PROFILE_HW_NAME) ||
+         g_hash_table_contains (priv->devices, id))
     {
-      hyscan_profile_hw_make_id (new_id, G_N_ELEMENTS (new_id));
+      hyscan_profile_make_id (new_id, G_N_ELEMENTS (new_id));
       hyscan_profile_hw_device_set_group (device, new_id);
       id = new_id;
     }
 
-  /* Ищем дублирующийся идентификатор (группу). */
-  while (NULL != g_list_find_custom (priv->devices, id, hyscan_profile_hw_item_find))
-    {
-      hyscan_profile_hw_make_id (new_id, G_N_ELEMENTS (new_id));
-      hyscan_profile_hw_device_set_group (device, new_id);
-      id = new_id;
-    }
-
-  priv->devices = g_list_append (priv->devices,
-                                 hyscan_profile_hw_item_new (id, device));
+  g_hash_table_insert (priv->devices, g_strdup (id), g_object_ref (device));
 
   return id;
 }
@@ -371,25 +284,11 @@ hyscan_profile_hw_remove (HyScanProfileHW *self,
                           const gchar     *id)
 {
   HyScanProfileHWPrivate *priv;
-  GList *link;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW (self), FALSE);
   priv = self->priv;
 
-  /* Ищу это устройство. */
-  link = g_list_find_custom (priv->devices, id, hyscan_profile_hw_item_find);
-
-  if (link == NULL)
-    {
-      g_warning ("HyScanProfileHW: item <%s> not found", id);
-      return FALSE;
-    }
-
-  priv->devices = g_list_remove_link (priv->devices, link);
-  hyscan_profile_hw_item_free (link->data);
-  g_list_free (link);
-
-  return TRUE;
+  return g_hash_table_remove (priv->devices, id);
 }
 
 /**
@@ -404,7 +303,8 @@ gboolean
 hyscan_profile_hw_check (HyScanProfileHW *self)
 {
   HyScanProfileHWPrivate *priv;
-  GList *link;
+  GHashTableIter iter;
+  gpointer v;
   gboolean st = TRUE;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW (self), FALSE);
@@ -413,11 +313,9 @@ hyscan_profile_hw_check (HyScanProfileHW *self)
   if (priv->devices == NULL)
     return FALSE;
 
-  for (link = priv->devices; link != NULL; link = link->next)
-    {
-      HyScanProfileHWItem *item = link->data;
-      st &= hyscan_profile_hw_device_check (item->device);
-    }
+  g_hash_table_iter_init (&iter, self->priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &v))
+    st &= hyscan_profile_hw_device_check ((HyScanProfileHWDevice*) v);
 
   return st;
 }
@@ -436,22 +334,24 @@ hyscan_profile_hw_connect (HyScanProfileHW *self)
 {
   HyScanProfileHWPrivate *priv;
   HyScanControl * control;
-  GList *link;
+  GHashTableIter iter;
+  gpointer v;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW (self), NULL);
   priv = self->priv;
 
-  if (priv->devices == NULL)
-    return FALSE;
+  if (g_hash_table_size (priv->devices) == 0)
+    return NULL;
 
   control = hyscan_control_new ();
 
-  for (link = priv->devices; link != NULL; link = link->next)
+  g_hash_table_iter_init (&iter, self->priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &v))
     {
-      HyScanProfileHWItem *item = link->data;
+      HyScanProfileHWDevice *device_profile = (HyScanProfileHWDevice*) v;
       HyScanDevice *device;
 
-      device = hyscan_profile_hw_device_connect (item->device);
+      device = hyscan_profile_hw_device_connect (device_profile);
 
       if (device == NULL)
         {
@@ -488,26 +388,22 @@ HyScanControl *
 hyscan_profile_hw_connect_simple (const gchar  *file,
                                   gchar       **driver_paths)
 {
-  HyScanProfileHW * profile;
-  HyScanControl * control;
+  HyScanProfileHW * profile = NULL;
+  HyScanControl * control = NULL;
 
   profile = hyscan_profile_hw_new (file);
   if (profile == NULL)
-    {
-      return NULL;
-    }
+    goto exit;
 
   hyscan_profile_hw_set_driver_paths (profile, driver_paths);
   hyscan_profile_read (HYSCAN_PROFILE (profile));
 
   if (!hyscan_profile_hw_check (profile))
-    {
-      g_object_unref (profile);
-      return NULL;
-    }
+    goto exit;
 
   control = hyscan_profile_hw_connect (profile);
 
-  g_object_unref (profile);
+exit:
+  g_clear_object (&profile);
   return control;
 }

@@ -36,6 +36,7 @@
 #define __HYSCAN_PROFILE_HW_DEVICE_H__
 
 #include <hyscan-param-list.h>
+#include <hyscan-param.h>
 #include <hyscan-discover.h>
 
 G_BEGIN_DECLS
@@ -63,15 +64,25 @@ struct _HyScanProfileHWDeviceClass
   GObjectClass parent_class;
 };
 
+typedef enum
+{
+  HYSCAN_PROFILE_HW_DEVICE_FAIL,
+  HYSCAN_PROFILE_HW_DEVICE_CHANGED,
+  HYSCAN_PROFILE_HW_DEVICE_NOT_CHANGED,
+} eee;
+
 HYSCAN_API
 GType                   hyscan_profile_hw_device_get_type         (void);
 
 HYSCAN_API
-HyScanProfileHWDevice * hyscan_profile_hw_device_new              (GKeyFile *keyfile);
+HyScanProfileHWDevice * hyscan_profile_hw_device_new              (void);
 
 HYSCAN_API
 void                    hyscan_profile_hw_device_set_paths        (HyScanProfileHWDevice  *hw_device,
                                                                    gchar                 **paths);
+HYSCAN_API
+const gchar **          hyscan_profile_hw_device_get_paths        (HyScanProfileHWDevice  *hw_device);
+
 HYSCAN_API
 void                    hyscan_profile_hw_device_set_group        (HyScanProfileHWDevice  *hw_device,
                                                                    const gchar            *group);
@@ -98,12 +109,6 @@ HYSCAN_API
 const gchar *           hyscan_profile_hw_device_get_uri          (HyScanProfileHWDevice  *hw_device);
 
 HYSCAN_API
-void                    hyscan_profile_hw_device_set_params       (HyScanProfileHWDevice  *hw_device,
-                                                                   HyScanParamList        *params);
-HYSCAN_API
-HyScanParamList *       hyscan_profile_hw_device_get_params       (HyScanProfileHWDevice  *hw_device);
-
-HYSCAN_API
 void                    hyscan_profile_hw_device_read             (HyScanProfileHWDevice  *hw_device,
                                                                    GKeyFile               *kf);
 HYSCAN_API
@@ -114,6 +119,7 @@ gboolean                hyscan_profile_hw_device_update           (HyScanProfile
 
 HYSCAN_API
 gboolean                hyscan_profile_hw_device_check            (HyScanProfileHWDevice  *hw_device);
+
 HYSCAN_API
 HyScanDevice *          hyscan_profile_hw_device_connect          (HyScanProfileHWDevice  *hw_device);
 
