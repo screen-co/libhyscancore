@@ -103,13 +103,7 @@ typedef enum
 } HyScanGeoEllipsoidType;
 
 /** \brief Геодезические координаты (B, L, H) или (lat, long, H). */
-typedef struct
-{
-  gdouble lat;             /**< Широта. */
-  gdouble lon;             /**< Долгота. */
-  gdouble h;               /**< Высота или азимут (направление оси Y топоцентрической СК,
-                                отмеряется относительно северного направления долготы по часовой стрелке). */
-} HyScanGeoGeodetic;
+typedef HyScanGeoPoint HyScanGeoGeodetic;
 
 /** \brief Декартовы координаты в пространстве ((X, Y, Z) или (X, Y, H)). */
 typedef struct

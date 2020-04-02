@@ -85,7 +85,7 @@ main (int argc, char **argv)
   db = hyscan_db_new (db_uri);
   writer = hyscan_data_writer_new ();
   hyscan_data_writer_set_db (writer, db);
-  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, NULL, -1))
     FAIL ("Couldn't start data writer.");
 
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)

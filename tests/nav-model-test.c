@@ -53,7 +53,7 @@ usage (const gchar *prg_name)
 
 void
 test_model_data (HyScanNavModel     *model,
-                 HyScanNavModelData *data)
+                 HyScanNavStateData *data)
 {
   static gdouble prev_time = G_MAXDOUBLE;
   static gdouble start_time = G_MAXDOUBLE;
@@ -112,9 +112,9 @@ test_wrong_sensor_name (gpointer user_data)
 void
 test_yet_no_data (HyScanNavModel *model)
 {
-  HyScanNavModelData data;
+  HyScanNavStateData data;
 
-  g_assert (FALSE == hyscan_nav_model_get (model, &data, NULL));
+  g_assert (FALSE == hyscan_nav_state_get (HYSCAN_NAV_STATE (model), &data, NULL));
   g_assert (FALSE == data.loaded);
 }
 
@@ -145,7 +145,7 @@ int main (int    argc,
   g_signal_connect_swapped (device, "finish", G_CALLBACK (g_main_loop_quit), loop);
 
   /* Тест 1. Проверяем данные при каждом их изменении. */
-  g_signal_connect (model, "changed", G_CALLBACK (test_model_data), NULL);
+  g_signal_connect (model, "nav-changed", G_CALLBACK (test_model_data), NULL);
 
   /* Тест 2. Проверяем, если данных пока ещё нет. */
   test_yet_no_data (model);

@@ -56,7 +56,7 @@
  */
 
 #include "hyscan-nav-smooth.h"
-#include <math.h>
+#include <hyscan-stats.h>
 
 enum
 {
@@ -188,33 +188,19 @@ hyscan_nav_smooth_weight_circular (gint64  time,
                                    gdouble lvalue,
                                    gdouble rvalue)
 {
-  gint64 dtime;
-  gdouble rweight, lweight;
-  gdouble sum_sin, sum_cos;
-  gdouble value;
+  gdouble values[2];
+  gdouble weights[2];
 
-  dtime = rtime - ltime;
-
-  if (dtime == 0)
+  if (rtime == ltime)
     return lvalue;
 
-  rweight = 1.0 - (gdouble) (rtime - time) / dtime;
-  lweight = 1.0 - (gdouble) (time - ltime) / dtime;
+  values[0] = lvalue;
+  values[1] = rvalue;
 
-  rvalue *= G_PI / 180.0;
-  lvalue *= G_PI / 180.0;
+  weights[0] = rtime - time;
+  weights[1] = time - ltime;
 
-  sum_sin = rweight * sin (rvalue) + lweight * sin (lvalue);
-  sum_cos = rweight * cos (rvalue) + lweight * cos (lvalue);
-  value = atan2 (sum_sin, sum_cos) / G_PI * 180.0;
-
-  if (value < 0.)
-    value += 360.0;
-
-  if (value == 360.0)
-    value = 0.0;
-
-  return value;
+  return hyscan_stats_avg_circular_weighted (values, weights, 2);
 }
 
 /**

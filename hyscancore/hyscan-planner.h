@@ -36,9 +36,7 @@
 #define __HYSCAN_PLANNER_H__
 
 #include <hyscan-geo.h>
-#include <hyscan-nav-model.h>
-#include <hyscan-db.h>
-#include "hyscan-object-data.h"
+#include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
@@ -47,6 +45,10 @@ G_BEGIN_DECLS
 #define HYSCAN_PLANNER_ZONE     0x1dc83c66
 #define HYSCAN_PLANNER_TRACK    0x2f0365da
 #define HYSCAN_PLANNER_ORIGIN   0x0fe285b7
+
+#define HYSCAN_IS_PLANNER_ZONE(x)   ((x) != NULL && (x)->type == HYSCAN_PLANNER_ZONE)
+#define HYSCAN_IS_PLANNER_TRACK(x)  ((x) != NULL && (x)->type == HYSCAN_PLANNER_TRACK)
+#define HYSCAN_IS_PLANNER_ORIGIN(x) ((x) != NULL && (x)->type == HYSCAN_PLANNER_ORIGIN)
 
 typedef struct _HyScanPlannerTrack HyScanPlannerTrack;
 typedef struct _HyScanPlannerZone HyScanPlannerZone;
@@ -57,10 +59,9 @@ typedef struct _HyScanPlannerOrigin HyScanPlannerOrigin;
  * @id: уникальный идентификатор
  * @zone_id: идентификатор зоны, в котрой находится галс
  * @number: порядковый номер галса
- * @speed: скорость движения судна, м/с
+ * @plan: запланированные параметры движения
  * @name: название
- * @start: геокоординаты начала
- * @start: геокоординаты конца
+ * @records: NULL-терминированный список идентификаторов записанных галсов
  *
  * Параметры запланированного галса
  */
@@ -69,10 +70,9 @@ struct _HyScanPlannerTrack
   HyScanObjectType         type;
   gchar                   *zone_id;
   guint                    number;
-  gdouble                  speed;
+  HyScanTrackPlan          plan;
   gchar                   *name;
-  HyScanGeoGeodetic        start;
-  HyScanGeoGeodetic        end;
+  gchar                  **records;
 };
 
 /**
@@ -126,18 +126,37 @@ HYSCAN_API
 void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
 
 HYSCAN_API
-HyScanGeo *            hyscan_planner_track_geo          (const HyScanPlannerTrack  *track,
+void                   hyscan_planner_track_add_record   (HyScanPlannerTrack        *track,
+                                                          const gchar               *record_id);
+
+HYSCAN_API
+void                   hyscan_planner_track_delete_record(HyScanPlannerTrack        *track,
+                                                          const gchar               *record_id);
+
+HYSCAN_API
+HyScanTrackPlan *      hyscan_planner_track_get_plan     (HyScanPlannerTrack        *track);
+
+HYSCAN_API
+HyScanGeo *            hyscan_planner_track_geo          (const HyScanTrackPlan     *plan,
                                                           gdouble                   *angle);
 
 HYSCAN_API
 gdouble                hyscan_planner_track_angle        (const HyScanPlannerTrack  *track);
 
 HYSCAN_API
-gdouble                hyscan_planner_track_length       (const HyScanPlannerTrack  *track);
+gdouble                hyscan_planner_track_length       (const HyScanTrackPlan     *plan);
+
+HYSCAN_API
+gdouble                hyscan_planner_track_transit      (const HyScanTrackPlan     *plan1,
+                                                          const HyScanTrackPlan     *plan2);
 
 HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_extend       (const HyScanPlannerTrack  *track,
                                                           const HyScanPlannerZone   *zone);
+
+HYSCAN_API
+gboolean               hyscan_planner_plan_equal         (const HyScanTrackPlan     *plan1,
+                                                          const HyScanTrackPlan     *plan2);
 
 HYSCAN_API
 HyScanPlannerZone *    hyscan_planner_zone_new           (void);
@@ -151,6 +170,10 @@ void                   hyscan_planner_zone_free          (HyScanPlannerZone     
 HYSCAN_API
 void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone         *zone,
                                                           gsize                      index);
+
+HYSCAN_API
+void                   hyscan_planner_zone_vertex_append (HyScanPlannerZone         *zone,
+                                                          HyScanGeoGeodetic          point);
 
 HYSCAN_API
 void                   hyscan_planner_zone_vertex_dup    (HyScanPlannerZone         *zone,

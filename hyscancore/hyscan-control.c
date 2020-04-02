@@ -242,7 +242,8 @@ static gboolean    hyscan_control_sonar_tvg_set_logarithmic    (HyScanSonar     
 static gboolean    hyscan_control_sonar_start                  (HyScanSonar                    *sonar,
                                                                 const gchar                    *project_name,
                                                                 const gchar                    *track_name,
-                                                                HyScanTrackType                 track_type);
+                                                                HyScanTrackType                 track_type,
+                                                                const HyScanTrackPlan          *track_plan);
 
 static gboolean    hyscan_control_sonar_stop                   (HyScanSonar                    *sonar);
 
@@ -1063,10 +1064,11 @@ hyscan_control_sonar_tvg_disable (HyScanSonar      *sonar,
 
 /* Метод HyScanSonar->start. */
 static gboolean
-hyscan_control_sonar_start (HyScanSonar     *sonar,
-                            const gchar     *project_name,
-                            const gchar     *track_name,
-                            HyScanTrackType  track_type)
+hyscan_control_sonar_start (HyScanSonar           *sonar,
+                            const gchar           *project_name,
+                            const gchar           *track_name,
+                            HyScanTrackType        track_type,
+                            const HyScanTrackPlan *track_plan)
 {
   HyScanControl *control = HYSCAN_CONTROL (sonar);
   HyScanControlPrivate *priv = control->priv;
@@ -1079,7 +1081,7 @@ hyscan_control_sonar_start (HyScanSonar     *sonar,
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
-  if (!hyscan_data_writer_start (priv->writer, project_name, track_name, track_type, -1))
+  if (!hyscan_data_writer_start (priv->writer, project_name, track_name, track_type, track_plan, -1))
     return FALSE;
 
   g_hash_table_iter_init (&iter, priv->devices);
@@ -1088,7 +1090,7 @@ hyscan_control_sonar_start (HyScanSonar     *sonar,
       if (!HYSCAN_IS_SONAR (device))
         continue;
 
-      if (!hyscan_sonar_start (device, project_name, track_name, track_type))
+      if (!hyscan_sonar_start (device, project_name, track_name, track_type, track_plan))
         status = FALSE;
     }
 

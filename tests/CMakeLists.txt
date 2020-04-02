@@ -29,8 +29,11 @@ add_executable (nmea-file-device-test nmea-file-device-test.c)
 add_executable (nav-model-test nav-model-test.c)
 add_executable (nmea-file2udp nmea-file2udp.c)
 add_executable (planner-test planner-test.c)
+add_executable (planner-export-test planner-export-test.c)
+add_executable (planner-model-test planner-model-test.c)
 add_executable (data-player-test data-player-test.c)
 add_executable (nav-smooth-test nav-smooth-test.c)
+add_executable (value-grid-test value-grid-test.c)
 if (UNIX)
   add_executable (nmea-joystick nmea-joystick.c)
 endif()
@@ -62,8 +65,11 @@ target_link_libraries (nmea-file-device-test ${TEST_LIBRARIES})
 target_link_libraries (nav-model-test ${TEST_LIBRARIES})
 target_link_libraries (nmea-file2udp ${TEST_LIBRARIES})
 target_link_libraries (planner-test ${TEST_LIBRARIES})
+target_link_libraries (planner-export-test ${TEST_LIBRARIES})
+target_link_libraries (planner-model-test ${TEST_LIBRARIES})
 target_link_libraries (data-player-test ${TEST_LIBRARIES})
 target_link_libraries (nav-smooth-test ${TEST_LIBRARIES})
+target_link_libraries (value-grid-test ${TEST_LIBRARIES})
 if (UNIX)
   target_link_libraries (nmea-joystick ${TEST_LIBRARIES})
 endif()
@@ -75,7 +81,7 @@ add_test (NAME DataWriterTest COMMAND data-writer-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ObjectModelTest COMMAND mark-model-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-add_test (NAME AcousticDataTest COMMAND acoustic-data-test -c 1024 file://db
+add_test (NAME AcousticDataTest COMMAND acoustic-data-test -c 1024 -l 10 file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME NMEADataTest COMMAND nmea-data-test -s 10000 file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
@@ -96,6 +102,10 @@ add_test (NAME CartesianTest COMMAND cartesian-test
 add_test (NAME NavModelTest COMMAND nav-model-test --default-data
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME PlannerTest COMMAND planner-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME PlannerExportTest COMMAND planner-export-test -d file://db planner.xml
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME PlannerModelTest COMMAND planner-model-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME DataPlayerTest COMMAND data-player-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")

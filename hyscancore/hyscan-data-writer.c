@@ -167,6 +167,7 @@ static gint32    hyscan_data_writer_create_track               (HyScanDB        
                                                                 gint32                         project_id,
                                                                 const gchar                   *track_name,
                                                                 HyScanTrackType                track_type,
+                                                                const HyScanTrackPlan         *track_plan,
                                                                 gint64                         date_time,
                                                                 const gchar                   *operator,
                                                                 const gchar                   *sonar,
@@ -428,14 +429,15 @@ exit:
 
 /* Функция создаёт галс в системе хранения. */
 static gint32
-hyscan_data_writer_create_track (HyScanDB        *db,
-                                 gint32           project_id,
-                                 const gchar     *track_name,
-                                 HyScanTrackType  track_type,
-                                 gint64           date_time,
-                                 const gchar     *operator,
-                                 const gchar     *sonar,
-                                 GRand           *rand)
+hyscan_data_writer_create_track (HyScanDB              *db,
+                                 gint32                 project_id,
+                                 const gchar           *track_name,
+                                 HyScanTrackType        track_type,
+                                 const HyScanTrackPlan *track_plan,
+                                 gint64                 date_time,
+                                 const gchar           *operator,
+                                 const gchar           *sonar,
+                                 GRand                 *rand)
 {
   gboolean status = FALSE;
 
@@ -479,6 +481,14 @@ hyscan_data_writer_create_track (HyScanDB        *db,
   hyscan_param_list_set_string (param_list, "/type", track_type_id);
   hyscan_param_list_set_string (param_list, "/operator", operator);
   hyscan_param_list_set_string (param_list, "/sonar", sonar);
+  if (track_plan != NULL)
+    {
+      hyscan_param_list_set_double (param_list, "/plan/start/lat", track_plan->start.lat);
+      hyscan_param_list_set_double (param_list, "/plan/start/lon", track_plan->start.lon);
+      hyscan_param_list_set_double (param_list, "/plan/end/lat", track_plan->end.lat);
+      hyscan_param_list_set_double (param_list, "/plan/end/lon", track_plan->end.lon);
+      hyscan_param_list_set_double (param_list, "/plan/velocity", track_plan->velocity);
+    }
   if (!hyscan_db_param_set (db, param_id, NULL, param_list))
     goto exit;
 
@@ -986,11 +996,12 @@ hyscan_data_writer_sonar_set_offset (HyScanDataWriter          *writer,
  * Returns: %TRUE если запись включена, иначе %FALSE.
  */
 gboolean
-hyscan_data_writer_start (HyScanDataWriter *writer,
-                          const gchar      *project_name,
-                          const gchar      *track_name,
-                          HyScanTrackType   track_type,
-                          gint64            date_time)
+hyscan_data_writer_start (HyScanDataWriter      *writer,
+                          const gchar           *project_name,
+                          const gchar           *track_name,
+                          HyScanTrackType        track_type,
+                          const HyScanTrackPlan *track_plan,
+                          gint64                 date_time)
 {
   HyScanDataWriterPrivate *priv;
   gint32 project_id;
@@ -1049,7 +1060,7 @@ hyscan_data_writer_start (HyScanDataWriter *writer,
 
   /* Создаём новый галс. */
   priv->track_id = hyscan_data_writer_create_track (priv->db, project_id,
-                                                    track_name, track_type, date_time,
+                                                    track_name, track_type, track_plan, date_time,
                                                     priv->operator_name, priv->sonar_info,
                                                     priv->rand);
   hyscan_db_close (priv->db, project_id);

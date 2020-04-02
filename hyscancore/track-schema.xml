@@ -33,13 +33,24 @@
     <key id="offset" name="Zero offset" type="integer"/>
   </schema>
 
+  <schema id="geo-coordinate">
+    <key id="lat" name="Latitude" type="double"/>
+    <key id="lon" name="Longitude" type="double"/>
+  </schema>
+
+  <schema id="track-plan">
+    <node id="start" schema="geo-coordinate" name="Start point"/>
+    <node id="end" schema="geo-coordinate" name="End point"/>
+    <key id="velocity" name="Velocity, m/s" type="double"/>
+  </schema>
+
   <schema id="track">
     <node id="schema">
       <key id="id" name="Track schema id" type="integer" access="r">
         <default>1715033709558529337</default>
       </key>
       <key id="version" name="Track schema version" type="integer" access="r">
-        <default>20190100</default>
+        <default>20200200</default>
       </key>
     </node>
     <key id="id" name="Track id" type="string"/>
@@ -49,6 +60,7 @@
     <key id="type" name="Track type" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
     <key id="sonar" name="Sonar info" type="string" view="schema"/>
+    <node id="plan" schema="track-plan" name="Track plan parameters"/>
   </schema>
 
   <schema id="log">

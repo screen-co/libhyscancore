@@ -130,6 +130,7 @@ hyscan_object_data_planner_object_constructed (GObject *object)
   hyscan_param_list_add (priv->track_read_plist, "/number");
   hyscan_param_list_add (priv->track_read_plist, "/speed");
   hyscan_param_list_add (priv->track_read_plist, "/name");
+  hyscan_param_list_add (priv->track_read_plist, "/records");
   hyscan_param_list_add (priv->track_read_plist, "/start-lat");
   hyscan_param_list_add (priv->track_read_plist, "/start-lon");
   hyscan_param_list_add (priv->track_read_plist, "/end-lat");
@@ -169,11 +170,11 @@ static const gchar *
 hyscan_object_data_planner_get_schema_id (HyScanObjectData   *data,
                                           const HyScanObject *object)
 {
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     return PLANNER_ZONE_SCHEMA;
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     return PLANNER_TRACK_SCHEMA;
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     return PLANNER_ORIGIN_SCHEMA;
   else
     return NULL;
@@ -188,11 +189,11 @@ hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
 
   unique_id = HYSCAN_OBJECT_DATA_CLASS (hyscan_object_data_planner_parent_class)->generate_id (data, object);
 
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     id = g_strconcat (PREFIX_ZONE, unique_id, NULL);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     id = g_strconcat (PREFIX_TRACK, unique_id, NULL);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     id = g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
 
   g_free (unique_id);
@@ -224,11 +225,11 @@ hyscan_object_data_planner_object_destroy (HyScanObject *object)
   if (object == NULL)
     return;
 
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     hyscan_planner_zone_free ((HyScanPlannerZone *) object);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     hyscan_planner_track_free ((HyScanPlannerTrack *) object);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     hyscan_planner_origin_free ((HyScanPlannerOrigin *) object);
   else
     g_warn_if_reached ();
@@ -240,11 +241,11 @@ hyscan_object_data_planner_object_copy (const HyScanObject *object)
   if (object == NULL)
     return NULL;
 
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     return (HyScanObject *) hyscan_planner_zone_copy ((HyScanPlannerZone *) object);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     return (HyScanObject *) hyscan_planner_track_copy ((HyScanPlannerTrack *) object);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     return (HyScanObject *) hyscan_planner_origin_copy ((HyScanPlannerOrigin *) object);
   else
     g_return_val_if_reached (NULL);
@@ -363,16 +364,20 @@ hyscan_object_data_planner_get_track (HyScanObjectData *mdata,
                                       HyScanParamList  *plist)
 {
   HyScanPlannerTrack *track;
+  const gchar *records;
 
   track = hyscan_planner_track_new ();
   track->zone_id = hyscan_param_list_dup_string (plist, "/zone-id");
   track->number = hyscan_param_list_get_integer (plist, "/number");
-  track->speed = hyscan_param_list_get_double (plist, "/speed");
+  track->plan.velocity = hyscan_param_list_get_double (plist, "/speed");
   track->name = hyscan_param_list_dup_string (plist, "/name");
-  track->start.lat = hyscan_param_list_get_double (plist, "/start-lat");
-  track->start.lon = hyscan_param_list_get_double (plist, "/start-lon");
-  track->end.lat = hyscan_param_list_get_double (plist, "/end-lat");
-  track->end.lon = hyscan_param_list_get_double (plist, "/end-lon");
+  records = hyscan_param_list_get_string (plist, "/records");
+  if (records != NULL)
+    track->records = g_strsplit (records, ",", -1);
+  track->plan.start.lat = hyscan_param_list_get_double (plist, "/start-lat");
+  track->plan.start.lon = hyscan_param_list_get_double (plist, "/start-lon");
+  track->plan.end.lat = hyscan_param_list_get_double (plist, "/end-lat");
+  track->plan.end.lon = hyscan_param_list_get_double (plist, "/end-lon");
 
   return (HyScanObject *) track;
 }
@@ -418,16 +423,20 @@ hyscan_object_data_planner_set_track (HyScanObjectData         *data,
                                       const HyScanPlannerTrack *track)
 {
   const gchar *zone_id;
+  gchar *records;
 
   zone_id = track->zone_id != NULL ? track->zone_id : NULL;
+  records = track->records != NULL ? g_strjoinv (",", track->records) : NULL;
   hyscan_param_list_set_string (write_plist, "/zone-id", zone_id);
   hyscan_param_list_set_string (write_plist, "/name", track->name);
+  hyscan_param_list_set_string (write_plist, "/records", records);
   hyscan_param_list_set_integer (write_plist, "/number", track->number);
-  hyscan_param_list_set_double (write_plist, "/speed", track->speed);
-  hyscan_param_list_set_double (write_plist, "/start-lat", track->start.lat);
-  hyscan_param_list_set_double (write_plist, "/start-lon", track->start.lon);
-  hyscan_param_list_set_double (write_plist, "/end-lat", track->end.lat);
-  hyscan_param_list_set_double (write_plist, "/end-lon", track->end.lon);
+  hyscan_param_list_set_double (write_plist, "/speed", track->plan.velocity);
+  hyscan_param_list_set_double (write_plist, "/start-lat", track->plan.start.lat);
+  hyscan_param_list_set_double (write_plist, "/start-lon", track->plan.start.lon);
+  hyscan_param_list_set_double (write_plist, "/end-lat", track->plan.end.lat);
+  hyscan_param_list_set_double (write_plist, "/end-lon", track->plan.end.lon);
+  g_free (records);
 
   return TRUE;
 }
@@ -468,11 +477,11 @@ hyscan_object_data_planner_set_full (HyScanObjectData   *mdata,
                                      HyScanParamList    *write_plist,
                                      const HyScanObject *object)
 {
-  if (object->type == HYSCAN_PLANNER_ZONE)
+  if (HYSCAN_IS_PLANNER_ZONE (object))
     return hyscan_object_data_planner_set_zone (mdata, write_plist, (const HyScanPlannerZone *) object);
-  else if (object->type == HYSCAN_PLANNER_TRACK)
+  else if (HYSCAN_IS_PLANNER_TRACK (object))
     return hyscan_object_data_planner_set_track (mdata, write_plist, (const HyScanPlannerTrack *) object);
-  else if (object->type == HYSCAN_PLANNER_ORIGIN)
+  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
     return hyscan_object_data_planner_set_origin (mdata, write_plist, (const HyScanPlannerOrigin *) object);
 
   return FALSE;

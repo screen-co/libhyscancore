@@ -99,6 +99,7 @@ gboolean               hyscan_data_writer_start                (HyScanDataWriter
                                                                 const gchar                   *project_name,
                                                                 const gchar                   *track_name,
                                                                 HyScanTrackType                track_type,
+                                                                const HyScanTrackPlan         *track_plan,
                                                                 gint64                         date_time);
 
 HYSCAN_API

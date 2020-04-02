@@ -204,7 +204,7 @@ hyscan_planner_model_get_origin (HyScanPlannerModel *pmodel)
   if (object == NULL)
     return NULL;
 
-  if (object->type != HYSCAN_PLANNER_ORIGIN)
+  if (!HYSCAN_IS_PLANNER_ORIGIN (object))
     {
       hyscan_object_model_remove_object (HYSCAN_OBJECT_MODEL (pmodel), HYSCAN_PLANNER_ORIGIN_ID);
       object = NULL;
@@ -214,8 +214,8 @@ hyscan_planner_model_get_origin (HyScanPlannerModel *pmodel)
 }
 
 static gdouble
-hyscan_planner_model_distance (HyScanGeoGeodetic *point1,
-                               HyScanGeoGeodetic *point2)
+hyscan_planner_model_distance (HyScanGeoPoint *point1,
+                               HyScanGeoPoint *point2)
 {
   gdouble lon1r;
   gdouble lat1r;
@@ -269,16 +269,16 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
     goto exit;
 
   track = g_hash_table_lookup (objects, track0_id);
-  if (track == NULL || track->type != HYSCAN_PLANNER_TRACK)
+  if (!HYSCAN_IS_PLANNER_TRACK (track))
     goto exit;
   zone_id = track->zone_id;
 
   /* Находим все галсы, которые надо упорядочить. */
-  track_ids = g_array_new (FALSE, FALSE, sizeof (gchar *));
+  track_ids = g_array_new (FALSE, FALSE, sizeof (const gchar *));
   g_hash_table_iter_init (&iter, objects);
   while (g_hash_table_iter_next (&iter, (gpointer *) &track_id, (gpointer *) &track))
     {
-      if (track->type != HYSCAN_PLANNER_TRACK || g_strcmp0 (track->zone_id, zone_id) != 0)
+      if (!HYSCAN_IS_PLANNER_TRACK (track) || g_strcmp0 (track->zone_id, zone_id) != 0)
         continue;
 
       g_array_append_val (track_ids, track_id);
@@ -299,10 +299,10 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
           track_j = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, j));
 
           /* Берём минимальное расстояние среди всех возможных переходов. */
-          distance0 = hyscan_planner_model_distance (&track_i->start, &track_j->end);
-          distance1 = hyscan_planner_model_distance (&track_i->start, &track_j->start);
-          distance2 = hyscan_planner_model_distance (&track_i->end, &track_j->end);
-          distance3 = hyscan_planner_model_distance (&track_i->end, &track_j->start);
+          distance0 = hyscan_planner_model_distance (&track_i->plan.start, &track_j->plan.end);
+          distance1 = hyscan_planner_model_distance (&track_i->plan.start, &track_j->plan.start);
+          distance2 = hyscan_planner_model_distance (&track_i->plan.end, &track_j->plan.end);
+          distance3 = hyscan_planner_model_distance (&track_i->plan.end, &track_j->plan.start);
 
           distances[i * n + j] =
           distances[j * n + i] = MIN (MIN (distance0, distance1), MIN (distance2, distance3));
@@ -327,10 +327,10 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
       gdouble invert_next = FALSE;
       gint next = 0;
       HyScanPlannerTrack *track_i, *track_j;
-      HyScanGeoGeodetic *end;
+      HyScanGeoPoint *end;
 
       track_i = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, i));
-      end = invert[i] ? &track_i->start : &track_i->end;
+      end = invert[i] ? &track_i->plan.start : &track_i->plan.end;
 
       for (j = 0; j < n; j++)
         {
@@ -341,8 +341,8 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
 
           track_j = g_hash_table_lookup (objects, g_array_index (track_ids, gchar *, j));
 
-          distance = hyscan_planner_model_distance (end, &track_j->start);
-          distance_inv = hyscan_planner_model_distance (end, &track_j->end);
+          distance = hyscan_planner_model_distance (end, &track_j->plan.start);
+          distance_inv = hyscan_planner_model_distance (end, &track_j->plan.end);
           if (MIN (distance, distance_inv) > min_distance)
             continue;
 
@@ -364,16 +364,18 @@ hyscan_planner_model_assign_number (HyScanPlannerModel *pmodel,
       track->number = sorted[i];
       if (invert[i])
         {
-          HyScanGeoGeodetic tmp;
-          tmp = track->start;
-          track->start = track->end;
-          track->end = tmp;
+          HyScanGeoPoint tmp;
+          tmp = track->plan.start;
+          track->plan.start = track->plan.end;
+          track->plan.end = tmp;
         }
       hyscan_object_model_modify_object (HYSCAN_OBJECT_MODEL (pmodel), track_id, (HyScanObject *) track);
     }
 
+  g_free (distances);
   g_free (invert);
   g_free (sorted);
+  g_array_free (track_ids, TRUE);
 
 exit:
   g_clear_pointer (&objects, g_hash_table_destroy);
