@@ -27,4 +27,102 @@
     <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
     <key id="description" name="Track description" type="string"/>
   </schema>
+
+  <schema id="waterfall-mark">
+    <node id="schema">
+      <key id="id" name="Waterfall mark schema id" type="integer" access="readonly">
+        <default>1315931457526726065</default>
+      </key>
+      <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
+        <default>20190200</default>
+      </key>
+    </node>
+    <key id="name" name="Mark short name" type="string"/>
+    <key id="description" name="Detailed description" type="string"/>
+    <key id="operator" name="Operator name" type="string"/>
+    <key id="label" name="Applied labels" type="integer"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+    <key id="track" name="Track id" type="string"/>
+    <key id="source" name="Source type (center)" type="string"/>
+    <key id="index" name="Index number (center)" type="integer"/>
+    <key id="count" name="Count number (center)" type="integer"/>
+    <key id="width" name="Mark width" type="double"/>
+    <key id="height" name="Mark height" type="double"/>
+  </schema>
+
+  <schema id="geo-mark">
+    <node id="schema">
+      <key id="id" name="Geo mark schema id" type="integer" access="readonly">
+        <default>4566818919687782529</default>
+      </key>
+      <key id="version" name="Geo mark schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="name" name="Mark short name" type="string"/>
+    <key id="description" name="Detailed description" type="string"/>
+    <key id="operator" name="Operator name" type="string"/>
+    <key id="label" name="Applied labels" type="integer"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+    <key id="lat" name="Latitude (center)" type="double"/>
+    <key id="lon" name="Longitude (center)" type="double"/>
+    <key id="width" name="Mark width" type="double"/>
+    <key id="height" name="Mark height" type="double"/>
+  </schema>
+
+  <schema id="planner-origin">
+    <node id="schema">
+      <key id="id" name="Planner origin schema id" type="integer" access="readonly">
+        <default>3906613780672057459</default>
+      </key>
+      <key id="version" name="Planner zone schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="lat" name="Latitude" type="double"/>
+    <key id="lon" name="Longitude" type="double"/>
+    <key id="azimuth" name="Azimuth, direction of X axis" type="double"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
+  <schema id="planner-zone">
+    <node id="schema">
+      <key id="id" name="Planner zone schema id" type="integer" access="readonly">
+        <default>2298441576805697181</default>
+      </key>
+      <key id="version" name="Planner zone schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="name" name="Zone short name" type="string"/>
+    <key id="vertices" name="Coordinates of zone vertices" type="string"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
+  <schema id="planner-track">
+    <node id="schema">
+      <key id="id" name="Planner track schema id" type="integer" access="readonly">
+        <default>1788376350812305657</default>
+      </key>
+      <key id="version" name="Planner track schema version" type="integer" access="readonly">
+        <default>20190100</default>
+      </key>
+    </node>
+    <key id="zone-id" name="The identifier of the zone containing track" type="string"/>
+    <key id="records" name="Comma separated identifiers of recorded track identifiers" type="string"/>
+    <key id="number" name="Index number of the track inside its zone" type="integer"/>
+    <key id="speed" name="Ship speed along the track, m/s" type="double"/>
+    <key id="name" name="Track short name" type="string"/>
+    <key id="start-lat" name="Latitude of the start of the track" type="double"/>
+    <key id="start-lon" name="Longitude of the start of the track" type="double"/>
+    <key id="end-lat" name="Latitude of the end of the track" type="double"/>
+    <key id="end-lon" name="Longitude of the end of the track" type="double"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
 </schemalist>

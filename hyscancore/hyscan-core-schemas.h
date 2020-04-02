@@ -42,7 +42,7 @@
 #define TRACK_INFO_SCHEMA_VERSION              20180100
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
-#define TRACK_SCHEMA_VERSION                   20190100
+#define TRACK_SCHEMA_VERSION                   20200200
 
 #define LOG_SCHEMA_ID                          3957463010395734756
 #define LOG_SCHEMA_VERSION                     20190100
@@ -59,6 +59,21 @@
 #define TVG_CHANNEL_SCHEMA_ID                  8911020404930317035
 #define TVG_CHANNEL_SCHEMA_VERSION             20190100
 
+#define WATERFALL_MARK_SCHEMA_ID               1315931457526726065
+#define WATERFALL_MARK_SCHEMA_VERSION          20190200
+
+#define GEO_MARK_SCHEMA_ID                     4566818919687782529
+#define GEO_MARK_SCHEMA_VERSION                20190100
+
+#define PLANNER_ORIGIN_SCHEMA_ID               3906613780672057459
+#define PLANNER_ORIGIN_SCHEMA_VERSION          20190100
+
+#define PLANNER_ZONE_SCHEMA_ID                 2298441576805697181
+#define PLANNER_ZONE_SCHEMA_VERSION            20190100
+
+#define PLANNER_TRACK_SCHEMA_ID                1788376350812305657
+#define PLANNER_TRACK_SCHEMA_VERSION           20190100
+
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"
 
@@ -69,7 +84,15 @@
 #define SIGNAL_CHANNEL_SCHEMA                  "signal"
 #define TVG_CHANNEL_SCHEMA                     "tvg"
 
+#define WATERFALL_MARK_SCHEMA                  "waterfall-mark"
+#define GEO_MARK_SCHEMA                        "geo-mark"
+
 #define PROJECT_INFO_GROUP                     "info"
 #define PROJECT_INFO_OBJECT                    "project"
+
+#define PLANNER_ORIGIN_SCHEMA                  "planner-origin"
+#define PLANNER_ZONE_SCHEMA                    "planner-zone"
+#define PLANNER_TRACK_SCHEMA                   "planner-track"
+#define PLANNER_OBJECT                         "planner"
 
 #endif /* __HYSCAN_CORE_SCHEMAS_H__ */
