@@ -53,6 +53,8 @@
 #define SIGNAL_SIZE            256
 #define TVG_SIZE               512
 
+static HyScanTrackPlan plan_2 = { .start = { 12.35, 15.68 }, .end = { 12.34, 15.67 }, .velocity = 8.9 };
+
 /* Функция возвращает название датчика. */
 const gchar *
 sensor_get_name (guint n_channel)
@@ -192,6 +194,23 @@ void project_check_info (HyScanDB *db,
   g_object_unref (param_list);
 }
 
+/* Функция сравнивает планы галса. */
+gboolean track_check_plan (HyScanTrackPlan *plan,
+                           HyScanTrackPlan *expect)
+{
+  if (expect == NULL && plan == NULL)
+    return TRUE;
+
+  if (expect == NULL || plan == NULL)
+    return FALSE;
+
+  return (fabs (plan->start.lat - expect->start.lat) < 1e-6) &&
+         (fabs (plan->start.lon - expect->start.lon) < 1e-6) &&
+         (fabs (plan->end.lat - expect->end.lat) < 1e-6) &&
+         (fabs (plan->end.lon - expect->end.lon) < 1e-6) &&
+         (fabs (plan->velocity - expect->velocity) < 1e-6);
+}
+
 /* Функция проверяет параметры галса. */
 void track_check_info (HyScanDB *db,
                        gint32    track_id,
@@ -204,6 +223,7 @@ void track_check_info (HyScanDB *db,
   const gchar *track_type;
   const gchar *operator_name;
   const gchar *sonar_info;
+  HyScanTrackPlan plan, *track_plan, *expect_plan;
 
   param_list = hyscan_param_list_new ();
 
@@ -235,6 +255,11 @@ void track_check_info (HyScanDB *db,
 
   if (g_strcmp0 (sonar_info, SONAR_INFO) != 0)
     g_error ("sonar info error");
+
+  track_plan = hyscan_core_params_load_plan (db, param_id, &plan) ? &plan : NULL;
+  expect_plan = n_track == 2 ? &plan_2 : NULL;
+  if (!track_check_plan (track_plan, expect_plan))
+    g_error ("track plan is incorrect");
 
   hyscan_db_close (db, param_id);
   g_object_unref (param_list);
@@ -892,14 +917,14 @@ main (int    argc,
   log_add_data (writer, FALSE);
 
   date_time = CTIME + n_tracks++;
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, date_time))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, NULL, date_time))
     g_error ("can't start writer");
   hyscan_data_writer_stop (writer);
 
   /* Галс с данными. */
   g_message ("creating data track-1");
   date_time = CTIME + n_tracks++;
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY, date_time))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-1", HYSCAN_TRACK_SURVEY, NULL, date_time))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -915,7 +940,7 @@ main (int    argc,
   /* Галс с данными. */
   g_message ("creating data track-2");
   date_time = CTIME + n_tracks++;
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY, date_time))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, "track-2", HYSCAN_TRACK_SURVEY, &plan_2, date_time))
     g_error ("can't start writer");
 
   /* Запись данных. */
@@ -930,7 +955,7 @@ main (int    argc,
 
   /* Дублирование галса. */
   g_message ("duplicate track-0");
-  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, -1))
+  if (hyscan_data_writer_start (writer, PROJECT_NAME, "track-0", HYSCAN_TRACK_SURVEY, NULL, -1))
     g_error ("can duplicate track");
 
   /* Отключаем запись. */

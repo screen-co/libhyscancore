@@ -1222,10 +1222,11 @@ hyscan_control_proxy_sonar_tvg_disable (HyScanSonar      *sonar,
 }
 
 static gboolean
-hyscan_control_proxy_sonar_start (HyScanSonar     *sonar,
-                                  const gchar     *project_name,
-                                  const gchar     *track_name,
-                                  HyScanTrackType  track_type)
+hyscan_control_proxy_sonar_start (HyScanSonar           *sonar,
+                                  const gchar           *project_name,
+                                  const gchar           *track_name,
+                                  HyScanTrackType        track_type,
+                                  const HyScanTrackPlan *track_plan)
 {
   HyScanControlProxy *proxy = HYSCAN_CONTROL_PROXY (sonar);
   HyScanControlProxyPrivate *priv = proxy->priv;
@@ -1250,7 +1251,7 @@ hyscan_control_proxy_sonar_start (HyScanSonar     *sonar,
 
   /* Запускаем оборудование и если всё прошло нормально,
    * включаем приём данных. */
-  status = hyscan_sonar_start (priv->sonar, project_name, track_name, track_type);
+  status = hyscan_sonar_start (priv->sonar, project_name, track_name, track_type, track_plan);
   g_atomic_int_set (&priv->started, status);
 
   return status;

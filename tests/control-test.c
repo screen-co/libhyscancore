@@ -52,6 +52,7 @@ gchar *db_uri = NULL;
 gchar *project_name = NULL;
 gchar *track_name = NULL;
 gchar *schema_file = NULL;
+HyScanTrackPlan plan = {.start = {30.11, 50.12}, .end = {30.12, 50.13}, .velocity = 1.5};
 
 HyScanDB *db;
 HyScanDummyDevice *device1;
@@ -660,11 +661,11 @@ check_sonar_start (void)
 {
   HyScanTrackType track_type = HYSCAN_TRACK_SURVEY;
 
-  if (!hyscan_sonar_start (sonar, project_name, track_name, track_type))
+  if (!hyscan_sonar_start (sonar, project_name, track_name, track_type, &plan))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_start (device1, project_name, track_name, track_type) ||
-      !hyscan_dummy_device_check_start (device2, project_name, track_name, track_type))
+  if (!hyscan_dummy_device_check_start (device1, project_name, track_name, track_type, &plan) ||
+      !hyscan_dummy_device_check_start (device2, project_name, track_name, track_type, &plan))
     {
       g_error ("param_failed");
     }
