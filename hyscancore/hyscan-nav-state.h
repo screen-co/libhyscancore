@@ -19,8 +19,9 @@ typedef struct _HyScanNavStateData HyScanNavStateData;
  * HyScanNavStateData:
  * @loaded: признак того, что навигационные данные присутствуют
  * @time: текущее время, сек
- * @coord: положение объекта: широта и долгота; поле h содержит путевой угол (COG) в радианах
+ * @coord: положение объекта: широта и долгота
  * @speed: скорость движения, м/с
+ * @cog: путевой угол (COG), радианы
  * @true_heading: признак того, что указан истинный курс (HDT)
  * @heading: истинный курс, если @true_heading = %TRUE, иначе путевой угол, радианы
  *
@@ -31,7 +32,8 @@ struct _HyScanNavStateData
   gboolean            loaded;
 
   gdouble             time;
-  HyScanGeoGeodetic   coord;
+  HyScanGeoPoint      coord;
+  gdouble             cog;
   gboolean            true_heading;
   gdouble             heading;
   gdouble             speed;

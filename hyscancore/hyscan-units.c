@@ -148,8 +148,6 @@ hyscan_units_object_constructed (GObject *object)
 static void
 hyscan_units_object_finalize (GObject *object)
 {
-  HyScanUnits *units = HYSCAN_UNITS (object);
-
   G_OBJECT_CLASS (hyscan_units_parent_class)->finalize (object);
 }
 

@@ -73,7 +73,7 @@ HyScanGeo *            hyscan_planner_model_get_geo          (HyScanPlannerModel
 
 HYSCAN_API
 void                   hyscan_planner_model_set_origin       (HyScanPlannerModel       *pmodel,
-                                                              const HyScanGeoGeodetic  *origin);
+                                                              const HyScanPlannerOrigin*origin);
 
 HYSCAN_API
 HyScanPlannerOrigin *  hyscan_planner_model_get_origin       (HyScanPlannerModel       *pmodel);

@@ -73,7 +73,7 @@ test_model_data (HyScanNavModel     *model,
   if (test_from.lon != test_to.lon)
     g_assert (test_from.lon < data->coord.lon && data->coord.lon < test_to.lon);
   if (test_from.h != test_to.h)
-    g_assert (test_from.h < data->coord.h && data->coord.h < test_to.h);
+    g_assert (test_from.h < data->cog && data->cog < test_to.h);
 }
 
 /* Создаёт файл с тестовыми NMEA-данными и устанавливает область движения судна. */

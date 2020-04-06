@@ -142,8 +142,6 @@ hyscan_nav_smooth_set_property (GObject      *object,
 static void
 hyscan_nav_smooth_object_constructed (GObject *object)
 {
-  HyScanNavSmooth *nav_smooth = HYSCAN_NAV_SMOOTH (object);
-
   G_OBJECT_CLASS (hyscan_nav_smooth_parent_class)->constructed (object);
 }
 

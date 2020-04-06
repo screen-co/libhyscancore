@@ -79,9 +79,9 @@ static HyScanObject *      hyscan_object_data_planner_object_copy         (const
 static void                hyscan_object_data_planner_object_destroy      (HyScanObject             *object);
 static HyScanParamList *   hyscan_object_data_planner_get_read_plist      (HyScanObjectData         *data,
                                                                            const gchar              *id);
-static HyScanGeoGeodetic * hyscan_object_data_planner_string_to_points    (const gchar              *string,
+static HyScanGeoPoint *    hyscan_object_data_planner_string_to_points    (const gchar              *string,
                                                                            gsize                    *points_len);
-static gchar *             hyscan_object_data_planner_points_to_string    (HyScanGeoGeodetic        *points,
+static gchar *             hyscan_object_data_planner_points_to_string    (HyScanGeoPoint        *points,
                                                                            gsize                     points_len);
 static const gchar *       hyscan_object_data_planner_get_schema_id       (HyScanObjectData         *data,
                                                                            const HyScanObject       *object);
@@ -268,19 +268,19 @@ hyscan_object_data_planner_get_read_plist (HyScanObjectData *data,
     g_return_val_if_reached (NULL);
 }
 
-static HyScanGeoGeodetic *
+static HyScanGeoPoint *
 hyscan_object_data_planner_string_to_points (const gchar *string,
                                              gsize       *points_len)
 {
   GArray *array;
 
-  array = g_array_new (FALSE, FALSE, sizeof (HyScanGeoGeodetic));
+  array = g_array_new (FALSE, FALSE, sizeof (HyScanGeoPoint));
   if (string == NULL)
     goto exit;
 
   while (*string != '\0') {
     gchar *num_end;
-    HyScanGeoGeodetic point;
+    HyScanGeoPoint point;
 
     point.lat = g_ascii_strtod (string, &num_end);
     if (string == num_end || *num_end != ',')
@@ -300,11 +300,11 @@ hyscan_object_data_planner_string_to_points (const gchar *string,
 exit:
   *points_len = array->len;
 
-  return (HyScanGeoGeodetic *) g_array_free (array, FALSE);
+  return (HyScanGeoPoint *) g_array_free (array, FALSE);
 }
 
 static gchar *
-hyscan_object_data_planner_points_to_string (HyScanGeoGeodetic *points,
+hyscan_object_data_planner_points_to_string (HyScanGeoPoint    *points,
                                              gsize              points_len)
 {
   gchar *vertices;
@@ -391,7 +391,7 @@ hyscan_object_data_planner_get_origin (HyScanObjectData *mdata,
   origin = hyscan_planner_origin_new ();
   origin->origin.lat = hyscan_param_list_get_double (plist, "/lat");
   origin->origin.lon = hyscan_param_list_get_double (plist, "/lon");
-  origin->origin.h = hyscan_param_list_get_double (plist, "/azimuth");
+  origin->ox = hyscan_param_list_get_double (plist, "/azimuth");
 
   return (HyScanObject *) origin;
 }
@@ -448,7 +448,7 @@ hyscan_object_data_planner_set_origin (HyScanObjectData          *data,
 {
   hyscan_param_list_set_double (write_plist, "/lat", origin->origin.lat);
   hyscan_param_list_set_double (write_plist, "/lon", origin->origin.lon);
-  hyscan_param_list_set_double (write_plist, "/azimuth", origin->origin.h);
+  hyscan_param_list_set_double (write_plist, "/azimuth", origin->ox);
 
   return TRUE;
 }

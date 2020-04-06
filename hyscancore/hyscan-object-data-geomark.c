@@ -94,7 +94,7 @@ hyscan_object_data_geomark_get_full (HyScanObjectData *data,
                                      HyScanParamList  *read_plist)
 {
   HyScanMark *mark;
-  HyScanGeoGeodetic coord;
+  HyScanGeoPoint coord;
   gint64 sid, sver;
 
   sid = hyscan_param_list_get_integer (read_plist, "/schema/id");

@@ -19,7 +19,8 @@ hyscan_nmea_helper_extract_mins (gdouble  value,
 
 /**
  * hyscan_nmea_helper_make_rmc:
- * @coord: координаты и курс
+ * @coord: координаты
+ * @course: курс, градусы
  * @velocity: скорость движения, м/с
  * @utc_timestamp: время фиксации, микросекунды UNIX-time
  *
@@ -28,7 +29,8 @@ hyscan_nmea_helper_extract_mins (gdouble  value,
  * Returns: (transfer full): RMC-сообщение, для удаления g_free().
  */
 gchar *
-hyscan_nmea_helper_make_rmc (HyScanGeoGeodetic coord,
+hyscan_nmea_helper_make_rmc (HyScanGeoPoint    coord,
+                             gdouble           course,
                              gdouble           velocity,
                              gint64            utc_timestamp)
 {
@@ -59,7 +61,7 @@ hyscan_nmea_helper_make_rmc (HyScanGeoGeodetic coord,
                            g_date_time_get_minute (date_time),
                            g_date_time_get_seconds (date_time),
                            lat, lat_min, north ? 'N' : 'S', lon, lon_min, east ? 'E' : 'W',
-                           velocity, coord.h,
+                           velocity, course,
                            date_str);
 
   sentence = hyscan_nmea_helper_wrap (inner);
@@ -72,8 +74,8 @@ hyscan_nmea_helper_make_rmc (HyScanGeoGeodetic coord,
 }
 
 gchar *
-hyscan_nmea_helper_make_gga (HyScanGeoGeodetic coord,
-                             gint64            utc_timestamp)
+hyscan_nmea_helper_make_gga (HyScanGeoPoint coord,
+                             gint64         utc_timestamp)
 {
   GTimeVal time_val;
   GDateTime *date_time;

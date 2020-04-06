@@ -256,7 +256,7 @@ hyscan_mark_set_size (HyScanMark *mark,
 
 void
 hyscan_mark_geo_set_center (HyScanMarkGeo     *mark,
-                            HyScanGeoGeodetic  center)
+                            HyScanGeoPoint     center)
 {
   mark->center = center;
 }

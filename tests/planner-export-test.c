@@ -11,7 +11,6 @@ assert_points_equal (HyScanGeoPoint *point1,
 {
   g_assert_cmpfloat (ABS (point1->lat - point2->lat), <, 1e-6);
   g_assert_cmpfloat (ABS (point1->lon - point2->lon), <, 1e-6);
-  g_assert_cmpfloat (ABS (point1->h - point2->h), <, 1e-6);
 }
 
 static void
@@ -175,7 +174,7 @@ generate_objects (void)
 
   origin.origin.lat = 22;
   origin.origin.lon = 23;
-  origin.origin.h = 24;
+  origin.ox = 24;
   origin_ptr = hyscan_planner_origin_copy (&origin);
   g_hash_table_insert (objects, g_strdup (HYSCAN_PLANNER_ORIGIN_ID), origin_ptr);
 

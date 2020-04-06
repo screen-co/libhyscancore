@@ -202,7 +202,8 @@ send_rmc (gpointer user_data)
   GSocket *socket = G_SOCKET (user_data);
   gchar *sentence;
 
-  HyScanGeoGeodetic coord;
+  HyScanGeoPoint coord;
+  gdouble course;
   VesselPos state_c;
   gdouble speed;
   gint64 unix_time;
@@ -210,19 +211,19 @@ send_rmc (gpointer user_data)
   history_get (&state_c);
   g_debug ("Delay: %f\n", (g_get_monotonic_time () - state_c.time) * 1e-6);
 
-  hyscan_geo_topoXY2geo (geo, &coord, state_c.position, 0);
+  hyscan_geo_topoXY2geo0 (geo, &coord, state_c.position);
 
   speed = hypot (state_c.vx, state_c.vy);
-  coord.h = -atan2 (state_c.vy, state_c.vx) / G_PI * 180.0;
-  if (coord.h < 0.0)
-    coord.h += 360.0;
-  else if (coord.h == -0.0)  /* Меняем "-0" на "0". */
-    coord.h = 0.0;
+  course = -atan2 (state_c.vy, state_c.vx) / G_PI * 180.0;
+  if (course < 0.0)
+    course += 360.0;
+  else if (course == -0.0)  /* Меняем "-0" на "0". */
+    course = 0.0;
 
   unix_time = state_c.time;
   if (!rmc_off)
     {
-      sentence = hyscan_nmea_helper_make_rmc (coord, speed, unix_time);
+      sentence = hyscan_nmea_helper_make_rmc (coord, course, speed, unix_time);
       g_socket_send (socket, sentence, strlen (sentence), NULL, NULL);
       g_free (sentence);
     }

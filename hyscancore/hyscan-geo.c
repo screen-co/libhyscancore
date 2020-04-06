@@ -493,6 +493,22 @@ hyscan_geo_geo2topoXY (HyScanGeo            *geo,
 }
 
 gboolean
+hyscan_geo_geo2topoXY0 (HyScanGeo                      *geo,
+                        HyScanGeoCartesian2D           *dst_topoXY,
+                        HyScanGeoPoint                  src_geod)
+{
+  HyScanGeoGeodetic geodetic;
+
+  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
+
+  geodetic.lat = src_geod.lat;
+  geodetic.lon = src_geod.lon;
+  geodetic.h = 0;
+
+  return hyscan_geo_geo2topoXY (geo, dst_topoXY, geodetic);
+}
+
+gboolean
 hyscan_geo_topoXY2geo (HyScanGeo           *geo,
                        HyScanGeoGeodetic   *dst_geod,
                        HyScanGeoCartesian2D src_topoXY,
@@ -550,6 +566,24 @@ hyscan_geo_topoXY2geo (HyScanGeo           *geo,
   dst_geod->lat = dst_rad.lat;
   dst_geod->lon = dst_rad.lon;
   dst_geod->h = dst_rad.h;
+
+  return TRUE;
+}
+
+gboolean
+hyscan_geo_topoXY2geo0 (HyScanGeo           *geo,
+                        HyScanGeoPoint      *dst_geod,
+                        HyScanGeoCartesian2D src_topoXY)
+{
+  HyScanGeoGeodetic geodetic;
+
+  g_return_val_if_fail (HYSCAN_IS_GEO (geo), FALSE);
+
+  if (!hyscan_geo_topoXY2geo (geo, &geodetic, src_topoXY, 0))
+    return FALSE;
+
+  dst_geod->lat = geodetic.lat;
+  dst_geod->lon = geodetic.lon;
 
   return TRUE;
 }

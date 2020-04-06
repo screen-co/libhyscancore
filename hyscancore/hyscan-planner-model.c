@@ -93,6 +93,7 @@ hyscan_planner_model_changed (HyScanObjectModel *model)
   HyScanPlannerModel *pmodel = HYSCAN_PLANNER_MODEL (model);
   HyScanPlannerModelPrivate *priv = pmodel->priv;
   HyScanPlannerOrigin *object;
+  HyScanGeoGeodetic origin;
 
   g_clear_object (&priv->geo);
 
@@ -100,7 +101,10 @@ hyscan_planner_model_changed (HyScanObjectModel *model)
   if (object == NULL)
     return;
 
-  priv->geo = hyscan_geo_new (object->origin, HYSCAN_GEO_ELLIPSOID_WGS84);
+  origin.lat = object->origin.lat;
+  origin.lon = object->origin.lon;
+  origin.h = object->ox;
+  priv->geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
   hyscan_planner_origin_free (object);
 }
@@ -143,17 +147,16 @@ hyscan_planner_model_get_geo (HyScanPlannerModel *pmodel)
 /**
  * hyscan_planner_model_set_origin:
  * @pmodel: указатель на #HyScanPlannerModel
- * @origin: координаты начала отсчёта топоцентрической системы координат
+ * @origin: (nullable): координаты начала отсчёта местной системы координат
  *
- * Функция устанавливает начало топоцентрической системы координат. Направление
- * оси OX указывается в поле .h структуры @origin в градусах.
+ * Функция устанавливает начало местной системы координат.
  *
  * Фактическое изменение объекта пересчёта координат произойдёт после записи
  * данных в БД, т.е. при одном из следующих испусканий сигналов "changed".
  */
 void
-hyscan_planner_model_set_origin (HyScanPlannerModel      *pmodel,
-                                 const HyScanGeoGeodetic *origin)
+hyscan_planner_model_set_origin (HyScanPlannerModel        *pmodel,
+                                 const HyScanPlannerOrigin *origin)
 {
   HyScanObjectModel *model;
   HyScanPlannerOrigin *prev_value;
@@ -170,15 +173,10 @@ hyscan_planner_model_set_origin (HyScanPlannerModel      *pmodel,
     }
   else
     {
-      HyScanPlannerOrigin ref_point;
-
-      ref_point.type = HYSCAN_PLANNER_ORIGIN;
-      ref_point.origin = *origin;
-
       if (prev_value != NULL)
-        hyscan_object_model_modify_object (model, HYSCAN_PLANNER_ORIGIN_ID, (const HyScanObject *) &ref_point);
+        hyscan_object_model_modify_object (model, HYSCAN_PLANNER_ORIGIN_ID, (const HyScanObject *) origin);
       else
-        hyscan_object_model_add_object (model, (const HyScanObject *) &ref_point);
+        hyscan_object_model_add_object (model, (const HyScanObject *) origin);
     }
 
   g_clear_pointer (&prev_value, hyscan_planner_origin_free);

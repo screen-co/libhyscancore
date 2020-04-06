@@ -140,7 +140,7 @@ struct _HyScanMarkGeo
   gdouble           width;
   gdouble           height;
 
-  HyScanGeoGeodetic center;
+  HyScanGeoPoint    center;
 };
 
 HYSCAN_API
@@ -195,7 +195,7 @@ void                   hyscan_mark_waterfall_set_center_by_type     (HyScanMarkW
                                                                      guint32                count);
 HYSCAN_API
 void                   hyscan_mark_geo_set_center                   (HyScanMarkGeo         *mark,
-                                                                     HyScanGeoGeodetic      center);
+                                                                     HyScanGeoPoint         center);
 
 G_END_DECLS
 

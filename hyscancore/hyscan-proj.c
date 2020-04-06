@@ -163,7 +163,7 @@ static void
 hyscan_proj_set_limits (HyScanProj *proj)
 {
   HyScanProjPrivate *priv = proj->priv;
-  HyScanGeoGeodetic coord;
+  HyScanGeoPoint coord;
   HyScanGeoCartesian2D boundary;
 
   coord.lat = 0;
@@ -183,7 +183,7 @@ hyscan_proj_set_limits (HyScanProj *proj)
 /* Переводит географические координаты @coords в координаты (@x, @y) проекции. */
 static void
 hyscan_proj_geo_to_value (HyScanGeoProjection  *proj,
-                          HyScanGeoGeodetic     coords,
+                          HyScanGeoPoint        coords,
                           HyScanGeoCartesian2D *c2d)
 {
   HyScanProjPrivate *priv = HYSCAN_PROJ (proj)->priv;
@@ -202,7 +202,7 @@ hyscan_proj_geo_to_value (HyScanGeoProjection  *proj,
 /* Переводит координаты на карте (@x, @y) в географические координаты @coords. */
 static void
 hyscan_proj_value_to_geo (HyScanGeoProjection *proj,
-                          HyScanGeoGeodetic   *coords,
+                          HyScanGeoPoint      *coords,
                           gdouble              x,
                           gdouble              y)
 {
@@ -233,7 +233,7 @@ hyscan_proj_get_limits (HyScanGeoProjection *proj,
 /* Определяет масштаб проекции в указанной точке @coords. */
 static gdouble
 hyscan_proj_get_scale (HyScanGeoProjection *proj,
-                       HyScanGeoGeodetic    coords)
+                       HyScanGeoPoint       coords)
 {
   HyScanProjPrivate *priv = HYSCAN_PROJ (proj)->priv;
 
@@ -248,7 +248,7 @@ hyscan_proj_get_scale (HyScanGeoProjection *proj,
   else
     {
       HyScanGeoCartesian2D c2d1, c2d2;
-      HyScanGeoGeodetic coords2 = coords;
+      HyScanGeoPoint coords2 = coords;
       coords2.lat += G_UNLIKELY (coords2.lat) > 89. ? SEC_TO_DEG : -SEC_TO_DEG;
 
       hyscan_geo_projection_geo_to_value (proj, coords, &c2d1);

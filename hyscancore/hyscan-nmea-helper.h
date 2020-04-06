@@ -6,12 +6,13 @@
 G_BEGIN_DECLS
 
 HYSCAN_API
-gchar *                hyscan_nmea_helper_make_rmc         (HyScanGeoGeodetic  coord,
+gchar *                hyscan_nmea_helper_make_rmc         (HyScanGeoPoint     coord,
+                                                            gdouble            course,
                                                             gdouble            velocity,
                                                             gint64             time);
 
 HYSCAN_API
-gchar *                hyscan_nmea_helper_make_gga         (HyScanGeoGeodetic  coord,
+gchar *                hyscan_nmea_helper_make_gga         (HyScanGeoPoint     coord,
                                                             gint64             time);
 
 HYSCAN_API
