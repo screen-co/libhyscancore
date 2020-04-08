@@ -97,4 +97,9 @@ gboolean       hyscan_core_params_check_tvg_info               (HyScanDB        
                                                                 gint32                     param_id,
                                                                 gdouble                    data_rate);
 
+HYSCAN_API
+gboolean       hyscan_core_params_load_plan                    (HyScanDB                  *db,
+                                                                gint32                     param_id,
+                                                                HyScanTrackPlan           *plan);
+
 #endif /* __HYSCAN_CORE_COMMON_H__ */

@@ -132,6 +132,7 @@ struct _HyScanDummyDevicePrivate
   const gchar                     *project_name;
   const gchar                     *track_name;
   HyScanTrackType                  track_type;
+  const HyScanTrackPlan           *track_plan;
 
   const gchar                     *sensor_name;
 };
@@ -590,6 +591,7 @@ hyscan_dummy_device_sonar_start (HyScanSonar           *sonar,
   priv->project_name = project_name;
   priv->track_name = track_name;
   priv->track_type = track_type;
+  priv->track_plan = track_plan;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_START;
 
   return TRUE;
@@ -1168,14 +1170,16 @@ hyscan_dummy_device_check_tvg_disable (HyScanDummyDevice *dummy)
  * @project_name: название проекта, в который записывать данные
  * @track_name: название галса, в который записывать данные
  * @track_type: тип галса
+ * @track_plan: (nullable): план галса, #HyScanTrackPlan или %NULL
  *
  * Функция проверяет параметры функций #hyscan_sonar_start.
  */
 gboolean
-hyscan_dummy_device_check_start (HyScanDummyDevice *dummy,
-                                 const gchar       *project_name,
-                                 const gchar       *track_name,
-                                 HyScanTrackType    track_type)
+hyscan_dummy_device_check_start (HyScanDummyDevice     *dummy,
+                                 const gchar           *project_name,
+                                 const gchar           *track_name,
+                                 HyScanTrackType        track_type,
+                                 const HyScanTrackPlan *track_plan)
 {
   HyScanDummyDevicePrivate *priv;
 
@@ -1188,7 +1192,8 @@ hyscan_dummy_device_check_start (HyScanDummyDevice *dummy,
 
   if ((priv->project_name != project_name) ||
       (priv->track_name != track_name) ||
-      (priv->track_type != track_type))
+      (priv->track_type != track_type) ||
+      (priv->track_plan != track_plan))
     {
       return FALSE;
     }
@@ -1196,6 +1201,7 @@ hyscan_dummy_device_check_start (HyScanDummyDevice *dummy,
   priv->project_name = NULL;
   priv->track_name = NULL;
   priv->track_type = 0;
+  priv->track_plan = NULL;
 
   return TRUE;
 }
