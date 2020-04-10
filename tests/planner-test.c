@@ -39,7 +39,7 @@
 
 #define PROJECT_NAME "planner-project"
 #define ASSERT_POINTS_EQUAL(a,b)  G_STMT_START { \
-                                    HyScanGeoGeodetic *x = &(a), *y = &(b);  \
+                                    HyScanGeoPoint *x = &(a), *y = &(b);  \
                                     g_assert (ABS (x->lat - y->lat) < 1e-6); \
                                     g_assert (ABS (x->lon - y->lon) < 1e-6); \
                                   } G_STMT_END
@@ -69,17 +69,17 @@ create_project (HyScanDB *db)
   return project_name;
 }
 
-static HyScanGeoGeodetic *
+static HyScanGeoPoint *
 create_points_array (gsize points_len)
 {
-  HyScanGeoGeodetic *points;
+  HyScanGeoPoint *points;
   gsize i;
 
-  points = g_new0 (HyScanGeoGeodetic, points_len);
+  points = g_new0 (HyScanGeoPoint, points_len);
 
   for (i = 0; i < points_len; ++i)
     {
-      HyScanGeoGeodetic *coord = &points[i];
+      HyScanGeoPoint *coord = &points[i];
 
       coord->lat = 55.5 + 0.01 * sin (2.0 * G_PI * i / points_len);
       coord->lon = 38.2 + 0.01 * cos (2.0 * G_PI * i / points_len);
@@ -95,7 +95,7 @@ test_zones (HyScanDB *db,
   HyScanObjectData *planner;
   gchar *zone_id;
   gchar **zones;
-  HyScanGeoGeodetic *points;
+  HyScanGeoPoint *points;
   HyScanPlannerZone *zone;
   HyScanPlannerZone new_zone;
 
@@ -295,7 +295,7 @@ test_extend (void)
   gdouble angle, angle_ext;
   HyScanPlannerTrack *track_ext, *track_ext2;
   HyScanPlannerZone zone = { .type = HYSCAN_PLANNER_ZONE };
-  HyScanGeoGeodetic points[] = {
+  HyScanGeoPoint points[] = {
     { 36.983409,  55.937442 },
     { 36.983408,  55.937442 },
     { 36.983407,  55.937442 },
@@ -365,8 +365,8 @@ test_angle_length (void)
       g_assert_cmpfloat (ABS (length - data[i].length), <, 1e-1);
 
       geo = hyscan_planner_track_geo (&track.plan, &angle);
-      hyscan_geo_geo2topoXY (geo, &start, track.plan.start);
-      hyscan_geo_geo2topoXY (geo, &end, track.plan.end);
+      hyscan_geo_geo2topoXY0 (geo, &start, track.plan.start);
+      hyscan_geo_geo2topoXY0 (geo, &end, track.plan.end);
 
       /* HyScanGeo переводит точку старта в (0, 0), движение вдоль оси X (y = 0). */
       g_assert_cmpfloat (ABS (0.0 - start.x), <, 1e-1);

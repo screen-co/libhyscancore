@@ -103,7 +103,12 @@ typedef enum
 } HyScanGeoEllipsoidType;
 
 /** \brief Геодезические координаты (B, L, H) или (lat, long, H). */
-typedef HyScanGeoPoint HyScanGeoGeodetic;
+typedef struct
+{
+  gdouble                 lat;
+  gdouble                 lon;
+  gdouble                 h;
+} HyScanGeoGeodetic;
 
 /** \brief Декартовы координаты в пространстве ((X, Y, Z) или (X, Y, H)). */
 typedef struct
@@ -295,6 +300,20 @@ gboolean                hyscan_geo_geo2topoXY                  (HyScanGeo       
 
 /**
  *
+ * Пересчет геодезических координат в топоцентрическую СК в плоскость XOY для высоты h = 0.
+ *
+ * \param[in] geo - указатель на объект класcа;
+ * \param[out] dst_topoXY - топоцентрические координаты X, Y на выходе, указатель на структуру #HyScanGeoCartesian2D;
+ * \param[in] src_geod - геодезические координаты на входе, структура #HyScanGeoGeodetic.
+ *
+ */
+HYSCAN_API
+gboolean                hyscan_geo_geo2topoXY0                 (HyScanGeo                      *geo,
+                                                                HyScanGeoCartesian2D           *dst_topoXY,
+                                                                HyScanGeoPoint                  src_geod);
+
+/**
+ *
  * \brief Пересчет топоцентрических координат X, Y в геодезические B, L, H (широта, долгота, геодезическая высота).
  * При этом применяется итерационный процесс, число итераций задается параметром num_of_iter. Если он равен 0, то для
  * аппроксимации поверхности Земли используется сфера, иначе сфероид. Чем больше число итераций, тем выше точность.
@@ -319,6 +338,19 @@ gboolean                hyscan_geo_topoXY2geo                  (HyScanGeo       
                                                                 HyScanGeoGeodetic              *dst_geod,
                                                                 HyScanGeoCartesian2D            src_topoXY,
                                                                 gdouble                         h_geodetic);
+
+/**
+ *
+ * \brief Пересчет топоцентрических координат X, Y в геодезические на высоте h = 0.
+ *
+ * \param[in] geo - указатель на объект класcа;
+ * \param[out] dst_geod - геодезические координаты на выходе, указатель на структуру;
+ * \param[in] src_topoXY - топоцентрические координаты X, Y на входе, структура #HyScanGeoCartesian2D.
+ */
+HYSCAN_API
+gboolean                hyscan_geo_topoXY2geo0                 (HyScanGeo                      *geo,
+                                                                HyScanGeoPoint                 *dst_geod,
+                                                                HyScanGeoCartesian2D            src_topoXY);
 
 /* Функции для пересчета геодезических координат в различные СК. */
 

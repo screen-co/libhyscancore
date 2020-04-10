@@ -79,7 +79,7 @@ struct _HyScanPlannerTrack
  * HyScanPlannerZone:
  * @type: тип объекта
  * @name: название зоны
- * @points: (element-type HyScanGeoGeodetic): список вершин многоугольника, ограничивающего зону
+ * @points: (element-type HyScanGeoPoint): список вершин многоугольника, ограничивающего зону
  * @points_len: число вершин многоугольника
  *
  * Параметры зоны исследования
@@ -88,7 +88,7 @@ struct _HyScanPlannerZone
 {
   HyScanObjectType         type;
   gchar                   *name;
-  HyScanGeoGeodetic       *points;
+  HyScanGeoPoint          *points;
   gsize                    points_len;
   gint64                   ctime;
   gint64                   mtime;
@@ -97,14 +97,16 @@ struct _HyScanPlannerZone
 /**
  * HyScanPlannerZone:
  * @type: тип объекта
- * @origin: координаты точки начала отсчёта, поле .h содержит направление оси OX
+ * @origin: координаты точки начала отсчёта
+ * @ox: направление оси OX, градусы
  *
  * Референсная точка, которая считается началом координат для топографической системы координат
  */
 struct _HyScanPlannerOrigin
 {
   HyScanObjectType         type;
-  HyScanGeoGeodetic        origin;
+  HyScanGeoPoint           origin;
+  gdouble                  ox;
 };
 
 HYSCAN_API
@@ -173,7 +175,7 @@ void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone     
 
 HYSCAN_API
 void                   hyscan_planner_zone_vertex_append (HyScanPlannerZone         *zone,
-                                                          HyScanGeoGeodetic          point);
+                                                          HyScanGeoPoint             point);
 
 HYSCAN_API
 void                   hyscan_planner_zone_vertex_dup    (HyScanPlannerZone         *zone,

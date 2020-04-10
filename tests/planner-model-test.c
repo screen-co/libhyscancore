@@ -4,7 +4,7 @@
 #define PROJECT_NAME "planner-model-project"
 
 static HyScanPlannerTrack test_tracks[7];
-static HyScanGeoGeodetic  test_origin = { .lat = 40, .lon = 50, .h = 60 };
+static HyScanPlannerOrigin test_origin = { .type = HYSCAN_PLANNER_ORIGIN, .origin = {.lat = 40, .lon = 50}, .ox = 60 };
 static GMainLoop *loop;
 
 /* Функция создает плановый галс. */
@@ -52,9 +52,9 @@ check_origin (HyScanPlannerModel *model)
   ref_point = hyscan_planner_model_get_origin (model);
   g_assert_nonnull (ref_point);
 
-  g_assert_cmpfloat (ABS (ref_point->origin.lat - test_origin.lat), <, 1e-4);
-  g_assert_cmpfloat (ABS (ref_point->origin.lon - test_origin.lon), <, 1e-4);
-  g_assert_cmpfloat (ABS (ref_point->origin.h - test_origin.h), <, 1e-4);
+  g_assert_cmpfloat (ABS (ref_point->origin.lat - test_origin.origin.lat), <, 1e-4);
+  g_assert_cmpfloat (ABS (ref_point->origin.lon - test_origin.origin.lon), <, 1e-4);
+  g_assert_cmpfloat (ABS (ref_point->ox - test_origin.ox), <, 1e-4);
 
   hyscan_planner_origin_free (ref_point);
 

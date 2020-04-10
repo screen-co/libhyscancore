@@ -78,6 +78,7 @@ hyscan_planner_origin_copy (const HyScanPlannerOrigin *origin)
 
   copy = hyscan_planner_origin_new ();
   copy->origin = origin->origin;
+  copy->ox = origin->ox;
 
   return copy;
 }
@@ -238,12 +239,13 @@ hyscan_planner_track_geo (const HyScanTrackPlan *plan,
   HyScanGeoGeodetic origin;
   HyScanGeoCartesian2D start, end;
 
-  origin = plan->start;
+  origin.lat = plan->start.lat;
+  origin.lon = plan->start.lon;
   origin.h = 0.0;
 
   tmp_geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
-  if (!hyscan_geo_geo2topoXY (tmp_geo, &start, plan->start) ||
-      !hyscan_geo_geo2topoXY (tmp_geo, &end, plan->end))
+  if (!hyscan_geo_geo2topoXY0 (tmp_geo, &start, plan->start) ||
+      !hyscan_geo_geo2topoXY0 (tmp_geo, &end, plan->end))
     {
       g_warning ("HyScanPlanner: failed to transform coordinates");
 
@@ -298,7 +300,7 @@ hyscan_planner_track_length (const HyScanTrackPlan *plan)
   HyScanGeoCartesian2D end;
 
   geo = hyscan_planner_track_geo (plan, NULL);
-  hyscan_geo_geo2topoXY (geo, &end, plan->end);
+  hyscan_geo_geo2topoXY0 (geo, &end, plan->end);
   g_object_unref (geo);
 
   return end.x;
@@ -332,7 +334,7 @@ hyscan_planner_track_transit (const HyScanTrackPlan *plan1,
 #define U_TURN_LENGTH 12.5
 
   geo = hyscan_planner_track_geo (plan2, NULL);
-  if (!hyscan_geo_geo2topoXY (geo, &end, plan1->end))
+  if (!hyscan_geo_geo2topoXY0 (geo, &end, plan1->end))
     end.x = end.y = 0;
   g_object_unref (geo);
 
@@ -379,10 +381,10 @@ hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
   vertices_len = zone->points_len;
   vertices = g_new (HyScanGeoCartesian2D, zone->points_len);
   for (i = 0; i < zone->points_len; ++i)
-    hyscan_geo_geo2topoXY (geo, &vertices[i], zone->points[i]);
+    hyscan_geo_geo2topoXY0 (geo, &vertices[i], zone->points[i]);
 
-  hyscan_geo_geo2topoXY (geo, &start, track->plan.start);
-  hyscan_geo_geo2topoXY (geo, &end, track->plan.end);
+  hyscan_geo_geo2topoXY0 (geo, &start, track->plan.start);
+  hyscan_geo_geo2topoXY0 (geo, &end, track->plan.end);
 
   /* Находим точки пересечения отрезка с прямой. */
   points = hyscan_cartesian_polygon_cross (vertices, vertices_len, &start, &end, &points_len);
@@ -410,8 +412,8 @@ hyscan_planner_track_extend (const HyScanPlannerTrack  *track,
   else if (end_i % 2 == 0)
     end_i -= 1;
 
-  hyscan_geo_topoXY2geo (geo, &modified_track->plan.start, points[end_i - 1], 0);
-  hyscan_geo_topoXY2geo (geo, &modified_track->plan.end, points[end_i], 0);
+  hyscan_geo_topoXY2geo0 (geo, &modified_track->plan.start, points[end_i - 1]);
+  hyscan_geo_topoXY2geo0 (geo, &modified_track->plan.end, points[end_i]);
 
 exit:
   g_object_unref (geo);
@@ -484,8 +486,8 @@ hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
   copy->ctime = zone->ctime;
   copy->mtime = zone->mtime;
   copy->points_len = zone->points_len;
-  copy->points = g_new0 (HyScanGeoGeodetic, zone->points_len);
-  memcpy (copy->points, zone->points, sizeof (HyScanGeoGeodetic) * zone->points_len);
+  copy->points = g_new0 (HyScanGeoPoint, zone->points_len);
+  memcpy (copy->points, zone->points, sizeof (HyScanGeoPoint) * zone->points_len);
 
   return copy;
 }
@@ -536,7 +538,7 @@ hyscan_planner_zone_vertex_remove (HyScanPlannerZone *zone,
  */
 void
 hyscan_planner_zone_vertex_append (HyScanPlannerZone *zone,
-                                   HyScanGeoGeodetic  point)
+                                   HyScanGeoPoint     point)
 {
   zone->points_len++;
   zone->points = g_realloc_n (zone->points, zone->points_len, sizeof (*zone->points));

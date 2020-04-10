@@ -452,3 +452,45 @@ exit:
 
   return status;
 }
+
+/* Функция загружает план галса. */
+gboolean
+hyscan_core_params_load_plan (HyScanDB         *db,
+                              gint32            param_id,
+                              HyScanTrackPlan  *plan)
+{
+  HyScanParamList *param_list;
+  gboolean status = FALSE;
+
+  param_list = hyscan_param_list_new ();
+
+  hyscan_param_list_add (param_list, "/schema/id");
+  hyscan_param_list_add (param_list, "/schema/version");
+  hyscan_param_list_add (param_list, "/plan/start/lat");
+  hyscan_param_list_add (param_list, "/plan/start/lon");
+  hyscan_param_list_add (param_list, "/plan/end/lat");
+  hyscan_param_list_add (param_list, "/plan/end/lon");
+  hyscan_param_list_add (param_list, "/plan/velocity");
+
+  if (!hyscan_db_param_get (db, param_id, NULL, param_list))
+    goto exit;
+
+  if ((hyscan_param_list_get_integer (param_list, "/schema/id") != TRACK_SCHEMA_ID) ||
+      (hyscan_param_list_get_integer (param_list, "/schema/version") != TRACK_SCHEMA_VERSION))
+    {
+      goto exit;
+    }
+
+  plan->start.lat = hyscan_param_list_get_double (param_list, "/plan/start/lat");
+  plan->start.lon = hyscan_param_list_get_double (param_list, "/plan/start/lon");
+  plan->end.lat = hyscan_param_list_get_double (param_list, "/plan/end/lat");
+  plan->end.lon = hyscan_param_list_get_double (param_list, "/plan/end/lon");
+  plan->velocity = hyscan_param_list_get_double (param_list, "/plan/velocity");
+
+  status = (plan->velocity > 0);
+
+exit:
+  g_object_unref (param_list);
+
+  return status;
+}

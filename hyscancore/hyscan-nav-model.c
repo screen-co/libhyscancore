@@ -120,7 +120,8 @@ typedef struct
 
 typedef struct
 {
-  HyScanGeoGeodetic       coord;      /* Географические координаты и курс COG. */
+  HyScanGeoPoint          coord;      /* Географические координаты и курс COG. */
+  gdouble                 cog;
   gdouble                 heading;    /* Курс HDG при его наличии; иначе COG. */
 } HyScanNavModelFixPos;
 
@@ -336,7 +337,7 @@ hyscan_nav_model_object_finalize (GObject *object)
 
   g_mutex_lock (&priv->sensor_lock);
   g_clear_object (&priv->sensor);
-  g_clear_pointer (&priv->sensor_offset, (GDestroyNotify) hyscan_antenna_offset_free);
+  g_clear_pointer (&priv->sensor_offset, hyscan_antenna_offset_free);
   g_free (priv->sensor_name);
   g_mutex_unlock (&priv->sensor_lock);
   g_mutex_clear (&priv->sensor_lock);
@@ -437,7 +438,8 @@ hyscan_nav_model_shift_fix (HyScanNavModel    *model,
                             HyScanNavModelFix *fix)
 {
   HyScanNavModelPrivate *priv = model->priv;
-  HyScanGeoGeodetic origin, shifted;
+  HyScanGeoGeodetic origin;
+  HyScanGeoPoint shifted;
   HyScanGeoCartesian2D offset;
 
   if (priv->sensor_offset == NULL)
@@ -447,7 +449,7 @@ hyscan_nav_model_shift_fix (HyScanNavModel    *model,
     }
 
   /* Смещение курса судна: по часовой стрелке на sensor_offset->yaw. */
-  fix->ship_pos.coord.h = fix->sensor_pos.coord.h - RAD2DEG (priv->sensor_offset->yaw);
+  fix->ship_pos.cog = fix->sensor_pos.cog - RAD2DEG (priv->sensor_offset->yaw);
   fix->ship_pos.heading = fix->sensor_pos.heading - RAD2DEG (priv->sensor_offset->yaw);
 
   /* Начало СК по центру антенны,
@@ -460,10 +462,9 @@ hyscan_nav_model_shift_fix (HyScanNavModel    *model,
   /* Смещение центра судна: назад на sensor_offset->x и влево на sensor_offset->y. */
   offset.x = -priv->sensor_offset->forward;
   offset.y =  priv->sensor_offset->starboard;
-  hyscan_geo_topoXY2geo (priv->geo, &shifted, offset, 0);
+  hyscan_geo_topoXY2geo0 (priv->geo, &shifted, offset);
 
-  fix->ship_pos.coord.lat = shifted.lat;
-  fix->ship_pos.coord.lon = shifted.lon;
+  fix->ship_pos.coord = shifted;
 }
 
 /* Добавляет новый фикс в список. */
@@ -544,8 +545,8 @@ hyscan_nav_model_read_rmc (HyScanNavModel    *model,
   if (!parsed)
     return FALSE;
 
-  if (!hyscan_nmea_parser_parse_string (priv->parser_track, sentence, &fix->sensor_pos.coord.h))
-    fix->sensor_pos.coord.h = 0;
+  if (!hyscan_nmea_parser_parse_string (priv->parser_track, sentence, &fix->sensor_pos.cog))
+    fix->sensor_pos.cog = 0;
   if (!hyscan_nmea_parser_parse_string (priv->parser_speed, sentence, &fix->speed))
     fix->speed = 0;
 
@@ -554,7 +555,7 @@ hyscan_nav_model_read_rmc (HyScanNavModel    *model,
   /* Расчитываем скорости по широте и долготе. */
   if (fix->speed > 0)
     {
-      gdouble bearing = DEG2RAD (fix->sensor_pos.coord.h);
+      gdouble bearing = DEG2RAD (fix->sensor_pos.cog);
 
       fix->speed_lat = KNOTS2LAT (fix->speed * cos (bearing));
       fix->speed_lon = KNOTS2LON (fix->speed * sin (bearing), fix->sensor_pos.coord.lat);
@@ -565,7 +566,7 @@ hyscan_nav_model_read_rmc (HyScanNavModel    *model,
       fix->speed_lon = 0;
     }
 
-  fix->sensor_pos.heading = fix->sensor_pos.coord.h;
+  fix->sensor_pos.heading = fix->sensor_pos.cog;
   fix->true_heading = FALSE;
   fix->params_set = FALSE;
 
@@ -592,7 +593,7 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
   if (!parsed)
     return FALSE;
 
-  fix->sensor_pos.coord.h = 0;
+  fix->sensor_pos.cog = 0;
   fix->speed = 0;
   fix->time = fix_time;
 
@@ -622,7 +623,7 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
         lon1 = prev_fix->sensor_pos.coord.lon;
 
         if (i == 0)
-          track0 = prev_fix->sensor_pos.coord.h;
+          track0 = prev_fix->sensor_pos.cog;
 
         dtime = time2 - time1;
 
@@ -658,7 +659,7 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
         lon2 = fix->sensor_pos.coord.lon;
         dtime = fix->time - prev_fix->time;
         speed = hyscan_track_data_calc_dist (lat1, lon1, lat2, lon2) / dtime;
-        fix->sensor_pos.coord.h = hyscan_track_data_calc_track (lat1, lon1, lat2, lon2);
+        fix->sensor_pos.cog = hyscan_track_data_calc_track (lat1, lon1, lat2, lon2);
         fix->speed = METER2KNOTS (speed);
         //
         // track_sum /= i;
@@ -675,7 +676,7 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
   /* Расчитываем скорости по широте и долготе. */
   if (fix->speed > 0)
     {
-      gdouble bearing = DEG2RAD (fix->sensor_pos.coord.h);
+      gdouble bearing = DEG2RAD (fix->sensor_pos.cog);
 
       fix->speed_lat = KNOTS2LAT (fix->speed * cos (bearing));
       fix->speed_lon = KNOTS2LON (fix->speed * sin (bearing), fix->sensor_pos.coord.lat);
@@ -686,7 +687,7 @@ hyscan_nav_model_read_gga (HyScanNavModel    *model,
       fix->speed_lon = 0;
     }
 
-  fix->sensor_pos.heading = fix->sensor_pos.coord.h;
+  fix->sensor_pos.heading = fix->sensor_pos.cog;
   fix->true_heading = FALSE;
   fix->params_set = FALSE;
 
@@ -806,7 +807,7 @@ hyscan_nav_model_latest (HyScanNavModel     *model,
   last_fix = last_fix_l->data;
 
   data->coord = last_fix->ship_pos.coord;
-  data->coord.h = DEG2RAD (data->coord.h);
+  data->cog = DEG2RAD (last_fix->ship_pos.cog);
   data->heading = DEG2RAD (last_fix->ship_pos.heading);
   data->true_heading = last_fix->true_heading;
   data->speed = KNOTS2METER (last_fix->speed);
@@ -878,7 +879,7 @@ hyscan_nav_model_interpolate (HyScanNavModel     *model,
   dt = data->time - params_fix.time;
   data->coord.lat = hyscan_nav_model_interpolate_value (&params_fix.lat_params, dt, &v_lat);
   data->coord.lon = hyscan_nav_model_interpolate_value (&params_fix.lon_params, dt, &v_lon);
-  data->coord.h = atan2 (v_lon, v_lat / cos (DEG2RAD (data->coord.lat)));
+  data->cog = atan2 (v_lon, v_lat / cos (DEG2RAD (data->coord.lat)));
 
   data->heading = DEG2RAD (params_fix.ship_pos.heading);
   data->true_heading = params_fix.true_heading;

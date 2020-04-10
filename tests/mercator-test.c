@@ -38,9 +38,9 @@
 #define RADIUS_EARTH 6378137.0
 
 typedef struct {
-  HyScanGeoGeodetic geo;
-  gdouble           x;
-  gdouble           y;
+  HyScanGeoPoint geo;
+  gdouble        x;
+  gdouble        y;
 } TestData;
 
 void
@@ -86,7 +86,7 @@ test_projection (HyScanGeoProjection *projection,
   /* Проверяем перевод точек из гео-СК в декартову и обратно. */
   for (i = 0; i < n_elements; ++i)
     {
-      HyScanGeoGeodetic coord;
+      HyScanGeoPoint coord;
       HyScanGeoCartesian2D c2d;
       gdouble lat_err, lon_err;
 
@@ -123,7 +123,7 @@ test_projection (HyScanGeoProjection *projection,
 void
 test_pseudo_mercator_scale (HyScanGeoProjection *projection)
 {
-  HyScanGeoGeodetic coords;
+  HyScanGeoPoint coords;
   gdouble scale0, scale20, scale40, scale40_1;
 
   coords.lon = 80;
@@ -146,7 +146,7 @@ test_pseudo_mercator_scale (HyScanGeoProjection *projection)
 void
 test_mercator_scale (HyScanGeoProjection *projection)
 {
-  HyScanGeoGeodetic coords;
+  HyScanGeoPoint coords;
   gdouble scale0;
 
   coords.lon = 80;

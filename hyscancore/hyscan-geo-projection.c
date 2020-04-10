@@ -72,7 +72,7 @@ hyscan_geo_projection_default_init (HyScanGeoProjectionInterface *iface)
  */
 void
 hyscan_geo_projection_value_to_geo (HyScanGeoProjection *geo_projection,
-                                    HyScanGeoGeodetic   *coords,
+                                    HyScanGeoPoint      *coords,
                                     gdouble              x,
                                     gdouble              y)
 {
@@ -96,7 +96,7 @@ hyscan_geo_projection_value_to_geo (HyScanGeoProjection *geo_projection,
  */
 void
 hyscan_geo_projection_geo_to_value (HyScanGeoProjection  *geo_projection,
-                                    HyScanGeoGeodetic     coords,
+                                    HyScanGeoPoint        coords,
                                     HyScanGeoCartesian2D *c2d)
 {
   HyScanGeoProjectionInterface *iface;
@@ -138,7 +138,7 @@ hyscan_geo_projection_get_limits (HyScanGeoProjection *geo_projection,
 /**
  * hyscan_geo_projection_get_scale:
  * @geo_projection: указатель на проекцию #geo_projection
- * @coords: географические координаты #HyScanGeoGeodetic
+ * @coords: географические координаты #HyScanGeoPoint
  *
  * Определяет масштаб проекции в указнной точке @coords. Масштаб показывает,
  * сколько метров местности соответствует единичному отрезку на проекции.
@@ -147,7 +147,7 @@ hyscan_geo_projection_get_limits (HyScanGeoProjection *geo_projection,
  */
 gdouble
 hyscan_geo_projection_get_scale (HyScanGeoProjection *geo_projection,
-                                 HyScanGeoGeodetic    coords)
+                                 HyScanGeoPoint       coords)
 {
   HyScanGeoProjectionInterface *iface;
 

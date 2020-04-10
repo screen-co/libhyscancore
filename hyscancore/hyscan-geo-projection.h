@@ -62,12 +62,12 @@ struct _HyScanGeoProjectionInterface
   GTypeInterface       g_iface;
 
   void                 (*value_to_geo)         (HyScanGeoProjection    *geo_projection,
-                                                HyScanGeoGeodetic      *coords,
+                                                HyScanGeoPoint         *coords,
                                                 gdouble                 x,
                                                 gdouble                 y);
 
   void                 (*geo_to_value)         (HyScanGeoProjection    *geo_projection,
-                                                HyScanGeoGeodetic       coords,
+                                                HyScanGeoPoint          coords,
                                                 HyScanGeoCartesian2D   *c2d);
 
   void                 (*get_limits)           (HyScanGeoProjection    *geo_projection,
@@ -77,7 +77,7 @@ struct _HyScanGeoProjectionInterface
                                                 gdouble                *max_y);
 
   gdouble              (*get_scale)            (HyScanGeoProjection    *geo_projection,
-                                                HyScanGeoGeodetic       coords);
+                                                HyScanGeoPoint          coords);
 
   guint                (*hash)                 (HyScanGeoProjection    *geo_projection);
 };
@@ -89,13 +89,13 @@ GType                  hyscan_geo_projection_get_type         (void);
 
 HYSCAN_API
 void                   hyscan_geo_projection_value_to_geo     (HyScanGeoProjection    *geo_projection,
-                                                               HyScanGeoGeodetic      *coords,
+                                                               HyScanGeoPoint         *coords,
                                                                gdouble                 x,
                                                                gdouble                 y);
 
 HYSCAN_API
 void                   hyscan_geo_projection_geo_to_value     (HyScanGeoProjection    *geo_projection,
-                                                               HyScanGeoGeodetic       coords,
+                                                               HyScanGeoPoint          coords,
                                                                HyScanGeoCartesian2D   *c2d);
 
 HYSCAN_API
@@ -107,7 +107,7 @@ void                   hyscan_geo_projection_get_limits       (HyScanGeoProjecti
 
 HYSCAN_API
 gdouble                hyscan_geo_projection_get_scale        (HyScanGeoProjection    *geo_projection,
-                                                               HyScanGeoGeodetic       coords);
+                                                               HyScanGeoPoint          coords);
 
 HYSCAN_API
 guint                  hyscan_geo_projection_hash             (HyScanGeoProjection    *geo_projection);

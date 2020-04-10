@@ -985,6 +985,7 @@ hyscan_data_writer_sonar_set_offset (HyScanDataWriter          *writer,
  * @project_name: название проекта для записи данных
  * @track_name: название галса для записи данных
  * @track_type: тип галса
+ * @track_plan: (nullable): запланированные параметры галса
  * @date_time: дата и время создания проека и галса или -1
  *
  * Функция включает запись данных. Пользователь может указать дату и время

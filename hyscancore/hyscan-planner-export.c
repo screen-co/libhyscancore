@@ -87,7 +87,7 @@ static void               hyscan_planner_export_read_origin        (xmlNodePtr  
 static gboolean           hyscan_planner_export_xml_inner          (xmlTextWriterPtr     writer,
                                                                     GHashTable          *objects);
 static void               hyscan_planner_export_kml_coord          (GString             *string,
-                                                                    HyScanGeoGeodetic   *coord);
+                                                                    HyScanGeoPoint      *coord);
 static void               hyscan_planner_export_kml_zone           (xmlTextWriterPtr     writer,
                                                                     HyScanPlannerZone   *zone);
 static void               hyscan_planner_export_kml_track          (xmlTextWriterPtr     writer,
@@ -321,7 +321,7 @@ hyscan_planner_export_read_origin (xmlNodePtr  node,
   origin_copy = hyscan_planner_origin_copy (&origin);
 
   result &= hyscan_planner_export_read_point (node, &origin_copy->origin, "lat", "lon");
-  result &= hyscan_planner_export_read_d (node, "ox", &origin_copy->origin.h);
+  result &= hyscan_planner_export_read_d (node, "ox", &origin_copy->ox);
 
   if (result)
     g_hash_table_insert (objects, g_strdup (HYSCAN_PLANNER_ORIGIN_ID), origin_copy);
@@ -349,7 +349,7 @@ hyscan_planner_export_xml_inner (xmlTextWriterPtr  writer,
     {
       xmlTextWriterStartElement (writer, BAD_CAST "origin");
       hyscan_planner_export_write_point (writer, &origin->origin, "lat", "lon");
-      hyscan_planner_export_write_double (writer, "ox", origin->origin.h);
+      hyscan_planner_export_write_double (writer, "ox", origin->ox);
       xmlTextWriterEndElement (writer);
     }
 
@@ -409,8 +409,8 @@ hyscan_planner_export_xml_inner (xmlTextWriterPtr  writer,
 }
 
 static void
-hyscan_planner_export_kml_coord (GString           *string,
-                                 HyScanGeoGeodetic *coord)
+hyscan_planner_export_kml_coord (GString        *string,
+                                 HyScanGeoPoint *coord)
 {
   gchar buffer[G_ASCII_DTOSTR_BUF_SIZE];
 
