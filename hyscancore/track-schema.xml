@@ -41,7 +41,7 @@
   <schema id="track-plan">
     <node id="start" schema="geo-coordinate" name="Start point"/>
     <node id="end" schema="geo-coordinate" name="End point"/>
-    <key id="velocity" name="Velocity, m/s" type="double"/>
+    <key id="speed" name="Ship speed along the track, m/s" type="double"/>
   </schema>
 
   <schema id="track">
@@ -50,7 +50,7 @@
         <default>1715033709558529337</default>
       </key>
       <key id="version" name="Track schema version" type="integer" access="r">
-        <default>20200200</default>
+        <default>20200300</default>
       </key>
     </node>
     <key id="id" name="Track id" type="string"/>

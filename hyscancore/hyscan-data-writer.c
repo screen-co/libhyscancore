@@ -487,7 +487,7 @@ hyscan_data_writer_create_track (HyScanDB              *db,
       hyscan_param_list_set_double (param_list, "/plan/start/lon", track_plan->start.lon);
       hyscan_param_list_set_double (param_list, "/plan/end/lat", track_plan->end.lat);
       hyscan_param_list_set_double (param_list, "/plan/end/lon", track_plan->end.lon);
-      hyscan_param_list_set_double (param_list, "/plan/velocity", track_plan->velocity);
+      hyscan_param_list_set_double (param_list, "/plan/speed", track_plan->speed);
     }
   if (!hyscan_db_param_set (db, param_id, NULL, param_list))
     goto exit;

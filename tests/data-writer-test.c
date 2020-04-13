@@ -53,7 +53,7 @@
 #define SIGNAL_SIZE            256
 #define TVG_SIZE               512
 
-static HyScanTrackPlan plan_2 = { .start = { 12.35, 15.68 }, .end = { 12.34, 15.67 }, .velocity = 8.9 };
+static HyScanTrackPlan plan_2 = { .start = { 12.35, 15.68 }, .end = { 12.34, 15.67 }, .speed = 8.9 };
 
 /* Функция возвращает название датчика. */
 const gchar *
@@ -208,7 +208,7 @@ gboolean track_check_plan (HyScanTrackPlan *plan,
          (fabs (plan->start.lon - expect->start.lon) < 1e-6) &&
          (fabs (plan->end.lat - expect->end.lat) < 1e-6) &&
          (fabs (plan->end.lon - expect->end.lon) < 1e-6) &&
-         (fabs (plan->velocity - expect->velocity) < 1e-6);
+         (fabs (plan->speed - expect->speed) < 1e-6);
 }
 
 /* Функция проверяет параметры галса. */
