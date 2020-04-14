@@ -80,12 +80,12 @@ GHashTable *           hyscan_profile_offset_list_sensors     (HyScanProfileOffs
 HYSCAN_API
 void                   hyscan_profile_offset_add_source       (HyScanProfileOffset *profile,
                                                                HyScanSourceType     source,
-                                                               HyScanAntennaOffset  offset);
+                                                               HyScanAntennaOffset *offset);
 
 HYSCAN_API
 void                   hyscan_profile_offset_add_sensor       (HyScanProfileOffset *profile,
                                                                const gchar         *sensor,
-                                                               HyScanAntennaOffset  offset);
+                                                               HyScanAntennaOffset *offset);
 
 HYSCAN_API
 gboolean               hyscan_profile_offset_remove_source    (HyScanProfileOffset *profile,
