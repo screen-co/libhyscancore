@@ -71,7 +71,7 @@ compare_objects (GHashTable *table1,
           g_assert_cmpint (track1->number, ==, track2->number);
           assert_points_equal (&track1->plan.start, &track2->plan.start);
           assert_points_equal (&track1->plan.end, &track2->plan.end);
-          assert_double_equal (track1->plan.velocity, track2->plan.velocity);
+          assert_double_equal (track1->plan.speed, track2->plan.speed);
         }
 
       else if (HYSCAN_IS_PLANNER_ZONE (value1))
@@ -168,7 +168,7 @@ generate_objects (void)
   track.plan.start.lon = 12;
   track.plan.end.lat = 11;
   track.plan.end.lon = 12;
-  track.plan.velocity = 2.0;
+  track.plan.speed = 2.0;
   track_ptr = hyscan_planner_track_copy (&track);
   g_hash_table_insert (objects, g_strdup ("2"), track_ptr);
 

@@ -196,7 +196,7 @@ test_tracks (HyScanDB *db,
   track_new.plan.start.lon = 38.452;
   track_new.plan.end.lat = 55.313;
   track_new.plan.end.lon = 38.453;
-  track_new.plan.velocity = 1.3;
+  track_new.plan.speed = 1.3;
   track_new.name = "Track 1";
   track_new.number = 0;
   track_new.zone_id = zone_id;
@@ -214,7 +214,7 @@ test_tracks (HyScanDB *db,
   /* Меняем параметры галса. */
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
-  track_obj->plan.velocity = 1.0;
+  track_obj->plan.speed = 1.0;
   hyscan_planner_track_add_record (track_obj, "rec1");
   hyscan_planner_track_add_record (track_obj, "rec2");
   hyscan_planner_track_add_record (track_obj, "rec3");
@@ -225,7 +225,7 @@ test_tracks (HyScanDB *db,
   /* Проверяем, что параметры обновились. */
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
-  g_assert_cmpfloat (ABS (track_obj->plan.velocity - 1.0), <, 1e-4);
+  g_assert_cmpfloat (ABS (track_obj->plan.speed - 1.0), <, 1e-4);
   g_assert_cmpint (g_strv_length (track_obj->records), ==, 2);
   g_assert (g_strv_contains ((const gchar * const *) track_obj->records, "rec1"));
   g_assert (g_strv_contains ((const gchar * const *) track_obj->records, "rec2"));

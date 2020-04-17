@@ -444,7 +444,7 @@ hyscan_planner_plan_equal (const HyScanTrackPlan *plan1,
   if (plan1 == NULL || plan2 == NULL)
     return FALSE;
 
-  return fabs (plan1->velocity - plan2->velocity) < .001 &&
+  return fabs (plan1->speed - plan2->speed) < .001 &&
          fabs (plan1->start.lat - plan2->start.lat) < 1e-6 &&
          fabs (plan1->start.lon - plan2->start.lon) < 1e-6 &&
          fabs (plan1->end.lat - plan2->end.lat) < 1e-6 &&
