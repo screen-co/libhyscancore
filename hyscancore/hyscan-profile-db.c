@@ -72,8 +72,7 @@ static gboolean hyscan_profile_db_read            (HyScanProfile   *profile,
 static gboolean hyscan_profile_db_write           (HyScanProfile   *profile,
                                                    GKeyFile        *file);
 
-G_DEFINE_TYPE_WITH_CODE (HyScanProfileDB, hyscan_profile_db, HYSCAN_TYPE_PROFILE,
-                         G_ADD_PRIVATE (HyScanProfileDB));
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanProfileDB, hyscan_profile_db, HYSCAN_TYPE_PROFILE);
 
 static void
 hyscan_profile_db_class_init (HyScanProfileDBClass *klass)

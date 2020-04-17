@@ -70,12 +70,7 @@ static void     hyscan_profile_set_property       (GObject               *object
                                                    GParamSpec            *pspec);
 static void     hyscan_profile_object_finalize    (GObject               *object);
 
-static gboolean hyscan_profile_read_real          (HyScanProfile         *profile,
-                                                   const gchar           *file);
-static gboolean hyscan_profile_write_real         (HyScanProfile         *profile,
-                                                   const gchar           *file);
-
-G_DEFINE_TYPE_WITH_PRIVATE (HyScanProfile, hyscan_profile, G_TYPE_OBJECT);
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (HyScanProfile, hyscan_profile, G_TYPE_OBJECT);
 
 static void
 hyscan_profile_class_init (HyScanProfileClass *klass)
@@ -130,17 +125,35 @@ hyscan_profile_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_parent_class)->finalize (object);
 }
 
-/* Функция чтения профиля. */
-static gboolean
-hyscan_profile_read_real (HyScanProfile *profile,
-                          const gchar   *file)
+/**
+ * hyscan_profile_read:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция производит чтение профиля. Текущая реализация запрещает читать
+ * профиль более одного раза. Объект профиля должен быть полностью настроен
+ * перед вызовом этой функции.
+ *
+ * Returns: результат чтения профиля.
+ */
+gboolean
+hyscan_profile_read (HyScanProfile *self)
 {
-  HyScanProfileClass *klass = HYSCAN_PROFILE_GET_CLASS (profile);
-  HyScanProfilePrivate *priv = profile->priv;
+  HyScanProfileClass *klass;
+  HyScanProfilePrivate *priv;
   GError *error = NULL;
   gboolean status;
 
+  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
+  klass = HYSCAN_PROFILE_GET_CLASS (profile);
+  priv = profile->priv;
+
+  /* Если файл не задан, выходим. */
+  if (priv->file == NULL || klass->read == NULL)
+    return FALSE;
+
+  g_clear_pointer (&self->priv->kf, g_key_file_unref);
   priv->kf = g_key_file_new ();
+
   status = g_key_file_load_from_file (priv->kf, file, G_KEY_FILE_NONE, &error);
 
   if (!status && error->code != G_FILE_ERROR_NOENT)
@@ -150,25 +163,33 @@ hyscan_profile_read_real (HyScanProfile *profile,
       return FALSE;
     }
 
-  if (klass->read == NULL)
-    return FALSE;
-
   return klass->read (profile, priv->kf);
 }
 
-/* Функция чтения профиля. */
-static gboolean
-hyscan_profile_write_real (HyScanProfile *profile,
-                           const gchar   *file)
+/**
+ * hyscan_profile_write:
+ * @self: указатель на #HyScanProfile
+ *
+ * Функция производит запись профиля.
+ * Returns: результат записи профиля.
+ */
+gboolean
+hyscan_profile_write (HyScanProfile *self)
 {
-  HyScanProfileClass *klass = HYSCAN_PROFILE_GET_CLASS (profile);
-  HyScanProfilePrivate *priv = profile->priv;
+  HyScanProfileClass *klass;
+  HyScanProfilePrivate *priv;
   GError *error = NULL;
 
-  priv->kf = g_key_file_new ();
+  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
+  klass = HYSCAN_PROFILE_GET_CLASS (profile);
+  priv = profile->priv;
 
-  if (klass->write == NULL)
+  /* Если файл не задан, выходим. */
+  if (priv->file == NULL || klass->write == NULL)
     return FALSE;
+  
+  g_clear_pointer (&self->priv->kf, g_key_file_unref);
+  priv->kf = g_key_file_new ();
 
   if (!klass->write (profile, priv->kf))
     return FALSE;
@@ -184,44 +205,24 @@ hyscan_profile_write_real (HyScanProfile *profile,
 }
 
 /**
- * hyscan_profile_read:
+ * hyscan_profile_check:
  * @self: указатель на #HyScanProfile
  *
- * Функция производит чтение профиля. Текущая реализация запрещает читать
- * профиль более одного раза. Объект профиля должен быть полностью настроен
- * перед вызовом этой функции.
- *
- * Returns: результат чтения профиля.
+ * Функция проверяет валидность профиля. 
+ * Returns: %TRUE, если профиль валиден.
  */
 gboolean
-hyscan_profile_read (HyScanProfile *self)
+hyscan_profile_check (HyScanProfile *profile)
 {
+  HyScanProfileClass *klass;
+
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
-  g_return_val_if_fail (self->priv->file != NULL, FALSE);
+  klass = HYSCAN_PROFILE_GET_CLASS (profile);
 
-  g_clear_pointer (&self->priv->kf, g_key_file_unref);
+  if (klass->check (profile) == NULL)
+    return TRUE;
 
-  return hyscan_profile_read_real (self, self->priv->file);
-}
-
-/**
- * hyscan_profile_write:
- * @self: указатель на #HyScanProfile
- *
- * Функция производит запись профиля.
- * Returns: результат записи профиля.
- */
-gboolean
-hyscan_profile_write (HyScanProfile *self)
-{
-  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
-  g_return_val_if_fail (self->priv->file != NULL, FALSE);
-
-  /* Если файл не задан, выходим. */
-  if (self->priv->file == NULL)
-    return FALSE;
-
-  return hyscan_profile_write_real (self, self->priv->file);
+  return klass->check (profile);
 }
 
 /**
