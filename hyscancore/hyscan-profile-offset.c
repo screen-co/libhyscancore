@@ -71,7 +71,6 @@ struct _HyScanProfileOffsetPrivate
 };
 
 static void     hyscan_profile_offset_object_finalize  (GObject             *object);
-static void     hyscan_profile_offset_clear            (HyScanProfileOffset *profile);
 static gboolean hyscan_profile_offset_info_group       (HyScanProfileOffset *profile,
                                                         GKeyFile            *kf,
                                                         const gchar         *group);
@@ -79,6 +78,7 @@ static gboolean hyscan_profile_offset_read             (HyScanProfile       *pro
                                                         GKeyFile            *file);
 static gboolean hyscan_profile_offset_write            (HyScanProfile       *profile,
                                                         GKeyFile            *file);
+static gboolean hyscan_profile_offset_sanity           (HyScanProfile       *profile);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanProfileOffset, hyscan_profile_offset, HYSCAN_TYPE_PROFILE);
 
@@ -91,6 +91,7 @@ hyscan_profile_offset_class_init (HyScanProfileOffsetClass *klass)
   oclass->finalize = hyscan_profile_offset_object_finalize;
   pklass->read = hyscan_profile_offset_read;
   pklass->write = hyscan_profile_offset_write;
+  pklass->sanity = hyscan_profile_offset_sanity;
 }
 
 static void
@@ -117,16 +118,6 @@ hyscan_profile_offset_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_offset_parent_class)->finalize (object);
 }
 
-/* Функция очищает профиль. */
-static void
-hyscan_profile_offset_clear (HyScanProfileOffset *profile)
-{
-  HyScanProfileOffsetPrivate *priv = profile->priv;
-
-  g_hash_table_remove_all (priv->sources);
-  g_hash_table_remove_all (priv->sensors);
-}
-
 /* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
 static gboolean
 hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
@@ -138,7 +129,7 @@ hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
   if (!g_str_equal (group, HYSCAN_PROFILE_OFFSET_INFO_GROUP))
     return FALSE;
 
-  name = g_key_file_get_locale_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL, NULL);
+  name = g_key_file_get_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL);
   hyscan_profile_set_name (HYSCAN_PROFILE (profile), name);
 
   g_free (name);
@@ -168,7 +159,8 @@ hyscan_profile_offset_read (HyScanProfile *profile,
   gchar **groups, **iter;
 
   /* Очищаем, если что-то было. */
-  hyscan_profile_offset_clear (self);
+  g_hash_table_remove_all (priv->sources);
+  g_hash_table_remove_all (priv->sensors);
 
   groups = g_key_file_get_groups (file, NULL);
   for (iter = groups; iter != NULL && *iter != NULL; ++iter)
@@ -213,24 +205,41 @@ hyscan_profile_offset_write (HyScanProfile *profile,
   HyScanProfileOffset *self = HYSCAN_PROFILE_OFFSET (profile);
   HyScanProfileOffsetPrivate *priv = self->priv;
 
+  g_key_file_set_string (file, HYSCAN_PROFILE_OFFSET_INFO_GROUP,
+                         HYSCAN_PROFILE_OFFSET_NAME,
+                         hyscan_profile_get_name (profile));
+
   g_hash_table_iter_init (&iter, priv->sources);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
-      hyscan_profile_offset_write_helper (file,
-                                          hyscan_source_get_id_by_type ((HyScanSourceType)k),
-                                          v);
+      const gchar *id = (const gchar *)k;
+      hyscan_profile_offset_write_helper (file, id, v);
     }
 
   g_hash_table_iter_init (&iter, priv->sensors);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
-      hyscan_profile_offset_write_helper (file,
-                                          (const gchar*)k,
-                                          v);
+      hyscan_profile_offset_write_helper (file, (const gchar*)k, v);
     }
 
   return TRUE;
 }
+
+/* Функция проверки профиля. */
+static gboolean
+hyscan_profile_offset_sanity (HyScanProfile *profile)
+{
+  HyScanProfileOffset *self = HYSCAN_PROFILE_OFFSET (profile);
+  HyScanProfileOffsetPrivate *priv = self->priv;
+
+  if (0 == g_hash_table_size (priv->sources) ||
+      0 == g_hash_table_size (priv->sensors))
+    return FALSE;
+
+  return TRUE;
+}
+
+
 
 /**
  * hyscan_profile_offset_new:

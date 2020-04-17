@@ -144,8 +144,8 @@ hyscan_profile_read (HyScanProfile *self)
   gboolean status;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
-  klass = HYSCAN_PROFILE_GET_CLASS (profile);
-  priv = profile->priv;
+  klass = HYSCAN_PROFILE_GET_CLASS (self);
+  priv = self->priv;
 
   /* Если файл не задан, выходим. */
   if (priv->file == NULL || klass->read == NULL)
@@ -154,16 +154,16 @@ hyscan_profile_read (HyScanProfile *self)
   g_clear_pointer (&self->priv->kf, g_key_file_unref);
   priv->kf = g_key_file_new ();
 
-  status = g_key_file_load_from_file (priv->kf, file, G_KEY_FILE_NONE, &error);
+  status = g_key_file_load_from_file (priv->kf, priv->file, G_KEY_FILE_NONE, &error);
 
   if (!status && error->code != G_FILE_ERROR_NOENT)
     {
-      g_warning ("HyScanProfile: can't load file <%s>: %s", file, error->message);
+      g_warning ("HyScanProfile: can't load file <%s>: %s", priv->file, error->message);
       g_error_free (error);
       return FALSE;
     }
 
-  return klass->read (profile, priv->kf);
+  return klass->read (self, priv->kf);
 }
 
 /**
@@ -181,22 +181,22 @@ hyscan_profile_write (HyScanProfile *self)
   GError *error = NULL;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
-  klass = HYSCAN_PROFILE_GET_CLASS (profile);
-  priv = profile->priv;
+  klass = HYSCAN_PROFILE_GET_CLASS (self);
+  priv = self->priv;
 
   /* Если файл не задан, выходим. */
   if (priv->file == NULL || klass->write == NULL)
     return FALSE;
-  
+
   g_clear_pointer (&self->priv->kf, g_key_file_unref);
   priv->kf = g_key_file_new ();
 
-  if (!klass->write (profile, priv->kf))
+  if (!klass->write (self, priv->kf))
     return FALSE;
 
-  if (!g_key_file_save_to_file (priv->kf, file, &error))
+  if (!g_key_file_save_to_file (priv->kf, priv->file, &error))
     {
-      g_warning ("HyScanProfile: can't write file <%s>: %s", file, error->message);
+      g_warning ("HyScanProfile: can't write file <%s>: %s", priv->file, error->message);
       g_error_free (error);
       return FALSE;
     }
@@ -205,24 +205,27 @@ hyscan_profile_write (HyScanProfile *self)
 }
 
 /**
- * hyscan_profile_check:
+ * hyscan_profile_sanity:
  * @self: указатель на #HyScanProfile
  *
- * Функция проверяет валидность профиля. 
+ * Функция проверяет валидность профиля.
  * Returns: %TRUE, если профиль валиден.
  */
 gboolean
-hyscan_profile_check (HyScanProfile *profile)
+hyscan_profile_sanity (HyScanProfile *self)
 {
   HyScanProfileClass *klass;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
-  klass = HYSCAN_PROFILE_GET_CLASS (profile);
+  klass = HYSCAN_PROFILE_GET_CLASS (self);
 
-  if (klass->check (profile) == NULL)
+  if (self->priv->name == NULL || g_str_equal (self->priv->name, ""))
+    return FALSE;
+
+  if (klass->sanity == NULL)
     return TRUE;
 
-  return klass->check (profile);
+  return klass->sanity (self);
 }
 
 /**

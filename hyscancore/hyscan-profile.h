@@ -73,7 +73,7 @@ struct _HyScanProfileClass
   gboolean     (*write)     (HyScanProfile *self,
                              GKeyFile      *file);
 
-  gboolean     (*check)     (HyScanProfile *self);
+  gboolean     (*sanity)    (HyScanProfile *self);
 };
 
 HYSCAN_API
@@ -86,7 +86,7 @@ HYSCAN_API
 gboolean               hyscan_profile_write            (HyScanProfile *profile);
 
 HYSCAN_API
-gboolean               hyscan_profile_check            (HyScanProfile *profile);
+gboolean               hyscan_profile_sanity           (HyScanProfile *profile);
 
 HYSCAN_API
 gboolean               hyscan_profile_delete           (HyScanProfile *profile);
