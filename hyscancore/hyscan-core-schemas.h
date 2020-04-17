@@ -42,7 +42,7 @@
 #define TRACK_INFO_SCHEMA_VERSION              20180100
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
-#define TRACK_SCHEMA_VERSION                   20200200
+#define TRACK_SCHEMA_VERSION                   20200300
 
 #define LOG_SCHEMA_ID                          3957463010395734756
 #define LOG_SCHEMA_VERSION                     20190100
@@ -72,7 +72,7 @@
 #define PLANNER_ZONE_SCHEMA_VERSION            20190100
 
 #define PLANNER_TRACK_SCHEMA_ID                1788376350812305657
-#define PLANNER_TRACK_SCHEMA_VERSION           20190100
+#define PLANNER_TRACK_SCHEMA_VERSION           20200300
 
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"
