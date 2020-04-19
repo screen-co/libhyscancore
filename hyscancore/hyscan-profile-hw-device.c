@@ -440,6 +440,18 @@ hyscan_profile_hw_device_write (HyScanProfileHWDevice *self,
 }
 
 gboolean
+hyscan_profile_hw_device_sanity (HyScanProfileHWDevice *self)
+{
+  HyScanProfileHWDevicePrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (self));
+  priv = self->priv;
+
+  return priv->name != NULL && priv->driver != NULL && priv->uri != NULL;
+}
+
+
+gboolean
 hyscan_profile_hw_device_update (HyScanProfileHWDevice *self)
 {
   HyScanProfileHWDevicePrivate *priv = self->priv;

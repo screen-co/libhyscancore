@@ -184,9 +184,18 @@ static gboolean
 hyscan_profile_hw_sanity (HyScanProfile *profile)
 {
   HyScanProfileHW *self = HYSCAN_PROFILE_HW (profile);
+  GHashTableIter iter;
+  gpointer v;
 
   if (0 == g_hash_table_size (self->priv->devices))
     return FALSE;
+
+  g_hash_table_iter_init (&iter, self->priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &v))
+    {
+      if (!hyscan_profile_hw_device_sanity (v))
+        return FALSE;
+    }
 
   return TRUE;
 }

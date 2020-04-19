@@ -212,7 +212,7 @@ hyscan_profile_offset_write (HyScanProfile *profile,
   g_hash_table_iter_init (&iter, priv->sources);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
-      const gchar *id = (const gchar *)k;
+      const gchar *id = hyscan_source_get_id_by_type ((HyScanSourceType)k);
       hyscan_profile_offset_write_helper (file, id, v);
     }
 
@@ -232,7 +232,7 @@ hyscan_profile_offset_sanity (HyScanProfile *profile)
   HyScanProfileOffset *self = HYSCAN_PROFILE_OFFSET (profile);
   HyScanProfileOffsetPrivate *priv = self->priv;
 
-  if (0 == g_hash_table_size (priv->sources) ||
+  if (0 == g_hash_table_size (priv->sources) &&
       0 == g_hash_table_size (priv->sensors))
     return FALSE;
 
