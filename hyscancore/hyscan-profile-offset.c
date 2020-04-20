@@ -239,8 +239,6 @@ hyscan_profile_offset_sanity (HyScanProfile *profile)
   return TRUE;
 }
 
-
-
 /**
  * hyscan_profile_offset_new:
  * @file: полный путь к файлу профиля
@@ -306,6 +304,9 @@ hyscan_profile_offset_add_source (HyScanProfileOffset *profile,
 {
   g_return_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile));
 
+  if (offset == NULL)
+    return;
+
   g_hash_table_insert (profile->priv->sources, GINT_TO_POINTER (source),
                        hyscan_antenna_offset_copy (offset));
 }
@@ -323,10 +324,23 @@ hyscan_profile_offset_add_sensor (HyScanProfileOffset *profile,
                                   const gchar         *sensor,
                                   HyScanAntennaOffset *offset)
 {
+  HyScanSourceType source;
   g_return_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile));
 
-  g_hash_table_insert (profile->priv->sensors, g_strdup (sensor),
-                       hyscan_antenna_offset_copy (offset));
+  if (offset == NULL)
+    return;
+
+  source = hyscan_source_get_type_by_id (sensor);
+  if (source != HYSCAN_SOURCE_INVALID)
+    {
+      hyscan_profile_offset_add_source (profile, source, offset);
+    }
+  else
+    {
+      g_hash_table_insert (profile->priv->sensors, g_strdup (sensor),
+                           hyscan_antenna_offset_copy (offset));
+
+    }
 }
 
 /**

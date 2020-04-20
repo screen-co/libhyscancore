@@ -180,6 +180,7 @@ hyscan_profile_hw_write (HyScanProfile *profile,
   return TRUE;
 }
 
+/* Функция валидации профиля. */
 static gboolean
 hyscan_profile_hw_sanity (HyScanProfile *profile)
 {
