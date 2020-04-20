@@ -52,7 +52,7 @@ gchar *db_uri = NULL;
 gchar *project_name = NULL;
 gchar *track_name = NULL;
 gchar *schema_file = NULL;
-HyScanTrackPlan plan = {.start = {30.11, 50.12}, .end = {30.12, 50.13}, .velocity = 1.5};
+HyScanTrackPlan plan = {.start = {30.11, 50.12}, .end = {30.12, 50.13}, .speed = 1.5};
 
 HyScanDB *db;
 HyScanDummyDevice *device1;

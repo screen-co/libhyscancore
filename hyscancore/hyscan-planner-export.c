@@ -294,7 +294,7 @@ hyscan_planner_export_read_tracks (xmlNodePtr  tracks,
       if (hyscan_planner_export_read_ull (node, "number", &number))
         track_copy->number = number;
 
-      result &= hyscan_planner_export_read_d (node, "velocity", &track_copy->plan.velocity);
+      result &= hyscan_planner_export_read_d (node, "velocity", &track_copy->plan.speed);
       result &= hyscan_planner_export_read_point (node, &track_copy->plan.start, "start-lat", "start-lon");
       result &= hyscan_planner_export_read_point (node, &track_copy->plan.end, "end-lat", "end-lon");
 
@@ -399,7 +399,7 @@ hyscan_planner_export_xml_inner (xmlTextWriterPtr  writer,
         xmlTextWriterWriteAttribute (writer, BAD_CAST "name", BAD_CAST track->name);
       hyscan_planner_export_write_point (writer, &track->plan.start, "start-lat", "start-lon");
       hyscan_planner_export_write_point (writer, &track->plan.end, "end-lat", "end-lon");
-      hyscan_planner_export_write_double (writer, "velocity", track->plan.velocity);
+      hyscan_planner_export_write_double (writer, "velocity", track->plan.speed);
       xmlTextWriterEndElement (writer);
     }
 

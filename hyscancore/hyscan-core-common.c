@@ -470,7 +470,7 @@ hyscan_core_params_load_plan (HyScanDB         *db,
   hyscan_param_list_add (param_list, "/plan/start/lon");
   hyscan_param_list_add (param_list, "/plan/end/lat");
   hyscan_param_list_add (param_list, "/plan/end/lon");
-  hyscan_param_list_add (param_list, "/plan/velocity");
+  hyscan_param_list_add (param_list, "/plan/speed");
 
   if (!hyscan_db_param_get (db, param_id, NULL, param_list))
     goto exit;
@@ -485,9 +485,9 @@ hyscan_core_params_load_plan (HyScanDB         *db,
   plan->start.lon = hyscan_param_list_get_double (param_list, "/plan/start/lon");
   plan->end.lat = hyscan_param_list_get_double (param_list, "/plan/end/lat");
   plan->end.lon = hyscan_param_list_get_double (param_list, "/plan/end/lon");
-  plan->velocity = hyscan_param_list_get_double (param_list, "/plan/velocity");
+  plan->speed = hyscan_param_list_get_double (param_list, "/plan/speed");
 
-  status = (plan->velocity > 0);
+  status = (plan->speed > 0);
 
 exit:
   g_object_unref (param_list);

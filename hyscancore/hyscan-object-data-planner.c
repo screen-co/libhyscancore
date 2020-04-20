@@ -131,10 +131,10 @@ hyscan_object_data_planner_object_constructed (GObject *object)
   hyscan_param_list_add (priv->track_read_plist, "/speed");
   hyscan_param_list_add (priv->track_read_plist, "/name");
   hyscan_param_list_add (priv->track_read_plist, "/records");
-  hyscan_param_list_add (priv->track_read_plist, "/start-lat");
-  hyscan_param_list_add (priv->track_read_plist, "/start-lon");
-  hyscan_param_list_add (priv->track_read_plist, "/end-lat");
-  hyscan_param_list_add (priv->track_read_plist, "/end-lon");
+  hyscan_param_list_add (priv->track_read_plist, "/start/lat");
+  hyscan_param_list_add (priv->track_read_plist, "/start/lon");
+  hyscan_param_list_add (priv->track_read_plist, "/end/lat");
+  hyscan_param_list_add (priv->track_read_plist, "/end/lon");
 
   priv->zone_read_plist = hyscan_param_list_new ();
   hyscan_param_list_add (priv->zone_read_plist, "/schema/id");
@@ -369,15 +369,15 @@ hyscan_object_data_planner_get_track (HyScanObjectData *mdata,
   track = hyscan_planner_track_new ();
   track->zone_id = hyscan_param_list_dup_string (plist, "/zone-id");
   track->number = hyscan_param_list_get_integer (plist, "/number");
-  track->plan.velocity = hyscan_param_list_get_double (plist, "/speed");
+  track->plan.speed = hyscan_param_list_get_double (plist, "/speed");
   track->name = hyscan_param_list_dup_string (plist, "/name");
   records = hyscan_param_list_get_string (plist, "/records");
   if (records != NULL)
     track->records = g_strsplit (records, ",", -1);
-  track->plan.start.lat = hyscan_param_list_get_double (plist, "/start-lat");
-  track->plan.start.lon = hyscan_param_list_get_double (plist, "/start-lon");
-  track->plan.end.lat = hyscan_param_list_get_double (plist, "/end-lat");
-  track->plan.end.lon = hyscan_param_list_get_double (plist, "/end-lon");
+  track->plan.start.lat = hyscan_param_list_get_double (plist, "/start/lat");
+  track->plan.start.lon = hyscan_param_list_get_double (plist, "/start/lon");
+  track->plan.end.lat = hyscan_param_list_get_double (plist, "/end/lat");
+  track->plan.end.lon = hyscan_param_list_get_double (plist, "/end/lon");
 
   return (HyScanObject *) track;
 }
@@ -408,7 +408,7 @@ hyscan_object_data_planner_get_full (HyScanObjectData *mdata,
   if (sid == PLANNER_ZONE_SCHEMA_ID && sver == PLANNER_ZONE_SCHEMA_VERSION)
     return hyscan_object_data_planner_get_zone (mdata, read_plist);
 
-  else if (sid == PLANNER_TRACK_SCHEMA_ID && sver == PLANNER_ZONE_SCHEMA_VERSION)
+  else if (sid == PLANNER_TRACK_SCHEMA_ID && sver == PLANNER_TRACK_SCHEMA_VERSION)
     return hyscan_object_data_planner_get_track (mdata, read_plist);
 
   else if (sid == PLANNER_ORIGIN_SCHEMA_ID && sver == PLANNER_ORIGIN_SCHEMA_VERSION)
@@ -431,11 +431,11 @@ hyscan_object_data_planner_set_track (HyScanObjectData         *data,
   hyscan_param_list_set_string (write_plist, "/name", track->name);
   hyscan_param_list_set_string (write_plist, "/records", records);
   hyscan_param_list_set_integer (write_plist, "/number", track->number);
-  hyscan_param_list_set_double (write_plist, "/speed", track->plan.velocity);
-  hyscan_param_list_set_double (write_plist, "/start-lat", track->plan.start.lat);
-  hyscan_param_list_set_double (write_plist, "/start-lon", track->plan.start.lon);
-  hyscan_param_list_set_double (write_plist, "/end-lat", track->plan.end.lat);
-  hyscan_param_list_set_double (write_plist, "/end-lon", track->plan.end.lon);
+  hyscan_param_list_set_double (write_plist, "/speed", track->plan.speed);
+  hyscan_param_list_set_double (write_plist, "/start/lat", track->plan.start.lat);
+  hyscan_param_list_set_double (write_plist, "/start/lon", track->plan.start.lon);
+  hyscan_param_list_set_double (write_plist, "/end/lat", track->plan.end.lat);
+  hyscan_param_list_set_double (write_plist, "/end/lon", track->plan.end.lon);
   g_free (records);
 
   return TRUE;
