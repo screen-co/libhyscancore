@@ -64,13 +64,6 @@ struct _HyScanProfileHWDeviceClass
   GObjectClass parent_class;
 };
 
-typedef enum
-{
-  HYSCAN_PROFILE_HW_DEVICE_FAIL,
-  HYSCAN_PROFILE_HW_DEVICE_CHANGED,
-  HYSCAN_PROFILE_HW_DEVICE_NOT_CHANGED,
-} eee;
-
 HYSCAN_API
 GType                   hyscan_profile_hw_device_get_type         (void);
 
@@ -114,6 +107,9 @@ void                    hyscan_profile_hw_device_read             (HyScanProfile
 HYSCAN_API
 void                    hyscan_profile_hw_device_write            (HyScanProfileHWDevice  *hw_device,
                                                                    GKeyFile               *kf);
+HYSCAN_API
+gboolean                hyscan_profile_hw_device_sanity           (HyScanProfileHWDevice  *hw_device);
+
 HYSCAN_API
 gboolean                hyscan_profile_hw_device_update           (HyScanProfileHWDevice  *hw_device);
 
