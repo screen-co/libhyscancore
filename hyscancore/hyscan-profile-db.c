@@ -71,9 +71,9 @@ static gboolean hyscan_profile_db_read            (HyScanProfile   *profile,
                                                    GKeyFile        *file);
 static gboolean hyscan_profile_db_write           (HyScanProfile   *profile,
                                                    GKeyFile        *file);
+static gboolean hyscan_profile_db_sanity          (HyScanProfile   *profile);
 
-G_DEFINE_TYPE_WITH_CODE (HyScanProfileDB, hyscan_profile_db, HYSCAN_TYPE_PROFILE,
-                         G_ADD_PRIVATE (HyScanProfileDB));
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanProfileDB, hyscan_profile_db, HYSCAN_TYPE_PROFILE);
 
 static void
 hyscan_profile_db_class_init (HyScanProfileDBClass *klass)
@@ -84,6 +84,7 @@ hyscan_profile_db_class_init (HyScanProfileDBClass *klass)
   oclass->finalize = hyscan_profile_db_object_finalize;
   pklass->read = hyscan_profile_db_read;
   pklass->write = hyscan_profile_db_write;
+  pklass->sanity = hyscan_profile_db_sanity;
 }
 
 static void
@@ -128,6 +129,7 @@ hyscan_profile_db_read (HyScanProfile *profile,
                                      HYSCAN_PROFILE_DB_URI_KEY, NULL);
 
   hyscan_profile_set_name (profile, name);
+  g_free (name);
 
   if (priv->uri == NULL)
     {
@@ -135,7 +137,6 @@ hyscan_profile_db_read (HyScanProfile *profile,
       return FALSE;
     }
 
-  g_free (name);
 
   return TRUE;
 }
@@ -153,6 +154,19 @@ hyscan_profile_db_write (HyScanProfile *profile,
                          hyscan_profile_get_name (profile));
   g_key_file_set_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
                          HYSCAN_PROFILE_DB_URI_KEY, priv->uri);
+
+  return TRUE;
+}
+
+/* Функция проверки профиля. */
+static gboolean
+hyscan_profile_db_sanity (HyScanProfile *profile)
+{
+  HyScanProfileDB *self = HYSCAN_PROFILE_DB (profile);
+  HyScanProfileDBPrivate *priv = self->priv;
+
+  if (NULL == priv->uri)
+    return FALSE;
 
   return TRUE;
 }

@@ -55,8 +55,6 @@ struct _HyScanProfileHWDevicePrivate
   HyScanDataSchema *schema;   /* Схема подключения. */
   HyScanDiscover   *discover; /* Интерфейс подключения. */
   HyScanParamList  *params;   /* Параметры подключения. */
-
-  gboolean          consistent; /* Консистентность состояния. */
 };
 
 static void     hyscan_profile_hw_device_interface_init     (HyScanParamInterface  *iface);
@@ -338,7 +336,8 @@ hyscan_profile_hw_device_set_name (HyScanProfileHWDevice  *self,
   g_return_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (self));
 
   g_clear_pointer (&self->priv->name, g_free);
-  self->priv->name = g_strdup (name);
+  if (name != NULL && !g_str_equal (name, ""))
+    self->priv->name = g_strdup (name);
 }
 
 const gchar *
@@ -356,7 +355,8 @@ hyscan_profile_hw_device_set_driver (HyScanProfileHWDevice  *self,
   g_return_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (self));
 
   g_clear_pointer (&self->priv->driver, g_free);
-  self->priv->driver = g_strdup (driver);
+  if (driver != NULL && !g_str_equal (driver, ""))
+    self->priv->driver = g_strdup (driver);
 }
 
 const gchar *
@@ -374,7 +374,8 @@ hyscan_profile_hw_device_set_uri (HyScanProfileHWDevice  *self,
   g_return_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (self));
 
   g_clear_pointer (&self->priv->uri, g_free);
-  self->priv->uri = g_strdup (uri);
+  if (uri != NULL && !g_str_equal (uri, ""))
+    self->priv->uri = g_strdup (uri);
 }
 
 const gchar *
@@ -438,6 +439,18 @@ hyscan_profile_hw_device_write (HyScanProfileHWDevice *self,
   /* Считываю параметры подключения. */
   hyscan_profile_hw_device_write_params (kf, priv->group, priv->schema, priv->params);
 }
+
+gboolean
+hyscan_profile_hw_device_sanity (HyScanProfileHWDevice *self)
+{
+  HyScanProfileHWDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (self), FALSE);
+  priv = self->priv;
+
+  return priv->name != NULL && priv->driver != NULL && priv->uri != NULL;
+}
+
 
 gboolean
 hyscan_profile_hw_device_update (HyScanProfileHWDevice *self)

@@ -66,11 +66,11 @@ static void     hyscan_profile_hw_object_finalize         (GObject              
 static gboolean hyscan_profile_hw_info_group              (HyScanProfile         *profile,
                                                            GKeyFile              *kf,
                                                            const gchar           *group);
-static void     hyscan_profile_hw_clear                   (HyScanProfileHW       *profile);
 static gboolean hyscan_profile_hw_read                    (HyScanProfile         *profile,
                                                            GKeyFile              *file);
 static gboolean hyscan_profile_hw_write                   (HyScanProfile         *profile,
                                                            GKeyFile              *file);
+static gboolean hyscan_profile_hw_sanity                  (HyScanProfile         *profile);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanProfileHW, hyscan_profile_hw, HYSCAN_TYPE_PROFILE);
 
@@ -83,6 +83,7 @@ hyscan_profile_hw_class_init (HyScanProfileHWClass *klass)
   oclass->finalize = hyscan_profile_hw_object_finalize;
   pklass->read = hyscan_profile_hw_read;
   pklass->write = hyscan_profile_hw_write;
+  pklass->sanity = hyscan_profile_hw_sanity;
 }
 
 static void
@@ -175,6 +176,27 @@ hyscan_profile_hw_write (HyScanProfile *profile,
   g_hash_table_iter_init (&iter, self->priv->devices);
   while (g_hash_table_iter_next (&iter, NULL, &v))
     hyscan_profile_hw_device_write ((HyScanProfileHWDevice*) v, file);
+
+  return TRUE;
+}
+
+/* Функция валидации профиля. */
+static gboolean
+hyscan_profile_hw_sanity (HyScanProfile *profile)
+{
+  HyScanProfileHW *self = HYSCAN_PROFILE_HW (profile);
+  GHashTableIter iter;
+  gpointer v;
+
+  if (0 == g_hash_table_size (self->priv->devices))
+    return FALSE;
+
+  g_hash_table_iter_init (&iter, self->priv->devices);
+  while (g_hash_table_iter_next (&iter, NULL, &v))
+    {
+      if (!hyscan_profile_hw_device_sanity (v))
+        return FALSE;
+    }
 
   return TRUE;
 }
