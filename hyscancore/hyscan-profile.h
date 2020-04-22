@@ -69,6 +69,11 @@ struct _HyScanProfileClass
 
   gboolean     (*read)      (HyScanProfile *self,
                              GKeyFile      *file);
+
+  gboolean     (*write)     (HyScanProfile *self,
+                             GKeyFile      *file);
+
+  gboolean     (*sanity)    (HyScanProfile *self);
 };
 
 HYSCAN_API
@@ -78,6 +83,15 @@ HYSCAN_API
 gboolean               hyscan_profile_read             (HyScanProfile *profile);
 
 HYSCAN_API
+gboolean               hyscan_profile_write            (HyScanProfile *profile);
+
+HYSCAN_API
+gboolean               hyscan_profile_sanity           (HyScanProfile *profile);
+
+HYSCAN_API
+gboolean               hyscan_profile_delete           (HyScanProfile *profile);
+
+HYSCAN_API
 const gchar *          hyscan_profile_get_file         (HyScanProfile *profile);
 
 HYSCAN_API
@@ -85,6 +99,10 @@ void                   hyscan_profile_set_name         (HyScanProfile *profile,
                                                         const gchar   *file);
 HYSCAN_API
 const gchar *          hyscan_profile_get_name         (HyScanProfile *self);
+
+HYSCAN_API
+gchar *                hyscan_profile_make_id          (gchar         *buffer,
+                                                        guint          size);
 
 G_END_DECLS
 

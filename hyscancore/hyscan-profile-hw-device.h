@@ -36,6 +36,7 @@
 #define __HYSCAN_PROFILE_HW_DEVICE_H__
 
 #include <hyscan-param-list.h>
+#include <hyscan-param.h>
 #include <hyscan-discover.h>
 
 G_BEGIN_DECLS
@@ -63,17 +64,60 @@ struct _HyScanProfileHWDeviceClass
   GObjectClass parent_class;
 };
 
+HYSCAN_API
 GType                   hyscan_profile_hw_device_get_type         (void);
 
-HyScanProfileHWDevice * hyscan_profile_hw_device_new              (GKeyFile              *keyfile);
-void                    hyscan_profile_hw_device_set_group        (HyScanProfileHWDevice *hw_device,
-                                                                   const gchar           *group);
-void                    hyscan_profile_hw_device_set_paths        (HyScanProfileHWDevice *hw_device,
-                                                                   gchar                **paths);
-void                    hyscan_profile_hw_device_read             (HyScanProfileHWDevice *hw_device,
-                                                                   GKeyFile              *kf);
-gboolean                hyscan_profile_hw_device_check            (HyScanProfileHWDevice *hw_device);
-HyScanDevice *          hyscan_profile_hw_device_connect          (HyScanProfileHWDevice *hw_device);
+HYSCAN_API
+HyScanProfileHWDevice * hyscan_profile_hw_device_new              (gchar                 **driver_paths);
+
+HYSCAN_API
+void                    hyscan_profile_hw_device_set_paths        (HyScanProfileHWDevice  *hw_device,
+                                                                   gchar                 **driver_paths);
+HYSCAN_API
+const gchar **          hyscan_profile_hw_device_get_paths        (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+void                    hyscan_profile_hw_device_set_group        (HyScanProfileHWDevice  *hw_device,
+                                                                   const gchar            *group);
+
+HYSCAN_API
+const gchar *           hyscan_profile_hw_device_get_group        (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+void                    hyscan_profile_hw_device_set_name         (HyScanProfileHWDevice  *hw_device,
+                                                                   const gchar            *name);
+HYSCAN_API
+const gchar *           hyscan_profile_hw_device_get_name         (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+void                    hyscan_profile_hw_device_set_driver       (HyScanProfileHWDevice  *hw_device,
+                                                                   const gchar            *driver);
+HYSCAN_API
+const gchar *           hyscan_profile_hw_device_get_driver       (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+void                    hyscan_profile_hw_device_set_uri          (HyScanProfileHWDevice  *hw_device,
+                                                                   const gchar            *uri);
+HYSCAN_API
+const gchar *           hyscan_profile_hw_device_get_uri          (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+void                    hyscan_profile_hw_device_read             (HyScanProfileHWDevice  *hw_device,
+                                                                   GKeyFile               *kf);
+HYSCAN_API
+void                    hyscan_profile_hw_device_write            (HyScanProfileHWDevice  *hw_device,
+                                                                   GKeyFile               *kf);
+HYSCAN_API
+gboolean                hyscan_profile_hw_device_sanity           (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+gboolean                hyscan_profile_hw_device_update           (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+gboolean                hyscan_profile_hw_device_check            (HyScanProfileHWDevice  *hw_device);
+
+HYSCAN_API
+HyScanDevice *          hyscan_profile_hw_device_connect          (HyScanProfileHWDevice  *hw_device);
 
 G_END_DECLS
 
