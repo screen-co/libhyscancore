@@ -68,7 +68,8 @@ HYSCAN_API
 GType                  hyscan_profile_hw_get_type         (void);
 
 HYSCAN_API
-HyScanProfileHW *      hyscan_profile_hw_new              (const gchar           *file);
+HyScanProfileHW *      hyscan_profile_hw_new              (const gchar           *file,
+                                                           gchar                **driver_paths);
 
 HYSCAN_API
 void                   hyscan_profile_hw_set_driver_paths (HyScanProfileHW       *profile,

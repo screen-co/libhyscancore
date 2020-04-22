@@ -129,9 +129,9 @@ hyscan_profile_object_finalize (GObject *object)
  * hyscan_profile_read:
  * @self: указатель на #HyScanProfile
  *
- * Функция производит чтение профиля. Текущая реализация запрещает читать
- * профиль более одного раза. Объект профиля должен быть полностью настроен
- * перед вызовом этой функции.
+ * Функция производит чтение профиля.
+ * Объект профиля должен быть полностью настроен перед вызовом этой функции
+ * (например, установлены пути с драйверами)
  *
  * Returns: результат чтения профиля.
  */
@@ -233,7 +233,7 @@ hyscan_profile_sanity (HyScanProfile *self)
  * @self: указатель на #HyScanProfile
  *
  * Функция удаляет профиль с диска. По сути, это просто обертка над g_remove().
- * Returns: результат записи профиля.
+ * Returns: %TRUE, если профиль удален.
  */
 gboolean
 hyscan_profile_delete (HyScanProfile *self)
@@ -294,7 +294,6 @@ hyscan_profile_get_name (HyScanProfile *self)
 
   return self->priv->name;
 }
-
 
 /**
  * hyscan_profile_make_id:

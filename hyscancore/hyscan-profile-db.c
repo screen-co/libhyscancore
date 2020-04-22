@@ -137,7 +137,6 @@ hyscan_profile_db_read (HyScanProfile *profile,
       return FALSE;
     }
 
-
   return TRUE;
 }
 

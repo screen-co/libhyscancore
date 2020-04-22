@@ -136,6 +136,7 @@ hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
   return TRUE;
 }
 
+/* Вспомогательная функция записи. */
 static void
 hyscan_profile_offset_write_helper (GKeyFile            *kf,
                                     const gchar         *group,
@@ -318,6 +319,8 @@ hyscan_profile_offset_add_source (HyScanProfileOffset *profile,
  * @offset: значения сдвигов
  *
  * Функция добавляет (или обновляет) значения смещений для датчика.
+ * При этом если передать строковый идентификатор, соответствующий
+ * HyScanSourceType, он будет обработан как локатор, а не датчик.
  */
 void
 hyscan_profile_offset_add_sensor (HyScanProfileOffset *profile,
