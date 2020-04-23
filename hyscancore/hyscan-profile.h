@@ -59,13 +59,32 @@ struct _HyScanProfile
 };
 
 /**
+ * HYSCAN_PROFILE_INFO_GROUP:
+ * Название информационной группы.
+ */
+#define HYSCAN_PROFILE_INFO_GROUP "_"
+/**
+ * HYSCAN_PROFILE_NAME:
+ * Поле с названием профиля.
+ */
+#define HYSCAN_PROFILE_NAME "name"
+/**
+ * HYSCAN_PROFILE_VERSION:
+ * Поле с версией профиля.
+ */
+#define HYSCAN_PROFILE_VERSION "version"
+
+/**
  * HyScanProfileClass:
  * @parent_class: Базовый интерфейс.
  * @read: Функция разбора GKeyFile с профилем.
+ * @write: Функция записи профиля в GKeyFile.
+ * @sanity: Функция валидации профиля.
+ * @version: Версия профиля.
  */
 struct _HyScanProfileClass
 {
-  GObjectClass   parent_class;
+  GObjectClass parent_class;
 
   gboolean     (*read)      (HyScanProfile *self,
                              GKeyFile      *file);
@@ -74,6 +93,8 @@ struct _HyScanProfileClass
                              GKeyFile      *file);
 
   gboolean     (*sanity)    (HyScanProfile *self);
+
+  guint64      version;
 };
 
 HYSCAN_API
@@ -99,10 +120,6 @@ void                   hyscan_profile_set_name         (HyScanProfile *profile,
                                                         const gchar   *file);
 HYSCAN_API
 const gchar *          hyscan_profile_get_name         (HyScanProfile *self);
-
-HYSCAN_API
-gchar *                hyscan_profile_make_id          (gchar         *buffer,
-                                                        guint          size);
 
 G_END_DECLS
 

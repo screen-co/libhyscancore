@@ -32,11 +32,37 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
+/**
+ * SECTION: hyscan-profile-hw-device
+ * @Short_description: устройства в составе профиля оборудования
+ * @Title: HyScanProfileHWDevice
+ *
+ * Класс HyScanProfileHW представляет одно устройство в составе профиля
+ * оборудования. Содержит специальные поля %HYSCAN_PROFILE_HW_DEVICE_NAME,
+ * %HYSCAN_PROFILE_HW_DEVICE_DRIVER и %HYSCAN_PROFILE_HW_DEVICE_URI.
+ * Параметры подключения записываются как /param/id=value
+ *
+ * Перед чтением профиля необходимо задать пути к драйверам устройств функцией
+ * hyscan_profile_hw_device_set_paths() или в конструкторе.
+ */
+
 #include "hyscan-profile-hw-device.h"
 #include <hyscan-driver.h>
 
+/**
+ * HYSCAN_PROFILE_HW_DEVICE_NAME:
+ * Поле с названием устройства.
+ */
 #define HYSCAN_PROFILE_HW_DEVICE_NAME "name"
+/**
+ * HYSCAN_PROFILE_HW_DEVICE_DRIVER:
+ * Поле с используемым драйвером.
+ */
 #define HYSCAN_PROFILE_HW_DEVICE_DRIVER "driver"
+/**
+ * HYSCAN_PROFILE_HW_DEVICE_URI:
+ * Поле с адресом устройства.
+ */
 #define HYSCAN_PROFILE_HW_DEVICE_URI "uri"
 
 enum
@@ -83,8 +109,8 @@ hyscan_profile_hw_device_class_init (HyScanProfileHWDeviceClass *klass)
   oclass->set_property = hyscan_profile_hw_device_set_property;
 
   g_object_class_install_property (oclass, PROP_DRIVERS,
-    g_param_spec_pointer ("drivers", "Drivers", "Drivers search paths",
-                          G_PARAM_CONSTRUCT | G_PARAM_WRITABLE));
+    g_param_spec_boxed ("drivers", "Drivers", "Drivers search paths", G_TYPE_STRV,
+                        G_PARAM_CONSTRUCT | G_PARAM_WRITABLE));
 }
 
 static void
@@ -110,7 +136,7 @@ hyscan_profile_hw_device_set_property (GObject      *object,
   switch (prop_id)
     {
     case PROP_DRIVERS:
-      drivers = (gchar**) g_value_get_pointer (value);
+      drivers = (gchar**) g_value_get_boxed (value);
       hyscan_profile_hw_device_set_paths (self, drivers);
       break;
 
