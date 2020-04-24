@@ -26,11 +26,12 @@
         <default>3829672927190415735</default>
       </key>
       <key id="version" name="Track info schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>2020424</default>
       </key>
     </node>
     <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
     <key id="description" name="Track description" type="string"/>
+    <key id="label" name="Applied labels" type="integer"/>
   </schema>
 
   <schema id="waterfall-mark">
