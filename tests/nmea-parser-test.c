@@ -79,7 +79,7 @@ main (int argc, char **argv)
   writer = hyscan_data_writer_new ();
   hyscan_data_writer_set_db (writer, db);
 
-  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, -1))
+  if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, NULL, -1))
     g_error ("can't start write");
 
   buffer = hyscan_buffer_new ();

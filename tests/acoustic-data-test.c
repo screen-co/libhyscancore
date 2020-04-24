@@ -791,7 +791,7 @@ main (int    argc,
   hyscan_data_writer_set_db (writer, db);
 
   /* Создаём галс. */
-  if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY, -1))
+  if (!hyscan_data_writer_start (writer, PROJECT_NAME, TRACK_NAME, HYSCAN_TRACK_SURVEY, NULL, -1))
     g_error( "can't start write");
 
   timer = g_timer_new ();

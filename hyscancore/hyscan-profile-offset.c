@@ -1,6 +1,6 @@
 /* hyscan-profile-offset.c
  *
- * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ * Copyright 2019-2020 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
  * This file is part of HyScanCore.
  *
@@ -54,14 +54,37 @@
 #include <gio/gio.h>
 #include "hyscan-profile-offset.h"
 
-#define HYSCAN_PROFILE_OFFSET_INFO_GROUP "_"
-#define HYSCAN_PROFILE_OFFSET_NAME "name"
+#define HYSCAN_PROFILE_OFFSET_VERSION 0xA0D2BC35
 
+/**
+ * HYSCAN_PROFILE_OFFSET_STARBOARD:
+ * Поле для соответствующего смещения.
+ */
 #define HYSCAN_PROFILE_OFFSET_STARBOARD "starboard"
+/**
+ * HYSCAN_PROFILE_OFFSET_FORWARD:
+ * Поле для соответствующего смещения.
+ */
 #define HYSCAN_PROFILE_OFFSET_FORWARD "forward"
+/**
+ * HYSCAN_PROFILE_OFFSET_VERTICAL:
+ * Поле для соответствующего смещения.
+ */
 #define HYSCAN_PROFILE_OFFSET_VERTICAL "vertical"
+/**
+ * HYSCAN_PROFILE_OFFSET_YAW:
+ * Поле для соответствующего смещения.
+ */
 #define HYSCAN_PROFILE_OFFSET_YAW "yaw"
+/**
+ * HYSCAN_PROFILE_OFFSET_PITCH:
+ * Поле для соответствующего смещения.
+ */
 #define HYSCAN_PROFILE_OFFSET_PITCH "pitch"
+/**
+ * HYSCAN_PROFILE_OFFSET_ROLL:
+ * Поле для соответствующего смещения.
+ */
 #define HYSCAN_PROFILE_OFFSET_ROLL "roll"
 
 struct _HyScanProfileOffsetPrivate
@@ -71,9 +94,6 @@ struct _HyScanProfileOffsetPrivate
 };
 
 static void     hyscan_profile_offset_object_finalize  (GObject             *object);
-static gboolean hyscan_profile_offset_info_group       (HyScanProfileOffset *profile,
-                                                        GKeyFile            *kf,
-                                                        const gchar         *group);
 static gboolean hyscan_profile_offset_read             (HyScanProfile       *profile,
                                                         GKeyFile            *file);
 static gboolean hyscan_profile_offset_write            (HyScanProfile       *profile,
@@ -92,6 +112,7 @@ hyscan_profile_offset_class_init (HyScanProfileOffsetClass *klass)
   pklass->read = hyscan_profile_offset_read;
   pklass->write = hyscan_profile_offset_write;
   pklass->sanity = hyscan_profile_offset_sanity;
+  pklass->version = HYSCAN_PROFILE_OFFSET_VERSION;
 }
 
 static void
@@ -116,24 +137,6 @@ hyscan_profile_offset_object_finalize (GObject *object)
   g_clear_pointer (&self->priv->sensors, g_hash_table_unref);
 
   G_OBJECT_CLASS (hyscan_profile_offset_parent_class)->finalize (object);
-}
-
-/* Обработка информационной группы (HYSCAN_PROFILE_HW_INFO_GROUP) */
-static gboolean
-hyscan_profile_offset_info_group (HyScanProfileOffset *profile,
-                                  GKeyFile            *kf,
-                                  const gchar         *group)
-{
-  gchar *name;
-
-  if (!g_str_equal (group, HYSCAN_PROFILE_OFFSET_INFO_GROUP))
-    return FALSE;
-
-  name = g_key_file_get_string (kf, group, HYSCAN_PROFILE_OFFSET_NAME, NULL);
-  hyscan_profile_set_name (HYSCAN_PROFILE (profile), name);
-
-  g_free (name);
-  return TRUE;
 }
 
 /* Вспомогательная функция записи. */
@@ -172,7 +175,7 @@ hyscan_profile_offset_read (HyScanProfile *profile,
       guint channel;
 
       /* Возможно, это группа с информацией. */
-      if (hyscan_profile_offset_info_group (self, file, *iter))
+      if (g_str_equal (HYSCAN_PROFILE_INFO_GROUP, *iter))
         continue;
 
       offset.starboard = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_STARBOARD, NULL);
@@ -195,7 +198,7 @@ hyscan_profile_offset_read (HyScanProfile *profile,
   return TRUE;
 }
 
-/* Функция парсинга профиля. */
+/* Функция записи профиля. */
 static gboolean
 hyscan_profile_offset_write (HyScanProfile *profile,
                              GKeyFile      *file)
@@ -205,10 +208,6 @@ hyscan_profile_offset_write (HyScanProfile *profile,
   GHashTableIter iter;
   HyScanProfileOffset *self = HYSCAN_PROFILE_OFFSET (profile);
   HyScanProfileOffsetPrivate *priv = self->priv;
-
-  g_key_file_set_string (file, HYSCAN_PROFILE_OFFSET_INFO_GROUP,
-                         HYSCAN_PROFILE_OFFSET_NAME,
-                         hyscan_profile_get_name (profile));
 
   g_hash_table_iter_init (&iter, priv->sources);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))

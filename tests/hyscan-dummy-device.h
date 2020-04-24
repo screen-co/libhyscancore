@@ -131,7 +131,8 @@ gboolean                 hyscan_dummy_device_check_tvg_disable        (HyScanDum
 gboolean                 hyscan_dummy_device_check_start              (HyScanDummyDevice              *dummy,
                                                                        const gchar                    *project_name,
                                                                        const gchar                    *track_name,
-                                                                       HyScanTrackType                 track_type);
+                                                                       HyScanTrackType                 track_type,
+                                                                       const HyScanTrackPlan          *track_plan);
 
 gboolean                 hyscan_dummy_device_check_stop               (HyScanDummyDevice              *dummy);
 
