@@ -54,6 +54,7 @@
 #include "hyscan-profile-hw.h"
 #include <hyscan-profile-hw-device.h>
 #include <hyscan-driver.h>
+#include <hyscan-types.h>
 
 #define HYSCAN_PROFILE_HW_VERSION 0xD93618D8
 
