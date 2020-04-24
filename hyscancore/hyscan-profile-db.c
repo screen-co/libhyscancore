@@ -125,7 +125,6 @@ hyscan_profile_db_read (HyScanProfile *profile,
 {
   HyScanProfileDB *self = HYSCAN_PROFILE_DB (profile);
   HyScanProfileDBPrivate *priv = self->priv;
-  gchar *name;
 
   /* Очистка профиля. */
   hyscan_profile_db_clear (self);
@@ -177,25 +176,6 @@ hyscan_profile_db_new (const gchar *file)
   return g_object_new (HYSCAN_TYPE_PROFILE_DB,
                        "file", file,
                        NULL);
-}
-
-void
-hyscan_profile_db_set_uri (HyScanProfileDB *self,
-                           const gchar     *uri)
-{
-  g_return_if_fail (HYSCAN_IS_PROFILE_DB (self));
-  g_return_if_fail (uri != NULL);
-
-  g_clear_pointer (&self->priv->uri, g_free);
-  self->priv->uri = g_strdup (uri);
-}
-
-const gchar *
-hyscan_profile_db_get_uri (HyScanProfileDB *self)
-{
-  g_return_val_if_fail (HYSCAN_IS_PROFILE_DB (self), NULL);
-
-  return self->priv->uri;
 }
 
 /**
