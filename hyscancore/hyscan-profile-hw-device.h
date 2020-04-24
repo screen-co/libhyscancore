@@ -68,11 +68,11 @@ HYSCAN_API
 GType                   hyscan_profile_hw_device_get_type         (void);
 
 HYSCAN_API
-HyScanProfileHWDevice * hyscan_profile_hw_device_new              (void);
+HyScanProfileHWDevice * hyscan_profile_hw_device_new              (gchar                 **driver_paths);
 
 HYSCAN_API
 void                    hyscan_profile_hw_device_set_paths        (HyScanProfileHWDevice  *hw_device,
-                                                                   gchar                 **paths);
+                                                                   gchar                 **driver_paths);
 HYSCAN_API
 const gchar **          hyscan_profile_hw_device_get_paths        (HyScanProfileHWDevice  *hw_device);
 
