@@ -1,6 +1,6 @@
-/* hyscan-profile.h
+/* hyscan-profile.c
  *
- * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ * Copyright 2019-2020 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
  * This file is part of HyScanCore.
  *
@@ -112,6 +112,42 @@ hyscan_profile_set_property (GObject      *object,
     }
 }
 
+static gboolean
+hyscan_profile_read_info_group (HyScanProfile *self,
+                                GKeyFile      *kf)
+{
+  HyScanProfileClass *klass = HYSCAN_PROFILE_GET_CLASS (self);
+  gchar *name;
+  guint64 version;
+
+  if (!g_key_file_has_group (kf, HYSCAN_PROFILE_INFO_GROUP))
+    return FALSE;
+
+  version = g_key_file_get_uint64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                                   HYSCAN_PROFILE_VERSION, NULL);
+  if (version != klass->version)
+    return FALSE;
+
+  name = g_key_file_get_string (kf, HYSCAN_PROFILE_INFO_GROUP,
+                                HYSCAN_PROFILE_NAME, NULL);
+  hyscan_profile_set_name (self, name);
+  g_free (name);
+  return TRUE;
+}
+
+static void
+hyscan_profile_write_info_group (HyScanProfile *self,
+                                 GKeyFile      *kf)
+{
+  HyScanProfileClass *klass = HYSCAN_PROFILE_GET_CLASS (self);
+
+  g_key_file_set_uint64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                         HYSCAN_PROFILE_VERSION, klass->version);
+
+  g_key_file_set_string (kf, HYSCAN_PROFILE_INFO_GROUP,
+                         HYSCAN_PROFILE_NAME, hyscan_profile_get_name (self));
+}
+
 static void
 hyscan_profile_object_finalize (GObject *object)
 {
@@ -129,9 +165,9 @@ hyscan_profile_object_finalize (GObject *object)
  * hyscan_profile_read:
  * @self: указатель на #HyScanProfile
  *
- * Функция производит чтение профиля. Текущая реализация запрещает читать
- * профиль более одного раза. Объект профиля должен быть полностью настроен
- * перед вызовом этой функции.
+ * Функция производит чтение профиля.
+ * Объект профиля должен быть полностью настроен перед вызовом этой функции
+ * (например, установлены пути с драйверами)
  *
  * Returns: результат чтения профиля.
  */
@@ -163,6 +199,10 @@ hyscan_profile_read (HyScanProfile *self)
       return FALSE;
     }
 
+  /* Собственно чтение профиля. */
+  if (!hyscan_profile_read_info_group (self, priv->kf))
+    return FALSE;
+
   return klass->read (self, priv->kf);
 }
 
@@ -171,6 +211,7 @@ hyscan_profile_read (HyScanProfile *self)
  * @self: указатель на #HyScanProfile
  *
  * Функция производит запись профиля.
+ *
  * Returns: результат записи профиля.
  */
 gboolean
@@ -188,11 +229,14 @@ hyscan_profile_write (HyScanProfile *self)
   if (priv->file == NULL || klass->write == NULL)
     return FALSE;
 
-  g_clear_pointer (&self->priv->kf, g_key_file_unref);
+  g_clear_pointer (&priv->kf, g_key_file_unref);
   priv->kf = g_key_file_new ();
 
   if (!klass->write (self, priv->kf))
     return FALSE;
+
+  /* Собственно запись профиля. */
+  hyscan_profile_write_info_group (self, priv->kf);
 
   if (!g_key_file_save_to_file (priv->kf, priv->file, &error))
     {
@@ -209,6 +253,7 @@ hyscan_profile_write (HyScanProfile *self)
  * @self: указатель на #HyScanProfile
  *
  * Функция проверяет валидность профиля.
+ *
  * Returns: %TRUE, если профиль валиден.
  */
 gboolean
@@ -233,7 +278,8 @@ hyscan_profile_sanity (HyScanProfile *self)
  * @self: указатель на #HyScanProfile
  *
  * Функция удаляет профиль с диска. По сути, это просто обертка над g_remove().
- * Returns: результат записи профиля.
+ *
+ * Returns: %TRUE, если профиль удален.
  */
 gboolean
 hyscan_profile_delete (HyScanProfile *self)
@@ -294,7 +340,6 @@ hyscan_profile_get_name (HyScanProfile *self)
 
   return self->priv->name;
 }
-
 
 /**
  * hyscan_profile_make_id:

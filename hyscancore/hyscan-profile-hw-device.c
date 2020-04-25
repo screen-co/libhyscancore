@@ -1,6 +1,6 @@
-/* hyscan-profile-hw-device.h
+/* hyscan-profile-hw-device.c
  *
- * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ * Copyright 2019-2020 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
  * This file is part of HyScanCore.
  *
@@ -32,16 +32,44 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-/*
- * Этот парень пока нестабилен, так что к нему документации нема.
- * Я, возможно, переработаю его.
+/**
+ * SECTION: hyscan-profile-hw-device
+ * @Short_description: устройства в составе профиля оборудования
+ * @Title: HyScanProfileHWDevice
+ *
+ * Класс HyScanProfileHW представляет одно устройство в составе профиля
+ * оборудования. Содержит специальные поля %HYSCAN_PROFILE_HW_DEVICE_NAME,
+ * %HYSCAN_PROFILE_HW_DEVICE_DRIVER и %HYSCAN_PROFILE_HW_DEVICE_URI.
+ * Параметры подключения записываются как /param/id=value
+ *
+ * Перед чтением профиля необходимо задать пути к драйверам устройств функцией
+ * hyscan_profile_hw_device_set_paths() или в конструкторе.
  */
+
 #include "hyscan-profile-hw-device.h"
 #include <hyscan-driver.h>
 
+/**
+ * HYSCAN_PROFILE_HW_DEVICE_NAME:
+ * Поле с названием устройства.
+ */
 #define HYSCAN_PROFILE_HW_DEVICE_NAME "name"
+/**
+ * HYSCAN_PROFILE_HW_DEVICE_DRIVER:
+ * Поле с используемым драйвером.
+ */
 #define HYSCAN_PROFILE_HW_DEVICE_DRIVER "driver"
+/**
+ * HYSCAN_PROFILE_HW_DEVICE_URI:
+ * Поле с адресом устройства.
+ */
 #define HYSCAN_PROFILE_HW_DEVICE_URI "uri"
+
+enum
+{
+  PROP_0,
+  PROP_DRIVERS,
+};
 
 struct _HyScanProfileHWDevicePrivate
 {
@@ -58,6 +86,10 @@ struct _HyScanProfileHWDevicePrivate
 };
 
 static void     hyscan_profile_hw_device_interface_init     (HyScanParamInterface  *iface);
+static void     hyscan_profile_hw_device_set_property       (GObject               *object,
+                                                             guint                  prop_id,
+                                                             const GValue          *value,
+                                                             GParamSpec            *pspec);
 static void     hyscan_profile_hw_device_object_finalize    (GObject               *object);
 static gboolean hyscan_profile_hw_device_set                (HyScanParam           *param,
                                                              HyScanParamList       *list);
@@ -74,17 +106,44 @@ hyscan_profile_hw_device_class_init (HyScanProfileHWDeviceClass *klass)
 {
   GObjectClass *oclass = G_OBJECT_CLASS (klass);
   oclass->finalize = hyscan_profile_hw_device_object_finalize;
+  oclass->set_property = hyscan_profile_hw_device_set_property;
+
+  g_object_class_install_property (oclass, PROP_DRIVERS,
+    g_param_spec_boxed ("drivers", "Drivers", "Drivers search paths", G_TYPE_STRV,
+                        G_PARAM_CONSTRUCT | G_PARAM_WRITABLE));
 }
 
 static void
-hyscan_profile_hw_device_init (HyScanProfileHWDevice *profile_hw_device)
+hyscan_profile_hw_device_init (HyScanProfileHWDevice *self)
 {
   HyScanProfileHWDevicePrivate *priv;
 
-  priv = hyscan_profile_hw_device_get_instance_private (profile_hw_device);
-  profile_hw_device->priv = priv;
+  priv = hyscan_profile_hw_device_get_instance_private (self);
+  self->priv = priv;
 
   priv->params = hyscan_param_list_new ();
+}
+
+static void
+hyscan_profile_hw_device_set_property (GObject      *object,
+                                       guint         prop_id,
+                                       const GValue *value,
+                                       GParamSpec   *pspec)
+{
+  HyScanProfileHWDevice *self = HYSCAN_PROFILE_HW_DEVICE (object);
+  gchar **drivers;
+
+  switch (prop_id)
+    {
+    case PROP_DRIVERS:
+      drivers = (gchar**) g_value_get_boxed (value);
+      hyscan_profile_hw_device_set_paths (self, drivers);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+    }
 }
 
 static void
@@ -103,6 +162,7 @@ hyscan_profile_hw_device_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_hw_device_parent_class)->finalize (object);
 }
 
+/* Функция ищет драйвер по названию. */
 static HyScanDiscover *
 hyscan_profile_hw_device_find_driver (gchar       **paths,
                                       const gchar  *name)
@@ -120,6 +180,7 @@ hyscan_profile_hw_device_find_driver (gchar       **paths,
   return NULL;
 }
 
+/* Функция десериализует параметры из кей-файла. */
 static HyScanParamList *
 hyscan_profile_hw_device_read_params (GKeyFile         *kf,
                                       const gchar      *group,
@@ -198,6 +259,7 @@ hyscan_profile_hw_device_read_params (GKeyFile         *kf,
   return params;
 }
 
+/* Функция сериализует параметры в кей-файл. */
 static void
 hyscan_profile_hw_device_write_params (GKeyFile         *kf,
                                        const gchar      *group,
@@ -254,6 +316,7 @@ hyscan_profile_hw_device_write_params (GKeyFile         *kf,
     }
 }
 
+/* Функция установки параметров интерфейса HyScanParam. */
 static gboolean
 hyscan_profile_hw_device_set (HyScanParam     *param,
                               HyScanParamList *list)
@@ -266,6 +329,7 @@ hyscan_profile_hw_device_set (HyScanParam     *param,
   return TRUE;
 }
 
+/* Функция получения параметров интерфейса HyScanParam. */
 static gboolean
 hyscan_profile_hw_device_get (HyScanParam     *param,
                               HyScanParamList *list)
@@ -278,6 +342,7 @@ hyscan_profile_hw_device_get (HyScanParam     *param,
   return TRUE;
 }
 
+/* Функция получения схемы интерфейса HyScanParam. */
 static HyScanDataSchema *
 hyscan_profile_hw_device_schema (HyScanParam *param)
 {
@@ -288,11 +353,20 @@ hyscan_profile_hw_device_schema (HyScanParam *param)
 }
 
 HyScanProfileHWDevice *
-hyscan_profile_hw_device_new (void)
+hyscan_profile_hw_device_new (gchar **driver_paths)
 {
-  return g_object_new (HYSCAN_TYPE_PROFILE_HW_DEVICE, NULL);
+  return g_object_new (HYSCAN_TYPE_PROFILE_HW_DEVICE,
+                       "drivers", driver_paths,
+                       NULL);
 }
 
+/**
+ * hyscan_profile_hw_device_set_group:
+ * @self: #HyScanProfileHWDevice
+ * @group: группа в GKeyFile
+ *
+ * Функция устанавливает новую группу для чтения/записи.
+ */
 void
 hyscan_profile_hw_device_set_group (HyScanProfileHWDevice *self,
                                     const gchar           *group)
@@ -303,6 +377,14 @@ hyscan_profile_hw_device_set_group (HyScanProfileHWDevice *self,
   self->priv->group = g_strdup (group);
 }
 
+/**
+ * hyscan_profile_hw_device_get_group:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция устанавливает возвращает группу для чтения/записи.
+ *
+ * Returns: (transfer none): группа.
+ */
 const gchar *
 hyscan_profile_hw_device_get_group (HyScanProfileHWDevice *self)
 {
@@ -311,6 +393,13 @@ hyscan_profile_hw_device_get_group (HyScanProfileHWDevice *self)
   return self->priv->group;
 }
 
+/**
+ * hyscan_profile_hw_device_set_paths:
+ * @self: #HyScanProfileHWDevice
+ * @paths: список путей
+ *
+ * Функция устанавливает список путей к драйверам.
+ */
 void
 hyscan_profile_hw_device_set_paths (HyScanProfileHWDevice  *self,
                                     gchar                 **paths)
@@ -321,6 +410,15 @@ hyscan_profile_hw_device_set_paths (HyScanProfileHWDevice  *self,
   self->priv->paths = g_strdupv ((gchar**)paths);
 }
 
+/**
+ * hyscan_profile_hw_device_get_group:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция возвращает список путей к драйверам.
+ *
+ * Returns: (transfer none): список путей. Память принадлежит классу и не должна
+ * быть освобождена.
+ */
 const gchar **
 hyscan_profile_hw_device_get_paths (HyScanProfileHWDevice *self)
 {
@@ -329,6 +427,14 @@ hyscan_profile_hw_device_get_paths (HyScanProfileHWDevice *self)
   return (const gchar **)self->priv->paths;
 }
 
+/**
+ * hyscan_profile_hw_device_set_name:
+ * @self: #HyScanProfileHWDevice
+ * @name: человекочитаемое название устройства в профиле
+ *
+ * Функция устанавливает название устройства в профиле. Это название ни на что
+ * не влияет.
+ */
 void
 hyscan_profile_hw_device_set_name (HyScanProfileHWDevice  *self,
                                    const gchar            *name)
@@ -340,6 +446,14 @@ hyscan_profile_hw_device_set_name (HyScanProfileHWDevice  *self,
     self->priv->name = g_strdup (name);
 }
 
+/**
+ * hyscan_profile_hw_device_get_name:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция возвращает название устройства в профиле.
+ *
+ * Returns: (transfer none): название устройства.
+ */
 const gchar *
 hyscan_profile_hw_device_get_name (HyScanProfileHWDevice  *self)
 {
@@ -348,6 +462,13 @@ hyscan_profile_hw_device_get_name (HyScanProfileHWDevice  *self)
   return self->priv->name;
 }
 
+/**
+ * hyscan_profile_hw_device_set_driver:
+ * @self: #HyScanProfileHWDevice
+ * @driver: используемый драйвер
+ *
+ * Функция устанавливает используемый драйвер.
+ */
 void
 hyscan_profile_hw_device_set_driver (HyScanProfileHWDevice  *self,
                                      const gchar            *driver)
@@ -359,6 +480,14 @@ hyscan_profile_hw_device_set_driver (HyScanProfileHWDevice  *self,
     self->priv->driver = g_strdup (driver);
 }
 
+/**
+ * hyscan_profile_hw_device_get_driver:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция возвращает используемый драйвер.
+ *
+ * Returns: (transfer none): название драйвера
+ */
 const gchar *
 hyscan_profile_hw_device_get_driver (HyScanProfileHWDevice *self)
 {
@@ -367,6 +496,13 @@ hyscan_profile_hw_device_get_driver (HyScanProfileHWDevice *self)
   return self->priv->driver;
 }
 
+/**
+ * hyscan_profile_hw_device_set_uri:
+ * @self: #HyScanProfileHWDevice
+ * @uri: адрес устройства
+ *
+ * Функция устанавливает адрес устройства.
+ */
 void
 hyscan_profile_hw_device_set_uri (HyScanProfileHWDevice  *self,
                                   const gchar            *uri)
@@ -378,6 +514,14 @@ hyscan_profile_hw_device_set_uri (HyScanProfileHWDevice  *self,
     self->priv->uri = g_strdup (uri);
 }
 
+/**
+ * hyscan_profile_hw_device_get_uri:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция возвращает адрес устройства.
+ *
+ * Returns: (transfer none) адрес устройства
+ */
 const gchar *
 hyscan_profile_hw_device_get_uri (HyScanProfileHWDevice *self)
 {
@@ -386,6 +530,13 @@ hyscan_profile_hw_device_get_uri (HyScanProfileHWDevice *self)
   return self->priv->uri;
 }
 
+/**
+ * hyscan_profile_hw_device_read:
+ * @self: #HyScanProfileHWDevice
+ * @kf: #GKeyFile с профилем
+ *
+ * Функция десериализует устройство из кей-файла с профилем.
+ */
 void
 hyscan_profile_hw_device_read (HyScanProfileHWDevice *self,
                                GKeyFile              *kf)
@@ -420,6 +571,13 @@ hyscan_profile_hw_device_read (HyScanProfileHWDevice *self,
   g_clear_object (&plist);
 }
 
+/**
+ * hyscan_profile_hw_device_write:
+ * @self: #HyScanProfileHWDevice
+ * @kf: #GKeyFile с профилем
+ *
+ * Функция сериализует устройство в кей-файла с профилем.
+ */
 void
 hyscan_profile_hw_device_write (HyScanProfileHWDevice *self,
                                 GKeyFile              *kf)
@@ -440,18 +598,33 @@ hyscan_profile_hw_device_write (HyScanProfileHWDevice *self,
   hyscan_profile_hw_device_write_params (kf, priv->group, priv->schema, priv->params);
 }
 
+/**
+ * hyscan_profile_hw_device_sanity:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция валидирует профиль устройства. Если не заданы обязательные параметры
+ * (драйвер и адрес), профиль невалиден. При этом не гарантируется, что к
+ * устройству возможно подключиться.
+ *
+ * Returns: %TRUE, если профиль устройства валиден.
+ */
 gboolean
 hyscan_profile_hw_device_sanity (HyScanProfileHWDevice *self)
 {
-  HyScanProfileHWDevicePrivate *priv;
-
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (self), FALSE);
-  priv = self->priv;
 
-  return priv->name != NULL && priv->driver != NULL && priv->uri != NULL;
+  return self->priv->driver != NULL && self->priv->uri != NULL;
 }
 
-
+/**
+ * hyscan_profile_hw_device_update:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция обновляет схему устройства и *должна* быть вызвана после смены адреса
+ * или драйвера.
+ *
+ * Returns: %TRUE, если удалось обновить схему устройства.
+ */
 gboolean
 hyscan_profile_hw_device_update (HyScanProfileHWDevice *self)
 {
@@ -461,15 +634,15 @@ hyscan_profile_hw_device_update (HyScanProfileHWDevice *self)
   g_clear_object (&priv->discover);
   g_clear_object (&priv->schema);
 
-  if (priv->paths == NULL || priv->driver == NULL)
+  if (priv->paths == NULL || priv->driver == NULL || priv->uri == NULL)
     return FALSE;
 
   priv->discover = hyscan_profile_hw_device_find_driver (priv->paths,
                                                          priv->driver);
   if (priv->discover == NULL)
     {
-      g_warning ("Couldn't find driver <%s> for device <%s>", priv->driver,
-                                                              priv->name);
+      const gchar *text = priv->name != NULL ? priv->name : priv->uri;
+      g_warning ("Couldn't find driver <%s> for device <%s>", priv->driver, text);
       return FALSE;
     }
 
@@ -477,6 +650,14 @@ hyscan_profile_hw_device_update (HyScanProfileHWDevice *self)
   return TRUE;
 }
 
+/**
+ * hyscan_profile_hw_device_check:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция проверяет, возможно ли подключиться к устройству прямо сейчас.
+ *
+ * Returns: %TRUE, если возможно.
+ */
 gboolean
 hyscan_profile_hw_device_check (HyScanProfileHWDevice *self)
 {
@@ -491,6 +672,14 @@ hyscan_profile_hw_device_check (HyScanProfileHWDevice *self)
   return hyscan_discover_check (priv->discover, priv->uri, priv->params);
 }
 
+/**
+ * hyscan_profile_hw_device_connect:
+ * @self: #HyScanProfileHWDevice
+ *
+ * Функция выполняет подключение к устройству.
+ *
+ * Returns: (transfer full): #HyScanDevice.
+ */
 HyScanDevice *
 hyscan_profile_hw_device_connect (HyScanProfileHWDevice *self)
 {
