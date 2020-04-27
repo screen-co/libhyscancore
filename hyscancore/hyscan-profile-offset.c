@@ -54,38 +54,17 @@
 #include <gio/gio.h>
 #include "hyscan-profile-offset.h"
 
-#define HYSCAN_PROFILE_OFFSET_VERSION 0xA0D2BC35
+#define HYSCAN_PROFILE_OFFSET_VERSION 20200100
 
-/**
- * HYSCAN_PROFILE_OFFSET_STARBOARD:
- * Поле для соответствующего смещения.
- */
 #define HYSCAN_PROFILE_OFFSET_STARBOARD "starboard"
-/**
- * HYSCAN_PROFILE_OFFSET_FORWARD:
- * Поле для соответствующего смещения.
- */
 #define HYSCAN_PROFILE_OFFSET_FORWARD "forward"
-/**
- * HYSCAN_PROFILE_OFFSET_VERTICAL:
- * Поле для соответствующего смещения.
- */
 #define HYSCAN_PROFILE_OFFSET_VERTICAL "vertical"
-/**
- * HYSCAN_PROFILE_OFFSET_YAW:
- * Поле для соответствующего смещения.
- */
 #define HYSCAN_PROFILE_OFFSET_YAW "yaw"
-/**
- * HYSCAN_PROFILE_OFFSET_PITCH:
- * Поле для соответствующего смещения.
- */
 #define HYSCAN_PROFILE_OFFSET_PITCH "pitch"
-/**
- * HYSCAN_PROFILE_OFFSET_ROLL:
- * Поле для соответствующего смещения.
- */
 #define HYSCAN_PROFILE_OFFSET_ROLL "roll"
+
+#define HYSCAN_PROFILE_OFFSET_SOURCE "source:"
+#define HYSCAN_PROFILE_OFFSET_SENSOR "sensor:"
 
 struct _HyScanProfileOffsetPrivate
 {
@@ -139,18 +118,66 @@ hyscan_profile_offset_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_profile_offset_parent_class)->finalize (object);
 }
 
+/* Вспомогательная функция чтения группы. */
+static void
+hyscan_profile_offset_read_helper (HyScanProfileOffset *self,
+                                   GKeyFile            *kf,
+                                   const gchar         *group)
+{
+  const gchar *id;
+  HyScanAntennaOffset offset;
+
+  offset.starboard = g_key_file_get_double (kf, group, HYSCAN_PROFILE_OFFSET_STARBOARD, NULL);
+  offset.forward = g_key_file_get_double (kf, group, HYSCAN_PROFILE_OFFSET_FORWARD, NULL);
+  offset.vertical = g_key_file_get_double (kf, group, HYSCAN_PROFILE_OFFSET_VERTICAL, NULL);
+  offset.yaw = g_key_file_get_double (kf, group, HYSCAN_PROFILE_OFFSET_YAW, NULL);
+  offset.pitch = g_key_file_get_double (kf, group, HYSCAN_PROFILE_OFFSET_PITCH, NULL);
+  offset.roll = g_key_file_get_double (kf, group, HYSCAN_PROFILE_OFFSET_ROLL, NULL);
+
+  if (g_str_has_prefix (group, HYSCAN_PROFILE_OFFSET_SOURCE))
+    {
+      HyScanSourceType source;
+      HyScanChannelType type;
+      guint channel;
+
+      id = group + strlen (HYSCAN_PROFILE_OFFSET_SOURCE);
+      if (!hyscan_channel_get_types_by_id (id, &source, &type, &channel))
+        goto warn;
+
+      hyscan_profile_offset_add_source (self, source, &offset);
+    }
+  else if (g_str_has_prefix (group, HYSCAN_PROFILE_OFFSET_SENSOR))
+    {
+      id = group + strlen (HYSCAN_PROFILE_OFFSET_SENSOR);
+      hyscan_profile_offset_add_sensor (self, id, &offset);
+    }
+  else
+    {
+      goto warn;
+    }
+
+  return;
+warn:
+  g_warning ("HyScanProfileOffset: group <%s> couldn't be parsed", group);
+}
+
 /* Вспомогательная функция записи. */
 static void
 hyscan_profile_offset_write_helper (GKeyFile            *kf,
+                                    const gchar         *group_prefix,
                                     const gchar         *group,
                                     HyScanAntennaOffset *offset)
 {
-  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_STARBOARD, offset->starboard);
-  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_FORWARD, offset->forward);
-  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_VERTICAL, offset->vertical);
-  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_YAW, offset->yaw);
-  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_PITCH, offset->pitch);
-  g_key_file_set_double (kf, group, HYSCAN_PROFILE_OFFSET_ROLL, offset->roll);
+  gchar *real = g_strdup_printf ("%s%s", group_prefix, group);
+
+  g_key_file_set_double (kf, real, HYSCAN_PROFILE_OFFSET_STARBOARD, offset->starboard);
+  g_key_file_set_double (kf, real, HYSCAN_PROFILE_OFFSET_FORWARD, offset->forward);
+  g_key_file_set_double (kf, real, HYSCAN_PROFILE_OFFSET_VERTICAL, offset->vertical);
+  g_key_file_set_double (kf, real, HYSCAN_PROFILE_OFFSET_YAW, offset->yaw);
+  g_key_file_set_double (kf, real, HYSCAN_PROFILE_OFFSET_PITCH, offset->pitch);
+  g_key_file_set_double (kf, real, HYSCAN_PROFILE_OFFSET_ROLL, offset->roll);
+
+  g_free (real);
 }
 
 /* Функция парсинга профиля. */
@@ -169,28 +196,11 @@ hyscan_profile_offset_read (HyScanProfile *profile,
   groups = g_key_file_get_groups (file, NULL);
   for (iter = groups; iter != NULL && *iter != NULL; ++iter)
     {
-      HyScanAntennaOffset offset;
-      HyScanSourceType source;
-      HyScanChannelType type;
-      guint channel;
-
       /* Возможно, это группа с информацией. */
       if (g_str_equal (HYSCAN_PROFILE_INFO_GROUP, *iter))
         continue;
 
-      offset.starboard = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_STARBOARD, NULL);
-      offset.forward = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_FORWARD, NULL);
-      offset.vertical = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_VERTICAL, NULL);
-      offset.yaw = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_YAW, NULL);
-      offset.pitch = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_PITCH, NULL);
-      offset.roll = g_key_file_get_double (file, *iter, HYSCAN_PROFILE_OFFSET_ROLL, NULL);
-
-      /* Если название группы совпадает с названием того или иного
-       * HyScanSourceType, то это локатор. Иначе -- датчик. */
-      if (hyscan_channel_get_types_by_id (*iter, &source, &type, &channel))
-        hyscan_profile_offset_add_source (self, source, &offset);
-      else
-        hyscan_profile_offset_add_sensor (self, *iter, &offset);
+      hyscan_profile_offset_read_helper (self, file, *iter);
     }
 
   g_strfreev (groups);
@@ -213,13 +223,15 @@ hyscan_profile_offset_write (HyScanProfile *profile,
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       const gchar *id = hyscan_source_get_id_by_type ((HyScanSourceType)k);
-      hyscan_profile_offset_write_helper (file, id, v);
+      hyscan_profile_offset_write_helper (file, HYSCAN_PROFILE_OFFSET_SOURCE,
+                                          id, v);
     }
 
   g_hash_table_iter_init (&iter, priv->sensors);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
-      hyscan_profile_offset_write_helper (file, (const gchar*)k, v);
+      hyscan_profile_offset_write_helper (file, HYSCAN_PROFILE_OFFSET_SENSOR,
+                                          (const gchar*)k, v);
     }
 
   return TRUE;
@@ -329,20 +341,11 @@ hyscan_profile_offset_add_sensor (HyScanProfileOffset *profile,
   HyScanSourceType source;
   g_return_if_fail (HYSCAN_IS_PROFILE_OFFSET (profile));
 
-  if (offset == NULL)
+  if (offset == NULL || sensor == NULL)
     return;
 
-  source = hyscan_source_get_type_by_id (sensor);
-  if (source != HYSCAN_SOURCE_INVALID)
-    {
-      hyscan_profile_offset_add_source (profile, source, offset);
-    }
-  else
-    {
-      g_hash_table_insert (profile->priv->sensors, g_strdup (sensor),
-                           hyscan_antenna_offset_copy (offset));
-
-    }
+  g_hash_table_insert (profile->priv->sensors, g_strdup (sensor),
+                       hyscan_antenna_offset_copy (offset));
 }
 
 /**
