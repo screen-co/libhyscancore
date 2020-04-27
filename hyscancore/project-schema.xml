@@ -78,6 +78,24 @@
     <key id="height" name="Mark height" type="double"/>
   </schema>
 
+  <schema id="label">
+    <node id="schema">
+      <key id="id" name="Label schema id" type="integer" access="readonly">
+        <default>5468681196977785233</default>
+      </key>
+      <key id="version" name="Label schema version" type="integer" access="readonly">
+        <default>20200113</default>
+      </key>
+    </node>
+    <key id="name" name="Label short name" type="string"/>
+    <key id="description" name="Detailed description" type="string"/>
+    <key id="operator" name="Operator name" type="string"/>
+    <key id="icon" name="Icon name" type="string"/>
+    <key id="label" name="Applied labels" type="integer"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
   <schema id="planner-origin">
     <node id="schema">
       <key id="id" name="Planner origin schema id" type="integer" access="readonly">
