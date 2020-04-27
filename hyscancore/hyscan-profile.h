@@ -63,16 +63,6 @@ struct _HyScanProfile
  * Название информационной группы.
  */
 #define HYSCAN_PROFILE_INFO_GROUP "_"
-/**
- * HYSCAN_PROFILE_NAME:
- * Поле с названием профиля.
- */
-#define HYSCAN_PROFILE_NAME "name"
-/**
- * HYSCAN_PROFILE_VERSION:
- * Поле с версией профиля.
- */
-#define HYSCAN_PROFILE_VERSION "version"
 
 /**
  * HyScanProfileClass:
