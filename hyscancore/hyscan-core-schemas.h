@@ -41,6 +41,9 @@
 #define TRACK_INFO_SCHEMA_ID                   3829672927190415735
 #define TRACK_INFO_SCHEMA_VERSION              20200424
 
+#define MAP_TRACK_SCHEMA_ID                    1719201303461104780
+#define MAP_TRACK_SCHEMA_VERSION               20200300
+
 #define TRACK_SCHEMA_ID                        1715033709558529337
 #define TRACK_SCHEMA_VERSION                   20200300
 
@@ -79,6 +82,7 @@
 
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"
+#define MAP_TRACK_SCHEMA                       "map-track"
 
 #define TRACK_SCHEMA                           "track"
 #define LOG_CHANNEL_SCHEMA                     "log"
