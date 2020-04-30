@@ -39,7 +39,8 @@
 #include <hyscan-geo-projection.h>
 #include <hyscan-db.h>
 #include <hyscan-cache.h>
-#include "hyscan-map-track-param.h"
+#include <hyscan-track-proj-quality.h>
+#include <hyscan-map-track-param.h>
 
 G_BEGIN_DECLS
 
@@ -175,39 +176,45 @@ struct _HyScanMapTrackClass
 };
 
 HYSCAN_API
-GType                   hyscan_map_track_get_type           (void);
+GType                  hyscan_map_track_get_type             (void);
 
 HYSCAN_API
-HyScanMapTrack *        hyscan_map_track_new                (HyScanDB                   *db,
-                                                             HyScanCache                *cache,
-                                                             const gchar                *project_name,
-                                                             const gchar                *track_name,
-                                                             HyScanGeoProjection        *projection);
+HyScanMapTrack *       hyscan_map_track_new                  (HyScanDB                   *db,
+                                                              HyScanCache                *cache,
+                                                              const gchar                *project_name,
+                                                              const gchar                *track_name,
+                                                              HyScanGeoProjection        *projection);
 
 HYSCAN_API
-guint32                 hyscan_map_track_get_mod_count          (HyScanMapTrack             *track);
+guint32                hyscan_map_track_get_mod_count         (HyScanMapTrack             *track);
 
 HYSCAN_API
-HyScanMapTrackParam *  hyscan_map_track_get_param          (HyScanMapTrack             *track);
+HyScanMapTrackParam *  hyscan_map_track_get_param             (HyScanMapTrack             *track);
 
 HYSCAN_API
-gboolean                hyscan_map_track_get                (HyScanMapTrack             *track,
-                                                             HyScanMapTrackData        *data);
+HyScanTrackProjQuality *  hyscan_map_track_get_quality_port      (HyScanMapTrack             *track);
 
 HYSCAN_API
-gboolean                hyscan_map_track_view               (HyScanMapTrack             *track,
-                                                             HyScanGeoCartesian2D       *from,
-                                                             HyScanGeoCartesian2D       *to);
+HyScanTrackProjQuality *  hyscan_map_track_get_quality_starboard (HyScanMapTrack             *track);
 
 HYSCAN_API
-void                    hyscan_map_track_set_projection     (HyScanMapTrack             *track,
-                                                             HyScanGeoProjection        *projection);
+gboolean                hyscan_map_track_get                  (HyScanMapTrack             *track,
+                                                               HyScanMapTrackData         *data);
 
 HYSCAN_API
-void                    hyscan_map_track_point_free         (HyScanMapTrackPoint        *point);
+gboolean                hyscan_map_track_view                 (HyScanMapTrack             *track,
+                                                               HyScanGeoCartesian2D       *from,
+                                                               HyScanGeoCartesian2D       *to);
 
 HYSCAN_API
-HyScanMapTrackPoint *   hyscan_map_track_point_copy         (const HyScanMapTrackPoint  *point);
+void                    hyscan_map_track_set_projection       (HyScanMapTrack             *track,
+                                                               HyScanGeoProjection        *projection);
+
+HYSCAN_API
+void                    hyscan_map_track_point_free           (HyScanMapTrackPoint        *point);
+
+HYSCAN_API
+HyScanMapTrackPoint *   hyscan_map_track_point_copy           (const HyScanMapTrackPoint  *point);
 
 G_END_DECLS
 

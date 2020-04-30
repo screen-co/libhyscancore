@@ -66,9 +66,6 @@
 #include <glib/gi18n-lib.h>
 #include <math.h>
 
-/* Ключи схемы данных настроек галса. */
-
-
 #define STRAIGHT_LINE_MAX_ANGLE   0.26             /* Максимальное изменение курса на прямолинейном участке, рад. */
 #define STRAIGHT_LINE_MIN_DIST    30.0             /* Минимальная длина прямолинейного участка, метры. */
 #define DEFAULT_HAPERTURE         0.15             /* Апертура антенны по умолчанию (если её нет в параметрах галса). */
@@ -119,11 +116,13 @@ typedef struct
   gdouble                         antenna_length;    /* Длина антенны. */
   gdouble                         beam_width;        /* Ширина луча, радианы. */
   gdouble                         near_field;        /* Граница ближней зоны. */
+  HyScanTrackProjQuality         *quality;
 } HyScanMapTrackSide;
 
 /* Параметры и данные навигации. */
 typedef struct
 {
+  gboolean                        opened;
   guint                           channel;           /* Номер канала NMEA с RMC. */
   HyScanAntennaOffset             offset;            /* Смещение антенны. */
   gboolean                        writeable;         /* Признак записи в канал. */
@@ -359,6 +358,7 @@ hyscan_map_track_object_finalize (GObject *object)
 static void
 hyscan_gtk_map_track_side_clear (HyScanMapTrackSide *side)
 {
+  g_clear_object (&side->quality);
   g_clear_object (&side->amplitude);
   g_clear_object (&side->projector);
 }
@@ -733,7 +733,7 @@ hyscan_map_track_load_side (HyScanMapTrack     *track,
   GList *last_link;
   guint32 mod_count;
 
-  if (side->amplitude == NULL || nav->lat_data == NULL)
+  if (side->amplitude == NULL || !nav->opened)
     return;
 
   mod_count = hyscan_amplitude_get_mod_count (side->amplitude);
@@ -901,6 +901,9 @@ hyscan_map_track_open_side (HyScanMapTrackPrivate *priv,
   side->antenna_length = info.antenna_haperture > 0 ? info.antenna_haperture : DEFAULT_HAPERTURE;
   side->beam_width = asin (lambda / side->antenna_length);
   side->near_field = (side->antenna_length * side->antenna_length) / lambda;
+
+  /* Обработчик качества. */
+  side->quality = hyscan_track_proj_quality_new (priv->db, priv->cache, priv->project, priv->name, source);
 }
 
 static void
@@ -916,20 +919,12 @@ hyscan_map_track_open_nav (HyScanMapTrackPrivate *priv)
   g_clear_object (&nav->trk_smooth);
   nav->writeable = FALSE;
 
-  if (nav->channel == 0)
-    return;
+  nav->lat_data = hyscan_map_track_param_get_nav_data (priv->param, HYSCAN_NMEA_FIELD_LAT, priv->cache);
+  nav->lon_data = hyscan_map_track_param_get_nav_data (priv->param, HYSCAN_NMEA_FIELD_LON, priv->cache);
+  nav->trk_data = hyscan_map_track_param_get_nav_data (priv->param, HYSCAN_NMEA_FIELD_TRACK, priv->cache);
 
-  nav->lat_data = HYSCAN_NAV_DATA (hyscan_nmea_parser_new (priv->db, priv->cache, priv->project,
-                                                           priv->name, nav->channel,
-                                                           HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LAT));
-  nav->lon_data = HYSCAN_NAV_DATA (hyscan_nmea_parser_new (priv->db, priv->cache, priv->project,
-                                                           priv->name, nav->channel,
-                                                           HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_LON));
-  nav->trk_data = HYSCAN_NAV_DATA (hyscan_nmea_parser_new (priv->db, priv->cache, priv->project,
-                                                           priv->name, nav->channel,
-                                                           HYSCAN_NMEA_DATA_RMC, HYSCAN_NMEA_FIELD_TRACK));
-
-  if (nav->lat_data == NULL)
+  nav->opened = (nav->lat_data != NULL && nav->lon_data != NULL && nav->trk_data != NULL);
+  if (!nav->opened)
     return;
 
   nav->lat_smooth = hyscan_nav_smooth_new (nav->lat_data);
@@ -942,20 +937,15 @@ hyscan_map_track_open_nav (HyScanMapTrackPrivate *priv)
 static void
 hyscan_map_track_open_depth (HyScanMapTrackPrivate *priv)
 {
-  HyScanNMEAParser *dpt_parser;
+  HyScanNavData *dpt_parser;
   
   g_clear_object (&priv->depth.meter);
   
-  if (priv->depth.channel == 0)
+  priv->depth.meter = hyscan_map_track_param_get_depthometer (priv->param, priv->cache);
+  if (priv->depth.meter == NULL)
     return;
-  
-  dpt_parser = hyscan_nmea_parser_new (priv->db, priv->cache,
-                                       priv->project, priv->name, priv->depth.channel,
-                                       HYSCAN_NMEA_DATA_DPT, HYSCAN_NMEA_FIELD_DEPTH);
-  if (dpt_parser == NULL)
-    return;
-  
-  priv->depth.meter = hyscan_depthometer_new (HYSCAN_NAV_DATA (dpt_parser), priv->cache);
+
+  dpt_parser = hyscan_depthometer_get_nav_data (priv->depth.meter);
   priv->depth.offset = hyscan_nav_data_get_offset (HYSCAN_NAV_DATA (dpt_parser));
   g_object_unref (dpt_parser);
 }
@@ -1081,7 +1071,7 @@ hyscan_map_track_load (HyScanMapTrack *track)
     }
 
   /* Если нет навигационных данных, то невозможно ничего загрузить. Выходим. */
-  if (priv->nav.lat_data == NULL)
+  if (!priv->nav.opened)
     return FALSE;
 
   /* Проверяем наличие новых данных. */
@@ -1133,7 +1123,7 @@ hyscan_map_track_new (HyScanDB            *db,
 /**
  * hyscan_map_track_get:
  * @track: указатель на #HyScanMapTrack
- * @data: (out): структура со списком точек
+ * @data: (out) (transfer none): структура со списком точек
  *
  * Функция получает список точек галса.
  */
@@ -1228,6 +1218,22 @@ hyscan_map_track_get_param (HyScanMapTrack *track)
   g_return_val_if_fail (HYSCAN_IS_MAP_TRACK (track), NULL);
 
   return track->priv->param;
+}
+
+HyScanTrackProjQuality *
+hyscan_map_track_get_quality_port (HyScanMapTrack *track)
+{
+  g_return_val_if_fail (HYSCAN_IS_MAP_TRACK (track), NULL);
+
+  return track->priv->port.quality;
+}
+
+HyScanTrackProjQuality *
+hyscan_map_track_get_quality_starboard (HyScanMapTrack *track)
+{
+  g_return_val_if_fail (HYSCAN_IS_MAP_TRACK (track), NULL);
+
+  return track->priv->starboard.quality;
 }
 
 /**

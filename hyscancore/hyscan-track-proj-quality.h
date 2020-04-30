@@ -18,13 +18,21 @@ typedef struct _HyScanTrackProjQuality HyScanTrackProjQuality;
 typedef struct _HyScanTrackProjQualityPrivate HyScanTrackProjQualityPrivate;
 typedef struct _HyScanTrackProjQualityClass HyScanTrackProjQualityClass;
 
+/**
+ * HyScanTrackCovSection:
+ * @start: начало отрезка, в единицах горизонтальной дальности, от 0 до 1
+ * @quality: качество данных на отрезке, от 0 до 1
+ *
+ * Структура содержит значение качества акустических данных на одном из отрезков луча.
+ * Координаты отрезка измеряются в долях горизонтальной дальности: "0" соответствует положению "под собой",
+ * "1" соотвествует дальности зондирования. Конец отрезка считается равным началу следующего за ним отрезком.
+ */
 typedef struct
 {
-  gdouble start;
-  gdouble quality;
+  gdouble          start;
+  gdouble          quality;
 } HyScanTrackCovSection;
 
-/* !!! Change GObject to type of the base class. !!! */
 struct _HyScanTrackProjQuality
 {
   GObject parent_instance;
@@ -32,26 +40,31 @@ struct _HyScanTrackProjQuality
   HyScanTrackProjQualityPrivate *priv;
 };
 
-/* !!! Change GObjectClass to type of the base class. !!! */
 struct _HyScanTrackProjQualityClass
 {
   GObjectClass parent_class;
 };
 
 HYSCAN_API
-GType                    hyscan_track_proj_quality_get_type         (void);
+GType                    hyscan_track_proj_quality_get_type       (void);
 
 HYSCAN_API
 HyScanTrackProjQuality * hyscan_track_proj_quality_new            (HyScanDB                         *db,
                                                                    HyScanCache                      *cache,
                                                                    const gchar                      *project,
-                                                                   const gchar                      *track);
+                                                                   const gchar                      *track,
+                                                                   HyScanSourceType                  source);
 
 HYSCAN_API
 gboolean                 hyscan_track_proj_quality_get            (HyScanTrackProjQuality           *quality_proj,
                                                                    guint32                           index,
                                                                    const HyScanTrackCovSection     **values,
                                                                    gsize                            *n_values);
+
+HYSCAN_API
+const gdouble *          hyscan_track_proj_quality_squash         (HyScanTrackProjQuality           *quality_proj,
+                                                                   guint32                           index,
+                                                                   gsize                            *n_points);
 
 
 

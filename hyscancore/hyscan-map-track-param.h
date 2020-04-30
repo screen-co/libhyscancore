@@ -3,6 +3,9 @@
 
 #include <hyscan-db.h>
 #include <hyscan-param.h>
+#include "hyscan-nav-data.h"
+#include "hyscan-nmea-parser.h"
+#include "hyscan-depthometer.h"
 
 G_BEGIN_DECLS
 
@@ -43,6 +46,15 @@ guint32                hyscan_map_track_param_get_mod_count    (HyScanMapTrackPa
 
 HYSCAN_API
 gboolean               hyscan_map_track_param_has_rmc         (HyScanMapTrackParam  *param);
+
+HYSCAN_API
+HyScanNavData *        hyscan_map_track_param_get_nav_data    (HyScanMapTrackParam  *param,
+                                                               HyScanNMEAField       field,
+                                                               HyScanCache          *cache);
+
+HYSCAN_API
+HyScanDepthometer *    hyscan_map_track_param_get_depthometer (HyScanMapTrackParam  *param,
+                                                               HyScanCache          *cache);
 
 HYSCAN_API
 gboolean               hyscan_map_track_param_clear            (HyScanMapTrackParam  *param);

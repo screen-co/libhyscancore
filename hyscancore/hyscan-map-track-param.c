@@ -721,6 +721,74 @@ exit:
   return status;
 }
 
+HyScanNavData *
+hyscan_map_track_param_get_nav_data (HyScanMapTrackParam  *param,
+                                     HyScanNMEAField       field,
+                                     HyScanCache          *cache)
+{
+  HyScanMapTrackParamPrivate *priv;
+  HyScanParamList *list;
+  HyScanNavData *nav_data = NULL;
+  gint64 channel;
+
+  g_return_val_if_fail (HYSCAN_IS_MAP_TRACK_PARAM (param), NULL);
+  priv = param->priv;
+
+  list = hyscan_param_list_new ();
+  hyscan_param_list_add (list, KEY_CHANNEL_RMC);
+  if (!hyscan_param_get (HYSCAN_PARAM (param), list))
+    goto exit;
+
+  channel = hyscan_param_list_get_enum (list, KEY_CHANNEL_RMC);
+  if (channel == 0)
+    goto exit;
+
+  nav_data =  HYSCAN_NAV_DATA (hyscan_nmea_parser_new (priv->db, cache, priv->project_name,
+                                                       priv->track_name, channel,
+                                                       HYSCAN_NMEA_DATA_RMC, field));
+exit:
+  g_clear_object (&list);
+
+  return nav_data;
+}
+
+HyScanDepthometer *
+hyscan_map_track_param_get_depthometer (HyScanMapTrackParam  *param,
+                                        HyScanCache          *cache)
+{
+  HyScanMapTrackParamPrivate *priv;
+  HyScanNMEAParser *dpt_parser;
+  HyScanParamList *list;
+  HyScanDepthometer *depthometer = NULL;
+  gint64 channel;
+
+  g_return_val_if_fail (HYSCAN_IS_MAP_TRACK_PARAM (param), NULL);
+  priv = param->priv;
+
+  list = hyscan_param_list_new ();
+  hyscan_param_list_add (list, KEY_CHANNEL_DPT);
+  if (!hyscan_param_get (HYSCAN_PARAM (param), list))
+    goto exit;
+
+  channel = hyscan_param_list_get_enum (list, KEY_CHANNEL_DPT);
+  if (channel == 0)
+    goto exit;
+ 
+  dpt_parser = hyscan_nmea_parser_new (priv->db, cache,
+                                       priv->project_name, priv->track_name, channel,
+                                       HYSCAN_NMEA_DATA_DPT, HYSCAN_NMEA_FIELD_DEPTH);
+  if (dpt_parser == NULL)
+    goto exit;
+
+  depthometer = hyscan_depthometer_new (HYSCAN_NAV_DATA (dpt_parser), cache);
+  g_object_unref (dpt_parser);
+  
+exit:
+  g_clear_object (&list);
+  
+  return depthometer;
+}
+
 /**
  * hyscan_map_track_param_clear:
  * @param: указатель на #HyScanMapTrackParam
