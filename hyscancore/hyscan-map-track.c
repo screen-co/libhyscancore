@@ -33,7 +33,7 @@
  */
 
 /**
- * SECTION: hyscan-track-proj
+ * SECTION: hyscan-map-track
  * @Short_description: Проекция галса на карту
  * @Title: HyScanMapTrack
  *
@@ -49,9 +49,6 @@
  * - hyscan_map_track_update() - проверяет и загружает новые данные по галсу;
  * - hyscan_map_track_get() - получает список точек галса;
  * - hyscan_map_track_view() - определяет границы галса.
- *
- * Класс #HyScanMapTrack реализует интерфейс #HyScanParam, с помощью которого можно установить каналы данных,
- * используемые для загрузки информации по галсу.
  *
  */
 
@@ -70,10 +67,7 @@
 #define STRAIGHT_LINE_MIN_DIST    30.0             /* Минимальная длина прямолинейного участка, метры. */
 #define DEFAULT_HAPERTURE         0.15             /* Апертура антенны по умолчанию (если её нет в параметрах галса). */
 #define SOUND_VELOCITY            1500.            /* Скорость звука. */
-
-/* Параметры по умолчанию. */
-#define DEFAULT_CHANNEL_PORT      1                /* Номер канала левого борта. */
-#define DEFAULT_CHANNEL_STARBOARD 1                /* Номер канала правого борта. */
+#define DEFAULT_CHANNEL_SS        1                /* Номер канала ГБО. */
 
 enum
 {
@@ -103,7 +97,6 @@ enum
 /* Параметры и данные одного борта ГБО. */
 typedef struct
 {
-  guint                           channel;           /* Номер канала. */
   HyScanAntennaOffset             offset;            /* Смещение антенны. */
   gboolean                        writeable;         /* Признак записи в канал. */
   guint32                         mod_count;         /* Mod-count амплитудных данных. */
@@ -122,8 +115,7 @@ typedef struct
 /* Параметры и данные навигации. */
 typedef struct
 {
-  gboolean                        opened;
-  guint                           channel;           /* Номер канала NMEA с RMC. */
+  gboolean                        opened;            /* Признак того, что актуальные обработчики открыты. */
   HyScanAntennaOffset             offset;            /* Смещение антенны. */
   gboolean                        writeable;         /* Признак записи в канал. */
   guint32                         mod_count;         /* Mod-count канала навигационных данных. */
@@ -162,15 +154,15 @@ struct _HyScanMapTrackPrivate
 
   HyScanGeoProjection            *projection;        /* Картографическая проекция. */
 
-  HyScanMapTrackSide             port;              /* Данные левого борта. */
-  HyScanMapTrackSide             starboard;         /* Данные правого борта. */
-  HyScanMapTrackNav              nav;               /* Данные навигации. */
+  HyScanMapTrackSide             port;               /* Данные левого борта. */
+  HyScanMapTrackSide             starboard;          /* Данные правого борта. */
+  HyScanMapTrackNav              nav;                /* Данные навигации. */
   HyScanGtkMapTrackDepth          depth;             /* Данные по глубине. */
 
   HyScanGeoCartesian2D            extent_from;       /* Минимальные координаты точек галса. */
   HyScanGeoCartesian2D            extent_to;         /* Максимальные координаты точек галса. */
-  gboolean                        proj_changed;
-  guint32                         loaded_mod_count;
+  gboolean                        proj_changed;      /* Признак того, что проекция изменилась. */
+  guint32                         loaded_mod_count;  /* Мод-каунт последних загруженных данных. */
 };
 
 static void     hyscan_map_track_set_property        (GObject                    *object,
@@ -180,16 +172,14 @@ static void     hyscan_map_track_set_property        (GObject                   
 static void     hyscan_map_track_object_constructed  (GObject                    *object);
 static void     hyscan_map_track_object_finalize     (GObject                    *object);
 static void     hyscan_gtk_map_track_side_clear       (HyScanMapTrackSide        *side);
-static void     hyscan_map_track_set_channel         (HyScanMapTrack             *track,
-                                                      guint                       channel,
-                                                      guint                       channel_num);
 static void     hyscan_map_track_load_side           (HyScanMapTrack             *track,
                                                       HyScanMapTrackSide         *side);
 static void     hyscan_map_track_remove_expired      (GList                      *points,
                                                       guint32                     first_index,
                                                       guint32                     last_index);
 static gboolean hyscan_map_track_load                (HyScanMapTrack             *track);
-static gboolean hyscan_map_track_param_update        (HyScanMapTrack             *track);
+static void     hyscan_map_track_mod_free            (HyScanMapTrackMod          *mod);
+static void     hyscan_map_track_param_update        (HyScanMapTrack             *track);
 static void     hyscan_map_track_reset_extent        (HyScanMapTrackPrivate      *priv);
 static void     hyscan_map_track_update_extent       (GList                      *points,
                                                        HyScanGeoCartesian2D      *from,
@@ -361,41 +351,6 @@ hyscan_gtk_map_track_side_clear (HyScanMapTrackSide *side)
   g_clear_object (&side->quality);
   g_clear_object (&side->amplitude);
   g_clear_object (&side->projector);
-}
-
-/* Устанавливает номер канала для указанного трека. */
-static void
-hyscan_map_track_set_channel (HyScanMapTrack *track,
-                               guint            channel,
-                               guint            channel_num)
-{
-  HyScanMapTrackPrivate *priv = track->priv;
-
-  switch (channel)
-    {
-    case CHANNEL_NMEA_DPT:
-      priv->depth.channel = channel_num;
-      break;
-
-    case CHANNEL_NMEA_RMC:
-      priv->nav.channel = channel_num;
-      break;
-
-    case CHANNEL_STARBOARD:
-      priv->starboard.channel = channel_num;
-      break;
-
-    case CHANNEL_PORT:
-      priv->port.channel = channel_num;
-      break;
-
-    default:
-      g_warning ("HyScanMapTrack: invalid channel");
-    }
-
-  /* Ставим флаг о необходимости переоткрыть галс. */
-  priv->opened = FALSE;
-  priv->loaded = FALSE;
 }
 
 /* Определяет отображаемую длину луча по борту side для индекса index. */
@@ -865,6 +820,7 @@ hyscan_map_track_remove_expired (GList   *points,
     }
 }
 
+/* Функция открывает обработчик одного из бортов ГБО. */
 static void
 hyscan_map_track_open_side (HyScanMapTrackPrivate *priv,
                              HyScanMapTrackSide    *side,
@@ -873,17 +829,25 @@ hyscan_map_track_open_side (HyScanMapTrackPrivate *priv,
   HyScanAcousticData *signal;
   HyScanAcousticDataInfo info;
   gdouble lambda;
-  guint channel = side->channel;
+  HyScanParamList *list;
+  guint channel = 0;
+  const gchar *param_name = source == HYSCAN_SOURCE_SIDE_SCAN_PORT ? "/channel-port" : "/channel-starboard";
 
   /* Удаляем текущие объекты. */
   hyscan_gtk_map_track_side_clear (side);
   side->writeable = FALSE;
 
+  /* Считываем параметры. */
+  list = hyscan_param_list_new ();
+  hyscan_param_list_add (list, param_name);
+  if (hyscan_param_get (HYSCAN_PARAM (priv->param), list))
+    channel = hyscan_param_list_get_boolean (list, param_name) ? DEFAULT_CHANNEL_SS : 0;
+  g_object_unref (list);
+
   if (channel == 0)
     return;
 
   signal = hyscan_acoustic_data_new (priv->db, priv->cache, priv->project, priv->name, source, channel, FALSE);
-
   if (signal == NULL)
     {
       g_warning ("HyScanMapTrack: failed to open acoustic data");
@@ -974,55 +938,28 @@ hyscan_map_track_reset_extent (HyScanMapTrackPrivate *priv)
   priv->extent_to.y = -G_MAXDOUBLE;
 }
 
+/* Функция удаляет структуру #HyScanMapTrackMod. */
 static void
 hyscan_map_track_mod_free (HyScanMapTrackMod *mod)
 {
   g_slice_free (HyScanMapTrackMod, mod);
 }
 
-static gboolean
+/* Функция проверяет, обновились ли параметры галса. */
+static void
 hyscan_map_track_param_update (HyScanMapTrack *track)
 {
   HyScanMapTrackPrivate *priv = track->priv;
-  HyScanParamList *list;
   guint32 mod_count;
-  gint channel_num;
-  gboolean enable;
-
-  gboolean status = FALSE;
 
   mod_count = hyscan_map_track_param_get_mod_count (priv->param);
   if (priv->param_mod_count == mod_count)
-    return TRUE;
+    return;
 
-  list = hyscan_param_list_new ();
-  hyscan_param_list_add (list, "/channel-rmc");
-  hyscan_param_list_add (list, "/channel-dpt");
-  hyscan_param_list_add (list, "/channel-port");
-  hyscan_param_list_add (list, "/channel-starboard");
-
-  if (!hyscan_param_get (HYSCAN_PARAM (priv->param), list))
-    goto exit;
-
-  channel_num = hyscan_param_list_get_enum (list, "/channel-rmc");
-  hyscan_map_track_set_channel (track, CHANNEL_NMEA_RMC, channel_num);
-
-  channel_num = hyscan_param_list_get_enum (list, "/channel-dpt");
-  hyscan_map_track_set_channel (track, CHANNEL_NMEA_DPT, channel_num);
-
-  enable = hyscan_param_list_get_boolean (list, "/channel-port");
-  hyscan_map_track_set_channel (track, CHANNEL_PORT, enable ? DEFAULT_CHANNEL_PORT : 0);
-
-  enable = hyscan_param_list_get_boolean (list, "/channel-starboard");
-  hyscan_map_track_set_channel (track, CHANNEL_STARBOARD, enable ? DEFAULT_CHANNEL_STARBOARD : 0);
-
+  /* Ставим флаг о необходимости переоткрыть галс. */
+  priv->opened = FALSE;
+  priv->loaded = FALSE;
   priv->param_mod_count = mod_count;
-  status = TRUE;
-
-exit:
-  g_object_unref (list);
-
-  return status;
 }
 
 /* Загружает путевые точки трека и его ширину. */
@@ -1034,25 +971,6 @@ hyscan_map_track_load (HyScanMapTrack *track)
 
   /* Обновляем параметры. */
   hyscan_map_track_param_update (track);
-
-  /* Очищаем список изменённых регионов. */
-  g_list_free_full (priv->mod_list, (GDestroyNotify) hyscan_map_track_mod_free);
-  priv->mod_list = NULL;
-
-  /* Если проекция изменилась, то пересчитываем координаты точек. */
-  if (priv->proj_changed)
-    {
-      hyscan_map_track_cartesian (track, priv->nav.points);
-      hyscan_map_track_cartesian (track, priv->port.points);
-      hyscan_map_track_cartesian (track, priv->starboard.points);
-
-      /* Обновляем границы галса. */
-      hyscan_map_track_reset_extent (priv);
-      hyscan_map_track_update_extent (priv->nav.points, &priv->extent_from, &priv->extent_to);
-      hyscan_map_track_update_extent (priv->port.points, &priv->extent_from, &priv->extent_to);
-      hyscan_map_track_update_extent (priv->starboard.points, &priv->extent_from, &priv->extent_to);
-      priv->proj_changed = FALSE;
-    }
 
   /* Открываем каналы данных. */
   if (!priv->opened)
@@ -1070,6 +988,21 @@ hyscan_map_track_load (HyScanMapTrack *track)
       priv->starboard.points = NULL;
     }
 
+  /* Если проекция изменилась, то пересчитываем координаты точек. */
+  if (priv->proj_changed)
+    {
+      hyscan_map_track_cartesian (track, priv->nav.points);
+      hyscan_map_track_cartesian (track, priv->port.points);
+      hyscan_map_track_cartesian (track, priv->starboard.points);
+
+      /* Обновляем границы галса. */
+      hyscan_map_track_reset_extent (priv);
+      hyscan_map_track_update_extent (priv->nav.points, &priv->extent_from, &priv->extent_to);
+      hyscan_map_track_update_extent (priv->port.points, &priv->extent_from, &priv->extent_to);
+      hyscan_map_track_update_extent (priv->starboard.points, &priv->extent_from, &priv->extent_to);
+      priv->proj_changed = FALSE;
+    }
+
   /* Если нет навигационных данных, то невозможно ничего загрузить. Выходим. */
   if (!priv->nav.opened)
     return FALSE;
@@ -1078,6 +1011,10 @@ hyscan_map_track_load (HyScanMapTrack *track)
   mod_count = hyscan_map_track_get_mod_count (track);
   if (priv->loaded && priv->loaded_mod_count == mod_count)
     return FALSE;
+
+  /* Очищаем список изменённых регионов. */
+  g_list_free_full (priv->mod_list, (GDestroyNotify) hyscan_map_track_mod_free);
+  priv->mod_list = NULL;
 
   /* Загружаем точки. */
   hyscan_map_track_load_nav (track);
@@ -1220,6 +1157,14 @@ hyscan_map_track_get_param (HyScanMapTrack *track)
   return track->priv->param;
 }
 
+/**
+ * hyscan_map_track_get_quality_port:
+ * @track: указатель на #HyScanMapTrack
+ *
+ * Функция получает объект оценки качества акустических данных для левого борта ГБО.
+ *
+ * Returns: (transfer none): данные качества левого борта
+ */
 HyScanTrackProjQuality *
 hyscan_map_track_get_quality_port (HyScanMapTrack *track)
 {
@@ -1228,6 +1173,14 @@ hyscan_map_track_get_quality_port (HyScanMapTrack *track)
   return track->priv->port.quality;
 }
 
+/**
+ * hyscan_map_track_get_quality_starboard:
+ * @track: указатель на #HyScanMapTrack
+ *
+ * Функция получает объект оценки качества акустических данных для правого борта ГБО.
+ *
+ * Returns: (transfer none): данные качества правого борта
+ */
 HyScanTrackProjQuality *
 hyscan_map_track_get_quality_starboard (HyScanMapTrack *track)
 {
@@ -1241,8 +1194,7 @@ hyscan_map_track_get_quality_starboard (HyScanMapTrack *track)
  * @track: указатель на #HyScanMapTrack
  * @projection: проекция #HyScanGeoProjection
  *
- * Устанавливает картографическую проекцию, в которой рисуется изображение
- * галса.
+ * Устанавливает картографическую проекцию галса.
  */
 void
 hyscan_map_track_set_projection (HyScanMapTrack         *track,

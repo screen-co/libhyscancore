@@ -199,12 +199,12 @@ hyscan_track_proj_quality_object_finalize (GObject *object)
   g_free (priv->project);
   g_free (priv->track);
 
-  g_object_unref (priv->db);
-  g_object_unref (priv->cache);
-  g_object_unref (priv->amplitude);
-  g_object_unref (priv->depthometer);
-  g_object_unref (priv->estimator);
-  g_object_unref (priv->projector);
+  g_clear_object (&priv->db);
+  g_clear_object (&priv->cache);
+  g_clear_object (&priv->amplitude);
+  g_clear_object (&priv->depthometer);
+  g_clear_object (&priv->estimator);
+  g_clear_object (&priv->projector);
 
   g_array_free (priv->squashed_array, TRUE);
 

@@ -1,6 +1,6 @@
 /* hyscan-map-track-param.c
  *
- * Copyright 2020 Screen LLC, Alexey Sakhnov <andrei@webcontrol.ru>
+ * Copyright 2020 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
  * This file is part of HyScanCore library.
  *
@@ -34,13 +34,20 @@
 
 /**
  * SECTION: hyscan-map-track-param
- * @Short_description: параметры обработки акустических данных
+ * @Short_description: параметры обработки данных при проекции точек галса на карту
  * @Title: HyScanMapTrackParam
  *
  * Класс реализует интерфейс #HyScanParam и позволяет управлять параметрами
  * источников данных галса.
  *
  * Параметры обработки могут быть заданы индивидуально для каждого галса.
+ *
+ * Класс содержит следующие параметры:
+ * - /channel-rmc - номер канала для чтения строк RMC
+ * - /channel-dpt - номер канала для чтения строк DPT
+ * - /channe-port - включено отображения левого борта ГБО
+ * - /channe-starboard - включено отображения правого борта ГБО
+ * - /quality - минимальное значение качества акустических данных, которые необходимо отображать
  *
  * Чтобы сбросить параметры обработки (например, чтобы использовать в галсе
  * общие параметры проекта) используется функция hyscan_map_track_param_clear().
@@ -74,11 +81,7 @@
 /* Параметры по умолчанию. */
 #define NAME_CHANNEL_RMC          "gnss"           /* Подстрока в названии датчика навигации. */
 #define NAME_CHANNEL_DPT          "echosounder"    /* Подстрока в названии датчика эхолота. */
-#define DEFAULT_CHANNEL_PORT      1                /* Номер канала левого борта. */
-#define DEFAULT_CHANNEL_STARBOARD 1                /* Номер канала правого борта. */
 #define DEFAULT_QUALITY           0.5              /* Минимальное значение качества акустических данных. */
-
-
 
 enum
 {
