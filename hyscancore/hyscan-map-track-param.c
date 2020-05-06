@@ -130,6 +130,8 @@ static const gchar * hyscan_map_track_param_db_to_user               (HyScanMapT
                                                                       const gchar              *db_name,
                                                                       GVariant                 *db_value,
                                                                       GVariant                **user_value);
+static gboolean      hyscan_map_track_param_get_defaults             (HyScanMapTrackParam      *param,
+                                                                      HyScanParamList          *list);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanMapTrackParam, hyscan_map_track_param, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanMapTrackParam)
@@ -238,8 +240,8 @@ hyscan_map_track_param_object_constructed (GObject *object)
 //    priv->defaults = hyscan_map_track_param_new (priv->profile, priv->db, priv->project_name, NULL);
 
   /* Для параметра проекта создаём группу, т.к. надо откуда-то брать схему. */
-  if (priv->defaults == NULL)
-    hyscan_map_track_param_object_create (param);
+//  if (priv->defaults == NULL)
+//    hyscan_map_track_param_object_create (param);
 
   /* Создаём схему данных. */
   hyscan_map_track_param_schema_build (param);
@@ -264,12 +266,18 @@ hyscan_map_track_param_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_map_track_param_parent_class)->finalize (object);
 }
 
+/* Функция создаёт объект в группе параметров, если он не существует. */
 static void
 hyscan_map_track_param_object_create (HyScanMapTrackParam *param)
 {
   HyScanMapTrackParamPrivate *priv = param->priv;
+  HyScanDataSchema *schema;
 
-  hyscan_db_param_object_create (priv->db, priv->param_id, priv->object_name, MAP_TRACK_SCHEMA);
+  schema = hyscan_db_param_object_get_schema (priv->db, priv->param_id, priv->object_name);
+  if (schema == NULL)
+    hyscan_db_param_object_create (priv->db, priv->param_id, priv->object_name, MAP_TRACK_SCHEMA);
+
+  g_clear_object (&schema);
 }
 
 /* Создаёт перечисление датчиков NMEA в схеме данных. */
@@ -474,12 +482,17 @@ hyscan_map_track_param_db_to_user (HyScanMapTrackParam   *param,
                                    GVariant              *db_value,
                                    GVariant             **user_value)
 {
+  HyScanMapTrackParamPrivate *priv = param->priv;
+
   if (0 == g_strcmp0 (db_name, KEY_SENSOR_DPT))
     {
       if (user_value != NULL)
         {
           const gchar *string_value = db_value != NULL ? g_variant_get_string (db_value, NULL) : NULL;
-          gint64 int_value = hyscan_map_track_param_nmea_channel (param, string_value);
+          gint64 int_value;
+          int_value = string_value != NULL ?
+                      hyscan_map_track_param_nmea_channel (param, string_value) :
+                      priv->dpt_default;
           *user_value = g_variant_new_int64 (int_value);
         }
 
@@ -491,7 +504,10 @@ hyscan_map_track_param_db_to_user (HyScanMapTrackParam   *param,
       if (user_value != NULL)
         {
           const gchar *string_value = db_value != NULL ? g_variant_get_string (db_value, NULL) : NULL;
-          gint64 int_value = hyscan_map_track_param_nmea_channel (param, string_value);
+          gint64 int_value;
+          int_value = string_value != NULL ?
+                      hyscan_map_track_param_nmea_channel (param, string_value) :
+                      priv->rmc_default;
           *user_value = g_variant_new_int64 (int_value);
         }
 
@@ -499,8 +515,8 @@ hyscan_map_track_param_db_to_user (HyScanMapTrackParam   *param,
     }
 
   else if (0 == g_strcmp0 (db_name, KEY_CHANNEL_PORT) ||
-      0 == g_strcmp0 (db_name, KEY_CHANNEL_STARBOARD) ||
-      0 == g_strcmp0 (db_name, KEY_TARGET_QUALITY))
+           0 == g_strcmp0 (db_name, KEY_CHANNEL_STARBOARD) ||
+           0 == g_strcmp0 (db_name, KEY_TARGET_QUALITY))
     {
       if (user_value != NULL)
         *user_value = g_variant_ref (db_value);
@@ -511,6 +527,53 @@ hyscan_map_track_param_db_to_user (HyScanMapTrackParam   *param,
   g_warning ("HyScanMapTrackParam: unknown key %s", db_name);
 
   return NULL;
+}
+
+/* Считывает значения по умолчанию. */
+static gboolean
+hyscan_map_track_param_get_defaults (HyScanMapTrackParam *param,
+                                     HyScanParamList     *list)
+{
+  HyScanMapTrackParamPrivate *priv = param->priv;
+  const gchar *const *params;
+  gint i;
+
+  params = hyscan_param_list_params (list);
+  for (i = 0; params[i] != NULL; i++)
+    {
+      if (g_strcmp0 (params[i], KEY_CHANNEL_RMC) == 0)
+        {
+          hyscan_param_list_set_enum (list, KEY_CHANNEL_RMC, priv->rmc_default);
+        }
+
+      else if (g_strcmp0 (params[i], KEY_CHANNEL_DPT) == 0)
+        {
+          hyscan_param_list_set_enum (list, KEY_CHANNEL_DPT, priv->dpt_default);
+        }
+
+      else if (g_strcmp0 (params[i], KEY_CHANNEL_PORT) == 0)
+        {
+          hyscan_param_list_set_boolean (list, KEY_CHANNEL_PORT, TRUE);
+        }
+
+      else if (g_strcmp0 (params[i], KEY_CHANNEL_STARBOARD) == 0)
+        {
+          hyscan_param_list_set_boolean (list, KEY_CHANNEL_STARBOARD, TRUE);
+        }
+
+      else if (g_strcmp0 (params[i], KEY_TARGET_QUALITY) == 0)
+        {
+          hyscan_param_list_set_double (list, KEY_TARGET_QUALITY, DEFAULT_QUALITY);
+        }
+
+      else
+        {
+          g_warning ("HyScanMapTrackParam: unknown key %s", params[i]);
+          return FALSE;
+        }
+    }
+
+  return TRUE;
 }
 
 static HyScanDataSchema *
@@ -533,6 +596,8 @@ hyscan_map_track_param_set (HyScanParam     *param,
 
   const gchar *const *params;
   gint i;
+  
+  hyscan_map_track_param_object_create (track_param);
 
   /* Преобразуем полученный список в список для записи в БД. */
   db_list = hyscan_param_list_new ();
@@ -576,10 +641,15 @@ hyscan_map_track_param_get (HyScanParam     *param,
   const gchar *const *params;
   gint i;
 
-  /* Проверяем, есть ли объект в БД. */
+  /* Если объекта нет в БД, то считываем значения по-умолчанию. */
   schema = hyscan_db_param_object_get_schema (priv->db, priv->param_id, priv->object_name);
-  if (schema == NULL && priv->defaults != NULL)
-    return hyscan_param_get (HYSCAN_PARAM (priv->defaults), list);
+  if (schema == NULL)
+    {
+      if (priv->defaults != NULL)
+        return hyscan_param_get (HYSCAN_PARAM (priv->defaults), list);
+      else
+        return hyscan_map_track_param_get_defaults (track_param, list);
+    }
 
   /* Преобразуем полученный список в список для чтения из БД. */
   db_list = hyscan_param_list_new ();
