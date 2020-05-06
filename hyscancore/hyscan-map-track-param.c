@@ -114,6 +114,8 @@ static void          hyscan_map_track_param_set_property             (GObject   
                                                                       GParamSpec               *pspec);
 static void          hyscan_map_track_param_object_constructed       (GObject                  *object);
 static void          hyscan_map_track_param_object_finalize          (GObject                  *object);
+static gchar *       hyscan_map_track_param_object_name              (HyScanMapTrackParam      *param,
+                                                                      gint32                    project_id);
 static void          hyscan_map_track_param_object_create            (HyScanMapTrackParam      *param);
 static void          hyscan_map_track_param_schema_build             (HyScanMapTrackParam      *param);
 static void          hyscan_map_track_param_schema_build_nmea_enum   (HyScanMapTrackParam      *param,
@@ -209,42 +211,41 @@ hyscan_map_track_param_object_constructed (GObject *object)
   HyScanMapTrackParam *param = HYSCAN_MAP_TRACK_PARAM (object);
   HyScanMapTrackParamPrivate *priv = param->priv;
   gint32 project_id;
-  gchar *group_name;
+  gchar *group_name = NULL;
 
   G_OBJECT_CLASS (hyscan_map_track_param_parent_class)->constructed (object);
 
+  /* Открываем проект. */
   project_id = hyscan_db_project_open (priv->db, priv->project_name);
   if (project_id < 0)
     {
       g_warning ("HyScanMapTrackParam: failed to open project '%s'", priv->project_name);
-      return;
+      goto exit;
     }
 
+  /* Открываем группу параметров в проекте. */
   group_name = priv->profile != NULL ? g_strdup_printf ("%s_" GROUP_NAME, priv->profile) : g_strdup (GROUP_NAME);
   priv->param_id = hyscan_db_project_param_open (priv->db, project_id, group_name);
-
-  hyscan_db_close (priv->db, project_id);
-  g_free (group_name);
-
   if (priv->param_id < 0)
     {
-      g_warning ("HyScanMapTrackParam: failed to open project param");
-      return;
+      g_warning ("HyScanMapTrackParam: failed to open project param group %s/%s", priv->project_name, group_name);
+      goto exit;
     }
 
-  priv->object_name = g_strdup_printf ("prm/%s", priv->track_name != NULL ? priv->track_name : "");
+  /* Формируем имя объекта, где будут храниться параметры. */
+  priv->object_name = hyscan_map_track_param_object_name (param, project_id);
+  if (priv->object_name == NULL)
+    goto exit;
 
-  /* Для параметров галса также создаём параметры проекта, чтобы по умолчанию брать данные оттуда. */
-//  todo: надо решить вопрос, как формировать enum каналов для всего проекта
-//  if (priv->track_name != NULL)
-//    priv->defaults = hyscan_map_track_param_new (priv->profile, priv->db, priv->project_name, NULL);
-
-  /* Для параметра проекта создаём группу, т.к. надо откуда-то брать схему. */
-//  if (priv->defaults == NULL)
-//    hyscan_map_track_param_object_create (param);
+  //  todo: надо решить вопрос, как формировать enum каналов для всего проекта
 
   /* Создаём схему данных. */
   hyscan_map_track_param_schema_build (param);
+
+exit:
+  if (project_id > 0)
+    hyscan_db_close (priv->db, project_id);
+  g_free (group_name);
 }
 
 static void
@@ -264,6 +265,54 @@ hyscan_map_track_param_object_finalize (GObject *object)
   g_clear_object (&priv->defaults);
 
   G_OBJECT_CLASS (hyscan_map_track_param_parent_class)->finalize (object);
+}
+
+/* Формирует имя объекта, где хранятся параметры галса. */
+static gchar *
+hyscan_map_track_param_object_name (HyScanMapTrackParam *param,
+                                    gint32               project_id)
+{
+  HyScanMapTrackParamPrivate *priv = param->priv;
+  HyScanParamList *list = NULL;
+  gint32 track_id = -1, track_param_id = -1;
+  gchar *object_name = NULL;
+
+  /* Параметры для всех галсов по умолчанию пишем в объект с именем "default". */
+  if (priv->track_name == NULL)
+    return g_strdup ("default");
+
+  /* Для галса считываем его идентификатор из параметров галса. */
+  track_id = hyscan_db_track_open (priv->db, project_id, priv->track_name);
+  if (track_id < 0)
+    {
+      g_warning ("HyScanMapTrackParam: failed to open track %s/%s", priv->project_name, priv->track_name);
+      goto exit;
+    }
+
+  track_param_id = hyscan_db_track_param_open (priv->db, track_id);
+  if (track_param_id < 0)
+    {
+      g_warning ("HyScanMapTrackParam: failed to open track param %s/%s", priv->project_name, priv->track_name);
+      goto exit;
+    }
+
+  list = hyscan_param_list_new ();
+  hyscan_param_list_add (list, "/id");
+  if (hyscan_db_param_get (priv->db, track_param_id, NULL, list))
+    object_name = g_strdup_printf ("tracks/%s", hyscan_param_list_get_string (list, "/id"));
+  else
+    g_warning ("HyScanMapTrackParam: failed to get track id of %s", priv->track_name);
+
+exit:
+  if (track_id > 0)
+    hyscan_db_close (priv->db, track_id);
+
+  if (track_param_id > 0)
+    hyscan_db_close (priv->db, track_param_id);
+
+  g_clear_object (&list);
+
+  return object_name;
 }
 
 /* Функция создаёт объект в группе параметров, если он не существует. */
@@ -582,7 +631,7 @@ hyscan_map_track_param_schema (HyScanParam *param)
   HyScanMapTrackParam *track_param = HYSCAN_MAP_TRACK_PARAM (param);
   HyScanMapTrackParamPrivate *priv = track_param->priv;
 
-  return g_object_ref (priv->schema);
+  return priv->schema != NULL ? g_object_ref (priv->schema) : NULL;
 }
 
 static gboolean
@@ -596,6 +645,9 @@ hyscan_map_track_param_set (HyScanParam     *param,
 
   const gchar *const *params;
   gint i;
+
+  if (priv->object_name == NULL)
+    return FALSE;
   
   hyscan_map_track_param_object_create (track_param);
 
@@ -640,6 +692,9 @@ hyscan_map_track_param_get (HyScanParam     *param,
 
   const gchar *const *params;
   gint i;
+
+  if (priv->object_name == NULL)
+    return FALSE;
 
   /* Если объекта нет в БД, то считываем значения по-умолчанию. */
   schema = hyscan_db_param_object_get_schema (priv->db, priv->param_id, priv->object_name);
