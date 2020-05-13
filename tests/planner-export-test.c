@@ -103,12 +103,8 @@ static GHashTable *
 create_ht (void)
 {
   GHashTable *ht;
-  HyScanObjectDataClass *data_klass;
 
-  data_klass = HYSCAN_OBJECT_DATA_CLASS (g_type_class_ref(HYSCAN_TYPE_OBJECT_DATA_PLANNER));
-  ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) data_klass->object_destroy);
-
-  g_type_class_unref (data_klass);
+  ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) hyscan_object_free);
 
   return ht;
 }
