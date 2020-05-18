@@ -82,8 +82,6 @@ hyscan_object_data_label_class_init (HyScanObjectDataLabelClass *klass)
 
   data_class->group_name     = LABEL_SCHEMA;
   data_class->get_schema_id  = hyscan_object_data_label_get_schema_id;
-  data_class->object_copy    = hyscan_object_data_label_object_copy;
-  data_class->object_destroy = hyscan_object_data_label_object_destroy;
   data_class->set_full       = hyscan_object_data_label_set_full;
   data_class->get_full       = hyscan_object_data_label_get_full;
   data_class->get_read_plist = hyscan_object_data_label_get_read_plist;

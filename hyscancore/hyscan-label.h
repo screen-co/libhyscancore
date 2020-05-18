@@ -34,7 +34,7 @@
 #ifndef __HYSCAN_LABEL_H__
 #define __HYSCAN_LABEL_H__
 
-#include "hyscan-object-data.h"
+#include <hyscan-object-data.h>
 
 #define HYSCAN_LABEL               0x25f3cb7d
 
@@ -52,7 +52,7 @@ typedef struct _HyScanLabel HyScanLabel;
  */
 struct _HyScanLabel
 {
-  HyScanObjectType  type;
+  GType             type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;

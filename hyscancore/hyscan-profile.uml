@@ -7,27 +7,25 @@ class HyScanProfile
 {
 	{field} name
 	{abstract} read()
+	{abstract} write()
+	{abstract} sanity()
 	{method} get_name()
+	{method} delete()
 }
 
 class HyScanProfileHW
 {
 	{field} HyScanProfileHWDevice *devices
-	{method} read()
-	{method} bool check()
 	{method} HyScanControl* connect()
 }
 
 class HyScanProfileHWDevice
 {
-	{method} read()
-	{method} bool check()
-	{method} HyScanDevice* connect() {sdsd; sdsd}
+	{method} HyScanDevice* connect()
 }
 
 class HyScanProfileOffset
 {
-	{method} read()
 	{method} void apply (HyScanControl *control)
 }
 

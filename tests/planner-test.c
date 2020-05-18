@@ -215,10 +215,10 @@ test_tracks (HyScanDB *db,
   track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
   g_assert (track_obj != NULL);
   track_obj->plan.speed = 1.0;
-  hyscan_planner_track_add_record (track_obj, "rec1");
-  hyscan_planner_track_add_record (track_obj, "rec2");
-  hyscan_planner_track_add_record (track_obj, "rec3");
-  hyscan_planner_track_delete_record (track_obj, "rec3");
+  hyscan_planner_track_record_append (track_obj, "rec1");
+  hyscan_planner_track_record_append (track_obj, "rec2");
+  hyscan_planner_track_record_append (track_obj, "rec3");
+  hyscan_planner_track_record_delete (track_obj, "rec3");
   hyscan_object_data_modify (planner, track_id, (const HyScanObject *) track_obj);
   hyscan_planner_track_free (track_obj);
 

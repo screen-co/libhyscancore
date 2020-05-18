@@ -1,6 +1,6 @@
 /* hyscan-profile-db.c
  *
- * Copyright 2019 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
+ * Copyright 2019-2020 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
  * This file is part of HyScanCore.
  *
@@ -37,11 +37,8 @@
  * @Short_description: профиль БД
  * @Title: HyScanProfileDB
  *
- * Класс HyScanProfileDB реализует профили БД. Профиль БД содержит следующие
- * поля:
- * "uri" - путь к БД
- * "name" - человекочитаемое название профиля.
- * Все поля должны быть в группе "db".
+ * Класс HyScanProfileDB реализует профили БД. Профиль БД содержит полe
+ * %HYSCAN_PROFILE_DB_URI_KEY в группе %HYSCAN_PROFILE_DB_GROUP
  *
  * После чтения профиля можно подключиться к БД с помощью функции
  * #hyscan_profile_db_connect
@@ -49,9 +46,18 @@
 
 #include "hyscan-profile-db.h"
 
-#define HYSCAN_PROFILE_DB_GROUP_NAME "db"
+#define HYSCAN_PROFILE_DB_VERSION 0x965D2C45
+
+/**
+ * HYSCAN_PROFILE_DB_GROUP:
+ * Название группы с параметрами БД.
+ */
+#define HYSCAN_PROFILE_DB_GROUP "db"
+/**
+ * HYSCAN_PROFILE_DB_URI_KEY:
+ * Поле с адресом БД.
+ */
 #define HYSCAN_PROFILE_DB_URI_KEY "uri"
-#define HYSCAN_PROFILE_DB_NAME_KEY "name"
 
 enum
 {
@@ -85,6 +91,7 @@ hyscan_profile_db_class_init (HyScanProfileDBClass *klass)
   pklass->read = hyscan_profile_db_read;
   pklass->write = hyscan_profile_db_write;
   pklass->sanity = hyscan_profile_db_sanity;
+  pklass->version = HYSCAN_PROFILE_DB_VERSION;
 }
 
 static void
@@ -118,30 +125,17 @@ hyscan_profile_db_read (HyScanProfile *profile,
 {
   HyScanProfileDB *self = HYSCAN_PROFILE_DB (profile);
   HyScanProfileDBPrivate *priv = self->priv;
-  gchar *name;
 
   /* Очистка профиля. */
   hyscan_profile_db_clear (self);
 
-  name = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
-                                HYSCAN_PROFILE_DB_NAME_KEY, NULL);
-  priv->uri = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+  priv->uri = g_key_file_get_string (file, HYSCAN_PROFILE_DB_GROUP,
                                      HYSCAN_PROFILE_DB_URI_KEY, NULL);
-
-  hyscan_profile_set_name (profile, name);
-  g_free (name);
-
-  if (priv->uri == NULL)
-    {
-      g_warning ("HyScanProfileDB: %s", "uri not found.");
-      return FALSE;
-    }
-
 
   return TRUE;
 }
 
-/* Функция парсинга профиля. */
+/* Функция записи профиля. */
 static gboolean
 hyscan_profile_db_write (HyScanProfile *profile,
                          GKeyFile      *file)
@@ -149,10 +143,7 @@ hyscan_profile_db_write (HyScanProfile *profile,
   HyScanProfileDB *self = HYSCAN_PROFILE_DB (profile);
   HyScanProfileDBPrivate *priv = self->priv;
 
-  g_key_file_set_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
-                         HYSCAN_PROFILE_DB_NAME_KEY,
-                         hyscan_profile_get_name (profile));
-  g_key_file_set_string (file, HYSCAN_PROFILE_DB_GROUP_NAME,
+  g_key_file_set_string (file, HYSCAN_PROFILE_DB_GROUP,
                          HYSCAN_PROFILE_DB_URI_KEY, priv->uri);
 
   return TRUE;
@@ -187,6 +178,13 @@ hyscan_profile_db_new (const gchar *file)
                        NULL);
 }
 
+/**
+ * hyscan_profile_db_set_uri:
+ * @self: #HyScanProfileDB
+ * @uri: uri базы данных
+ *
+ * Функция задает путь к БД.
+ */
 void
 hyscan_profile_db_set_uri (HyScanProfileDB *self,
                            const gchar     *uri)
@@ -198,6 +196,14 @@ hyscan_profile_db_set_uri (HyScanProfileDB *self,
   self->priv->uri = g_strdup (uri);
 }
 
+/**
+ * hyscan_profile_db_set_uri:
+ * @self: #HyScanProfileDB
+ *
+ * Функция возвращает путь к БД.
+ *
+ * Returns: (transfer none): uri базы данных
+ */
 const gchar *
 hyscan_profile_db_get_uri (HyScanProfileDB *self)
 {
@@ -215,18 +221,15 @@ hyscan_profile_db_get_uri (HyScanProfileDB *self)
  * Returns: (transfer full): #HyScanDB или NULL в случае ошибки.
  */
 HyScanDB *
-hyscan_profile_db_connect (HyScanProfileDB *profile)
+hyscan_profile_db_connect (HyScanProfileDB *self)
 {
-  HyScanProfileDBPrivate *priv;
+  g_return_val_if_fail (HYSCAN_IS_PROFILE_DB (self), NULL);
 
-  g_return_val_if_fail (HYSCAN_IS_PROFILE_DB (profile), NULL);
-  priv = profile->priv;
-
-  if (priv->uri == NULL)
+  if (!hyscan_profile_sanity (HYSCAN_PROFILE (self)))
     {
       g_warning ("HyScanProfileDB: %s", "uri not set");
       return NULL;
     }
 
-  return hyscan_db_new (priv->uri);
+  return hyscan_db_new (self->priv->uri);
 }

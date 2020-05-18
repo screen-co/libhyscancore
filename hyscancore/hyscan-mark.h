@@ -3,14 +3,14 @@
  * Copyright 2017-2019 Screen LLC, Dmitriev Alexander <m1n7@yandex.ru>
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * This file is part of HyScanGui library.
+ * This file is part of HyScanCore library.
  *
- * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanGui is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -22,9 +22,9 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanGui имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
@@ -39,34 +39,34 @@
 #include <hyscan-types.h>
 #include <hyscan-param-list.h>
 #include <hyscan-geo.h>
-#include "hyscan-object-data.h"
+#include <hyscan-object-data.h>
 
-#define HYSCAN_MARK_WATERFALL         0x0523a9ab
-#define HYSCAN_MARK_GEO               0x1f5c3db7
+G_BEGIN_DECLS
 
-typedef struct _HyScanMarkAny HyScanMark;
+#define HYSCAN_TYPE_MARK_WATERFALL         (hyscan_mark_waterfall_get_type ())
+#define HYSCAN_TYPE_MARK_GEO               (hyscan_mark_geo_get_type ())
+
+typedef struct _HyScanMark HyScanMark;
 typedef struct _HyScanMarkWaterfall HyScanMarkWaterfall;
 typedef struct _HyScanMarkGeo HyScanMarkGeo;
 
 /**
- * HyScanMarkAny:
+ * HyScanMark:
  * @type: тип метки
  * @name: название метки
  * @description: описание
  * @operator_name: имя оператора
- * @labels: метки
- * @creation_time: время создания
- * @modification_time: время последней модификации
- * @width: ширина
- * @height: высота
+ * @labels: тэги
+ * @ctime: время создания, unix-time в микросекундах
+ * @mtime: время последней модификации, unix-time в микросекундах
+ * @width: ширина, метры
+ * @height: высота, метры
  *
- * Общие поля струтуры #HyScanMark. Все типы меток должны иметь указанные в
- * #HyScanAny поля в таком же порядке.
- *
+ * Общие поля структуры #HyScanMark. Все типы меток должны иметь эти поля в таком же порядке.
  */
-struct _HyScanMarkAny
+struct _HyScanMark
 {
-  HyScanObjectType  type;
+  GType             type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
@@ -79,15 +79,15 @@ struct _HyScanMarkAny
 
 /**
  * HyScanMarkWaterfall:
- * @type: тип метки
+ * @type: тип метки, %HYSCAN_TYPE_MARK_WATERFALL
  * @name: название метки
  * @description: описание
  * @operator_name: имя оператора
  * @labels: метки
- * @creation_time: время создания
- * @modification_time: время последней модификации
- * @width: ширина
- * @height: высота
+ * @ctime: время создания, unix-time в микросекундах
+ * @mtime: время последней модификации, unix-time в микросекундах
+ * @width: ширина, метры
+ * @height: высота, метры
  * @track: идентификатор галса
  * @source: источник данных
  * @index: индекс данных
@@ -97,7 +97,7 @@ struct _HyScanMarkAny
  */
 struct _HyScanMarkWaterfall
 {
-  HyScanObjectType  type;
+  GType             type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
@@ -115,22 +115,22 @@ struct _HyScanMarkWaterfall
 
 /**
  * HyScanMarkGeo:
- * @type: тип метки
+ * @type: тип метки, %HYSCAN_TYPE_MARK_GEO
  * @name: название метки
  * @description: описание
  * @operator_name: имя оператора
  * @labels: метки
- * @creation_time: время создания
- * @modification_time: время последней модификации
+ * @ctime: время создания, unix-time в микросекундах
+ * @mtime: время последней модификации, unix-time в микросекундах
  * @width: ширина области (перпендикулярно направлению на север)
  * @height: высота области (параллельно направлению на север)
  * @center: географические координаты центра метки
  *
- * Географическая метка в виде прямоугольника вдоль направления на север
+ * Географическая метка в виде прямоугольника
  */
 struct _HyScanMarkGeo
 {
-  HyScanObjectType  type;
+  GType             type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
@@ -142,6 +142,12 @@ struct _HyScanMarkGeo
 
   HyScanGeoPoint    center;
 };
+
+HYSCAN_API
+GType                  hyscan_mark_waterfall_get_type               (void);
+
+HYSCAN_API
+GType                  hyscan_mark_geo_get_type                     (void);
 
 HYSCAN_API
 HyScanMarkWaterfall *  hyscan_mark_waterfall_new                    (void);
@@ -165,7 +171,7 @@ HYSCAN_API
 void                   hyscan_mark_set_text                         (HyScanMark            *mark,
                                                                      const gchar           *name,
                                                                      const gchar           *description,
-                                                                     const gchar           *oper);
+                                                                     const gchar           *operator_name);
 HYSCAN_API
 void                   hyscan_mark_set_labels                       (HyScanMark            *mark,
                                                                      guint64                labels);
