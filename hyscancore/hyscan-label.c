@@ -34,6 +34,8 @@
 
 #include "hyscan-label.h"
 
+G_DEFINE_BOXED_TYPE (HyScanLabel, hyscan_label, hyscan_label_copy, hyscan_label_free)
+
 /**
  * hyscan_label_new:
  *
@@ -47,7 +49,7 @@ hyscan_label_new (void)
   HyScanLabel *self;
 
   self = g_slice_new0 (HyScanLabel);
-  self->type = HYSCAN_LABEL;
+  self->type = HYSCAN_TYPE_LABEL;
 
   return self;
 }

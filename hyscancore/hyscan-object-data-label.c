@@ -65,10 +65,6 @@ static gboolean          hyscan_object_data_label_set_full             (HyScanOb
 static HyScanParamList*  hyscan_object_data_label_get_read_plist       (HyScanObjectData    *data,
                                                                         const gchar         *schema_id);
 
-static HyScanObject*     hyscan_object_data_label_object_copy          (const HyScanObject  *object);
-
-static void              hyscan_object_data_label_object_destroy       (HyScanObject        *object);
-
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectDataLabel, hyscan_object_data_label, HYSCAN_TYPE_OBJECT_DATA);
 
 static void
@@ -171,8 +167,8 @@ hyscan_object_data_label_set_full (HyScanObjectData   *data,
 {
   const HyScanLabel *label;
 
-  g_return_val_if_fail (object->type == HYSCAN_LABEL, FALSE);
-  label = (HyScanLabel *) object;
+  g_return_val_if_fail (object->type == HYSCAN_TYPE_LABEL, FALSE);
+  label = (HyScanLabel*)object;
 
   hyscan_param_list_set_string (write_plist, "/name", label->name);
   hyscan_param_list_set_string (write_plist, "/description", label->description);
@@ -192,16 +188,4 @@ hyscan_object_data_label_get_read_plist (HyScanObjectData *data,
   HyScanObjectDataLabel *data_label = HYSCAN_OBJECT_DATA_LABEL (data);
 
   return g_object_ref (data_label->priv->read_plist);
-}
-
-static void
-hyscan_object_data_label_object_destroy (HyScanObject *object)
-{
-  hyscan_label_free ( (HyScanLabel*) object);
-}
-
-static HyScanObject*
-hyscan_object_data_label_object_copy (const HyScanObject *object)
-{
-  return (HyScanObject*) hyscan_label_copy ( (const HyScanLabel*) object);
 }
