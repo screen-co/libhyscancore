@@ -9,7 +9,11 @@
 
 #include "hyscan-object-data.h"
 
-#define HYSCAN_LABEL               0x25f3cb7d
+/*#define HYSCAN_LABEL               0x25f3cb7d*/
+
+G_BEGIN_DECLS
+
+#define HYSCAN_TYPE_LABEL (hyscan_label_get_type ())
 
 typedef struct _HyScanLabel HyScanLabel;
 
@@ -25,7 +29,7 @@ typedef struct _HyScanLabel HyScanLabel;
  */
 struct _HyScanLabel
 {
-  HyScanObjectType  type;
+  GType             type;
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
@@ -34,6 +38,9 @@ struct _HyScanLabel
   gint64            ctime;
   gint64            mtime;
 };
+
+HYSCAN_API
+GType                hyscan_label_get_type                     (void);
 
 HYSCAN_API
 HyScanLabel*         hyscan_label_new                          (void);
@@ -65,5 +72,7 @@ void                 hyscan_label_set_mtime                    (HyScanLabel     
 HYSCAN_API
 void                 hyscan_label_set_label                    (HyScanLabel            *self,
                                                                 guint64                 label);
+
+G_END_DECLS
 
 #endif /* __HYSCAN_LABEL_H__ */

@@ -23,8 +23,6 @@ static gboolean          hyscan_object_data_label_set_full             (HyScanOb
                                                                         const HyScanObject  *object);
 static HyScanParamList*  hyscan_object_data_label_get_read_plist       (HyScanObjectData    *data,
                                                                         const gchar         *schema_id);
-static HyScanObject*     hyscan_object_data_label_object_copy          (const HyScanObject  *object);
-static void              hyscan_object_data_label_object_destroy       (HyScanObject        *object);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectDataLabel, hyscan_object_data_label, HYSCAN_TYPE_OBJECT_DATA);
 
@@ -39,8 +37,6 @@ hyscan_object_data_label_class_init (HyScanObjectDataLabelClass *klass)
 
   data_class->group_name     = LABEL_SCHEMA;
   data_class->get_schema_id  = hyscan_object_data_label_get_schema_id;
-  data_class->object_copy    = hyscan_object_data_label_object_copy;
-  data_class->object_destroy = hyscan_object_data_label_object_destroy;
   data_class->set_full       = hyscan_object_data_label_set_full;
   data_class->get_full       = hyscan_object_data_label_get_full;
   data_class->get_read_plist = hyscan_object_data_label_get_read_plist;
@@ -130,7 +126,7 @@ hyscan_object_data_label_set_full (HyScanObjectData   *data,
 {
   const HyScanLabel *label;
 
-  g_return_val_if_fail (object->type == HYSCAN_LABEL, FALSE);
+  g_return_val_if_fail (object->type == HYSCAN_TYPE_LABEL, FALSE);
   label = (HyScanLabel *) object;
 
   hyscan_param_list_set_string (write_plist, "/name", label->name);
@@ -151,16 +147,4 @@ hyscan_object_data_label_get_read_plist (HyScanObjectData *data,
   HyScanObjectDataLabel *data_label = HYSCAN_OBJECT_DATA_LABEL (data);
 
   return g_object_ref (data_label->priv->read_plist);
-}
-
-static void
-hyscan_object_data_label_object_destroy (HyScanObject *object)
-{
-  hyscan_label_free ( (HyScanLabel*) object);
-}
-
-static HyScanObject*
-hyscan_object_data_label_object_copy (const HyScanObject *object)
-{
-  return (HyScanObject*) hyscan_label_copy ( (const HyScanLabel*) object);
 }
