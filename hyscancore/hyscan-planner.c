@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * This file is part of HyScanGui library.
+ * This file is part of HyScanCore library.
  *
- * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanGui is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,9 +21,9 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanGui имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
@@ -37,6 +37,31 @@
  * @Short_description: структуры объектов планировщика галсов
  * @Title: HyScanPlanner
  *
+ * Набор функций для создания объектов планировщика и их редактирования.
+ *
+ * #HyScanPlannerOrigin - параметры начала координат местной системы координат:
+ *
+ * - hyscan_planner_origin_new() - создание,
+ * - hyscan_planner_origin_copy() - копирование,
+ * - hyscan_planner_origin_free() - удаление.
+ *
+ * #HyScanPlannerTrack - непосредственно план прямолинейного галса.
+ *
+ * - hyscan_planner_track_new() - создание,
+ * - hyscan_planner_track_copy() - копирование,
+ * - hyscan_planner_track_free() - удаление,
+ * - hyscan_planner_track_record_append() - добавление галса в список записанных по этому плану,
+ * - hyscan_planner_track_record_delete()- удаление галса из списка записанных по этому плану.
+ *
+ * #HyScanPlannerZone - границы полигона:
+ *
+ * - hyscan_planner_zone_new() - создание,
+ * - hyscan_planner_zone_copy() - копирование,
+ * - hyscan_planner_zone_free() - удаление,
+ * - hyscan_planner_zone_vertex_append() - добавление вершины,
+ * - hyscan_planner_zone_vertex_dup() - дублирование вершины,
+ * - hyscan_planner_zone_vertex_remove() - удаление вершины.
+ *
  */
 
 #include "hyscan-planner.h"
@@ -46,10 +71,14 @@
 #define DEG2RAD(x) ((x) * G_PI / 180.0)   /* Перевод из градусов в радианы. */
 #define EARTH_RADIUS        6378137.0     /* Радиус Земли. */
 
+G_DEFINE_BOXED_TYPE (HyScanPlannerOrigin, hyscan_planner_origin, hyscan_planner_origin_copy, hyscan_planner_origin_free)
+G_DEFINE_BOXED_TYPE (HyScanPlannerTrack, hyscan_planner_track, hyscan_planner_track_copy, hyscan_planner_track_free)
+G_DEFINE_BOXED_TYPE (HyScanPlannerZone, hyscan_planner_zone, hyscan_planner_zone_copy, hyscan_planner_zone_free)
+
 /**
  * hyscan_planner_origin_new:
  *
- * Создаёт пустую структуру #HyScanPlannerOrigin
+ * Создаёт пустую структуру #HyScanPlannerOrigin.
  */
 HyScanPlannerOrigin *
 hyscan_planner_origin_new (void)
@@ -57,7 +86,7 @@ hyscan_planner_origin_new (void)
   HyScanPlannerOrigin *origin;
 
   origin = g_slice_new0 (HyScanPlannerOrigin);
-  origin->type = HYSCAN_PLANNER_ORIGIN;
+  origin->type = HYSCAN_TYPE_PLANNER_ORIGIN;
 
   return origin;
 }
@@ -66,7 +95,7 @@ hyscan_planner_origin_new (void)
  * hyscan_planner_origin_free:
  * @origin: указатель на структуру HyScanPlannerOrigin
  *
- * Копирует структуру #HyScanPlannerOrigin
+ * Копирует структуру #HyScanPlannerOrigin.
  */
 HyScanPlannerOrigin *
 hyscan_planner_origin_copy (const HyScanPlannerOrigin *origin)
@@ -87,7 +116,7 @@ hyscan_planner_origin_copy (const HyScanPlannerOrigin *origin)
  * hyscan_planner_origin_free:
  * @origin: указатель на структуру HyScanPlannerOrigin
  *
- * Удаляет структуру #HyScanPlannerOrigin
+ * Удаляет структуру #HyScanPlannerOrigin.
  */
 void
 hyscan_planner_origin_free (HyScanPlannerOrigin *origin)
@@ -101,7 +130,7 @@ hyscan_planner_origin_free (HyScanPlannerOrigin *origin)
 /**
  * hyscan_planner_track_new:
  *
- * Создаёт пустую структуру #HyScanPlannerTrack
+ * Создаёт пустую структуру #HyScanPlannerTrack.
  */
 HyScanPlannerTrack *
 hyscan_planner_track_new (void)
@@ -109,7 +138,7 @@ hyscan_planner_track_new (void)
   HyScanPlannerTrack *track;
   
   track = g_slice_new0 (HyScanPlannerTrack);
-  track->type = HYSCAN_PLANNER_TRACK;
+  track->type = HYSCAN_TYPE_PLANNER_TRACK;
 
   return track;
 }
@@ -118,7 +147,7 @@ hyscan_planner_track_new (void)
  * hyscan_planner_track_copy:
  * @track: указатель на структуру HyScanPlannerTrack
  *
- * Копирует структуру #HyScanPlannerTrack
+ * Копирует структуру #HyScanPlannerTrack.
  */
 HyScanPlannerTrack *
 hyscan_planner_track_copy (const HyScanPlannerTrack *track)
@@ -142,7 +171,7 @@ hyscan_planner_track_copy (const HyScanPlannerTrack *track)
  * hyscan_planner_track_free:
  * @track: указатель на структуру #HyScanPlannerTrack
  *
- * Удаляет структуру #HyScanPlannerTrack
+ * Удаляет структуру #HyScanPlannerTrack.
  */
 void
 hyscan_planner_track_free (HyScanPlannerTrack *track)
@@ -157,13 +186,15 @@ hyscan_planner_track_free (HyScanPlannerTrack *track)
 }
 
 /**
- * hyscan_planner_track_add_record:
+ * hyscan_planner_track_record_append:
  * @track: указатель на #HyScanPlannerTrack
  * @record_id: идентификатор записанного галса
+ *
+ * Добавляет галс с идентификатором @record_id к списку записанных по этому плану галсов.
  */
 void
-hyscan_planner_track_add_record (HyScanPlannerTrack *track,
-                                 const gchar        *record_id)
+hyscan_planner_track_record_append (HyScanPlannerTrack *track,
+                                    const gchar        *record_id)
 {
   guint n_records, n_blocks;
 
@@ -176,12 +207,14 @@ hyscan_planner_track_add_record (HyScanPlannerTrack *track,
 }
 
 /**
- * hyscan_planner_track_delete_record:
+ * hyscan_planner_track_record_delete:
  * @track: указатель на #HyScanPlannerTrack
  * @record_id: идентификатор записанного галса
+ *
+ * Удаляет запись @record_id из списка записей плана галса.
  */
 void
-hyscan_planner_track_delete_record (HyScanPlannerTrack *track,
+hyscan_planner_track_record_delete (HyScanPlannerTrack *track,
                                     const gchar        *record_id)
 {
   guint i;
@@ -454,7 +487,7 @@ hyscan_planner_plan_equal (const HyScanTrackPlan *plan1,
 /**
  * hyscan_planner_zone_new:
  *
- * Создаёт пустую структуру #HyScanPlannerZone
+ * Создаёт пустую структуру #HyScanPlannerZone.
  */
 HyScanPlannerZone *
 hyscan_planner_zone_new (void)
@@ -462,7 +495,7 @@ hyscan_planner_zone_new (void)
   HyScanPlannerZone *zone;
 
   zone = g_slice_new0 (HyScanPlannerZone);
-  zone->type = HYSCAN_PLANNER_ZONE;
+  zone->type = HYSCAN_TYPE_PLANNER_ZONE;
 
   return zone;
 }
@@ -471,7 +504,7 @@ hyscan_planner_zone_new (void)
  * hyscan_planner_zone_copy:
  * @zone: указатель на структуру HyScanPlannerZone
  *
- * Копирует структуру #HyScanPlannerZone
+ * Копирует структуру #HyScanPlannerZone.
  */
 HyScanPlannerZone *
 hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
@@ -496,7 +529,7 @@ hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
  * hyscan_planner_zone_free:
  * @zone: указатель на структуру HyScanPlannerZone
  *
- * Удаляет структуру #HyScanPlannerZone
+ * Удаляет структуру #HyScanPlannerZone.
  */
 void
 hyscan_planner_zone_free (HyScanPlannerZone *zone)

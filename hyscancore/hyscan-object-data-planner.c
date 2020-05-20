@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * This file is part of HyScanGui library.
+ * This file is part of HyScanCore library.
  *
- * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanGui is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,9 +21,9 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanGui имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
@@ -33,7 +33,7 @@
  */
 
 /**
- * SECTION: hyscan-planner-data
+ * SECTION: hyscan-object-data-planner
  * @Short_description: Базовый класс работы с объектами планировщика
  * @Title: HyScanObjectDataPlanner
  *
@@ -75,18 +75,19 @@ static gboolean            hyscan_object_data_planner_set_track           (HySca
 static gboolean            hyscan_object_data_planner_set_zone            (HyScanObjectData         *data,
                                                                            HyScanParamList          *write_plist,
                                                                            const HyScanPlannerZone  *zone);
-static HyScanObject *      hyscan_object_data_planner_object_copy         (const HyScanObject       *object);
-static void                hyscan_object_data_planner_object_destroy      (HyScanObject             *object);
 static HyScanParamList *   hyscan_object_data_planner_get_read_plist      (HyScanObjectData         *data,
                                                                            const gchar              *id);
 static HyScanGeoPoint *    hyscan_object_data_planner_string_to_points    (const gchar              *string,
                                                                            gsize                    *points_len);
-static gchar *             hyscan_object_data_planner_points_to_string    (HyScanGeoPoint        *points,
+static gchar *             hyscan_object_data_planner_points_to_string    (HyScanGeoPoint           *points,
                                                                            gsize                     points_len);
 static const gchar *       hyscan_object_data_planner_get_schema_id       (HyScanObjectData         *data,
                                                                            const HyScanObject       *object);
 static gchar *             hyscan_object_data_planner_generate_id         (HyScanObjectData         *data,
                                                                            const HyScanObject       *object);
+static inline gboolean     hyscan_object_data_planner_origin_validate_id  (const gchar              *origin_id);
+static inline gboolean     hyscan_object_data_planner_track_validate_id   (const gchar              *track_id);
+static inline gboolean     hyscan_object_data_planner_zone_validate_id    (const gchar              *zone_id);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectDataPlanner, hyscan_object_data_planner, HYSCAN_TYPE_OBJECT_DATA)
 
@@ -104,8 +105,6 @@ hyscan_object_data_planner_class_init (HyScanObjectDataPlannerClass *klass)
   data_class->generate_id = hyscan_object_data_planner_generate_id;
   data_class->get_full = hyscan_object_data_planner_get_full;
   data_class->set_full = hyscan_object_data_planner_set_full;
-  data_class->object_copy = hyscan_object_data_planner_object_copy;
-  data_class->object_destroy = hyscan_object_data_planner_object_destroy;
   data_class->get_read_plist = hyscan_object_data_planner_get_read_plist;
 }
 
@@ -166,6 +165,8 @@ hyscan_object_data_planner_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_object_data_planner_parent_class)->finalize (object);
 }
 
+/* HyScanObjectDataClass.get_schema_id.
+ * Возвращает идентификатор схемы объекта. */
 static const gchar *
 hyscan_object_data_planner_get_schema_id (HyScanObjectData   *data,
                                           const HyScanObject *object)
@@ -180,6 +181,8 @@ hyscan_object_data_planner_get_schema_id (HyScanObjectData   *data,
     return NULL;
 }
 
+/* HyScanObjectDataClass.generate_id.
+ * Геренирует идентификатор для нового объекта. */
 static gchar *
 hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
                                         const HyScanObject *object)
@@ -201,56 +204,29 @@ hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
   return id;
 }
 
+/* Проверяет, что идентификатор соответствует зоне. */
 static inline gboolean
 hyscan_object_data_planner_zone_validate_id (const gchar *zone_id)
 {
   return zone_id != NULL && g_str_has_prefix (zone_id, PREFIX_ZONE);
 }
 
+/* Проверяет, что идентификатор соответствует треку. */
 static inline gboolean
 hyscan_object_data_planner_track_validate_id (const gchar *track_id)
 {
   return track_id != NULL && g_str_has_prefix (track_id, PREFIX_TRACK);
 }
 
+/* Проверяет, что идентификатор соответствует точке отсчёта. */
 static inline gboolean
 hyscan_object_data_planner_origin_validate_id (const gchar *origin_id)
 {
   return g_strcmp0 (origin_id, HYSCAN_PLANNER_ORIGIN_ID) == 0;
 }
 
-static void
-hyscan_object_data_planner_object_destroy (HyScanObject *object)
-{
-  if (object == NULL)
-    return;
-
-  if (HYSCAN_IS_PLANNER_ZONE (object))
-    hyscan_planner_zone_free ((HyScanPlannerZone *) object);
-  else if (HYSCAN_IS_PLANNER_TRACK (object))
-    hyscan_planner_track_free ((HyScanPlannerTrack *) object);
-  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
-    hyscan_planner_origin_free ((HyScanPlannerOrigin *) object);
-  else
-    g_warn_if_reached ();
-}
-
-static HyScanObject *
-hyscan_object_data_planner_object_copy (const HyScanObject *object)
-{
-  if (object == NULL)
-    return NULL;
-
-  if (HYSCAN_IS_PLANNER_ZONE (object))
-    return (HyScanObject *) hyscan_planner_zone_copy ((HyScanPlannerZone *) object);
-  else if (HYSCAN_IS_PLANNER_TRACK (object))
-    return (HyScanObject *) hyscan_planner_track_copy ((HyScanPlannerTrack *) object);
-  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
-    return (HyScanObject *) hyscan_planner_origin_copy ((HyScanPlannerOrigin *) object);
-  else
-    g_return_val_if_reached (NULL);
-}
-
+/* HyScanObjectDataClass.get_read_plist.
+ * Возвращает список параметров для чтения по идентификатору объекта. */
 static HyScanParamList *
 hyscan_object_data_planner_get_read_plist (HyScanObjectData *data,
                                            const gchar      *id)
@@ -268,6 +244,7 @@ hyscan_object_data_planner_get_read_plist (HyScanObjectData *data,
     g_return_val_if_reached (NULL);
 }
 
+/* Получает массив геоточек из строки. */
 static HyScanGeoPoint *
 hyscan_object_data_planner_string_to_points (const gchar *string,
                                              gsize       *points_len)
@@ -303,6 +280,7 @@ exit:
   return (HyScanGeoPoint *) g_array_free (array, FALSE);
 }
 
+/* Переводит массив геоточек в строку. */
 static gchar *
 hyscan_object_data_planner_points_to_string (HyScanGeoPoint    *points,
                                              gsize              points_len)
@@ -316,7 +294,8 @@ hyscan_object_data_planner_points_to_string (HyScanGeoPoint    *points,
   if (points_len == 0)
     return g_strdup ("");
 
-  /* Число символов для записи вершины: "-123.12345678,-123.12345678 ". */
+  /* Число символов для записи одного числа buf_len: {lat,lon} = "-123.1234567890\0".
+   * Число символов для записи вершины: "{lat},{lon} ". */
   max_len = (buf_len + 1 + buf_len + 1) * points_len + 1;
   vertices = g_new (gchar, max_len);
 
@@ -341,6 +320,7 @@ hyscan_object_data_planner_points_to_string (HyScanGeoPoint    *points,
   return vertices;
 }
 
+/* Создаёт объект HyScanPlannerZone из считанных параметров. */
 static HyScanObject *
 hyscan_object_data_planner_get_zone (HyScanObjectData *mdata,
                                      HyScanParamList  *plist)
@@ -359,6 +339,7 @@ hyscan_object_data_planner_get_zone (HyScanObjectData *mdata,
   return (HyScanObject *) zone;
 }
 
+/* Создаёт объект HyScanPlannerTrack из считанных параметров. */
 static HyScanObject *
 hyscan_object_data_planner_get_track (HyScanObjectData *mdata,
                                       HyScanParamList  *plist)
@@ -372,7 +353,7 @@ hyscan_object_data_planner_get_track (HyScanObjectData *mdata,
   track->plan.speed = hyscan_param_list_get_double (plist, "/speed");
   track->name = hyscan_param_list_dup_string (plist, "/name");
   records = hyscan_param_list_get_string (plist, "/records");
-  if (records != NULL)
+  if (records != NULL && records[0] != '\0')
     track->records = g_strsplit (records, ",", -1);
   track->plan.start.lat = hyscan_param_list_get_double (plist, "/start/lat");
   track->plan.start.lon = hyscan_param_list_get_double (plist, "/start/lon");
@@ -382,6 +363,7 @@ hyscan_object_data_planner_get_track (HyScanObjectData *mdata,
   return (HyScanObject *) track;
 }
 
+/* Создаёт объект HyScanPlannerOrigin из считанных параметров. */
 static HyScanObject *
 hyscan_object_data_planner_get_origin (HyScanObjectData *mdata,
                                        HyScanParamList  *plist)
@@ -396,6 +378,8 @@ hyscan_object_data_planner_get_origin (HyScanObjectData *mdata,
   return (HyScanObject *) origin;
 }
 
+/* HyScanObjectDataClass.get_full.
+ * Создаёт объект планировщика из считанных параметров. */
 static HyScanObject *
 hyscan_object_data_planner_get_full (HyScanObjectData *mdata,
                                      HyScanParamList  *read_plist)
@@ -417,17 +401,16 @@ hyscan_object_data_planner_get_full (HyScanObjectData *mdata,
   return NULL;
 }
 
+/* Устанавливает параметры объекта HyScanPlannerTrack для записи в БД. */
 static gboolean
 hyscan_object_data_planner_set_track (HyScanObjectData         *data,
                                       HyScanParamList          *write_plist,
                                       const HyScanPlannerTrack *track)
 {
-  const gchar *zone_id;
   gchar *records;
 
-  zone_id = track->zone_id != NULL ? track->zone_id : NULL;
   records = track->records != NULL ? g_strjoinv (",", track->records) : NULL;
-  hyscan_param_list_set_string (write_plist, "/zone-id", zone_id);
+  hyscan_param_list_set_string (write_plist, "/zone-id", track->zone_id);
   hyscan_param_list_set_string (write_plist, "/name", track->name);
   hyscan_param_list_set_string (write_plist, "/records", records);
   hyscan_param_list_set_integer (write_plist, "/number", track->number);
@@ -441,6 +424,7 @@ hyscan_object_data_planner_set_track (HyScanObjectData         *data,
   return TRUE;
 }
 
+/* Устанавливает параметры объекта HyScanPlannerOrigin для записи в БД. */
 static gboolean
 hyscan_object_data_planner_set_origin (HyScanObjectData          *data,
                                        HyScanParamList           *write_plist,
@@ -453,6 +437,7 @@ hyscan_object_data_planner_set_origin (HyScanObjectData          *data,
   return TRUE;
 }
 
+/* Устанавливает параметры объекта HyScanPlannerZone для записи в БД. */
 static gboolean
 hyscan_object_data_planner_set_zone (HyScanObjectData        *data,
                                      HyScanParamList         *write_plist,
@@ -472,6 +457,8 @@ hyscan_object_data_planner_set_zone (HyScanObjectData        *data,
   return TRUE;
 }
 
+/* HyScanObjectDataClass.set_full.
+ * Устанавливает параметры объекта для записи в БД. */
 static gboolean
 hyscan_object_data_planner_set_full (HyScanObjectData   *mdata,
                                      HyScanParamList    *write_plist,

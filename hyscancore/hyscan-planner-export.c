@@ -205,7 +205,7 @@ hyscan_planner_export_read_zones (xmlNodePtr  zones,
 
   for (node = zones->children; node != NULL; node = node->next)
     {
-      HyScanPlannerZone zone = { .type = HYSCAN_PLANNER_ZONE };
+      HyScanPlannerZone zone = { .type = HYSCAN_TYPE_PLANNER_ZONE };
       HyScanPlannerZone *zone_copy;
       gchar *id;
       xmlChar *prop;
@@ -261,7 +261,7 @@ hyscan_planner_export_read_tracks (xmlNodePtr  tracks,
 
   for (node = tracks->children; node != NULL; node = node->next)
     {
-      HyScanPlannerTrack track = { .type = HYSCAN_PLANNER_TRACK };
+      HyScanPlannerTrack track = { .type = HYSCAN_TYPE_PLANNER_TRACK };
       HyScanPlannerTrack *track_copy;
       gchar *id;
       xmlChar *prop;
@@ -314,7 +314,7 @@ static void
 hyscan_planner_export_read_origin (xmlNodePtr  node,
                                    GHashTable *objects)
 {
-  HyScanPlannerOrigin origin = { .type = HYSCAN_PLANNER_ORIGIN };
+  HyScanPlannerOrigin origin = { .type = HYSCAN_TYPE_PLANNER_ORIGIN };
   HyScanPlannerOrigin *origin_copy;
   gboolean result = TRUE;
 
@@ -704,7 +704,6 @@ GHashTable *
 hyscan_planner_import_xml_from_file (const gchar *filename)
 {
   HyScanObjectDataPlannerClass *planner_data_class = NULL;
-  HyScanObjectDataClass *data_class = NULL;
   GHashTable *objects = NULL;
   xmlNodePtr node;
   xmlDocPtr doc;
@@ -736,8 +735,7 @@ hyscan_planner_import_xml_from_file (const gchar *filename)
     }
 
   planner_data_class = g_type_class_ref (HYSCAN_TYPE_OBJECT_DATA_PLANNER);
-  data_class = HYSCAN_OBJECT_DATA_CLASS (planner_data_class);
-  objects = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) data_class->object_destroy);
+  objects = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) hyscan_object_free);
 
   for (node = node->children; node != NULL; node = node->next)
     {
