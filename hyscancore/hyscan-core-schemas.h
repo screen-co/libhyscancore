@@ -39,7 +39,7 @@
 #define PROJECT_INFO_SCHEMA_VERSION            20180100
 
 #define TRACK_INFO_SCHEMA_ID                   3829672927190415735
-#define TRACK_INFO_SCHEMA_VERSION              2020424
+#define TRACK_INFO_SCHEMA_VERSION              20200424
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
 #define TRACK_SCHEMA_VERSION                   20200300
