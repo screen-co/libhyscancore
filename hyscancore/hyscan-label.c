@@ -100,7 +100,7 @@ hyscan_label_free (HyScanLabel *self)
  * @self: указатель на HyScanLabel
  * @name: название группы
  * @description: описание группы
- * @oper: оператор
+ * @operator_name: оператор
  *
  * Устанавливает текстовые поля для группы
  */
@@ -108,7 +108,7 @@ void
 hyscan_label_set_text (HyScanLabel *self,
                        const gchar *name,
                        const gchar *description,
-                       const gchar *oper)
+                       const gchar *operator_name)
 {
   g_free (self->name);
   g_free (self->description);
@@ -116,7 +116,7 @@ hyscan_label_set_text (HyScanLabel *self,
 
   self->name = g_strdup (name);
   self->description = g_strdup (description);
-  self->operator_name = g_strdup (oper);
+  self->operator_name = g_strdup (operator_name);
 }
 
 /**
@@ -137,29 +137,29 @@ hyscan_label_set_icon_name (HyScanLabel *self,
 /**
  * hyscan_label_set_ctime:
  * @self: указатель на HyScanlabel
- * @creation: время создания группы
+ * @ctime: время создания группы
  *
  * Устанавливает время создания группы
  */
 void
 hyscan_label_set_ctime (HyScanLabel *self,
-                        gint64       creation)
+                        gint64       ctime)
 {
-  self->ctime = creation;
+  self->ctime = ctime;
 }
 
 /**
  * hyscan_label_set_mtime:
  * @self: указатель на HyScanLabel
- * @modification: время изменения группы
+ * @mtime: время изменения группы
  *
  * Устанавливает время изменения группы
  */
 void
 hyscan_label_set_mtime (HyScanLabel *self,
-                        gint64       modification)
+                        gint64       mtime)
 {
-  self->mtime = modification;
+  self->mtime = mtime;
 }
 
 /**
