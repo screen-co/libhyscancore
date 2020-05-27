@@ -39,7 +39,7 @@
 #define PROJECT_INFO_SCHEMA_VERSION            20180100
 
 #define TRACK_INFO_SCHEMA_ID                   3829672927190415735
-#define TRACK_INFO_SCHEMA_VERSION              20180100
+#define TRACK_INFO_SCHEMA_VERSION              20200424
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
 #define TRACK_SCHEMA_VERSION                   20200300
@@ -74,6 +74,9 @@
 #define PLANNER_TRACK_SCHEMA_ID                1788376350812305657
 #define PLANNER_TRACK_SCHEMA_VERSION           20200300
 
+#define LABEL_SCHEMA_ID                        5468681196977785233
+#define LABEL_SCHEMA_VERSION                   20200113
+
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"
 
@@ -94,5 +97,7 @@
 #define PLANNER_ZONE_SCHEMA                    "planner-zone"
 #define PLANNER_TRACK_SCHEMA                   "planner-track"
 #define PLANNER_OBJECT                         "planner"
+
+#define LABEL_SCHEMA                           "label"
 
 #endif /* __HYSCAN_CORE_SCHEMAS_H__ */
