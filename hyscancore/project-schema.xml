@@ -26,7 +26,7 @@
         <default>3829672927190415735</default>
       </key>
       <key id="version" name="Track info schema version" type="integer" access="r">
-        <default>20200424</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
@@ -84,7 +84,7 @@
         <default>5468681196977785233</default>
       </key>
       <key id="version" name="Label schema version" type="integer" access="readonly">
-        <default>20200113</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="name" name="Label short name" type="string"/>
