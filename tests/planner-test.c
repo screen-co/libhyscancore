@@ -107,7 +107,7 @@ test_zones (HyScanDB *db,
   planner = hyscan_object_data_planner_new (db, project_name);
 
   /* Добавляем зону. */
-  new_zone.type = HYSCAN_PLANNER_ZONE;
+  new_zone.type = HYSCAN_TYPE_PLANNER_ZONE;
   new_zone.points_len = 0;
   new_zone.points = NULL;
   new_zone.name = "Zone 1";
@@ -178,8 +178,8 @@ test_tracks (HyScanDB *db,
   gchar *zone_id = NULL;
   gchar **tracks;
   HyScanPlannerTrack *track_obj;
-  HyScanPlannerTrack track_new = {.type = HYSCAN_PLANNER_TRACK};
-  HyScanPlannerZone zone = {.type = HYSCAN_PLANNER_ZONE};
+  HyScanPlannerTrack track_new = {.type = HYSCAN_TYPE_PLANNER_TRACK};
+  HyScanPlannerZone zone = {.type = HYSCAN_TYPE_PLANNER_ZONE};
 
   planner = hyscan_object_data_planner_new (db, project_name);
 
@@ -256,7 +256,7 @@ test_origin (HyScanDB *db,
   gboolean status;
   gchar *origin_id = NULL;
   HyScanPlannerOrigin *origin_obj;
-  HyScanPlannerOrigin origin = {.type = HYSCAN_PLANNER_ORIGIN};
+  HyScanPlannerOrigin origin = {.type = HYSCAN_TYPE_PLANNER_ORIGIN};
 
   planner = hyscan_object_data_planner_new (db, project_name);
 
@@ -269,7 +269,7 @@ test_origin (HyScanDB *db,
   /* Меняем параметры ТО. */
   origin_obj = (HyScanPlannerOrigin *) hyscan_object_data_get (planner, origin_id);
   g_assert (origin_obj != NULL);
-  g_assert_cmpint (origin.type, ==, HYSCAN_PLANNER_ORIGIN);
+  g_assert_cmpint (origin.type, ==, HYSCAN_TYPE_PLANNER_ORIGIN);
 
   g_assert_cmpfloat (ABS (origin_obj->origin.lat - origin.origin.lat), <, 1e-6);
   g_assert_cmpfloat (ABS (origin_obj->origin.lon - origin.origin.lon), <, 1e-6);
@@ -285,16 +285,16 @@ static void
 test_extend (void)
 {
   HyScanPlannerTrack track_in = {
-    .type = HYSCAN_PLANNER_TRACK,
+    .type = HYSCAN_TYPE_PLANNER_TRACK,
     .plan = { .start = { 36.983408,  55.937443 }, .end = { 36.983409, 55.937443 }}
   };
   HyScanPlannerTrack track_out = {
-    .type = HYSCAN_PLANNER_TRACK,
+    .type = HYSCAN_TYPE_PLANNER_TRACK,
     .plan = { .start = { 36.983401,  55.937440 }, .end = { 36.983409, 55.937440 }}
   };
   gdouble angle, angle_ext;
   HyScanPlannerTrack *track_ext, *track_ext2;
-  HyScanPlannerZone zone = { .type = HYSCAN_PLANNER_ZONE };
+  HyScanPlannerZone zone = { .type = HYSCAN_TYPE_PLANNER_ZONE };
   HyScanGeoPoint points[] = {
     { 36.983409,  55.937442 },
     { 36.983408,  55.937442 },
@@ -350,7 +350,7 @@ test_angle_length (void)
 
   for (i = 0; i < G_N_ELEMENTS (data); i++)
     {
-      HyScanPlannerTrack track = { .type = HYSCAN_PLANNER_TRACK };
+      HyScanPlannerTrack track = { .type = HYSCAN_TYPE_PLANNER_TRACK };
       gdouble angle, length;
       HyScanGeo *geo;
       HyScanGeoCartesian2D start, end;
