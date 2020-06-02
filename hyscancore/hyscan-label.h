@@ -48,6 +48,7 @@ typedef struct _HyScanLabel HyScanLabel;
  * @name: название группы
  * @description: описание группы
  * @operator_name: имя оператора
+ * @icon_data: строка содержащая графическое изображение для группы (иконку) в формате BASE64
  * @label: идентификатор группы (битовая маска)
  * @ctime: время создания (Unix-время в секундах)
  * @mtime: время последней модификации (Unix-время в секундах)
@@ -58,7 +59,7 @@ struct _HyScanLabel
   gchar            *name;
   gchar            *description;
   gchar            *operator_name;
-  gchar            *icon_name;
+  gchar            *icon_data;
   guint64           label;
   gint64            ctime;
   gint64            mtime;
@@ -83,8 +84,8 @@ void                 hyscan_label_set_text                     (HyScanLabel     
                                                                 const gchar            *operator_name);
 
 HYSCAN_API
-void                 hyscan_label_set_icon_name                (HyScanLabel            *self,
-                                                                const gchar            *icon_name);
+void                 hyscan_label_set_icon_data                (HyScanLabel            *self,
+                                                                const gchar            *icon_data);
 
 HYSCAN_API
 void                 hyscan_label_set_ctime                    (HyScanLabel            *self,
