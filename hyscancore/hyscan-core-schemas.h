@@ -39,7 +39,11 @@
 #define PROJECT_INFO_SCHEMA_VERSION            20180100
 
 #define TRACK_INFO_SCHEMA_ID                   3829672927190415735
-#define TRACK_INFO_SCHEMA_VERSION              20200424
+
+#define TRACK_INFO_SCHEMA_VERSION              20200100
+
+#define MAP_TRACK_SCHEMA_ID                    1719201303461104780
+#define MAP_TRACK_SCHEMA_VERSION               20200300
 
 #define TRACK_SCHEMA_ID                        1715033709558529337
 #define TRACK_SCHEMA_VERSION                   20200300
@@ -75,10 +79,11 @@
 #define PLANNER_TRACK_SCHEMA_VERSION           20200300
 
 #define LABEL_SCHEMA_ID                        5468681196977785233
-#define LABEL_SCHEMA_VERSION                   20200113
+#define LABEL_SCHEMA_VERSION                   20200100
 
 #define PROJECT_INFO_SCHEMA                    "project-info"
 #define TRACK_INFO_SCHEMA                      "track-info"
+#define MAP_TRACK_SCHEMA                       "map-track"
 
 #define TRACK_SCHEMA                           "track"
 #define LOG_CHANNEL_SCHEMA                     "log"

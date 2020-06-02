@@ -92,6 +92,9 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-quality.c
              hyscan-data-estimator.c
              hyscan-units.c
+             hyscan-map-track.c
+             hyscan-map-track-param.c
+             hyscan-track-proj-quality.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -175,6 +178,9 @@ install (FILES hyscan-core-schemas.h
                hyscan-quality.h
                hyscan-data-estimator.h
                hyscan-units.h
+               hyscan-map-track.h
+               hyscan-map-track-param.c
+               hyscan-track-proj-quality.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

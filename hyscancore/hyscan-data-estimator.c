@@ -185,9 +185,9 @@ hyscan_data_estimator_object_finalize (GObject *object)
   // g_free (priv->quality_val);
   // g_free (priv->quality_ind);
   g_array_free (priv->source_quality, TRUE);
-  g_object_unref (priv->signal_data);
-  g_object_unref (priv->noise_data);
-  g_object_unref (priv->navig_data);
+  g_clear_object (&priv->signal_data);
+  g_clear_object (&priv->noise_data);
+  g_clear_object (&priv->navig_data);
 
   G_OBJECT_CLASS (hyscan_data_estimator_parent_class)->finalize (object);
 }
@@ -205,10 +205,6 @@ hyscan_data_estimator_new (HyScanAcousticData *signal_data,
                            HyScanNavData      *navigation_data)
 {
   HyScanDataEstimator* estimator = NULL;
-  if (signal_data == NULL || noise_data == NULL || navigation_data == NULL)
-    {
-      return NULL;
-    }
 
   estimator = g_object_new (HYSCAN_TYPE_DATA_ESTIMATOR,
                             "signal",     signal_data,

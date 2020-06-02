@@ -141,9 +141,9 @@ static GHashTable *
 generate_objects (void)
 {
   GHashTable *objects;
-  HyScanPlannerZone *zone_ptr, zone = {.type = HYSCAN_PLANNER_ZONE};
-  HyScanPlannerTrack *track_ptr, track = {.type = HYSCAN_PLANNER_TRACK};
-  HyScanPlannerOrigin *origin_ptr, origin = {.type = HYSCAN_PLANNER_ORIGIN};
+  HyScanPlannerZone *zone_ptr, zone = {.type = HYSCAN_TYPE_PLANNER_ZONE};
+  HyScanPlannerTrack *track_ptr, track = {.type = HYSCAN_TYPE_PLANNER_TRACK};
+  HyScanPlannerOrigin *origin_ptr, origin = {.type = HYSCAN_TYPE_PLANNER_ORIGIN};
   HyScanGeoPoint vertex[] = { {11, 12}, {13, 14}, {15, 16}, {17, 18} };
   guint i;
 

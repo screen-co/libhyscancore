@@ -311,7 +311,10 @@ hyscan_nmea_file_device_process (HyScanNmeaFileDevice *device)
   /* Открываем файл. */
   priv->fp = g_fopen (priv->filename, "r");
   if (priv->fp == NULL)
-    goto exit;
+    {
+      g_warning ("HyScanNmeaFileDevice: failed to open file %s", priv->filename);
+      goto exit;
+    }
 
   /* Определяем начальную метку времени. */
   priv->line_time = -G_MAXDOUBLE;
