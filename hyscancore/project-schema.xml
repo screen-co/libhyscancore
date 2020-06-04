@@ -90,8 +90,8 @@
     <key id="name" name="Label short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
-    <key id="icon" name="Icon name" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
+    <key id="icon" name="Icon data" type="string"/>
+    <key id="label" name="Id label" type="integer"/>
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
   </schema>
