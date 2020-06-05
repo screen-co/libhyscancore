@@ -31,7 +31,7 @@
     </node>
     <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
     <key id="description" name="Track description" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
+    <key id="labels" name="Applied labels" type="integer"/>
   </schema>
 
   <schema id="waterfall-mark">
@@ -46,7 +46,7 @@
     <key id="name" name="Mark short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
+    <key id="labels" name="Applied labels" type="integer"/>
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
     <key id="track" name="Track id" type="string"/>
@@ -69,7 +69,7 @@
     <key id="name" name="Mark short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
+    <key id="labels" name="Applied labels" type="integer"/>
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
     <key id="lat" name="Latitude (center)" type="double"/>
