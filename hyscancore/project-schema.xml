@@ -40,7 +40,7 @@
         <default>1315931457526726065</default>
       </key>
       <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
-        <default>20190200</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="name" name="Mark short name" type="string"/>
@@ -63,7 +63,7 @@
         <default>4566818919687782529</default>
       </key>
       <key id="version" name="Geo mark schema version" type="integer" access="readonly">
-        <default>20190100</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="name" name="Mark short name" type="string"/>
