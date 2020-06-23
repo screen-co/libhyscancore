@@ -855,25 +855,48 @@ hyscan_map_track_param_get_nav_data (HyScanMapTrackParam  *param,
                                      HyScanCache          *cache)
 {
   HyScanMapTrackParamPrivate *priv;
-  HyScanParamList *list;
+  HyScanParamList *list = NULL;
   HyScanNavData *nav_data = NULL;
   gint64 channel;
+  HyScanNmeaDataType data_type;
+  const gchar *param_name;
 
   g_return_val_if_fail (HYSCAN_IS_MAP_TRACK_PARAM (param), NULL);
   priv = param->priv;
 
+  switch (field)
+    {
+    case HYSCAN_NMEA_FIELD_DEPTH:
+      data_type = HYSCAN_NMEA_DATA_DPT;
+      param_name = KEY_CHANNEL_DPT;
+      break;
+
+    case HYSCAN_NMEA_FIELD_LAT:
+    case HYSCAN_NMEA_FIELD_LON:
+    case HYSCAN_NMEA_FIELD_TRACK:
+    case HYSCAN_NMEA_FIELD_SPEED:
+    case HYSCAN_NMEA_FIELD_TIME:
+      data_type = HYSCAN_NMEA_DATA_RMC;
+      param_name = KEY_CHANNEL_RMC;
+      break;
+
+    default:
+      g_warning ("HyScanMapTrack: unable to get HyScanNavData for field %d", field);
+      goto exit;
+    }
+
   list = hyscan_param_list_new ();
-  hyscan_param_list_add (list, KEY_CHANNEL_RMC);
+  hyscan_param_list_add (list, param_name);
   if (!hyscan_param_get (HYSCAN_PARAM (param), list))
     goto exit;
 
-  channel = hyscan_param_list_get_enum (list, KEY_CHANNEL_RMC);
+  channel = hyscan_param_list_get_enum (list, param_name);
   if (channel == 0)
     goto exit;
 
   nav_data =  HYSCAN_NAV_DATA (hyscan_nmea_parser_new (priv->db, cache, priv->project_name,
                                                        priv->track_name, channel,
-                                                       HYSCAN_NMEA_DATA_RMC, field));
+                                                       data_type, field));
 exit:
   g_clear_object (&list);
 
