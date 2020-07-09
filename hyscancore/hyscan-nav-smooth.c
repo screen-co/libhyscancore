@@ -58,6 +58,8 @@
 #include "hyscan-nav-smooth.h"
 #include <hyscan-stats.h>
 
+#define MAX_INDEX_DIFF    30   /* Максимальное число отсчётов от искомой точки, по которым идёт поиск. */
+
 enum
 {
   PROP_O,
@@ -257,7 +259,8 @@ hyscan_nav_smooth_get (HyScanNavSmooth   *nav_smooth,
   guint32 lindex, rindex;
   gint64 ltime, rtime;
   gdouble lvalue, rvalue;
-  gboolean found;
+  guint32 first, last, i;
+  gboolean lfound = FALSE, rfound = FALSE;
   
   g_return_val_if_fail (HYSCAN_IS_NAV_SMOOTH (nav_smooth), FALSE);
   priv = nav_smooth->priv;
@@ -268,11 +271,24 @@ hyscan_nav_smooth_get (HyScanNavSmooth   *nav_smooth,
   if (find_status != HYSCAN_DB_FIND_OK)
     return FALSE;
 
-  // todo: если в текущем индексе нет данных, то пробовать брать соседние
-  found = hyscan_nav_data_get (priv->nav_data, cancellable, lindex, NULL, &lvalue) &&
-          hyscan_nav_data_get (priv->nav_data, cancellable, rindex, NULL, &rvalue);
+  /* Поскольку навигационные данные могут не оказаться в индексах, полученных из hyscan_nav_data_find_data,
+   * делаем поиск на MAX_INDEX_DIFF в сторону от найденных. */
+  hyscan_nav_data_get_range (priv->nav_data, &first, &last);
+  for (i = 0; lindex >= first && i < MAX_INDEX_DIFF; lindex--, i++)
+    {
+      lfound = hyscan_nav_data_get (priv->nav_data, cancellable, lindex, &ltime, &lvalue);
+      if (lfound)
+        break;
+    }
 
-  if (!found)
+  for (i = 0; rindex <= last && i < MAX_INDEX_DIFF; rindex++, i++)
+    {
+      rfound = hyscan_nav_data_get (priv->nav_data, cancellable, rindex, &rtime, &rvalue);
+      if (rfound)
+        break;
+    }
+
+  if (!lfound || !rfound)
     return FALSE;
 
   if (priv->circular)
