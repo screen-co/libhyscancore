@@ -138,7 +138,6 @@ hyscan_profile_read_info_group (HyScanProfile *self,
   HyScanProfileClass *klass = HYSCAN_PROFILE_GET_CLASS (self);
   gchar *name;
   guint64 version;
-  gint64 last_used;
 
   if (!g_key_file_has_group (kf, HYSCAN_PROFILE_INFO_GROUP))
     return FALSE;
@@ -153,8 +152,8 @@ hyscan_profile_read_info_group (HyScanProfile *self,
   hyscan_profile_set_name (self, name);
   g_free (name);
 
-  last_used = g_key_file_get_int64 (kf, HYSCAN_PROFILE_INFO_GROUP,
-                                    HYSCAN_PROFILE_LAST_USED, NULL);
+  self->priv->last_used = g_key_file_get_int64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                                                HYSCAN_PROFILE_LAST_USED, NULL);
   return TRUE;
 }
 
