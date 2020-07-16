@@ -66,6 +66,7 @@
 
 #define HYSCAN_PROFILE_NAME "name"
 #define HYSCAN_PROFILE_VERSION "version"
+#define HYSCAN_PROFILE_LAST_USED "last_used"
 
 enum
 {
@@ -75,9 +76,11 @@ enum
 
 struct _HyScanProfilePrivate
 {
-  gchar    *file;   /* Путь к файлу с профилем. */
-  GKeyFile *kf;     /* GKeyFile с профилем. */
-  gchar    *name;   /* Название профиля. */
+  gchar    *file;      /* Путь к файлу с профилем. */
+  GKeyFile *kf;        /* GKeyFile с профилем. */
+  gchar    *name;      /* Название профиля. */
+
+  gint64    last_used; /* Время последнего использования. */
 };
 
 static void     hyscan_profile_set_property       (GObject               *object,
@@ -135,6 +138,7 @@ hyscan_profile_read_info_group (HyScanProfile *self,
   HyScanProfileClass *klass = HYSCAN_PROFILE_GET_CLASS (self);
   gchar *name;
   guint64 version;
+  gint64 last_used;
 
   if (!g_key_file_has_group (kf, HYSCAN_PROFILE_INFO_GROUP))
     return FALSE;
@@ -148,6 +152,9 @@ hyscan_profile_read_info_group (HyScanProfile *self,
                                 HYSCAN_PROFILE_NAME, NULL);
   hyscan_profile_set_name (self, name);
   g_free (name);
+
+  last_used = g_key_file_get_int64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                                    HYSCAN_PROFILE_LAST_USED, NULL);
   return TRUE;
 }
 
@@ -162,6 +169,9 @@ hyscan_profile_write_info_group (HyScanProfile *self,
 
   g_key_file_set_string (kf, HYSCAN_PROFILE_INFO_GROUP,
                          HYSCAN_PROFILE_NAME, hyscan_profile_get_name (self));
+
+  g_key_file_set_int64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                        HYSCAN_PROFILE_LAST_USED, self->priv->last_used);
 }
 
 static void
@@ -303,6 +313,28 @@ hyscan_profile_delete (HyScanProfile *self)
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
 
   return 0 == g_remove (self->priv->file);
+}
+
+void
+hyscan_profile_use (HyScanProfile *self)
+{
+  GDateTime *dt;
+  g_return_if_fail (HYSCAN_IS_PROFILE (self));
+
+  dt = g_date_time_new_now_local ();
+  self->priv->last_used = g_date_time_to_unix (dt);
+  g_date_time_unref (dt);
+}
+
+GDateTime *
+hyscan_profile_last_used (HyScanProfile *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), NULL);
+
+  if (self->priv->last_used <= 0)
+    return NULL;
+
+  return g_date_time_new_from_unix_local (self->priv->last_used);
 }
 
 /**

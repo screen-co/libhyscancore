@@ -103,6 +103,12 @@ HYSCAN_API
 gboolean               hyscan_profile_delete           (HyScanProfile *profile);
 
 HYSCAN_API
+void                   hyscan_profile_use              (HyScanProfile *profile);
+
+HYSCAN_API
+GDateTime *            hyscan_profile_last_used        (HyScanProfile *profile);
+
+HYSCAN_API
 const gchar *          hyscan_profile_get_file         (HyScanProfile *profile);
 
 HYSCAN_API
