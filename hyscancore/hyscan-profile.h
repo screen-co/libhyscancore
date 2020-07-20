@@ -63,16 +63,6 @@ struct _HyScanProfile
  * Название информационной группы.
  */
 #define HYSCAN_PROFILE_INFO_GROUP "_"
-/**
- * HYSCAN_PROFILE_NAME:
- * Поле с названием профиля.
- */
-#define HYSCAN_PROFILE_NAME "name"
-/**
- * HYSCAN_PROFILE_VERSION:
- * Поле с версией профиля.
- */
-#define HYSCAN_PROFILE_VERSION "version"
 
 /**
  * HyScanProfileClass:
@@ -111,6 +101,12 @@ gboolean               hyscan_profile_sanity           (HyScanProfile *profile);
 
 HYSCAN_API
 gboolean               hyscan_profile_delete           (HyScanProfile *profile);
+
+HYSCAN_API
+void                   hyscan_profile_use              (HyScanProfile *profile);
+
+HYSCAN_API
+GDateTime *            hyscan_profile_last_used        (HyScanProfile *profile);
 
 HYSCAN_API
 const gchar *          hyscan_profile_get_file         (HyScanProfile *profile);

@@ -152,11 +152,15 @@ hyscan_profile_hw_device_object_finalize (GObject *object)
   HyScanProfileHWDevice *profile_hw_device = HYSCAN_PROFILE_HW_DEVICE (object);
   HyScanProfileHWDevicePrivate *priv = profile_hw_device->priv;
 
-  g_clear_pointer (&priv->group, g_free);
-  g_clear_pointer (&priv->uri, g_free);
   g_clear_pointer (&priv->paths, g_strfreev);
+  g_clear_pointer (&priv->group, g_free);
+
+  g_clear_pointer (&priv->name, g_free);
+  g_clear_pointer (&priv->driver, g_free);
+  g_clear_pointer (&priv->uri, g_free);
 
   g_clear_object (&priv->discover);
+  g_clear_object (&priv->schema);
   g_clear_object (&priv->params);
 
   G_OBJECT_CLASS (hyscan_profile_hw_device_parent_class)->finalize (object);

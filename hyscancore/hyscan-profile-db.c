@@ -46,7 +46,7 @@
 
 #include "hyscan-profile-db.h"
 
-#define HYSCAN_PROFILE_DB_VERSION 0x965D2C45
+#define HYSCAN_PROFILE_DB_VERSION 20200100
 
 /**
  * HYSCAN_PROFILE_DB_GROUP:

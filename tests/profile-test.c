@@ -33,25 +33,69 @@
  */
 
 #include <hyscan-profile-db.h>
+#include <hyscan-profile-hw.h>
 #include <hyscan-profile-offset.h>
 #include "hyscan-dummy-device.h"
 
 #define TEST_NAME "test_name"
 #define TEST_SENSOR "random_sensor_name"
+#define EMPTY_SENSOR ""
 #define TEST_SOURCE HYSCAN_SOURCE_ECHOSOUNDER
+#define HW_URI "nmea://auto"
 
-
-static void test_db (void);
-static void test_offset (void);
+static void     test_db                 (void);
+static gboolean compare_antenna_offsets (HyScanAntennaOffset *a,
+                                         HyScanAntennaOffset *b);
+static void     check_offsets           (HyScanProfileOffset *pof,
+                                         HyScanAntennaOffset *reference);
+static void     test_offset             (void);
+static void     test_hw                 (gchar **paths);
 
 int
 main (int    argc,
       char **argv)
 {
+  gchar **paths;
+
+  {
+    gchar **args;
+    GError *error = NULL;
+    GOptionContext *context;
+    GOptionEntry entries[] =
+      {
+        { "drivers", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &paths, "Paths to drivers", NULL },
+        { NULL }
+      };
+
+  #ifdef G_OS_WIN32
+    args = g_win32_get_command_line ();
+  #else
+    args = g_strdupv (argv);
+  #endif
+
+    context = g_option_context_new ("<db-uri>");
+    g_option_context_set_help_enabled (context, TRUE);
+    g_option_context_add_main_entries (context, entries, NULL);
+    g_option_context_set_ignore_unknown_options (context, FALSE);
+    if (!g_option_context_parse_strv (context, &args, &error))
+      {
+        g_print ("%s\n", error->message);
+        return -1;
+      }
+    g_option_context_free (context);
+    g_strfreev (args);
+  }
+
   test_db ();
   test_offset ();
 
+  if (paths != NULL)
+    test_hw (paths);
+
   g_message ("Passed.");
+
+  g_strfreev (paths);
+
 
   return 0;
 }
@@ -131,7 +175,7 @@ check_offsets (HyScanProfileOffset *pof,
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
       if (GPOINTER_TO_INT (k) != TEST_SOURCE)
-        g_error ("Offset profile: extra sources");
+        g_error ("Offset profile: extra sonars");
       if (!compare_antenna_offsets (v, reference))
         g_error ("Offset profile: values mismatch");
     }
@@ -141,7 +185,8 @@ check_offsets (HyScanProfileOffset *pof,
   g_hash_table_iter_init (&iter, ht);
   while (g_hash_table_iter_next (&iter, &k, (gpointer*)&v))
     {
-      if (!g_str_equal ((gchar**)k, TEST_SENSOR))
+      if (!g_str_equal ((gchar**)k, TEST_SENSOR) &&
+          !g_str_equal ((gchar**)k, EMPTY_SENSOR))
         g_error ("Offset profile: extra sources");
       if (!compare_antenna_offsets (v, reference))
         g_error ("Offset profile: values mismatch");
@@ -169,6 +214,8 @@ test_offset (void)
   hyscan_profile_offset_add_sensor (pof, TEST_SENSOR, &offt2);
   hyscan_profile_offset_add_source (pof, TEST_SOURCE, &offt1);
   hyscan_profile_offset_add_source (pof, TEST_SOURCE, &offt2);
+  hyscan_profile_offset_add_sensor (pof, EMPTY_SENSOR, &offt1);
+  hyscan_profile_offset_add_sensor (pof, EMPTY_SENSOR, &offt2);
 
   if (!hyscan_profile_sanity (p))
     g_error ("Offset profile sanity check failure");
@@ -184,9 +231,7 @@ test_offset (void)
     g_error ("Offset profile read failure");
 
   if (!g_str_equal (TEST_NAME, hyscan_profile_get_name (p)))
-    {
-      g_error ("Offset profile values mismatch");
-    }
+    g_error ("Offset profile values mismatch");
 
   check_offsets (pof, &offt2);
 
@@ -197,3 +242,66 @@ test_offset (void)
   g_clear_object (&pof);
 }
 
+static void
+test_hw (gchar **paths)
+{
+  gchar buf[25];
+  gchar *file;
+  HyScanProfileHW *phw;
+  HyScanProfileHWDevice *phwd;
+  HyScanProfile *p;
+  GList *list;
+  HyScanControl *ctrl;
+
+  file = g_build_filename (".", hyscan_rand_id (buf, G_N_ELEMENTS (buf)), NULL);
+  phw = hyscan_profile_hw_new (file, paths);
+  p = HYSCAN_PROFILE (phw);
+  hyscan_profile_set_name (p, TEST_NAME);
+
+  phwd = hyscan_profile_hw_device_new (paths);
+
+  hyscan_profile_hw_device_set_group (phwd, HYSCAN_PROFILE_INFO_GROUP);
+  hyscan_profile_hw_device_set_driver (phwd, "nmea");
+  hyscan_profile_hw_device_set_uri (phwd, HW_URI);
+  hyscan_profile_hw_device_set_name (phwd, TEST_NAME);
+
+  if (!hyscan_profile_hw_device_update (phwd))
+    g_error ("HW profile device: couldn't update");
+
+  hyscan_profile_hw_add (phw, phwd);
+  hyscan_profile_hw_add (phw, phwd);
+  hyscan_profile_hw_add (phw, phwd);
+
+  hyscan_profile_write (p);
+
+  g_clear_object (&phw);
+  g_clear_object (&phwd);
+
+  phw = hyscan_profile_hw_new (file, paths);
+  p = HYSCAN_PROFILE (phw);
+  hyscan_profile_read (p);
+
+  list = hyscan_profile_hw_list (phw);
+
+  if (1 != g_list_length (list))
+    g_error ("HW profile: device number mismatch");
+
+  phwd = (HyScanProfileHWDevice*)list->data;
+  if (!g_str_equal ("nmea", hyscan_profile_hw_device_get_driver (phwd)) ||
+      !g_str_equal (HW_URI, hyscan_profile_hw_device_get_uri (phwd)) ||
+      !g_str_equal (TEST_NAME, hyscan_profile_hw_device_get_name (phwd)))
+  {
+    g_error ("HW profile device: data mismatch");
+  }
+
+  if (!hyscan_profile_hw_check (phw))
+    g_error ("HW profile: check failure");
+
+  if (NULL == (ctrl = hyscan_profile_hw_connect (phw)))
+    g_error ("HW profile: connection failure");
+
+  g_list_free (list);
+  g_clear_object (&phw);
+  g_clear_object (&ctrl);
+  g_free (file);
+}

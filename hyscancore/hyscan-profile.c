@@ -38,18 +38,35 @@
  * @Title: HyScanProfile
  *
  * Класс HyScanProfile является виртуальным базовым классом, реализующим
- * общую функциональность: на данный момент это чтение профиля и получение
- * названия. За дальнейшей информацией следует обратиться к документации
- * дочерних классов.
+ * общую функциональность: чтение, запись, проверка валидности, удаление
+ * профилей.
  *
- * Между тем, общий алгоритм работы такой: создать объект работы с профилем,
- * полностью настроить его, прочитать с помощью #hyscan_profile_read,
- * отобразить с помощью #hyscan_profile_get_name, применить с помощью
- * соответствующей функции дочернего класса.
+ * Также этот класс хранит общие поля для всех профилей: название и
+ * версия. Эти поля хранятся в группе [_]. Использовать эту группу хотя и не
+ * запрещено на программном уровне, крайне не рекомендуется, т.к. дальнейшее
+ * развитие базового класса может привести к коллизиям. Если же кто-то
+ * перезапишет поля, требуемые данным классом, весь профиль может стать
+ * нечитаемым. Использование групп с другими названиями ничем не ограничивается.
+ *
+ * Общий алгоритм работы с профилем такой: создать объект работы с профилем,
+ * полностью настроить его, считать с помощью hyscan_profile_read(),
+ * отобразить и/или отредактировать с помощью hyscan_profile_get_name(),
+ * hyscan_profile_set_name() (и функций дочерних классов),
+ * при необходимости записать с помощью hyscan_profile_write().
+ *
+ * Для нужд графического интерфейса также есть функция hyscan_profile_sanity().
+ * Она валидирует профиль в том смысле, что все необходимые поля заполнены.
+ * При этом не гарантируется, что, например, в случае профиля БД к указанной
+ * БД можно подключиться. Эта проверка не выполняется ни после чтения, ни перед
+ * записью профиля.
  */
 
 #include "hyscan-profile.h"
 #include <glib/gstdio.h>
+
+#define HYSCAN_PROFILE_NAME "name"
+#define HYSCAN_PROFILE_VERSION "version"
+#define HYSCAN_PROFILE_LAST_USED "last_used"
 
 enum
 {
@@ -59,9 +76,11 @@ enum
 
 struct _HyScanProfilePrivate
 {
-  gchar    *file;   /* Путь к файлу с профилем. */
-  GKeyFile *kf;     /* GKeyFile с профилем. */
-  gchar    *name;   /* Название профиля. */
+  gchar    *file;      /* Путь к файлу с профилем. */
+  GKeyFile *kf;        /* GKeyFile с профилем. */
+  gchar    *name;      /* Название профиля. */
+
+  gint64    last_used; /* Время последнего использования. */
 };
 
 static void     hyscan_profile_set_property       (GObject               *object,
@@ -132,6 +151,9 @@ hyscan_profile_read_info_group (HyScanProfile *self,
                                 HYSCAN_PROFILE_NAME, NULL);
   hyscan_profile_set_name (self, name);
   g_free (name);
+
+  self->priv->last_used = g_key_file_get_int64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                                                HYSCAN_PROFILE_LAST_USED, NULL);
   return TRUE;
 }
 
@@ -146,6 +168,9 @@ hyscan_profile_write_info_group (HyScanProfile *self,
 
   g_key_file_set_string (kf, HYSCAN_PROFILE_INFO_GROUP,
                          HYSCAN_PROFILE_NAME, hyscan_profile_get_name (self));
+
+  g_key_file_set_int64 (kf, HYSCAN_PROFILE_INFO_GROUP,
+                        HYSCAN_PROFILE_LAST_USED, self->priv->last_used);
 }
 
 static void
@@ -274,7 +299,7 @@ hyscan_profile_sanity (HyScanProfile *self)
 }
 
 /**
- * hyscan_profile_write:
+ * hyscan_profile_delete:
  * @self: указатель на #HyScanProfile
  *
  * Функция удаляет профиль с диска. По сути, это просто обертка над g_remove().
@@ -287,6 +312,28 @@ hyscan_profile_delete (HyScanProfile *self)
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
 
   return 0 == g_remove (self->priv->file);
+}
+
+void
+hyscan_profile_use (HyScanProfile *self)
+{
+  GDateTime *dt;
+  g_return_if_fail (HYSCAN_IS_PROFILE (self));
+
+  dt = g_date_time_new_now_local ();
+  self->priv->last_used = g_date_time_to_unix (dt);
+  g_date_time_unref (dt);
+}
+
+GDateTime *
+hyscan_profile_last_used (HyScanProfile *self)
+{
+  g_return_val_if_fail (HYSCAN_IS_PROFILE (self), NULL);
+
+  if (self->priv->last_used <= 0)
+    return NULL;
+
+  return g_date_time_new_from_unix_local (self->priv->last_used);
 }
 
 /**
@@ -339,35 +386,4 @@ hyscan_profile_get_name (HyScanProfile *self)
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), NULL);
 
   return self->priv->name;
-}
-
-/**
- * hyscan_profile_make_id:
- * @buffer: указатель на массив
- * @size: размер массива
- *
- * Функция генерирует случайный нуль-терминированный идентификатор.
- *
- * Returns: (transfer none): указатель на переданный массив.
- */
-gchar *
-hyscan_profile_make_id (gchar *buffer,
-                        guint  size)
-{
-  guint i;
-  gint rnd;
-
-  for (i = 0; i < size; i++)
-    {
-      rnd = g_random_int_range (0, 62);
-      if (rnd < 10)
-        buffer[i] = '0' + rnd;
-      else if (rnd < 36)
-        buffer[i] = 'a' + rnd - 10;
-      else
-        buffer[i] = 'A' + rnd - 36;
-    }
-  buffer[i] = '\0';
-
-  return buffer;
 }

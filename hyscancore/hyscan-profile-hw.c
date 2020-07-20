@@ -56,7 +56,7 @@
 #include <hyscan-driver.h>
 #include <hyscan-types.h>
 
-#define HYSCAN_PROFILE_HW_VERSION 0xD93618D8
+#define HYSCAN_PROFILE_HW_VERSION 20200100
 
 enum
 {
@@ -286,6 +286,7 @@ hyscan_profile_hw_add (HyScanProfileHW       *self,
   HyScanProfileHWPrivate *priv;
   const gchar *id;
   gchar new_id[20];
+  GList *list;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW (self), NULL);
   g_return_val_if_fail (HYSCAN_IS_PROFILE_HW_DEVICE (device), NULL);
@@ -293,9 +294,14 @@ hyscan_profile_hw_add (HyScanProfileHW       *self,
 
   id = hyscan_profile_hw_device_get_group (device);
 
+  /* Проверяем, нет ли этого устройства уже в списке устройств. */
+  list = hyscan_profile_hw_list (self);
+  if (NULL != g_list_find (list, device))
+    goto exit;
+
   /* Если группа не задана, совпадает со специальным полем или уже существует
    * в профиле, перегенерируем её. */
-  while (id == NULL || g_str_equal (id, HYSCAN_PROFILE_NAME) ||
+  while (id == NULL || g_str_equal (id, HYSCAN_PROFILE_INFO_GROUP) ||
          g_hash_table_contains (priv->devices, id))
     {
       id = hyscan_rand_id (new_id, G_N_ELEMENTS (new_id));
@@ -304,6 +310,8 @@ hyscan_profile_hw_add (HyScanProfileHW       *self,
 
   g_hash_table_insert (priv->devices, g_strdup (id), g_object_ref (device));
 
+exit:
+  g_list_free (list);
   return id;
 }
 
