@@ -103,12 +103,8 @@ static GHashTable *
 create_ht (void)
 {
   GHashTable *ht;
-  HyScanObjectDataClass *data_klass;
 
-  data_klass = HYSCAN_OBJECT_DATA_CLASS (g_type_class_ref(HYSCAN_TYPE_OBJECT_DATA_PLANNER));
-  ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) data_klass->object_destroy);
-
-  g_type_class_unref (data_klass);
+  ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) hyscan_object_free);
 
   return ht;
 }
@@ -145,9 +141,9 @@ static GHashTable *
 generate_objects (void)
 {
   GHashTable *objects;
-  HyScanPlannerZone *zone_ptr, zone = {.type = HYSCAN_PLANNER_ZONE};
-  HyScanPlannerTrack *track_ptr, track = {.type = HYSCAN_PLANNER_TRACK};
-  HyScanPlannerOrigin *origin_ptr, origin = {.type = HYSCAN_PLANNER_ORIGIN};
+  HyScanPlannerZone *zone_ptr, zone = {.type = HYSCAN_TYPE_PLANNER_ZONE};
+  HyScanPlannerTrack *track_ptr, track = {.type = HYSCAN_TYPE_PLANNER_TRACK};
+  HyScanPlannerOrigin *origin_ptr, origin = {.type = HYSCAN_TYPE_PLANNER_ORIGIN};
   HyScanGeoPoint vertex[] = { {11, 12}, {13, 14}, {15, 16}, {17, 18} };
   guint i;
 

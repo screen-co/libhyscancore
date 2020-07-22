@@ -26,11 +26,12 @@
         <default>3829672927190415735</default>
       </key>
       <key id="version" name="Track info schema version" type="integer" access="r">
-        <default>20180100</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="mtime" name="Modification date and time" type="integer" view="datetime"/>
     <key id="description" name="Track description" type="string"/>
+    <key id="labels" name="Applied labels" type="integer"/>
   </schema>
 
   <schema id="waterfall-mark">
@@ -39,13 +40,13 @@
         <default>1315931457526726065</default>
       </key>
       <key id="version" name="Waterfall mark schema version" type="integer" access="readonly">
-        <default>20190200</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="name" name="Mark short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
+    <key id="labels" name="Applied labels" type="integer"/>
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
     <key id="track" name="Track id" type="string"/>
@@ -62,19 +63,37 @@
         <default>4566818919687782529</default>
       </key>
       <key id="version" name="Geo mark schema version" type="integer" access="readonly">
-        <default>20190100</default>
+        <default>20200100</default>
       </key>
     </node>
     <key id="name" name="Mark short name" type="string"/>
     <key id="description" name="Detailed description" type="string"/>
     <key id="operator" name="Operator name" type="string"/>
-    <key id="label" name="Applied labels" type="integer"/>
+    <key id="labels" name="Applied labels" type="integer"/>
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
     <key id="lat" name="Latitude (center)" type="double"/>
     <key id="lon" name="Longitude (center)" type="double"/>
     <key id="width" name="Mark width" type="double"/>
     <key id="height" name="Mark height" type="double"/>
+  </schema>
+
+  <schema id="label">
+    <node id="schema">
+      <key id="id" name="Label schema id" type="integer" access="readonly">
+        <default>5468681196977785233</default>
+      </key>
+      <key id="version" name="Label schema version" type="integer" access="readonly">
+        <default>20200100</default>
+      </key>
+    </node>
+    <key id="name" name="Label short name" type="string"/>
+    <key id="description" name="Detailed description" type="string"/>
+    <key id="operator" name="Operator name" type="string"/>
+    <key id="icon" name="Icon data" type="string"/>
+    <key id="label" name="Id label" type="integer"/>
+    <key id="ctime" name="Creation date and time" type="integer"/>
+    <key id="mtime" name="Modification date and time" type="integer"/>
   </schema>
 
   <schema id="planner-origin">
@@ -126,6 +145,36 @@
     <key id="name" name="Track short name" type="string"/>
     <key id="ctime" name="Creation date and time" type="integer"/>
     <key id="mtime" name="Modification date and time" type="integer"/>
+  </schema>
+
+  <schema id="map-track">
+    <node id="schema">
+      <key id="id" name="Map track schema id" type="integer" access="readonly">
+        <default>1719201303461104780</default>
+      </key>
+      <key id="version" name="Map track schema version" type="integer" access="readonly">
+        <default>20200300</default>
+      </key>
+    </node>
+    <key id="sensor-rmc" name="RMC Channel" type="string">
+      <description>The NMEA-channel with RMC sentences</description>
+    </key>
+    <key id="sensor-dpt" name="DPT Channel" type="string">
+      <description>The DPT-channel with RMC sentences</description>
+    </key>
+    <key id="channel-port" name="Port channel" type="boolean">
+      <description>Show side-scan port channel data</description>
+      <default>true</default>
+    </key>
+    <key id="channel-starboard" name="Starboard channel" type="boolean">
+      <description>Show side-scan starboard channel data</description>
+      <default>true</default>
+    </key>
+    <key id="quality" name="Target Quality" type="double">
+      <description>Minimum quality to display</description>
+      <default>0.5</default>
+      <range min="0" max="1"/>
+    </key>
   </schema>
 
 </schemalist>

@@ -62,11 +62,12 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-tile-queue.c
              hyscan-track-rect.c
              hyscan-mark.c
+             hyscan-label.c
              hyscan-track-data.c
              hyscan-object-data.c
              hyscan-object-data-wfmark.c
              hyscan-object-data-geomark.c
-             hyscan-object-model.c
+             hyscan-object-data-label.c
              hyscan-mloc.c
              hyscan-hw-connector.c
              hyscan-profile.c
@@ -80,7 +81,6 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-cartesian.c
              hyscan-planner.c
              hyscan-planner-export.c
-             hyscan-planner-model.c
              hyscan-object-data-planner.c
              hyscan-nav-state.c
              hyscan-nav-model.c
@@ -92,6 +92,9 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-quality.c
              hyscan-data-estimator.c
              hyscan-units.c
+             hyscan-map-track.c
+             hyscan-map-track-param.c
+             hyscan-track-proj-quality.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -146,11 +149,12 @@ install (FILES hyscan-core-schemas.h
                hyscan-tile-color.h
                hyscan-waterfall-tile.h
                hyscan-mark.h
+               hyscan-label.h
                hyscan-track-data.h
                hyscan-object-data.h
                hyscan-object-data-wfmark.h
                hyscan-object-data-geomark.h
-               hyscan-object-model.h
+               hyscan-object-data-label.h
                hyscan-hw-connector.h
                hyscan-profile.h
                hyscan-profile-db.h
@@ -163,7 +167,6 @@ install (FILES hyscan-core-schemas.h
                hyscan-cartesian.h
                hyscan-planner.h
                hyscan-planner-export.h
-               hyscan-planner-model.h
                hyscan-object-data-planner.h
                hyscan-nav-state.h
                hyscan-nav-model.h
@@ -175,6 +178,9 @@ install (FILES hyscan-core-schemas.h
                hyscan-quality.h
                hyscan-data-estimator.h
                hyscan-units.h
+               hyscan-map-track.h
+               hyscan-map-track-param.c
+               hyscan-track-proj-quality.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

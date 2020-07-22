@@ -1,4 +1,6 @@
 #include "hyscan-mloc.h"
+#include "hyscan-map-track-param.h"
+#include "hyscan-nav-smooth.h"
 #include <hyscan-geo.h>
 #include <hyscan-nmea-parser.h>
 
@@ -21,9 +23,9 @@ struct _HyScanmLocPrivate
 
   HyScanGeo             *geo;
 
-  HyScanNavData         *lat;
-  HyScanNavData         *lon;
-  HyScanNavData         *trk;
+  HyScanNavSmooth       *lat;
+  HyScanNavSmooth       *lon;
+  HyScanNavSmooth       *trk;
 
   HyScanAntennaOffset    position;
 };
@@ -97,32 +99,35 @@ hyscan_mloc_object_constructed (GObject *object)
 {
   HyScanmLoc *self = HYSCAN_MLOC (object);
   HyScanmLocPrivate *priv = self->priv;
-  HyScanNMEAParser *plat, *plon, *ptrk;
+  HyScanNavData *plat, *plon, *ptrk;
   HyScanGeoGeodetic origin = {0, 0, 0};
+  HyScanMapTrackParam *param;
 
-  plat = hyscan_nmea_parser_new (priv->db, priv->cache,
-                                 priv->project, priv->track,
-                                 1, HYSCAN_NMEA_DATA_RMC,
-                                 HYSCAN_NMEA_FIELD_LAT);
-  plon = hyscan_nmea_parser_new (priv->db, priv->cache,
-                                 priv->project, priv->track,
-                                 1, HYSCAN_NMEA_DATA_RMC,
-                                 HYSCAN_NMEA_FIELD_LON);
-  ptrk = hyscan_nmea_parser_new (priv->db, priv->cache,
-                                 priv->project, priv->track,
-                                 1, HYSCAN_NMEA_DATA_RMC,
-                                 HYSCAN_NMEA_FIELD_TRACK);
+  if (priv->db == NULL || priv->project == NULL || priv->track == NULL)
+    return;
+
+  param = hyscan_map_track_param_new (NULL, priv->db, priv->project, priv->track);
+
+  plat = hyscan_map_track_param_get_nav_data (param, HYSCAN_NMEA_FIELD_LAT, priv->cache);
+  plon = hyscan_map_track_param_get_nav_data (param, HYSCAN_NMEA_FIELD_LON, priv->cache);
+  ptrk = hyscan_map_track_param_get_nav_data (param, HYSCAN_NMEA_FIELD_TRACK, priv->cache);
+
+  g_object_unref (param);
 
   if (plat == NULL || plon == NULL || ptrk == NULL)
     return;
 
-  priv->lat = HYSCAN_NAV_DATA (plat);
-  priv->lon = HYSCAN_NAV_DATA (plon);
-  priv->trk = HYSCAN_NAV_DATA (ptrk);
+  priv->lat = hyscan_nav_smooth_new (plat);
+  priv->lon = hyscan_nav_smooth_new (plon);
+  priv->trk = hyscan_nav_smooth_new_circular (ptrk);
 
   priv->geo = hyscan_geo_new (origin, HYSCAN_GEO_ELLIPSOID_WGS84);
 
-  priv->position = hyscan_nav_data_get_offset (priv->lat);
+  priv->position = hyscan_nav_data_get_offset (plat);
+
+  g_object_unref (plat);
+  g_object_unref (plon);
+  g_object_unref (ptrk);
 }
 
 static void
@@ -178,30 +183,19 @@ hyscan_mloc_get (HyScanmLoc            *self,
   HyScanmLocPrivate *priv;
   HyScanGeoCartesian3D topo;
   HyScanGeoGeodetic origin = {0, 0, 0};
-  HyScanDBFindStatus fstatus;
-  guint32 lindex, rindex, index;
   gboolean status;
 
   g_return_val_if_fail (HYSCAN_IS_MLOC (self), FALSE);
   priv = self->priv;
 
-  /* Выясняем координаты приемника в требуемый момент. */
-  hyscan_nav_data_get_range (priv->lat, &lindex, &rindex);
-  fstatus = hyscan_nav_data_find_data (priv->lat, time, &lindex, &rindex, NULL, NULL);
-
-  if (fstatus != HYSCAN_DB_FIND_OK)
-    return FALSE;
-
-  index = lindex;
-
   hyscan_cancellable_push (cancellable);
 
-  hyscan_cancellable_set (cancellable, 0, 1/3);
-  status  = hyscan_nav_data_get (priv->lat, cancellable, index, NULL, &origin.lat);
-  hyscan_cancellable_set (cancellable, 1/3, 2/3);
-  status &= hyscan_nav_data_get (priv->lon, cancellable, index, NULL, &origin.lon);
-  hyscan_cancellable_set (cancellable, 2/3, 1);
-  status &= hyscan_nav_data_get (priv->trk, cancellable, index, NULL, &origin.h);
+  hyscan_cancellable_set (cancellable, 0, 1./3);
+  status  = hyscan_nav_smooth_get (priv->lat, cancellable, time, &origin.lat);
+  hyscan_cancellable_set (cancellable, 1./3, 2./3);
+  status &= hyscan_nav_smooth_get (priv->lon, cancellable, time, &origin.lon);
+  hyscan_cancellable_set (cancellable, 2./3, 1);
+  status &= hyscan_nav_smooth_get (priv->trk, cancellable, time, &origin.h);
 
   if (!status)
     goto exit;

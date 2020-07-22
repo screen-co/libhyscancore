@@ -2,14 +2,14 @@
  *
  * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
  *
- * This file is part of HyScanGui library.
+ * This file is part of HyScanCore library.
  *
- * HyScanGui is dual-licensed: you can redistribute it and/or modify
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * HyScanGui is distributed in the hope that it will be useful,
+ * HyScanCore is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -21,9 +21,9 @@
  * Contact the Screen LLC in this case - <info@screen-co.ru>.
  */
 
-/* HyScanGui имеет двойную лицензию.
+/* HyScanCore имеет двойную лицензию.
  *
- * Во-первых, вы можете распространять HyScanGui на условиях Стандартной
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
  * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
  * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
  * <http://www.gnu.org/licenses/>.
@@ -40,15 +40,19 @@
 
 G_BEGIN_DECLS
 
+/**
+ * HYSCAN_PLANNER_ORIGIN_ID:
+ * Идентификатор объекта референсной точки в параметрах проекта
+ */
 #define HYSCAN_PLANNER_ORIGIN_ID "origin"
 
-#define HYSCAN_PLANNER_ZONE     0x1dc83c66
-#define HYSCAN_PLANNER_TRACK    0x2f0365da
-#define HYSCAN_PLANNER_ORIGIN   0x0fe285b7
+#define HYSCAN_TYPE_PLANNER_ORIGIN   (hyscan_planner_origin_get_type ())
+#define HYSCAN_TYPE_PLANNER_TRACK    (hyscan_planner_track_get_type ())
+#define HYSCAN_TYPE_PLANNER_ZONE     (hyscan_planner_zone_get_type ())
 
-#define HYSCAN_IS_PLANNER_ZONE(x)   ((x) != NULL && (x)->type == HYSCAN_PLANNER_ZONE)
-#define HYSCAN_IS_PLANNER_TRACK(x)  ((x) != NULL && (x)->type == HYSCAN_PLANNER_TRACK)
-#define HYSCAN_IS_PLANNER_ORIGIN(x) ((x) != NULL && (x)->type == HYSCAN_PLANNER_ORIGIN)
+#define HYSCAN_IS_PLANNER_ZONE(x)   ((x) != NULL && (x)->type == HYSCAN_TYPE_PLANNER_ZONE)
+#define HYSCAN_IS_PLANNER_TRACK(x)  ((x) != NULL && (x)->type == HYSCAN_TYPE_PLANNER_TRACK)
+#define HYSCAN_IS_PLANNER_ORIGIN(x) ((x) != NULL && (x)->type == HYSCAN_TYPE_PLANNER_ORIGIN)
 
 typedef struct _HyScanPlannerTrack HyScanPlannerTrack;
 typedef struct _HyScanPlannerZone HyScanPlannerZone;
@@ -67,7 +71,7 @@ typedef struct _HyScanPlannerOrigin HyScanPlannerOrigin;
  */
 struct _HyScanPlannerTrack
 {
-  HyScanObjectType         type;
+  GType                    type;
   gchar                   *zone_id;
   guint                    number;
   HyScanTrackPlan          plan;
@@ -82,11 +86,11 @@ struct _HyScanPlannerTrack
  * @points: (element-type HyScanGeoPoint): список вершин многоугольника, ограничивающего зону
  * @points_len: число вершин многоугольника
  *
- * Параметры зоны исследования
+ * Параметры зоны исследования.
  */
 struct _HyScanPlannerZone
 {
-  HyScanObjectType         type;
+  GType                    type;
   gchar                   *name;
   HyScanGeoPoint          *points;
   gsize                    points_len;
@@ -100,40 +104,49 @@ struct _HyScanPlannerZone
  * @origin: координаты точки начала отсчёта
  * @ox: направление оси OX, градусы
  *
- * Референсная точка, которая считается началом координат для топографической системы координат
+ * Референсная точка, которая считается началом координат для местной системы координат
  */
 struct _HyScanPlannerOrigin
 {
-  HyScanObjectType         type;
+  GType                    type;
   HyScanGeoPoint           origin;
   gdouble                  ox;
 };
 
 HYSCAN_API
-HyScanPlannerOrigin *  hyscan_planner_origin_new         (void);
+GType                  hyscan_planner_origin_get_type     (void);
 
 HYSCAN_API
-HyScanPlannerOrigin *  hyscan_planner_origin_copy        (const HyScanPlannerOrigin *origin);
+GType                  hyscan_planner_track_get_type      (void);
 
 HYSCAN_API
-void                   hyscan_planner_origin_free        (HyScanPlannerOrigin       *origin);
+GType                  hyscan_planner_zone_get_type       (void);
 
 HYSCAN_API
-HyScanPlannerTrack *   hyscan_planner_track_new          (void);
+HyScanPlannerOrigin *  hyscan_planner_origin_new          (void);
 
 HYSCAN_API
-HyScanPlannerTrack *   hyscan_planner_track_copy         (const HyScanPlannerTrack  *track);
+HyScanPlannerOrigin *  hyscan_planner_origin_copy         (const HyScanPlannerOrigin *origin);
 
 HYSCAN_API
-void                   hyscan_planner_track_free         (HyScanPlannerTrack        *track);
+void                   hyscan_planner_origin_free         (HyScanPlannerOrigin       *origin);
 
 HYSCAN_API
-void                   hyscan_planner_track_add_record   (HyScanPlannerTrack        *track,
-                                                          const gchar               *record_id);
+HyScanPlannerTrack *   hyscan_planner_track_new           (void);
 
 HYSCAN_API
-void                   hyscan_planner_track_delete_record(HyScanPlannerTrack        *track,
-                                                          const gchar               *record_id);
+HyScanPlannerTrack *   hyscan_planner_track_copy          (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+void                   hyscan_planner_track_free          (HyScanPlannerTrack        *track);
+
+HYSCAN_API
+void                   hyscan_planner_track_record_append (HyScanPlannerTrack        *track,
+                                                           const gchar               *record_id);
+
+HYSCAN_API
+void                   hyscan_planner_track_record_delete (HyScanPlannerTrack        *track,
+                                                           const gchar               *record_id);
 
 HYSCAN_API
 HyScanTrackPlan *      hyscan_planner_track_get_plan     (HyScanPlannerTrack        *track);
@@ -161,25 +174,25 @@ gboolean               hyscan_planner_plan_equal         (const HyScanTrackPlan 
                                                           const HyScanTrackPlan     *plan2);
 
 HYSCAN_API
-HyScanPlannerZone *    hyscan_planner_zone_new           (void);
+HyScanPlannerZone *    hyscan_planner_zone_new            (void);
 
 HYSCAN_API
-HyScanPlannerZone *    hyscan_planner_zone_copy          (const HyScanPlannerZone   *zone);
+HyScanPlannerZone *    hyscan_planner_zone_copy           (const HyScanPlannerZone   *zone);
 
 HYSCAN_API
-void                   hyscan_planner_zone_free          (HyScanPlannerZone         *zone);
+void                   hyscan_planner_zone_free           (HyScanPlannerZone         *zone);
 
 HYSCAN_API
-void                   hyscan_planner_zone_vertex_remove (HyScanPlannerZone         *zone,
-                                                          gsize                      index);
+void                   hyscan_planner_zone_vertex_remove  (HyScanPlannerZone         *zone,
+                                                           gsize                      index);
 
 HYSCAN_API
-void                   hyscan_planner_zone_vertex_append (HyScanPlannerZone         *zone,
-                                                          HyScanGeoPoint             point);
+void                   hyscan_planner_zone_vertex_append  (HyScanPlannerZone         *zone,
+                                                           HyScanGeoPoint             point);
 
 HYSCAN_API
-void                   hyscan_planner_zone_vertex_dup    (HyScanPlannerZone         *zone,
-                                                          gsize                      index);
+void                   hyscan_planner_zone_vertex_dup     (HyScanPlannerZone         *zone,
+                                                           gsize                      index);
 
 G_END_DECLS
 

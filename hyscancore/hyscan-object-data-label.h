@@ -1,6 +1,6 @@
-/* hyscan-object-data-planner.h
+/* hyscan-object-data-label.h
  *
- * Copyright 2019 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
+ * Copyright 2020 Screen LLC, Andrey Zakharov <zaharov@screen-co.ru>
  *
  * This file is part of HyScanCore library.
  *
@@ -32,44 +32,39 @@
  * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
-#ifndef __HYSCAN_OBJECT_DATA_PLANNER_H__
-#define __HYSCAN_OBJECT_DATA_PLANNER_H__
+#ifndef __HYSCAN_OBJECT_DATA_LABEL_H__
+#define __HYSCAN_OBJECT_DATA_LABEL_H__
 
-#include <hyscan-planner.h>
+#include <hyscan-label.h>
 #include <hyscan-object-data.h>
 
 G_BEGIN_DECLS
 
-#define HYSCAN_TYPE_OBJECT_DATA_PLANNER             (hyscan_object_data_planner_get_type ())
-#define HYSCAN_OBJECT_DATA_PLANNER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_OBJECT_DATA_PLANNER, HyScanObjectDataPlanner))
-#define HYSCAN_IS_OBJECT_DATA_PLANNER(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_OBJECT_DATA_PLANNER))
-#define HYSCAN_OBJECT_DATA_PLANNER_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_OBJECT_DATA_PLANNER, HyScanObjectDataPlannerClass))
-#define HYSCAN_IS_OBJECT_DATA_PLANNER_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_OBJECT_DATA_PLANNER))
-#define HYSCAN_OBJECT_DATA_PLANNER_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_OBJECT_DATA_PLANNER, HyScanObjectDataPlannerClass))
+#define HYSCAN_TYPE_OBJECT_DATA_LABEL             (hyscan_object_data_label_get_type ())
+#define HYSCAN_OBJECT_DATA_LABEL(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_OBJECT_DATA_LABEL, HyScanObjectDataLabel))
+#define HYSCAN_IS_OBJECT_DATA_LABEL(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_OBJECT_DATA_LABEL))
+#define HYSCAN_OBJECT_DATA_LABEL_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_OBJECT_DATA_LABEL, HyScanObjectDataLabelClass))
+#define HYSCAN_IS_OBJECT_DATA_LABEL_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_OBJECT_DATA_LABEL))
+#define HYSCAN_OBJECT_DATA_LABEL_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_OBJECT_DATA_LABEL, HyScanObjectDataLabelClass))
 
-typedef struct _HyScanObjectDataPlanner HyScanObjectDataPlanner;
-typedef struct _HyScanObjectDataPlannerPrivate HyScanObjectDataPlannerPrivate;
-typedef struct _HyScanObjectDataPlannerClass HyScanObjectDataPlannerClass;
+typedef struct _HyScanObjectDataLabel        HyScanObjectDataLabel;
+typedef struct _HyScanObjectDataLabelPrivate HyScanObjectDataLabelPrivate;
+typedef struct _HyScanObjectDataLabelClass   HyScanObjectDataLabelClass;
 
-struct _HyScanObjectDataPlanner
+struct _HyScanObjectDataLabel
 {
-  HyScanObjectData parent_instance;
-
-  HyScanObjectDataPlannerPrivate *priv;
+  HyScanObjectData              parent_instance;
+  HyScanObjectDataLabelPrivate *priv;
 };
 
-struct _HyScanObjectDataPlannerClass
+struct _HyScanObjectDataLabelClass
 {
   HyScanObjectDataClass parent_class;
 };
 
 HYSCAN_API
-GType                  hyscan_object_data_planner_get_type         (void);
-
-HYSCAN_API
-HyScanObjectData *     hyscan_object_data_planner_new              (HyScanDB    *db,
-                                                                    const gchar *project);
+GType                  hyscan_object_data_label_get_type    (void);
 
 G_END_DECLS
 
-#endif /* __HYSCAN_OBJECT_DATA_PLANNER_H__ */
+#endif /* __HYSCAN_OBJECT_DATA_LABEL_H__ */

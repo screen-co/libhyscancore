@@ -304,6 +304,8 @@ hyscan_nmea_data_object_constructed (GObject *object)
       goto exit;
     }
 
+  priv->sensor_name = hyscan_core_params_load_sensor_info (priv->db, param_id);
+  
   status = hyscan_core_params_load_sensor_offset (priv->db, param_id, &priv->offset);
   if (!status)
     {
@@ -340,6 +342,7 @@ hyscan_nmea_data_object_finalize (GObject *object)
   g_free (priv->track);
   g_free (priv->path);
   g_free (priv->key);
+  g_free (priv->sensor_name);
 
   g_object_unref (priv->cache_buffer);
   g_object_unref (priv->nmea_buffer);
