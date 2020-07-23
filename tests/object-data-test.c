@@ -40,6 +40,7 @@
 #define N_TEST_DATA   4           /* Длина массива с тестовыми данными. */
 #define PROJECT_NAME  "test"      /* Имя проекта. */
 #define TRACK_NAME    "test"      /* Имя галса. */
+#define OBJECT_NAME   "test"      /* Название объекта. */
 
 HyScanDB      *db;                /* БД. */
 gchar         *db_uri;            /* Путь к БД. */
@@ -52,6 +53,11 @@ gint              mark_cmp      (HyScanMark     *a,
                                  HyScanMark     *b);
 
 gboolean          make_track    (void);
+
+void              check_object  (HyScanObjectData *data,
+                                 const gchar      *id,
+                                 HyScanObject    **marks,
+                                 GCompareFunc      cmp_func);
 
 HyScanMarkWaterfall test_marks_wf[N_TEST_DATA] =
 {
@@ -101,12 +107,12 @@ test_class (GType          gtype,
 
   /* Создаём экземпляр класса для тестирования. */
   data = hyscan_object_data_new (gtype, db, PROJECT_NAME);
-  
+
   /* Тестируем копирование структуры. */
   object = hyscan_object_copy (objects[0]);
   if (object == NULL || compare_func (object, objects[0]) != 0)
     g_error ("Object copy is not equal to the source");
-  hyscan_object_free (object);
+  g_clear_pointer (&object, hyscan_object_free);
 
   /* Отправим несколько объектов в БД. */
   g_message ("Adding objects...");
@@ -123,11 +129,7 @@ test_class (GType          gtype,
 
   for (i = 0; i < list_len; i++)
     {
-      object = hyscan_object_data_get (data, list[i]);
-      if (object == NULL || !object_lookup (object, objects, compare_func))
-        g_error ("Failed to get object <%s>", list[i]);
-      else
-        hyscan_object_free (object);
+      check_object (data, list[i], objects, compare_func);
     }
 
   /* Проверим, что мод-каунт не поменялся. */
@@ -146,11 +148,7 @@ test_class (GType          gtype,
   list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      object = hyscan_object_data_get (data, list[i]);
-      if (object == NULL || !object_lookup (object, objects, compare_func))
-        g_error ("Failed to get mark <%s>", list[i]);
-      else
-        hyscan_object_free (object);
+      check_object (data, list[i], objects, compare_func);
     }
 
   /* Удаляем метку. */
@@ -161,13 +159,81 @@ test_class (GType          gtype,
   list = hyscan_object_data_get_ids (data, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      object = hyscan_object_data_get (data, list[i]);
-      if (object == NULL || !object_lookup (object, objects, compare_func))
-        g_error ("Failed to get mark <%s>", list[i]);
-      else
-        hyscan_object_free (object);
+      check_object (data, list[i], objects, compare_func);
     }
   g_strfreev (list);
+
+  /* Тестируем автомат. */
+  /* Сначала всё удаляем. */
+  list = hyscan_object_data_get_ids (data, &list_len);
+  for (i = 0; i < list_len; i++)
+    {
+      hyscan_object_data_remove (data, list[i]);
+    }
+  g_strfreev (list);
+
+  /* Объекты с генерируемым айди. */
+  g_message ("Automatic management...");
+
+  /* Создаем. */
+  if (!hyscan_object_data_set (data, NULL, (const HyScanObject *) objects[0]))
+    g_error ("Autoadd failed");
+
+  {
+    list = hyscan_object_data_get_ids (data, &list_len);
+    if (list_len != 1)
+      g_error ("Extra objects in DB");
+
+    object = hyscan_object_data_get (data, list[0]);
+    if (0 != compare_func (object, objects[0]))
+      g_error ("Wrong object in DB");
+    g_clear_pointer (&object, hyscan_object_free);
+
+    /* модифицирую этот объект. */
+    if (!hyscan_object_data_set (data, list[0], (const HyScanObject *) objects[0]))
+      g_error ("Automodify failed");
+
+    /* Удаляю этот объект. */
+    if (!hyscan_object_data_set (data, list[0], NULL))
+      g_error ("Autodelete failed");
+
+    /* Проверяю, что удалился. */
+    if (NULL != (object = hyscan_object_data_get (data, list[0])))
+      g_error ("Automodify failed");
+    g_clear_pointer (&object, hyscan_object_free);
+
+    g_strfreev (list);
+  }
+
+  /* Объекты с заданным айди. */
+  /* Создаем. */
+  if (!hyscan_object_data_set (data, OBJECT_NAME, (const HyScanObject *) objects[0]))
+    g_error ("Autoadd failed");
+
+  {
+    list = hyscan_object_data_get_ids (data, &list_len);
+    if (list_len != 1 || !g_str_equal (OBJECT_NAME, list[0]))
+      g_error ("Extra objects in DB");
+    g_strfreev (list);
+
+    object = hyscan_object_data_get (data, OBJECT_NAME);
+    if (0 != compare_func (object, objects[0]))
+      g_error ("Wrong object in DB");
+    g_clear_pointer (&object, hyscan_object_free);
+
+    /* модифицирую этот объект. */
+    if (!hyscan_object_data_set (data, OBJECT_NAME, (const HyScanObject *) objects[0]))
+      g_error ("Automodify failed");
+
+    /* Удаляю этот объект. */
+    if (!hyscan_object_data_set (data, OBJECT_NAME, NULL))
+      g_error ("Autodelete failed");
+
+    /* Проверяю, что удалился. */
+    if (NULL != (object = hyscan_object_data_get (data, OBJECT_NAME)))
+      g_error ("Automodify failed");
+    g_clear_pointer (&object, hyscan_object_free);
+  }
 
   g_object_unref (data);
 }
@@ -226,11 +292,24 @@ object_lookup (HyScanObject   *mark,
 
   for (i = 0; i < N_TEST_DATA; i++)
     {
-      if (cmp_func (mark, marks[i]) == 0)
+      if (0 == cmp_func (mark, marks[i]))
         return TRUE;
     }
 
   return FALSE;
+}
+
+void
+check_object (HyScanObjectData *data,
+              const gchar      *id,
+              HyScanObject    **objects,
+              GCompareFunc      cmp_func)
+{
+  HyScanObject *object = hyscan_object_data_get (data, id);
+  if (object == NULL || !object_lookup (object, objects, cmp_func))
+    g_error ("Failed to get mark <%s>", id);
+  else
+    hyscan_object_free (object);
 }
 
 gboolean

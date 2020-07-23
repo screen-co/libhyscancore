@@ -95,6 +95,9 @@ static void           hyscan_object_data_object_constructed    (GObject         
 static void           hyscan_object_data_object_finalize       (GObject                *object);
 static gchar *        hyscan_object_data_generate_id           (HyScanObjectData       *data,
                                                                 const HyScanObject     *object);
+static gboolean       hyscan_object_data_add_real              (HyScanObjectData       *data,
+                                                                const gchar            *id,
+                                                                const HyScanObject     *object);
 
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (HyScanObjectData, hyscan_object_data, G_TYPE_OBJECT);
 
@@ -247,6 +250,34 @@ hyscan_object_data_generate_id (HyScanObjectData   *data,
   return hyscan_rand_id (id, OBJECT_ID_LEN);
 }
 
+/* Функция создания объекта в БД. */
+static gboolean
+hyscan_object_data_add_real (HyScanObjectData   *data,
+                             const gchar        *id,
+                             const HyScanObject *object)
+{
+  HyScanObjectDataPrivate *priv = data->priv;
+  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
+  const gchar *schema_id = NULL;
+
+  if (klass->get_schema_id != NULL)
+    schema_id = klass->get_schema_id (data, object);
+
+  if (schema_id == NULL)
+    {
+      g_message ("HyScanObjectData: undefined schema of object %s", id);
+      return FALSE;
+    }
+
+  if (!hyscan_db_param_object_create (priv->db, priv->param_id, id, schema_id))
+    {
+      g_info ("Failed to create object %s", id);
+      return FALSE;
+    }
+
+  return hyscan_object_data_modify (data, id, object);
+}
+
 /**
  * hyscan_object_data_new:
  * @type: тип класса, наследник #HyScanObjectData
@@ -296,45 +327,25 @@ hyscan_object_data_is_ready (HyScanObjectData *data)
  * Returns: %TRUE, если удалось добавить объект, иначе %FALSE.
  */
 gboolean
-hyscan_object_data_add (HyScanObjectData  *data,
-                        HyScanObject      *object,
-                        gchar            **given_id)
+hyscan_object_data_add (HyScanObjectData   *data,
+                        const HyScanObject *object,
+                        gchar             **given_id)
 {
-  gchar *id;
-  gboolean status = FALSE;
-  HyScanObjectDataPrivate *priv;
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
-  const gchar *schema_id = NULL;
+  gboolean status;
+  gchar *id;
 
   g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
-  priv = data->priv;
 
   id = klass->generate_id (data, object);
   if (id == NULL)
     {
       g_message ("HyScanObjectData: failed to generate object id");
-      goto exit;
+      return FALSE;
     }
 
-  if (klass->get_schema_id != NULL)
-    schema_id = klass->get_schema_id (data, object);
+  status = hyscan_object_data_add_real (data, id, object);
 
-  if (schema_id == NULL)
-    {
-      g_message ("HyScanObjectData: undefined schema of object %s", id);
-      goto exit;
-    }
-
-  status = hyscan_db_param_object_create (priv->db, priv->param_id, id, schema_id);
-  if (!status)
-    {
-      g_info ("Failed to create object %s", id);
-      goto exit;
-    }
-
-  status = hyscan_object_data_modify (data, id, object);
-
-exit:
   if (status && given_id != NULL)
     *given_id = id;
   else
@@ -391,6 +402,64 @@ hyscan_object_data_modify (HyScanObjectData   *data,
     klass->set_full (data, priv->plist, object);
 
   return hyscan_db_param_set (priv->db, priv->param_id, id, priv->plist);
+}
+
+/**
+ * hyscan_object_data_set:
+ * @data: указатель на объект #HyScanObjectData
+ * @id: (allow-none): указатель на объект #HyScanObjectData
+ * @object: (allow-none): указатель на структуру #HyScanObject
+ *
+ * Функция автоматически управляет объектами.
+ * Если id задан, то объект создается или модифицируется (при отсутствии и
+ * наличии в БД соответственно).
+ * Если id не задан, объект создается. Если id задан, а object не задан, объект
+ * удаляется.
+ * Ошибкой является не задать и id, и object.
+ *
+ * Returns: %TRUE, если удалось добавить/удалить/модифицировать объект.
+ */
+gboolean
+hyscan_object_data_set (HyScanObjectData    *data,
+                         const gchar         *id,
+                         const HyScanObject  *object)
+{
+  HyScanObject *evil_twin;
+  gboolean found;
+
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
+  g_return_val_if_fail (id != NULL || object != NULL, FALSE);
+
+  /* id не задан -- просто создаем объект. */
+  if (id == NULL)
+    {
+      return hyscan_object_data_add (data, object, NULL);
+    }
+
+  /* id задан -- ищем такой же объект в группе параметров. */
+  evil_twin = hyscan_object_data_get (data, id);
+  found = evil_twin != NULL;
+  hyscan_object_free (evil_twin);
+
+  /* Найден    и object == NULL -> удаление
+   * Найден    и object != NULL -> правка
+   * Не найден и object == NULL -> ничего
+   * Не найден и object != NULL -> создание
+   */
+  if (found)
+    {
+      if (object != NULL)
+        return hyscan_object_data_modify (data, id, object);
+      else
+        return hyscan_object_data_remove (data, id);
+    }
+  else
+    {
+      if (object != NULL)
+        return hyscan_object_data_add_real (data, id, object);
+      else
+        return TRUE;
+    }
 }
 
 /**
