@@ -119,8 +119,8 @@ gboolean                        hyscan_object_data_is_ready          (HyScanObje
 
 HYSCAN_API
 gboolean                        hyscan_object_data_add               (HyScanObjectData    *data,
-                                                                      HyScanObject        *object,
-                                                                      gchar              **id);
+                                                                      const HyScanObject  *object,
+                                                                      gchar              **given_id);
 
 HYSCAN_API
 gboolean                        hyscan_object_data_remove            (HyScanObjectData    *data,
@@ -128,6 +128,11 @@ gboolean                        hyscan_object_data_remove            (HyScanObje
 
 HYSCAN_API
 gboolean                        hyscan_object_data_modify            (HyScanObjectData    *data,
+                                                                      const gchar         *id,
+                                                                      const HyScanObject  *object);
+
+HYSCAN_API
+gboolean                        hyscan_object_data_set               (HyScanObjectData    *data,
                                                                       const gchar         *id,
                                                                       const HyScanObject  *object);
 
