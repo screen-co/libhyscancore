@@ -101,11 +101,25 @@ hyscan_nav_data_dummy_find_data (HyScanNavData *ndata,
   return HYSCAN_DB_FIND_OK;
 }
 
+static gboolean
+hyscan_nav_data_dummy_get_range (HyScanNavData *ndata,
+                                 guint32       *first,
+                                 guint32       *last)
+{
+  HyScanNavDataDummy *dummy = HYSCAN_NAV_DATA_DUMMY (ndata);
+
+  (first != NULL) ? *first = dummy->start : 0;
+  (last != NULL) ? *last = dummy->end : 0;
+
+  return TRUE;
+}
+
 static void
 hyscan_nav_data_dummy_interface_init (HyScanNavDataInterface *iface)
 {
   iface->find_data = hyscan_nav_data_dummy_find_data;
   iface->get = hyscan_nav_data_dummy_get;
+  iface->get_range = hyscan_nav_data_dummy_get_range;
 }
 
 int
@@ -124,12 +138,14 @@ main (int    argc,
   /* Проверям геттер. */
   g_assert_true (hyscan_nav_smooth_get_data (smooth) == nav_data);
 
+  g_assert_true (hyscan_nav_smooth_get (smooth, NULL, 1400, &value));
+
+
   /* Пробуем получить значения за пределами доступных данных. */
   g_assert_false (hyscan_nav_smooth_get (smooth, NULL,  500, &value));
   g_assert_false (hyscan_nav_smooth_get (smooth, NULL, 3000, &value));
 
   /* Значение для момента времени, где известно точное значение. */
-  g_assert_true (hyscan_nav_smooth_get (smooth, NULL, 1400, &value));
   g_assert_cmpfloat (value, ==, 40);
 
   /* Интерполированные значение между value (1200) = 20 и value (1400) = 30. */

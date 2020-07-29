@@ -273,7 +273,9 @@ hyscan_nav_smooth_get (HyScanNavSmooth   *nav_smooth,
 
   /* Поскольку навигационные данные могут не оказаться в индексах, полученных из hyscan_nav_data_find_data,
    * делаем поиск на MAX_INDEX_DIFF в сторону от найденных. */
-  hyscan_nav_data_get_range (priv->nav_data, &first, &last);
+  if (!hyscan_nav_data_get_range (priv->nav_data, &first, &last))
+    return FALSE;
+
   for (i = 0; lindex >= first && i < MAX_INDEX_DIFF; lindex--, i++)
     {
       lfound = hyscan_nav_data_get (priv->nav_data, cancellable, lindex, &ltime, &lvalue);
