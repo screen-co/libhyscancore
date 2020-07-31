@@ -202,7 +202,6 @@ hyscan_profile_read (HyScanProfile *self)
   HyScanProfileClass *klass;
   HyScanProfilePrivate *priv;
   GError *error = NULL;
-  gboolean status;
 
   g_return_val_if_fail (HYSCAN_IS_PROFILE (self), FALSE);
   klass = HYSCAN_PROFILE_GET_CLASS (self);
@@ -215,11 +214,13 @@ hyscan_profile_read (HyScanProfile *self)
   g_clear_pointer (&self->priv->kf, g_key_file_unref);
   priv->kf = g_key_file_new ();
 
-  status = g_key_file_load_from_file (priv->kf, priv->file, G_KEY_FILE_NONE, &error);
-
-  if (!status && error->code != G_FILE_ERROR_NOENT)
+  if (!g_key_file_load_from_file (priv->kf, priv->file, G_KEY_FILE_NONE, &error))
     {
-      g_warning ("HyScanProfile: can't load file <%s>: %s", priv->file, error->message);
+      /* G_FILE_ERROR_NOENT может возникнуть, когда профиль был удален
+       * и повторно считывается. Я не хочу выводить ошибку и просто верну
+       * FALSE. */
+      if (error->code != G_FILE_ERROR_NOENT)
+        g_warning ("HyScanProfile: can't load file <%s>: %s", priv->file, error->message);
       g_error_free (error);
       return FALSE;
     }
