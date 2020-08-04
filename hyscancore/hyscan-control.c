@@ -1605,7 +1605,7 @@ hyscan_control_source_get_info (HyScanControl    *control,
 }
 
 /**
- * hyscan_control_source_set_default_offset:
+ * hyscan_control_sensor_set_default_offset:
  * @control: указатель на #HyScanControl
  * @sensor: название датчика
  * @offset: смещение приёмной антенны
