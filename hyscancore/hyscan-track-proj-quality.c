@@ -3,6 +3,7 @@
 #include "hyscan-projector.h"
 #include "hyscan-depthometer.h"
 #include "hyscan-map-track-param.h"
+#include <string.h>
 
 #define CACHE_DATA_MAGIC       0x64747071              /* Идентификатор заголовка записи кэша. */
 
