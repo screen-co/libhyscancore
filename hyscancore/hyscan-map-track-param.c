@@ -263,6 +263,7 @@ hyscan_map_track_param_object_finalize (GObject *object)
   g_free (priv->profile);
   g_clear_object (&priv->db);
   g_clear_object (&priv->defaults);
+  g_clear_object (&priv->schema);
 
   G_OBJECT_CLASS (hyscan_map_track_param_parent_class)->finalize (object);
 }

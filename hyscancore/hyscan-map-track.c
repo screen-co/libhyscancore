@@ -154,9 +154,9 @@ struct _HyScanMapTrackPrivate
 
   HyScanGeoProjection            *projection;        /* Картографическая проекция. */
 
-  HyScanMapTrackSide             port;               /* Данные левого борта. */
-  HyScanMapTrackSide             starboard;          /* Данные правого борта. */
-  HyScanMapTrackNav              nav;                /* Данные навигации. */
+  HyScanMapTrackSide              port;              /* Данные левого борта. */
+  HyScanMapTrackSide              starboard;         /* Данные правого борта. */
+  HyScanMapTrackNav               nav;               /* Данные навигации. */
   HyScanGtkMapTrackDepth          depth;             /* Данные по глубине. */
 
   HyScanGeoCartesian2D            extent_from;       /* Минимальные координаты точек галса. */
@@ -341,6 +341,8 @@ hyscan_map_track_object_finalize (GObject *object)
   g_list_free_full (priv->nav.points, (GDestroyNotify) hyscan_map_track_point_free);
   g_list_free_full (priv->port.points, (GDestroyNotify) hyscan_map_track_point_free);
   g_list_free_full (priv->starboard.points, (GDestroyNotify) hyscan_map_track_point_free);
+
+  g_list_free_full (priv->mod_list, (GDestroyNotify) hyscan_map_track_mod_free);
 
   G_OBJECT_CLASS (hyscan_map_track_parent_class)->finalize (object);
 }
@@ -1043,10 +1045,10 @@ hyscan_map_track_load (HyScanMapTrack *track)
  */
 HyScanMapTrack *
 hyscan_map_track_new (HyScanDB            *db,
-                       HyScanCache         *cache,
-                       const gchar         *project_name,
-                       const gchar         *track_name,
-                       HyScanGeoProjection *projection)
+                      HyScanCache         *cache,
+                      const gchar         *project_name,
+                      const gchar         *track_name,
+                      HyScanGeoProjection *projection)
 {
   return g_object_new (HYSCAN_TYPE_MAP_TRACK,
                        "db", db,
@@ -1060,9 +1062,9 @@ hyscan_map_track_new (HyScanDB            *db,
 /**
  * hyscan_map_track_get:
  * @track: указатель на #HyScanMapTrack
- * @data: (out) (transfer none): структура со списком точек
+ * @data: (out) (transfer none) (nullable): структура со списком точек
  *
- * Функция получает список точек галса.
+ * Функция обновляет список точек галса и записывает их в структуру data.
  */
 gboolean
 hyscan_map_track_get (HyScanMapTrack     *track,
@@ -1071,18 +1073,20 @@ hyscan_map_track_get (HyScanMapTrack     *track,
   HyScanMapTrackPrivate *priv;
 
   g_return_val_if_fail (HYSCAN_IS_MAP_TRACK (track), FALSE);
-  g_return_val_if_fail (data != NULL, FALSE);
 
   priv = track->priv;
 
   /* Обновляем данные. */
   hyscan_map_track_load (track);
 
-  data->port = priv->port.points;
-  data->starboard = priv->starboard.points;
-  data->nav = priv->nav.points;
-  data->from = priv->extent_from;
-  data->to = priv->extent_to;
+  if (data != NULL)
+    {
+      data->port = priv->port.points;
+      data->starboard = priv->starboard.points;
+      data->nav = priv->nav.points;
+      data->from = priv->extent_from;
+      data->to = priv->extent_to;
+    }
 
   return TRUE;
 }
