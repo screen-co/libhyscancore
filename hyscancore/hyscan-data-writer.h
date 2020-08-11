@@ -73,6 +73,9 @@ void                   hyscan_data_writer_set_db               (HyScanDataWriter
                                                                 HyScanDB                      *db);
 
 HYSCAN_API
+HyScanDB *             hyscan_data_writer_get_db               (HyScanDataWriter              *writer);
+
+HYSCAN_API
 void                   hyscan_data_writer_set_operator_name    (HyScanDataWriter              *writer,
                                                                 const gchar                   *name);
 

@@ -1701,6 +1701,22 @@ hyscan_control_writer_set_db (HyScanControl *control,
 }
 
 /**
+ * hyscan_control_writer_get_db:
+ * @control: указатель на #HyScanControl
+ *
+ * Функция возвращает систему хранения данных.
+ *
+ * Returns: (transfer full): указатель на #HyScanDB, для удаления g_object_unref().
+ */
+HyScanDB *
+hyscan_control_writer_get_db (HyScanControl *control)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL (control), NULL);
+
+  return hyscan_data_writer_get_db (control->priv->writer);
+}
+
+/**
  * hyscan_control_writer_set_operator_name:
  * @control: указатель на #HyScanControl
  * @name: имя оператора

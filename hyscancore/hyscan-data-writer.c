@@ -805,6 +805,31 @@ hyscan_data_writer_set_db (HyScanDataWriter *writer,
 }
 
 /**
+ * hyscan_data_writer_get_db:
+ * @writer: указатель на #HyScanDataWriter
+ *
+ * Функция возвращает систему хранения данных.
+ *
+ * Returns: (transfer full): указатель на #HyScanDB, для удаления g_object_unref().
+ */
+HyScanDB *
+hyscan_data_writer_get_db (HyScanDataWriter *writer)
+{
+  HyScanDataWriterPrivate *priv;
+  HyScanDB *db;
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), NULL);
+
+  priv = writer->priv;
+
+  g_mutex_lock (&priv->lock);
+  db = g_object_ref (priv->db);
+  g_mutex_unlock (&priv->lock);
+
+  return db;
+}
+
+/**
  * hyscan_data_writer_set_operator_name:
  * @writer: указатель на #HyScanDataWriter
  * @name: имя оператора

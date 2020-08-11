@@ -116,6 +116,9 @@ void                           hyscan_control_writer_set_db              (HyScan
                                                                           HyScanDB                       *db);
 
 HYSCAN_API
+HyScanDB *                     hyscan_control_writer_get_db              (HyScanControl                  *control);
+
+HYSCAN_API
 void                           hyscan_control_writer_set_operator_name   (HyScanControl                  *control,
                                                                           const gchar                    *name);
 
