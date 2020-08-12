@@ -60,6 +60,7 @@
  *
  * Функции управления записью:
  *
+ * - #hyscan_data_writer_create_project - создаёт проект;
  * - #hyscan_data_writer_start - включает запись данных;
  * - #hyscan_data_writer_stop - останавливает запись данных.
  *
@@ -152,10 +153,6 @@ static void      hyscan_data_writer_sensor_channel_free        (gpointer        
 static void      hyscan_data_writer_sonar_channel_free         (gpointer                       data);
 static void      hyscan_data_writer_raw_signal_free            (gpointer                       data);
 static void      hyscan_data_writer_raw_gain_free              (gpointer                       data);
-
-static gboolean  hyscan_data_writer_create_project             (HyScanDB                      *db,
-                                                                const gchar                   *project_name,
-                                                                gint64                         date_time);
 
 static gint32    hyscan_data_writer_create_track               (HyScanDB                      *db,
                                                                 gint32                         project_id,
@@ -324,75 +321,6 @@ hyscan_data_writer_raw_gain_free (gpointer data)
   g_object_unref (tvg->gains);
 
   g_slice_free (HyScanDataWriterTVG, tvg);
-}
-
-/* Функция создаёт новый проект в системе хранения. */
-static gboolean
-hyscan_data_writer_create_project (HyScanDB    *db,
-                                   const gchar *project_name,
-                                   gint64       date_time)
-{
-  gboolean status = FALSE;
-
-  gchar project_ids[33] = {0};
-  gint32 project_id = -1;
-  gint32 param_id = -1;
-
-  HyScanParamList *param_list = NULL;
-  GBytes *project_schema;
-
-  /* Схема проекта. */
-  project_schema = g_resources_lookup_data ("/org/hyscan/schemas/project-schema.xml",
-                                            G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
-  if (project_schema == NULL)
-    {
-      g_warning ("HyScanCore: can't load project schema");
-      return FALSE;
-    }
-
-  /* Создаём проект или открываем если он уже существует. */
-  project_id = hyscan_db_project_create (db, project_name,
-                                         g_bytes_get_data (project_schema, NULL));
-  if (project_id == 0)
-    {
-      project_id = hyscan_db_project_open (db, project_name);
-    }
-  else if (project_id > 0)
-    {
-      param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
-      if (param_id < 0)
-        goto exit;
-
-      if (!hyscan_db_param_object_create (db, param_id, PROJECT_INFO_OBJECT, PROJECT_INFO_SCHEMA))
-        goto exit;
-
-      hyscan_rand_id (project_ids, sizeof (project_ids));
-      param_list = hyscan_param_list_new ();
-
-      hyscan_param_list_set_string (param_list, "/id", project_ids);
-      hyscan_param_list_set_integer (param_list, "/ctime", date_time);
-      hyscan_param_list_set_integer (param_list, "/mtime", date_time);
-
-      status = hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list);
-    }
-  else
-    {
-      goto exit;
-    }
-
-  status = TRUE;
-
-exit:
-  g_bytes_unref (project_schema);
-  g_clear_object (&param_list);
-
-  if (param_id > 0)
-    hyscan_db_close (db, param_id);
-
-  if (project_id > 0)
-    hyscan_db_close (db, project_id);
-
-  return status;
 }
 
 /* Функция создаёт галс в системе хранения. */
@@ -944,6 +872,88 @@ hyscan_data_writer_sonar_set_offset (HyScanDataWriter          *writer,
                        GINT_TO_POINTER (source),
                        hyscan_antenna_offset_copy (offset));
   g_mutex_unlock (&writer->priv->lock);
+}
+
+/**
+ * hyscan_data_writer_create_project:
+ * @db: указатель на #HyScanDB
+ * @project_name: название проекта
+ * @date_time: дата и время создания проека и галса или -1
+ *
+ * Функция создаёт проект. Пользователь может указать дату и время
+ * создания проекта отличные от текущих. Дата и время указываются
+ * в микросекундах прошедших с 1 января 1970 для временной зоны UTC. Если
+ * пользователь передаст отрицательное значение, будут использованы текущие
+ * дата и время.
+ *
+ * Returns: %TRUE если проект создан, иначе %FALSE.
+ */
+gboolean
+hyscan_data_writer_create_project (HyScanDB    *db,
+                                   const gchar *project_name,
+                                   gint64       date_time)
+{
+  gboolean status = FALSE;
+
+  gchar project_ids[33] = {0};
+  gint32 project_id = -1;
+  gint32 param_id = -1;
+
+  HyScanParamList *param_list = NULL;
+  GBytes *project_schema;
+
+  /* Схема проекта. */
+  project_schema = g_resources_lookup_data ("/org/hyscan/schemas/project-schema.xml",
+                                            G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+  if (project_schema == NULL)
+    {
+      g_warning ("HyScanCore: can't load project schema");
+      return FALSE;
+    }
+
+  /* Создаём проект или открываем если он уже существует. */
+  project_id = hyscan_db_project_create (db, project_name,
+                                         g_bytes_get_data (project_schema, NULL));
+  if (project_id == 0)
+    {
+      project_id = hyscan_db_project_open (db, project_name);
+    }
+  else if (project_id > 0)
+    {
+      param_id = hyscan_db_project_param_open (db, project_id, PROJECT_INFO_GROUP);
+      if (param_id < 0)
+        goto exit;
+
+      if (!hyscan_db_param_object_create (db, param_id, PROJECT_INFO_OBJECT, PROJECT_INFO_SCHEMA))
+        goto exit;
+
+      hyscan_rand_id (project_ids, sizeof (project_ids));
+      param_list = hyscan_param_list_new ();
+
+      hyscan_param_list_set_string (param_list, "/id", project_ids);
+      hyscan_param_list_set_integer (param_list, "/ctime", date_time);
+      hyscan_param_list_set_integer (param_list, "/mtime", date_time);
+
+      status = hyscan_db_param_set (db, param_id, PROJECT_INFO_OBJECT, param_list);
+    }
+  else
+    {
+      goto exit;
+    }
+
+  status = TRUE;
+
+exit:
+  g_bytes_unref (project_schema);
+  g_clear_object (&param_list);
+
+  if (param_id > 0)
+    hyscan_db_close (db, param_id);
+
+  if (project_id > 0)
+    hyscan_db_close (db, project_id);
+
+  return status;
 }
 
 /**

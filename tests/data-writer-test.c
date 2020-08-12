@@ -882,6 +882,15 @@ main (int    argc,
   /* Система хранения. */
   hyscan_data_writer_set_db (writer, db);
 
+  /* Создание пустого проекта. */
+  g_message ("creating empty project");
+  hyscan_data_writer_create_project (db, PROJECT_NAME, -1);
+  project_id = hyscan_db_project_open (db, PROJECT_NAME);
+  if (project_id < 0)
+    g_error ("can't create project");
+  hyscan_db_close (db, project_id);
+  hyscan_db_project_remove (db, PROJECT_NAME);
+
   /* Имя оператора. */
   hyscan_data_writer_set_operator_name (writer, OPERATOR_NAME);
 
