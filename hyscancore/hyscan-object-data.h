@@ -37,7 +37,7 @@
 #define __HYSCAN_OBJECT_DATA_H__
 
 #include <hyscan-db.h>
-#include <hyscan-types.h>
+#include <hyscan-object-store.h>
 
 G_BEGIN_DECLS
 
@@ -51,7 +51,6 @@ G_BEGIN_DECLS
 typedef struct _HyScanObjectData HyScanObjectData;
 typedef struct _HyScanObjectDataPrivate HyScanObjectDataPrivate;
 typedef struct _HyScanObjectDataClass HyScanObjectDataClass;
-typedef struct _HyScanObject HyScanObject;
 
 struct _HyScanObjectData
 {
@@ -90,20 +89,6 @@ struct _HyScanObjectDataClass
 
   const gchar *      (*get_schema_id)    (HyScanObjectData    *data,
                                           const HyScanObject  *object);
-};
-
-/**
- * HyScanObject:
- * @type: тип GBoxed
- *
- * Все структуры, которые загружаются при помощи #HyScanObjectData, должны быть
- * зарегистрированы как типы GBoxed, а в поле type хранить идентификатор своего типа GType.
- * При передаче структуры в функции hyscan_object_data_add(), hyscan_object_data_modify()
- * и подобные, структура должна быть приведена к типу #HyScanObject.
- */
-struct _HyScanObject
-{
-  GType                   type;
 };
 
 HYSCAN_API
@@ -147,11 +132,6 @@ HyScanObject *                  hyscan_object_data_get               (HyScanObje
 HYSCAN_API
 guint32                         hyscan_object_data_get_mod_count     (HyScanObjectData    *data);
 
-HYSCAN_API
-HyScanObject *                  hyscan_object_copy                   (const HyScanObject  *object);
-
-HYSCAN_API
-void                            hyscan_object_free                   (HyScanObject        *object);
 
 G_END_DECLS
 

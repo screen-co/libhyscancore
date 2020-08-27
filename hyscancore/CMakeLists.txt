@@ -58,6 +58,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-profile-hw.c
              hyscan-task-queue.c
              hyscan-mark.c
+             hyscan-object-store.c
              hyscan-object-data.c
              hyscan-object-data-wfmark.c
              hyscan-object-data-geomark.c
@@ -105,6 +106,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-profile-hw.h
                hyscan-task-queue.h
                hyscan-mark.h
+               hyscan-object-store.h
                hyscan-object-data.h
                hyscan-object-data-wfmark.h
                hyscan-object-data-geomark.h
