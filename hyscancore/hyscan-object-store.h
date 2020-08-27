@@ -37,7 +37,8 @@ struct _HyScanObjectStoreInterface
                                                                 const gchar        *id);
 
   gchar **             (*get_ids)                              (HyScanObjectStore  *store,
-                                                                GType               type);
+                                                                GType               type,
+                                                                guint              *len);
 
   GHashTable *         (*get_all)                              (HyScanObjectStore  *store,
                                                                 GType               type);
@@ -51,6 +52,7 @@ struct _HyScanObjectStoreInterface
                                                                 const HyScanObject *object);
 
   gboolean             (*set)                                  (HyScanObjectStore  *store,
+                                                                GType               type,
                                                                 const gchar        *id,
                                                                 const HyScanObject *object);
 
@@ -60,6 +62,9 @@ struct _HyScanObjectStoreInterface
 
   guint32              (*get_mod_count)                        (HyScanObjectStore  *store,
                                                                 GType               type);
+
+  const GType *        (*list_types)                           (HyScanObjectStore  *store,
+                                                                guint              *len);
 };
 
 HYSCAN_API
@@ -72,7 +77,8 @@ HyScanObject *         hyscan_object_store_get                 (HyScanObjectStor
 
 HYSCAN_API
 gchar **               hyscan_object_store_get_ids             (HyScanObjectStore  *store,
-                                                                GType               type);
+                                                                GType               type,
+                                                                guint              *len);
 
 HYSCAN_API
 GHashTable *           hyscan_object_store_get_all             (HyScanObjectStore  *store,
@@ -90,6 +96,7 @@ gboolean               hyscan_object_store_modify              (HyScanObjectStor
 
 HYSCAN_API
 gboolean               hyscan_object_store_set                 (HyScanObjectStore  *store,
+                                                                GType               type,
                                                                 const gchar        *id,
                                                                 const HyScanObject *object);
 
@@ -101,6 +108,10 @@ gboolean               hyscan_object_store_remove              (HyScanObjectStor
 HYSCAN_API
 guint32                hyscan_object_store_get_mod_count       (HyScanObjectStore  *store,
                                                                 GType               type);
+
+HYSCAN_API
+const GType *          hyscan_object_store_list_types          (HyScanObjectStore  *store,
+                                                                guint              *len);
 
 HYSCAN_API
 HyScanObject *         hyscan_object_copy                      (const HyScanObject *object);

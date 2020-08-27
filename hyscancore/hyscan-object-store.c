@@ -37,14 +37,16 @@ hyscan_object_store_get (HyScanObjectStore *store,
  * hyscan_object_store_get_ids:
  * @store: указатель на #HyScanObjectStore
  * @type: #GType тип объектов
+ * @len: (out): длина массива
  *
  * Функция получает массив идентификаторов всех объектов в хранилище типа @type.
  *
- * Returns: (transfer full): идентификаторы объектов или %NULL, для удаления g_strfreev().
+ * Returns: (transfer full) (array-size=len): идентификаторы объектов или %NULL, для удаления g_strfreev().
  */
 gchar **
 hyscan_object_store_get_ids (HyScanObjectStore *store,
-                             GType              type)
+                             GType              type,
+                             guint             *len)
 {
   HyScanObjectStoreInterface *iface;
 
@@ -52,7 +54,7 @@ hyscan_object_store_get_ids (HyScanObjectStore *store,
 
   iface = HYSCAN_OBJECT_STORE_GET_IFACE (store);
   if (iface->get_ids != NULL)
-    return (* iface->get_ids) (store, type);
+    return (* iface->get_ids) (store, type, len);
 
   return NULL;
 }
@@ -138,6 +140,7 @@ hyscan_object_store_modify (HyScanObjectStore  *store,
 /**
  * hyscan_object_data_set:
  * @store: указатель на #HyScanObjectStore
+ * @type: тип объекта
  * @id: (allow-none): идентификатор объекта
  * @object: (allow-none): указатель на структуру #HyScanObject
  *
@@ -152,6 +155,7 @@ hyscan_object_store_modify (HyScanObjectStore  *store,
  */
 gboolean
 hyscan_object_store_set (HyScanObjectStore  *store,
+                         GType               type,
                          const gchar        *id,
                          const HyScanObject *object)
 {
@@ -161,7 +165,7 @@ hyscan_object_store_set (HyScanObjectStore  *store,
 
   iface = HYSCAN_OBJECT_STORE_GET_IFACE (store);
   if (iface->set != NULL)
-    return (* iface->set) (store, id, object);
+    return (* iface->set) (store, type, id, object);
 
   return FALSE;
 }
@@ -200,6 +204,9 @@ hyscan_object_store_remove (HyScanObjectStore *store,
  * Функция получает номер изменения объектов типа @type. Если номер не изменился,
  * то гарантируется отсутствие изменений в объектах указанного типа
  *
+ * Чтобы запросить информацию обо всех данных в хранилище, следует использовать
+ * тип %G_TYPE_BOXED.
+ *
  * Программа не должна полагаться на значение номера изменения, важен только факт
  * смены номера по сравнению с предыдущим запросом.
  *
@@ -218,4 +225,61 @@ hyscan_object_store_get_mod_count (HyScanObjectStore *store,
     return (* iface->get_mod_count) (store, type);
 
   return FALSE;
+}
+
+/**
+ * hyscan_object_store_get_mod_count:
+ * @store: указатель на #HyScanObjectStore
+ * @type: #GType тип объектов
+ *
+ * Функция возвращает список типов объектов, которые обрабатываются данными
+ * хранилищем объектов.
+ *
+ * Returns: (array-size=len): список типов #HyScanObject
+ */
+const GType *
+hyscan_object_store_list_types (HyScanObjectStore *store,
+                                guint             *len)
+{
+  HyScanObjectStoreInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_STORE (store), NULL);
+
+  iface = HYSCAN_OBJECT_STORE_GET_IFACE (store);
+  if (iface->list_types != NULL)
+    return (* iface->list_types) (store, len);
+
+  return NULL;
+}
+
+/**
+ * hyscan_object_copy:
+ * @object: указатель на структуру #HyScanObject
+ *
+ * Функция создаёт структуру с копией указанного объекта @object.
+ *
+ * Returns: (transfer full): копия структуры или %NULL
+ */
+HyScanObject *
+hyscan_object_copy (const HyScanObject *object)
+{
+  if (object == NULL)
+    return NULL;
+
+  return g_boxed_copy (object->type, object);
+}
+
+/**
+ * hyscan_object_free:
+ * @object: указатель на структуру #HyScanObject
+ *
+ * Функция удаляет структуру @object.
+ */
+void
+hyscan_object_free (HyScanObject *object)
+{
+  if (object == NULL)
+    return;
+
+  g_boxed_free (object->type, object);
 }

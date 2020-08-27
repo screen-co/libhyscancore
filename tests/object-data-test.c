@@ -54,10 +54,11 @@ gint              mark_cmp      (HyScanMark     *a,
 
 gboolean          make_track    (void);
 
-void              check_object  (HyScanObjectData *data,
-                                 const gchar      *id,
-                                 HyScanObject    **marks,
-                                 GCompareFunc      cmp_func);
+void              check_object  (HyScanObjectStore *data,
+                                 GType              object_type,
+                                 const gchar       *id,
+                                 HyScanObject     **objects,
+                                 GCompareFunc       cmp_func);
 
 HyScanMarkWaterfall test_marks_wf[N_TEST_DATA] =
 {
@@ -91,10 +92,11 @@ HyScanMarkGeo test_marks_geo[N_TEST_DATA] =
 void
 test_class (GType          gtype,
             const gchar   *type_name,
+            GType          object_type,
             GCompareFunc   compare_func,
             HyScanObject **objects)
 {
-  HyScanObjectData *data = NULL;
+  HyScanObjectStore *data = NULL;
   HyScanObject *object;
 
   gchar **list;
@@ -106,7 +108,7 @@ test_class (GType          gtype,
   g_message ("Test %s...", type_name);
 
   /* Создаём экземпляр класса для тестирования. */
-  data = hyscan_object_data_new (gtype, db, PROJECT_NAME);
+  data = HYSCAN_OBJECT_STORE (hyscan_object_data_new (gtype, db, PROJECT_NAME));
 
   /* Тестируем копирование структуры. */
   object = hyscan_object_copy (objects[0]);
@@ -117,58 +119,58 @@ test_class (GType          gtype,
   /* Отправим несколько объектов в БД. */
   g_message ("Adding objects...");
   for (i = 0; i < add_n; i++)
-    hyscan_object_data_add (data, objects[0], NULL);
+    hyscan_object_store_add (data, objects[0], NULL);
 
   /* Запоминаем мод-каунт. */
-  mod_count = hyscan_object_data_get_mod_count (data);
+  mod_count = hyscan_object_store_get_mod_count (data, object_type);
 
   /* Проверим, что получилось. */
-  list = hyscan_object_data_get_ids (data, &list_len);
+  list = hyscan_object_store_get_ids (data, object_type, &list_len);
   if (list_len != add_n)
     g_error ("Expected %d objects, but got %d", add_n, list_len);
 
   for (i = 0; i < list_len; i++)
     {
-      check_object (data, list[i], objects, compare_func);
+      check_object (data, object_type, list[i], objects, compare_func);
     }
 
   /* Проверим, что мод-каунт не поменялся. */
-  if (mod_count != hyscan_object_data_get_mod_count (data))
+  if (mod_count != hyscan_object_store_get_mod_count (data, object_type))
     g_error ("Mod count has changed unexpectedly");
 
   /* Изменяем какую-то метку. */
   g_message ("Modifying object...");
-  hyscan_object_data_modify (data, list[1], (const HyScanObject *) objects[3]);
+  hyscan_object_store_modify (data, list[1], (const HyScanObject *) objects[3]);
 
   /* Теперь мод-каунт должен был измениться. */
-  if (mod_count == hyscan_object_data_get_mod_count (data))
+  if (mod_count == hyscan_object_store_get_mod_count (data, object_type))
     g_error ("Mod count has not changed after modify call");
 
   g_strfreev (list);
-  list = hyscan_object_data_get_ids (data, &list_len);
+  list = hyscan_object_store_get_ids (data, object_type, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      check_object (data, list[i], objects, compare_func);
+      check_object (data, object_type, list[i], objects, compare_func);
     }
 
   /* Удаляем метку. */
   g_message ("Removing mark...");
-  hyscan_object_data_remove (data, list[2]);
+  hyscan_object_store_remove (data, object_type, list[2]);
 
   g_strfreev (list);
-  list = hyscan_object_data_get_ids (data, &list_len);
+  list = hyscan_object_store_get_ids (data, object_type, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      check_object (data, list[i], objects, compare_func);
+      check_object (data, object_type, list[i], objects, compare_func);
     }
   g_strfreev (list);
 
   /* Тестируем автомат. */
   /* Сначала всё удаляем. */
-  list = hyscan_object_data_get_ids (data, &list_len);
+  list = hyscan_object_store_get_ids (data, object_type, &list_len);
   for (i = 0; i < list_len; i++)
     {
-      hyscan_object_data_remove (data, list[i]);
+      hyscan_object_store_remove (data, object_type, list[i]);
     }
   g_strfreev (list);
 
@@ -176,29 +178,29 @@ test_class (GType          gtype,
   g_message ("Automatic management...");
 
   /* Создаем. */
-  if (!hyscan_object_data_set (data, NULL, (const HyScanObject *) objects[0]))
+  if (!hyscan_object_store_set (data, object_type, NULL, (const HyScanObject *) objects[0]))
     g_error ("Autoadd failed");
 
   {
-    list = hyscan_object_data_get_ids (data, &list_len);
+    list = hyscan_object_store_get_ids (data, object_type, &list_len);
     if (list_len != 1)
       g_error ("Extra objects in DB");
 
-    object = hyscan_object_data_get (data, list[0]);
+    object = hyscan_object_store_get (data, object_type, list[0]);
     if (0 != compare_func (object, objects[0]))
       g_error ("Wrong object in DB");
     g_clear_pointer (&object, hyscan_object_free);
 
     /* модифицирую этот объект. */
-    if (!hyscan_object_data_set (data, list[0], (const HyScanObject *) objects[0]))
+    if (!hyscan_object_store_set (data, object_type, list[0], (const HyScanObject *) objects[0]))
       g_error ("Automodify failed");
 
     /* Удаляю этот объект. */
-    if (!hyscan_object_data_set (data, list[0], NULL))
+    if (!hyscan_object_store_set (data, object_type, list[0], NULL))
       g_error ("Autodelete failed");
 
     /* Проверяю, что удалился. */
-    if (NULL != (object = hyscan_object_data_get (data, list[0])))
+    if (NULL != (object = hyscan_object_store_get (data, object_type, list[0])))
       g_error ("Automodify failed");
     g_clear_pointer (&object, hyscan_object_free);
 
@@ -207,30 +209,30 @@ test_class (GType          gtype,
 
   /* Объекты с заданным айди. */
   /* Создаем. */
-  if (!hyscan_object_data_set (data, OBJECT_NAME, (const HyScanObject *) objects[0]))
+  if (!hyscan_object_store_set (data, object_type, OBJECT_NAME, (const HyScanObject *) objects[0]))
     g_error ("Autoadd failed");
 
   {
-    list = hyscan_object_data_get_ids (data, &list_len);
+    list = hyscan_object_store_get_ids (data, object_type, &list_len);
     if (list_len != 1 || !g_str_equal (OBJECT_NAME, list[0]))
       g_error ("Extra objects in DB");
     g_strfreev (list);
 
-    object = hyscan_object_data_get (data, OBJECT_NAME);
+    object = hyscan_object_store_get (data, object_type, OBJECT_NAME);
     if (0 != compare_func (object, objects[0]))
       g_error ("Wrong object in DB");
     g_clear_pointer (&object, hyscan_object_free);
 
     /* модифицирую этот объект. */
-    if (!hyscan_object_data_set (data, OBJECT_NAME, (const HyScanObject *) objects[0]))
+    if (!hyscan_object_store_set (data, object_type, OBJECT_NAME, (const HyScanObject *) objects[0]))
       g_error ("Automodify failed");
 
     /* Удаляю этот объект. */
-    if (!hyscan_object_data_set (data, OBJECT_NAME, NULL))
+    if (!hyscan_object_store_set (data, object_type, OBJECT_NAME, NULL))
       g_error ("Autodelete failed");
 
     /* Проверяю, что удалился. */
-    if (NULL != (object = hyscan_object_data_get (data, OBJECT_NAME)))
+    if (NULL != (object = hyscan_object_store_get (data, object_type, OBJECT_NAME)))
       g_error ("Automodify failed");
     g_clear_pointer (&object, hyscan_object_free);
   }
@@ -300,12 +302,13 @@ object_lookup (HyScanObject   *mark,
 }
 
 void
-check_object (HyScanObjectData *data,
-              const gchar      *id,
-              HyScanObject    **objects,
-              GCompareFunc      cmp_func)
+check_object (HyScanObjectStore  *data,
+              GType               object_type,
+              const gchar        *id,
+              HyScanObject      **objects,
+              GCompareFunc        cmp_func)
 {
-  HyScanObject *object = hyscan_object_data_get (data, id);
+  HyScanObject *object = hyscan_object_store_get (data, object_type, id);
   if (object == NULL || !object_lookup (object, objects, cmp_func))
     g_error ("Failed to get mark <%s>", id);
   else
@@ -390,7 +393,7 @@ main (int argc, char **argv)
       test_data[i]->type = HYSCAN_TYPE_MARK_WATERFALL;
     }
 
-  test_class (HYSCAN_TYPE_OBJECT_DATA_WFMARK, "HyScanMarkWaterfall",
+  test_class (HYSCAN_TYPE_OBJECT_DATA_WFMARK, "HyScanMarkWaterfall", HYSCAN_TYPE_MARK_WATERFALL,
               (GCompareFunc) mark_cmp, test_data);
 
   /* Тест класса геометок. */
@@ -400,7 +403,7 @@ main (int argc, char **argv)
       test_data[i]->type = HYSCAN_TYPE_MARK_GEO;
     }
 
-  test_class (HYSCAN_TYPE_OBJECT_DATA_GEOMARK, "HyScanMarkGeo",
+  test_class (HYSCAN_TYPE_OBJECT_DATA_GEOMARK, "HyScanMarkGeo", HYSCAN_TYPE_MARK_GEO,
               (GCompareFunc) mark_cmp, test_data);
 
   hyscan_db_project_remove (db, PROJECT_NAME);

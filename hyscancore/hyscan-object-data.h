@@ -102,35 +102,6 @@ HyScanObjectData *              hyscan_object_data_new               (GType     
 HYSCAN_API
 gboolean                        hyscan_object_data_is_ready          (HyScanObjectData    *data);
 
-HYSCAN_API
-gboolean                        hyscan_object_data_add               (HyScanObjectData    *data,
-                                                                      const HyScanObject  *object,
-                                                                      gchar              **given_id);
-
-HYSCAN_API
-gboolean                        hyscan_object_data_remove            (HyScanObjectData    *data,
-                                                                      const gchar         *id);
-
-HYSCAN_API
-gboolean                        hyscan_object_data_modify            (HyScanObjectData    *data,
-                                                                      const gchar         *id,
-                                                                      const HyScanObject  *object);
-
-HYSCAN_API
-gboolean                        hyscan_object_data_set               (HyScanObjectData    *data,
-                                                                      const gchar         *id,
-                                                                      const HyScanObject  *object);
-
-HYSCAN_API
-gchar **                        hyscan_object_data_get_ids           (HyScanObjectData    *data,
-                                                                      guint               *len);
-
-HYSCAN_API
-HyScanObject *                  hyscan_object_data_get               (HyScanObjectData    *data,
-                                                                      const gchar         *id);
-
-HYSCAN_API
-guint32                         hyscan_object_data_get_mod_count     (HyScanObjectData    *data);
 
 
 G_END_DECLS
