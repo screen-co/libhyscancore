@@ -102,7 +102,7 @@ hyscan_object_data_geomark_object_constructed (GObject *object)
   hyscan_param_list_add (priv->read_plist, "/name");
   hyscan_param_list_add (priv->read_plist, "/description");
   hyscan_param_list_add (priv->read_plist, "/operator");
-  hyscan_param_list_add (priv->read_plist, "/label");
+  hyscan_param_list_add (priv->read_plist, "/labels");
   hyscan_param_list_add (priv->read_plist, "/ctime");
   hyscan_param_list_add (priv->read_plist, "/mtime");
   hyscan_param_list_add (priv->read_plist, "/width");
@@ -150,7 +150,7 @@ hyscan_object_data_geomark_get_full (HyScanObjectData *data,
                           hyscan_param_list_get_string (read_plist,  "/description"),
                           hyscan_param_list_get_string (read_plist,  "/operator"));
   hyscan_mark_set_labels (mark,
-                          hyscan_param_list_get_integer (read_plist, "/label"));
+                          hyscan_param_list_get_integer (read_plist, "/labels"));
   hyscan_mark_set_ctime  (mark,
                           hyscan_param_list_get_integer (read_plist, "/ctime"));
   hyscan_mark_set_mtime  (mark,
@@ -181,7 +181,7 @@ hyscan_object_data_geomark_set_full (HyScanObjectData   *data,
 
   hyscan_param_list_set_string (write_plist, "/name", any->name);
   hyscan_param_list_set_string (write_plist, "/description", any->description);
-  hyscan_param_list_set_integer (write_plist, "/label", any->labels);
+  hyscan_param_list_set_integer (write_plist, "/labels", any->labels);
   hyscan_param_list_set_string (write_plist, "/operator", any->operator_name);
   hyscan_param_list_set_integer (write_plist, "/ctime", any->ctime);
   hyscan_param_list_set_integer (write_plist, "/mtime", any->mtime);
