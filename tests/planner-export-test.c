@@ -117,19 +117,23 @@ get_from_db (HyScanDB    *db,
   GHashTable *objects;
   HyScanObjectData *data;
   gint i;
-  gchar **ids;
+  GList *ids, *link;
 
-  data = hyscan_object_data_planner_new (db, project);
+  data = hyscan_object_data_planner_new ();
+  hyscan_object_data_project_open (data, db, project);
   objects = create_ht ();
 
-  ids = hyscan_object_data_get_ids (data, NULL);
-  if (ids != NULL)
+  ids = hyscan_object_store_get_ids (HYSCAN_OBJECT_STORE (data));
+  for (link = ids; link != NULL; link = link->next)
     {
-      for (i = 0; ids[i] != NULL; i++)
-        g_hash_table_insert (objects, g_strdup (ids[i]), hyscan_object_data_get (data, ids[i]));
+      HyScanObjectId *id = link->data;
 
-      g_strfreev (ids);
+      g_hash_table_insert (objects,
+                           g_strdup (id->id),
+                           hyscan_object_store_get (HYSCAN_OBJECT_STORE (data), id->type, id->id));
+
     }
+  g_list_free_full (ids, (GDestroyNotify) hyscan_object_id_free);
 
   g_object_unref (data);
 

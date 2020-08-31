@@ -64,6 +64,8 @@ static gboolean          hyscan_object_data_label_set_full             (HyScanOb
 
 static HyScanParamList*  hyscan_object_data_label_get_read_plist       (HyScanObjectData    *data,
                                                                         const gchar         *schema_id);
+static GType             hyscan_object_data_label_get_object_type      (HyScanObjectData    *data,
+                                                                        const gchar         *id);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectDataLabel, hyscan_object_data_label, HYSCAN_TYPE_OBJECT_DATA);
 
@@ -72,15 +74,22 @@ hyscan_object_data_label_class_init (HyScanObjectDataLabelClass *klass)
 {
   GObjectClass          *object_class = G_OBJECT_CLASS (klass);
   HyScanObjectDataClass *data_class   = HYSCAN_OBJECT_DATA_CLASS (klass);
+  static GType types[1];
+
+  types[0] = HYSCAN_TYPE_LABEL;
 
   object_class->constructed = hyscan_object_data_label_object_constructed;
   object_class->finalize    = hyscan_object_data_label_object_finalize;
 
   data_class->group_name     = LABEL_SCHEMA;
+  data_class->data_types = types;
+  data_class->n_data_types = G_N_ELEMENTS (types);
+
   data_class->get_schema_id  = hyscan_object_data_label_get_schema_id;
   data_class->set_full       = hyscan_object_data_label_set_full;
   data_class->get_full       = hyscan_object_data_label_get_full;
   data_class->get_read_plist = hyscan_object_data_label_get_read_plist;
+  data_class->get_object_type = hyscan_object_data_label_get_object_type;
 }
 
 static void
@@ -188,4 +197,11 @@ hyscan_object_data_label_get_read_plist (HyScanObjectData *data,
   HyScanObjectDataLabel *data_label = HYSCAN_OBJECT_DATA_LABEL (data);
 
   return g_object_ref (data_label->priv->read_plist);
+}
+
+static GType
+hyscan_object_data_label_get_object_type (HyScanObjectData *data,
+                                          const gchar      *id)
+{
+  return HYSCAN_TYPE_LABEL;
 }
