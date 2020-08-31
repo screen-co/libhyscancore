@@ -12,7 +12,22 @@ G_BEGIN_DECLS
 
 typedef struct _HyScanObjectStore HyScanObjectStore;
 typedef struct _HyScanObjectStoreInterface HyScanObjectStoreInterface;
+typedef struct _HyScanObjectId HyScanObjectId;
 typedef struct _HyScanObject HyScanObject;
+
+/**
+ * HyScanObjectId:
+ * @type: тип GBoxed
+ * @id: строковый идентификатор объекта
+ *
+ * Структура для однозначной идентификации объекта по его типу и строковому
+ * идентификатору.
+ */
+struct _HyScanObjectId
+{
+  GType        type;
+  gchar       *id;
+};
 
 /**
  * HyScanObject:
@@ -36,9 +51,7 @@ struct _HyScanObjectStoreInterface
                                                                 GType               type,
                                                                 const gchar        *id);
 
-  gchar **             (*get_ids)                              (HyScanObjectStore  *store,
-                                                                GType               type,
-                                                                guint              *len);
+  GList *              (*get_ids)                              (HyScanObjectStore  *store);
 
   GHashTable *         (*get_all)                              (HyScanObjectStore  *store,
                                                                 GType               type);
@@ -76,9 +89,7 @@ HyScanObject *         hyscan_object_store_get                 (HyScanObjectStor
                                                                 const gchar        *id);
 
 HYSCAN_API
-gchar **               hyscan_object_store_get_ids             (HyScanObjectStore  *store,
-                                                                GType               type,
-                                                                guint              *len);
+GList *                hyscan_object_store_get_ids             (HyScanObjectStore  *store);
 
 HYSCAN_API
 GHashTable *           hyscan_object_store_get_all             (HyScanObjectStore  *store,
@@ -112,6 +123,12 @@ guint32                hyscan_object_store_get_mod_count       (HyScanObjectStor
 HYSCAN_API
 const GType *          hyscan_object_store_list_types          (HyScanObjectStore  *store,
                                                                 guint              *len);
+
+HYSCAN_API
+HyScanObjectId *       hyscan_object_id_new                    (void);
+
+HYSCAN_API
+void                   hyscan_object_id_free                   (HyScanObjectId       *object_id);
 
 HYSCAN_API
 HyScanObject *         hyscan_object_copy                      (const HyScanObject *object);

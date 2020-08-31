@@ -36,17 +36,14 @@ hyscan_object_store_get (HyScanObjectStore *store,
 /**
  * hyscan_object_store_get_ids:
  * @store: указатель на #HyScanObjectStore
- * @type: #GType тип объектов
- * @len: (out): длина массива
  *
- * Функция получает массив идентификаторов всех объектов в хранилище типа @type.
+ * Функция получает список идентификаторов всех объектов.
  *
- * Returns: (transfer full) (array-size=len): идентификаторы объектов или %NULL, для удаления g_strfreev().
+ * Returns: (transfer full) (element-type HyScanObjectId): список идентификаторов,
+ * для удаления g_list_free_full().
  */
-gchar **
-hyscan_object_store_get_ids (HyScanObjectStore *store,
-                             GType              type,
-                             guint             *len)
+GList *
+hyscan_object_store_get_ids (HyScanObjectStore *store)
 {
   HyScanObjectStoreInterface *iface;
 
@@ -54,7 +51,7 @@ hyscan_object_store_get_ids (HyScanObjectStore *store,
 
   iface = HYSCAN_OBJECT_STORE_GET_IFACE (store);
   if (iface->get_ids != NULL)
-    return (* iface->get_ids) (store, type, len);
+    return (* iface->get_ids) (store);
 
   return NULL;
 }
@@ -224,7 +221,7 @@ hyscan_object_store_get_mod_count (HyScanObjectStore *store,
   if (iface->get_mod_count != NULL)
     return (* iface->get_mod_count) (store, type);
 
-  return FALSE;
+  return 0;
 }
 
 /**
@@ -249,7 +246,39 @@ hyscan_object_store_list_types (HyScanObjectStore *store,
   if (iface->list_types != NULL)
     return (* iface->list_types) (store, len);
 
+  len != NULL ? (*len = 0) : 0;
+
   return NULL;
+}
+
+/**
+ * hyscan_object_id_new:
+ *
+ * Функция создаёт структуру #HyScanObjectId.
+ *
+ * Returns: (transfer full): новая структура #HyScanObjectId, для удаления
+ * hyscan_object_id_free().
+ */
+HyScanObjectId *
+hyscan_object_id_new (void)
+{
+  return g_slice_new0 (HyScanObjectId);
+}
+
+/**
+ * hyscan_object_id_free:
+ * @object_id: указатель на #HyScanObjectId
+ *
+ * Функция удаляет структуру #HyScanObjectId.
+ */
+void
+hyscan_object_id_free (HyScanObjectId *object_id)
+{
+  if (object_id == NULL)
+    return;
+
+  g_free (object_id->id);
+  g_slice_free (HyScanObjectId, object_id);
 }
 
 /**

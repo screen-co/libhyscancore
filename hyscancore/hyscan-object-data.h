@@ -62,6 +62,8 @@ struct _HyScanObjectData
 /**
  * HyScanObjectDataClass:
  * @group_name: названия группы параметров проекта
+ * @data_types (array-size=n_data_types): обрабатываемые типы объектов HyScanObject
+ * @n_data_types: количество обрабатываемые типов
  * @get_read_plist: функция возвращает список параметров #HyScanParamList для чтения объекта с указанным ID
  * @get_full: функция считывает содержимое объекта
  * @set_full: функция записывает значения в существующий объект
@@ -73,6 +75,10 @@ struct _HyScanObjectDataClass
   GObjectClass       parent_class;
 
   const gchar       *group_name;
+
+  const GType       *data_types;
+
+  guint              n_data_types;
 
   HyScanParamList *  (*get_read_plist)   (HyScanObjectData    *data,
                                           const gchar         *id);
@@ -89,13 +95,19 @@ struct _HyScanObjectDataClass
 
   const gchar *      (*get_schema_id)    (HyScanObjectData    *data,
                                           const HyScanObject  *object);
+
+  GType              (*get_object_type)  (HyScanObjectData    *data,
+                                          const gchar         *id);
 };
 
 HYSCAN_API
 GType                           hyscan_object_data_get_type          (void);
 
 HYSCAN_API
-HyScanObjectData *              hyscan_object_data_new               (GType               type,
+HyScanObjectData *              hyscan_object_data_new               (GType               type);
+
+HYSCAN_API
+gboolean                        hyscan_object_data_project_open      (HyScanObjectData   *data,
                                                                       HyScanDB           *db,
                                                                       const gchar        *project);
 

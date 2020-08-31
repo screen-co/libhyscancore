@@ -68,8 +68,7 @@ HYSCAN_API
 GType                           hyscan_object_data_wfmark_get_type          (void);
 
 HYSCAN_API
-HyScanObjectData *              hyscan_object_data_wfmark_new               (HyScanDB         *db,
-                                                                             const gchar      *project);
+HyScanObjectData *              hyscan_object_data_wfmark_new               (void);
 
 G_END_DECLS
 
