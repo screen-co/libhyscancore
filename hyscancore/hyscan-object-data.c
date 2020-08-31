@@ -83,23 +83,22 @@ struct _HyScanObjectDataPrivate
   HyScanParamList   *plist;    /* Список параметров для чтения объекта. */
 };
 
-static void           hyscan_object_data_set_property          (GObject                *object,
-                                                                guint                   prop_id,
-                                                                const GValue           *value,
-                                                                GParamSpec             *pspec);
-static void           hyscan_object_data_get_property          (GObject                *object,
-                                                                guint                   prop_id,
-                                                                GValue                 *value,
-                                                                GParamSpec             *pspec);
-static void           hyscan_object_data_object_constructed    (GObject                *object);
-static void           hyscan_object_data_object_finalize       (GObject                *object);
-static gchar *        hyscan_object_data_generate_id           (HyScanObjectData       *data,
-                                                                const HyScanObject     *object);
-static gboolean       hyscan_object_data_add_real              (HyScanObjectData       *data,
-                                                                const gchar            *id,
-                                                                const HyScanObject     *object);
+static void           hyscan_object_data_interface_init        (HyScanObjectStoreInterface *iface);
+static void           hyscan_object_data_get_property          (GObject                    *object,
+                                                                guint                       prop_id,
+                                                                GValue                     *value,
+                                                                GParamSpec                 *pspec);
+static void           hyscan_object_data_object_constructed    (GObject                    *object);
+static void           hyscan_object_data_object_finalize       (GObject                    *object);
+static gchar *        hyscan_object_data_generate_id           (HyScanObjectData           *data,
+                                                                const HyScanObject         *object);
+static gboolean       hyscan_object_data_add_real              (HyScanObjectData           *data,
+                                                                const gchar                *id,
+                                                                const HyScanObject         *object);
 
-G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (HyScanObjectData, hyscan_object_data, G_TYPE_OBJECT);
+G_DEFINE_ABSTRACT_TYPE_WITH_CODE (HyScanObjectData, hyscan_object_data, G_TYPE_OBJECT,
+                                  G_ADD_PRIVATE (HyScanObjectData)
+                                  G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_OBJECT_STORE, hyscan_object_data_interface_init))
 
 static void
 hyscan_object_data_class_init (HyScanObjectDataClass *klass)
@@ -107,7 +106,6 @@ hyscan_object_data_class_init (HyScanObjectDataClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   HyScanObjectDataClass *data_class = HYSCAN_OBJECT_DATA_CLASS (klass);
 
-  object_class->set_property = hyscan_object_data_set_property;
   object_class->get_property = hyscan_object_data_get_property;
 
   object_class->constructed = hyscan_object_data_object_constructed;
@@ -117,11 +115,11 @@ hyscan_object_data_class_init (HyScanObjectDataClass *klass)
 
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
-                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+                         G_PARAM_READABLE));
 
   g_object_class_install_property (object_class, PROP_PROJECT,
       g_param_spec_string ("project", "ProjectName", "Project name", NULL,
-                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+                           G_PARAM_READABLE));
 
 }
 
@@ -129,31 +127,6 @@ static void
 hyscan_object_data_init (HyScanObjectData *data)
 {
   data->priv = hyscan_object_data_get_instance_private (data);
-}
-
-static void
-hyscan_object_data_set_property (GObject      *object,
-                                 guint         prop_id,
-                                 const GValue *value,
-                                 GParamSpec   *pspec)
-{
-  HyScanObjectData *data = HYSCAN_OBJECT_DATA (object);
-  HyScanObjectDataPrivate *priv = data->priv;
-
-  switch (prop_id)
-    {
-    case PROP_DB:
-      priv->db = g_value_dup_object (value);
-      break;
-
-    case PROP_PROJECT:
-      priv->project = g_value_dup_string (value);
-      break;
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      break;
-    }
 }
 
 static void
@@ -185,39 +158,9 @@ static void
 hyscan_object_data_object_constructed (GObject *object)
 {
   HyScanObjectData *data = HYSCAN_OBJECT_DATA (object);
-  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
   HyScanObjectDataPrivate *priv = data->priv;
 
-  gint32 project_id = 0;
-
-  if (priv->db == NULL)
-    {
-      g_warning ("HyScanObjectData: db not specified");
-      goto exit;
-    }
-
-  /* Открываем проект. */
-  project_id = hyscan_db_project_open (priv->db, priv->project);
-  if (project_id <= 0)
-    {
-      g_warning ("HyScanObjectData: can't open project '%s'", priv->project);
-      goto exit;
-    }
-
-  /* Открываем (или создаём) группу параметров. */
-  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, klass->group_name);
-  if (priv->param_id <= 0)
-    {
-      g_warning ("HyScanObjectData: can't open group %s (project '%s')",
-                 klass->group_name, priv->project);
-      goto exit;
-    }
-
   priv->plist = hyscan_param_list_new ();
-
-exit:
-  if (project_id > 0)
-    hyscan_db_close (priv->db, project_id);
 }
 
 static void
@@ -265,7 +208,7 @@ hyscan_object_data_add_real (HyScanObjectData   *data,
 
   if (schema_id == NULL)
     {
-      g_message ("HyScanObjectData: undefined schema of object %s", id);
+      g_warning ("HyScanObjectData: undefined schema of object %s", id);
       return FALSE;
     }
 
@@ -275,72 +218,23 @@ hyscan_object_data_add_real (HyScanObjectData   *data,
       return FALSE;
     }
 
-  return hyscan_object_data_modify (data, id, object);
+  return hyscan_object_store_modify (HYSCAN_OBJECT_STORE (data), id, object);
 }
 
-/**
- * hyscan_object_data_new:
- * @type: тип класса, наследник #HyScanObjectData
- * @db: указатель на #HyScanDB
- * @project: имя проекта
- *
- * Создаёт новый объект для работы с параметрами. Для удаления g_object_unref().
- */
-HyScanObjectData *
-hyscan_object_data_new (GType        type,
-                        HyScanDB    *db,
-                        const gchar *project)
+static gboolean
+hyscan_object_data_add (HyScanObjectStore    *store,
+                        const HyScanObject  *object,
+                        gchar              **given_id)
 {
-  g_return_val_if_fail (g_type_is_a (type, HYSCAN_TYPE_OBJECT_DATA), NULL);
-
-  return g_object_new (type,
-                       "db", db,
-                       "project", project,
-                       NULL);
-}
-
-/**
- * hyscan_object_data_is_ready:
- * @data: указатель на объект #HyScanObjectData
- *
- * Проверяет, корректно ли проинициализировался объект. Если нет, то он будет
- * неработоспособен.
- *
- * Returns: %TRUE, если инициализация успешна.
- */
-
-gboolean
-hyscan_object_data_is_ready (HyScanObjectData *data)
-{
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
-
-  return data->priv->param_id > 0;
-}
-
-/**
- * hyscan_object_data_add:
- * @data: указатель на объект #HyScanObjectData
- * @object: указатель на структуру #HyScanObject
- *
- * Функция добавляет объект в базу данных.
- *
- * Returns: %TRUE, если удалось добавить объект, иначе %FALSE.
- */
-gboolean
-hyscan_object_data_add (HyScanObjectData   *data,
-                        const HyScanObject *object,
-                        gchar             **given_id)
-{
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
   HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
   gboolean status;
   gchar *id;
 
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
-
   id = klass->generate_id (data, object);
   if (id == NULL)
     {
-      g_message ("HyScanObjectData: failed to generate object id");
+      g_warning ("HyScanObjectData: failed to generate object id");
       return FALSE;
     }
 
@@ -354,47 +248,37 @@ hyscan_object_data_add (HyScanObjectData   *data,
   return status;
 }
 
-/**
- * hyscan_object_data_remove:
- * @data: указатель на объект #HyScanObjectData
- * @id: идентификатор объекта
- *
- * Функция удаляет объект из базы данных.
- *
- * Returns: %TRUE, если удалось удалить объект, иначе %FALSE.
- */
-gboolean
-hyscan_object_data_remove (HyScanObjectData *data,
-                           const gchar      *id)
+static gboolean
+hyscan_object_data_remove (HyScanObjectStore *store,
+                           GType              type,
+                           const gchar       *id)
 {
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
+  const GType *types;
+  guint i, len;
+  gboolean accept_type = FALSE;
+
+  /* Проверка типа. */
+  types = hyscan_object_store_list_types (store, &len);
+  for (i = 0; i < len && !accept_type; i++)
+    accept_type = (types[i] == type);
+
+  if (!accept_type)
+    return FALSE;
 
   return hyscan_db_param_object_remove (data->priv->db,
                                         data->priv->param_id,
                                         id);
 }
 
-/**
- * hyscan_object_data_modify:
- * @data: указатель на объект #HyScanObjectData
- * @id: идентификатор объекта
- * @object: указатель на структуру #HyScanObject
- *
- * Функция изменяет объект.
- *
- * Returns: %TRUE, если удалось изменить объект, иначе %FALSE
- */
-gboolean
-hyscan_object_data_modify (HyScanObjectData   *data,
+static gboolean
+hyscan_object_data_modify (HyScanObjectStore  *store,
                            const gchar        *id,
                            const HyScanObject *object)
 {
-  HyScanObjectDataPrivate *priv;
-  HyScanObjectDataClass *klass;
-
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
-  priv = data->priv;
-  klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
+  HyScanObjectDataPrivate *priv = data->priv;
+  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
 
   hyscan_param_list_clear (priv->plist);
 
@@ -420,25 +304,28 @@ hyscan_object_data_modify (HyScanObjectData   *data,
  * Returns: %TRUE, если удалось добавить/удалить/модифицировать объект.
  */
 gboolean
-hyscan_object_data_set (HyScanObjectData    *data,
+hyscan_object_data_set (HyScanObjectStore    *store,
+                         GType                type,
                          const gchar         *id,
                          const HyScanObject  *object)
 {
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
   HyScanObject *evil_twin;
   gboolean found;
 
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
-  g_return_val_if_fail (id != NULL || object != NULL, FALSE);
+  g_return_val_if_fail (id != NULL || (object != NULL && object->type == type), FALSE);
 
   /* id не задан -- просто создаем объект. */
   if (id == NULL)
     {
-      return hyscan_object_data_add (data, object, NULL);
+      return hyscan_object_store_add (store, object, NULL);
     }
 
   /* id задан -- ищем такой же объект в группе параметров. */
-  evil_twin = hyscan_object_data_get (data, id);
+  evil_twin = hyscan_object_store_get (store, type, id);
   found = evil_twin != NULL;
+  if (found && evil_twin->type != type)
+    g_warning ("HyScanObjectData: setting object of another type");
   hyscan_object_free (evil_twin);
 
   /* Найден    и object == NULL -> удаление
@@ -448,10 +335,10 @@ hyscan_object_data_set (HyScanObjectData    *data,
    */
   if (found)
     {
-      if (object != NULL)
-        return hyscan_object_data_modify (data, id, object);
+      if (object == NULL)
+        return hyscan_object_store_remove (store, type, id);
       else
-        return hyscan_object_data_remove (data, id);
+        return hyscan_object_store_modify (store, id, object);
     }
   else
     {
@@ -462,56 +349,48 @@ hyscan_object_data_set (HyScanObjectData    *data,
     }
 }
 
-/**
- * hyscan_object_data_get_ids:
- * @data: указатель на объект #HyScanObjectData
- * @len: (optional): количество элементов или %NULL
- *
- * Функция возвращает список идентификаторов всех меток.
- *
- * Returns: (array length=len) (transfer full): %NULL-терминированный список
- *   идентификаторов, %NULL если меток нет. Для удаления g_strfreev()
- */
-gchar **
-hyscan_object_data_get_ids (HyScanObjectData *data,
-                            guint            *len)
+GList *
+hyscan_object_data_get_ids (HyScanObjectStore *store)
 {
-  gchar** objects;
-
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), NULL);
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
+  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
+  gchar **objects;
+  gint i;
+  GList *list = NULL;
 
   objects = hyscan_db_param_object_list (data->priv->db, data->priv->param_id);
 
-  if (len != NULL)
-    *len = (objects != NULL) ? g_strv_length (objects) : 0;
+  if (objects == NULL)
+    return NULL;
 
-  return objects;
+  for (i = 0; objects[i] != NULL; i++)
+    {
+      HyScanObjectId *id;
+
+      id = hyscan_object_id_new ();
+      id->type = klass->get_object_type (data, objects[i]);
+      id->id = objects[i];
+
+      list = g_list_append (list, id);
+    }
+
+  g_free (objects);
+
+  return list;
 }
 
-/**
- * hyscan_object_data_get:
- * @data: указатель на объект #HyScanObjectData
- * @id: идентификатор объекта
- *
- * Функция возвращает объект по идентификатору.
- *
- * Returns: (transfer full): новая структура #HyScanObject, %NULL в случае ошибки. Для
- *   удаления HyScanObjectDataClass.destroy().
- */
-HyScanObject *
-hyscan_object_data_get (HyScanObjectData *data,
-                        const gchar      *id)
+static HyScanObject *
+hyscan_object_data_get (HyScanObjectStore *store,
+                        GType              type,
+                        const gchar       *id)
 {
-  HyScanObjectDataPrivate *priv;
-  HyScanObjectDataClass *klass;
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
+  HyScanObjectDataPrivate *priv = data->priv;
+  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
 
   HyScanParamList *read_plist = NULL;
   gboolean read_status;
   HyScanObject *object = NULL;
-
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), NULL);
-  priv = data->priv;
-  klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
 
   g_return_val_if_fail (klass->get_full != NULL && klass->get_read_plist != NULL, NULL);
 
@@ -525,57 +404,166 @@ hyscan_object_data_get (HyScanObjectData *data,
 
   object = klass->get_full (data, read_plist);
 
+  /* Проверяем тип объекта. */
+  if (object != NULL && object->type != type)
+    g_clear_pointer (&object, hyscan_object_free);
+
 exit:
   g_clear_object (&read_plist);
 
   return object;
 }
 
-/**
- * hyscan_object_data_get_mod_count:
- *
- * @data: указатель на объект #HyScanObjectData
- *
- * Функция возвращает счётчик изменений.
- *
- * Returns: номер изменения.
- */
-guint32
-hyscan_object_data_get_mod_count (HyScanObjectData *data)
+static guint32
+hyscan_object_data_get_mod_count (HyScanObjectStore *store,
+                                  GType              type)
 {
-  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), 0);
+  HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
 
+  /* Для всех типов объектов используем один и тот же счётчик изменений. */
   return hyscan_db_get_mod_count (data->priv->db, data->priv->param_id);
 }
 
-/**
- * hyscan_object_copy:
- * @object: указатель на структуру #HyScanObject
- *
- * Функция создаёт структуру с копией указанного объекта @object.
- *
- * Returns: (transfer full): копия структуры или %NULL
- */
-HyScanObject *
-hyscan_object_copy (const HyScanObject *object)
+static GHashTable *
+hyscan_object_data_get_all (HyScanObjectStore  *store,
+                            GType               type)
 {
-  if (object == NULL)
-    return NULL;
+  GHashTable *table;
+  GList *ids, *link;
 
-  return g_boxed_copy (object->type, object);
+  table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) hyscan_object_free);
+  ids = hyscan_object_store_get_ids (store);
+  if (ids == NULL)
+    return table;
+
+  for (link = ids; link != NULL; link = link->next)
+    {
+      HyScanObjectId *id = link->data;
+      HyScanObject *object;
+
+      if (id->type != type)
+        continue;
+
+      object = hyscan_object_store_get (store, id->type, id->id);
+
+      /* Возможно, объект уже исчез. */
+      if (object == NULL)
+        continue;
+
+      g_hash_table_insert (table, g_strdup (id->id), object);
+    }
+
+  g_list_free_full (ids, (GDestroyNotify) hyscan_object_id_free);
+
+  return table;
+}
+
+static const GType *
+hyscan_object_data_list_types (HyScanObjectStore *store,
+                               guint             *len)
+{
+  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (store);
+
+  len != NULL ? (*len = klass->n_data_types) : 0;
+
+  return klass->data_types;
+}
+
+static void
+hyscan_object_data_interface_init (HyScanObjectStoreInterface *iface)
+{
+  iface->get_mod_count = hyscan_object_data_get_mod_count;
+  iface->get = hyscan_object_data_get;
+  iface->modify = hyscan_object_data_modify;
+  iface->get_ids = hyscan_object_data_get_ids;
+  iface->add = hyscan_object_data_add;
+  iface->get_all = hyscan_object_data_get_all;
+  iface->remove = hyscan_object_data_remove;
+  iface->set = hyscan_object_data_set;
+  iface->list_types = hyscan_object_data_list_types;
 }
 
 /**
- * hyscan_object_free:
- * @object: указатель на структуру #HyScanObject
+ * hyscan_object_data_new:
+ * @type: тип класса, наследник #HyScanObjectData
  *
- * Функция удаляет структуру @object.
+ * Создаёт новый объект для работы с параметрами. Для удаления g_object_unref().
  */
-void
-hyscan_object_free (HyScanObject *object)
+HyScanObjectData *
+hyscan_object_data_new (GType type)
 {
-  if (object == NULL)
-    return;
+  g_return_val_if_fail (g_type_is_a (type, HYSCAN_TYPE_OBJECT_DATA), NULL);
 
-  g_boxed_free (object->type, object);
+  return g_object_new (type, NULL);
+}
+
+gboolean
+hyscan_object_data_project_open (HyScanObjectData *data,
+                                 HyScanDB         *db,
+                                 const gchar      *project)
+{
+  HyScanObjectDataPrivate *priv;
+  HyScanObjectDataClass *klass;
+  gint32 project_id = 0;
+
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
+  klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
+  priv = data->priv;
+
+  if (priv->db != NULL)
+    {
+      if (priv->param_id > 0)
+        hyscan_db_close (priv->db, priv->param_id);
+      g_clear_object (&priv->db);
+    }
+  g_free (priv->project);
+
+  priv->db = g_object_ref (db);
+  priv->project = g_strdup (project);
+
+  if (priv->db == NULL)
+    {
+      g_warning ("HyScanObjectData: db not specified");
+      goto exit;
+    }
+
+  /* Открываем проект. */
+  project_id = hyscan_db_project_open (priv->db, priv->project);
+  if (project_id <= 0)
+    {
+      g_warning ("HyScanObjectData: can't open project '%s'", priv->project);
+      goto exit;
+    }
+
+  /* Открываем (или создаём) группу параметров. */
+  priv->param_id = hyscan_db_project_param_open (priv->db, project_id, klass->group_name);
+  if (priv->param_id <= 0)
+    {
+      g_warning ("HyScanObjectData: can't open group %s (project '%s')", klass->group_name, priv->project);
+      goto exit;
+    }
+
+exit:
+  if (project_id > 0)
+    hyscan_db_close (priv->db, project_id);
+
+  return priv->param_id > 0;
+}
+
+/**
+ * hyscan_object_data_is_ready:
+ * @data: указатель на объект #HyScanObjectData
+ *
+ * Проверяет, корректно ли проинициализировался объект. Если нет, то он будет
+ * неработоспособен.
+ *
+ * Returns: %TRUE, если инициализация успешна.
+ */
+
+gboolean
+hyscan_object_data_is_ready (HyScanObjectData *data)
+{
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
+
+  return data->priv->param_id > 0;
 }
