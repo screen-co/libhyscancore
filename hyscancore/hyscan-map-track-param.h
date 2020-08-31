@@ -33,16 +33,16 @@ struct _HyScanMapTrackParamClass
 };
 
 HYSCAN_API
-GType                  hyscan_map_track_param_get_type         (void);
+GType                  hyscan_map_track_param_get_type        (void);
 
 HYSCAN_API
-HyScanMapTrackParam *  hyscan_map_track_param_new              (gchar                *profile,
-                                                                HyScanDB             *db,
-                                                                const gchar          *project_name,
-                                                                const gchar          *track_name);
+HyScanMapTrackParam *  hyscan_map_track_param_new             (gchar                *profile,
+                                                               HyScanDB             *db,
+                                                               const gchar          *project_name,
+                                                               const gchar          *track_name);
 
 HYSCAN_API
-guint32                hyscan_map_track_param_get_mod_count    (HyScanMapTrackParam  *param);
+guint32                hyscan_map_track_param_get_mod_count   (HyScanMapTrackParam  *param);
 
 HYSCAN_API
 gboolean               hyscan_map_track_param_has_rmc         (HyScanMapTrackParam  *param);
@@ -57,7 +57,7 @@ HyScanDepthometer *    hyscan_map_track_param_get_depthometer (HyScanMapTrackPar
                                                                HyScanCache          *cache);
 
 HYSCAN_API
-gboolean               hyscan_map_track_param_clear            (HyScanMapTrackParam  *param);
+gboolean               hyscan_map_track_param_clear           (HyScanMapTrackParam  *param);
 
 G_END_DECLS
 
