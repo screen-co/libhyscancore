@@ -2,6 +2,7 @@
 #define __HYSCAN_OBJECT_STORE_H__
 
 #include <hyscan-types.h>
+#include <hyscan-object.h>
 
 G_BEGIN_DECLS
 
@@ -12,36 +13,6 @@ G_BEGIN_DECLS
 
 typedef struct _HyScanObjectStore HyScanObjectStore;
 typedef struct _HyScanObjectStoreInterface HyScanObjectStoreInterface;
-typedef struct _HyScanObjectId HyScanObjectId;
-typedef struct _HyScanObject HyScanObject;
-
-/**
- * HyScanObjectId:
- * @type: тип GBoxed
- * @id: строковый идентификатор объекта
- *
- * Структура для однозначной идентификации объекта по его типу и строковому
- * идентификатору.
- */
-struct _HyScanObjectId
-{
-  GType        type;
-  gchar       *id;
-};
-
-/**
- * HyScanObject:
- * @type: тип GBoxed
- *
- * Все структуры, которые загружаются при помощи #HyScanObjectData, должны быть
- * зарегистрированы как типы GBoxed, а в поле type хранить идентификатор своего типа GType.
- * При передаче структуры в функции hyscan_object_data_add(), hyscan_object_data_modify()
- * и подобные, структура должна быть приведена к типу #HyScanObject.
- */
-struct _HyScanObject
-{
-  GType                type;
-};
 
 struct _HyScanObjectStoreInterface
 {
@@ -123,18 +94,6 @@ guint32                hyscan_object_store_get_mod_count       (HyScanObjectStor
 HYSCAN_API
 const GType *          hyscan_object_store_list_types          (HyScanObjectStore  *store,
                                                                 guint              *len);
-
-HYSCAN_API
-HyScanObjectId *       hyscan_object_id_new                    (void);
-
-HYSCAN_API
-void                   hyscan_object_id_free                   (HyScanObjectId       *object_id);
-
-HYSCAN_API
-HyScanObject *         hyscan_object_copy                      (const HyScanObject *object);
-
-HYSCAN_API
-void                   hyscan_object_free                      (HyScanObject       *object);
 
 G_END_DECLS
 

@@ -64,6 +64,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-mark.c
              hyscan-label.c
              hyscan-track-data.c
+             hyscan-object.c
              hyscan-object-store.c
              hyscan-object-data.c
              hyscan-object-data-wfmark.c
@@ -153,6 +154,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-label.h
                hyscan-track-data.h
                hyscan-object-store.h
+               hyscan-object.h
                hyscan-object-data.h
                hyscan-object-data-wfmark.h
                hyscan-object-data-geomark.h
