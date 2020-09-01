@@ -48,19 +48,14 @@ HyScanDB      *db;                /* БД. */
 gchar         *db_uri;            /* Путь к БД. */
 
 gboolean          object_lookup (HyScanObject   *mark,
-                                 HyScanObject  **marks,
-                                 GCompareFunc    cmp_func);
-
-gint              mark_cmp      (HyScanMark     *a,
-                                 HyScanMark     *b);
+                                 HyScanObject  **marks);
 
 gboolean          make_track    (void);
 
 void              check_object  (HyScanObjectStore *data,
                                  GType              object_type,
                                  const gchar       *id,
-                                 HyScanObject     **objects,
-                                 GCompareFunc       cmp_func);
+                                 HyScanObject     **objects);
 
 HyScanMarkWaterfall test_marks_wf[N_TEST_DATA] =
 {
@@ -95,7 +90,6 @@ void
 test_class (GType          gtype,
             const gchar   *type_name,
             GType          object_type,
-            GCompareFunc   compare_func,
             HyScanObject **objects)
 {
   HyScanObjectStore *data = NULL;
@@ -116,7 +110,7 @@ test_class (GType          gtype,
 
   /* Тестируем копирование структуры. */
   object = hyscan_object_copy (objects[0]);
-  if (object == NULL || compare_func (object, objects[0]) != 0)
+  if (object == NULL || !hyscan_object_equal (object, objects[0]))
     g_error ("Object copy is not equal to the source");
   g_clear_pointer (&object, hyscan_object_free);
 
@@ -137,7 +131,7 @@ test_class (GType          gtype,
   for (link = list; link != NULL; link = link->next)
     {
       HyScanObjectId *object_id = link->data;
-      check_object (data, object_type, object_id->id, objects, compare_func);
+      check_object (data, object_type, object_id->id, objects);
     }
 
   /* Проверим, что мод-каунт не поменялся. */
@@ -157,7 +151,7 @@ test_class (GType          gtype,
   for (link = list; link != NULL; link = link->next)
     {
       HyScanObjectId *object_id = link->data;
-      check_object (data, object_type, object_id->id, objects, compare_func);
+      check_object (data, object_type, object_id->id, objects);
     }
 
   /* Удаляем метку. */
@@ -169,7 +163,7 @@ test_class (GType          gtype,
   for (link = list; link != NULL; link = link->next)
     {
       HyScanObjectId *object_id = link->data;
-      check_object (data, object_type, object_id->id, objects, compare_func);
+      check_object (data, object_type, object_id->id, objects);
     }
   g_list_free_full (list, (GDestroyNotify) hyscan_object_id_free);
 
@@ -197,7 +191,7 @@ test_class (GType          gtype,
       g_error ("Extra objects in DB");
 
     object = hyscan_object_store_get (data, object_type, list_nth_id (list, 0));
-    if (0 != compare_func (object, objects[0]))
+    if (!hyscan_object_equal (object, objects[0]))
       g_error ("Wrong object in DB");
     g_clear_pointer (&object, hyscan_object_free);
 
@@ -230,7 +224,7 @@ test_class (GType          gtype,
     g_list_free_full (list, (GDestroyNotify) hyscan_object_id_free);
 
     object = hyscan_object_store_get (data, object_type, OBJECT_NAME);
-    if (0 != compare_func (object, objects[0]))
+    if (!hyscan_object_equal (object, objects[0]))
       g_error ("Wrong object in DB");
     g_clear_pointer (&object, hyscan_object_free);
 
@@ -251,61 +245,15 @@ test_class (GType          gtype,
   g_object_unref (data);
 }
 
-gint
-mark_cmp (HyScanMark *a,
-          HyScanMark *b)
-{
-  gboolean equal;
-
-  equal = 0 == g_strcmp0 (a->name,          b->name) &&
-          0 == g_strcmp0 (a->description,   b->description) &&
-          0 == g_strcmp0 (a->operator_name, b->operator_name) &&
-          a->type   == b->type &&
-          a->labels == b->labels &&
-          a->ctime  == b->ctime &&
-          a->mtime  == b->mtime &&
-          a->width  == b->width &&
-          a->height == b->height;
-
-  if (!equal)
-    goto exit;
-
-  if (a->type == HYSCAN_TYPE_MARK_WATERFALL)
-    {
-      HyScanMarkWaterfall *bw = (HyScanMarkWaterfall *) b;
-      HyScanMarkWaterfall *aw = (HyScanMarkWaterfall *) a;
-
-      equal = 0 == g_strcmp0 (aw->source, bw->source) &&
-              aw->index == bw->index &&
-              aw->count == bw->count;
-    }
-  else if (b->type == HYSCAN_TYPE_MARK_GEO)
-    {
-      HyScanMarkGeo *bg = (HyScanMarkGeo *) b;
-      HyScanMarkGeo *ag = (HyScanMarkGeo *) a;
-
-      equal = ag->center.lat == bg->center.lat &&
-              ag->center.lon == bg->center.lon;
-    }
-  else
-    {
-      g_error ("Wrong mark type");
-    }
-
-exit:
-  return equal ? 0 : 1;
-}
-
 gboolean
 object_lookup (HyScanObject   *mark,
-               HyScanObject  **marks,
-               GCompareFunc    cmp_func)
+               HyScanObject  **marks)
 {
   gint i;
 
   for (i = 0; i < N_TEST_DATA; i++)
     {
-      if (0 == cmp_func (mark, marks[i]))
+      if (hyscan_object_equal (mark, marks[i]))
         return TRUE;
     }
 
@@ -316,11 +264,10 @@ void
 check_object (HyScanObjectStore  *data,
               GType               object_type,
               const gchar        *id,
-              HyScanObject      **objects,
-              GCompareFunc        cmp_func)
+              HyScanObject      **objects)
 {
   HyScanObject *object = hyscan_object_store_get (data, object_type, id);
-  if (object == NULL || !object_lookup (object, objects, cmp_func))
+  if (object == NULL || !object_lookup (object, objects))
     g_error ("Failed to get mark <%s>", id);
   else
     hyscan_object_free (object);
@@ -405,8 +352,7 @@ main (int argc, char **argv)
     }
 
   g_message ("Testing type: %ld", HYSCAN_TYPE_MARK_WATERFALL);
-  test_class (HYSCAN_TYPE_OBJECT_DATA_WFMARK, "HyScanMarkWaterfall", HYSCAN_TYPE_MARK_WATERFALL,
-              (GCompareFunc) mark_cmp, test_data);
+  test_class (HYSCAN_TYPE_OBJECT_DATA_WFMARK, "HyScanMarkWaterfall", HYSCAN_TYPE_MARK_WATERFALL, test_data);
 
   /* Тест класса геометок. */
   for (i = 0; i < N_TEST_DATA; i++)
@@ -415,8 +361,7 @@ main (int argc, char **argv)
       test_data[i]->type = HYSCAN_TYPE_MARK_GEO;
     }
 
-  test_class (HYSCAN_TYPE_OBJECT_DATA_GEOMARK, "HyScanMarkGeo", HYSCAN_TYPE_MARK_GEO,
-              (GCompareFunc) mark_cmp, test_data);
+  test_class (HYSCAN_TYPE_OBJECT_DATA_GEOMARK, "HyScanMarkGeo", HYSCAN_TYPE_MARK_GEO, test_data);
 
   hyscan_db_project_remove (db, PROJECT_NAME);
 
