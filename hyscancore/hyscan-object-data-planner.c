@@ -48,6 +48,7 @@
 
 #define PREFIX_ZONE    "zone-"     /* Префикс объекта зоны. */
 #define PREFIX_TRACK   "track-"    /* Префикс объекта галса. */
+#define OBJECT_ID_LEN   20         /* Длина случайно части идентификатора объекта. */
 
 struct _HyScanObjectDataPlannerPrivate
 {
@@ -195,21 +196,26 @@ static gchar *
 hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
                                         const HyScanObject *object)
 {
-  gchar *unique_id;
   gchar *id = NULL;
+  const gchar *prefix;
+  guint buf_size;
 
-  unique_id = HYSCAN_OBJECT_DATA_CLASS (hyscan_object_data_planner_parent_class)->generate_id (data, object);
+  if (HYSCAN_IS_PLANNER_ORIGIN (object))
+    return g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
 
   if (HYSCAN_IS_PLANNER_ZONE (object))
-    id = g_strconcat (PREFIX_ZONE, unique_id, NULL);
+    prefix = PREFIX_ZONE;
   else if (HYSCAN_IS_PLANNER_TRACK (object))
-    id = g_strconcat (PREFIX_TRACK, unique_id, NULL);
-  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
-    id = g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
+    prefix = PREFIX_TRACK;
+  else
+    g_return_val_if_reached (NULL);
 
-  g_free (unique_id);
+  buf_size = strlen (prefix) + OBJECT_ID_LEN;
 
-  return id;
+  id = g_new (gchar, buf_size);
+  g_strlcpy (id, prefix, buf_size);
+
+  return hyscan_rand_id (id, OBJECT_ID_LEN);
 }
 
 /* HyScanObjectDataClass.get_object_type.
