@@ -90,8 +90,6 @@ static void           hyscan_object_data_get_property          (GObject         
                                                                 GParamSpec                 *pspec);
 static void           hyscan_object_data_object_constructed    (GObject                    *object);
 static void           hyscan_object_data_object_finalize       (GObject                    *object);
-static gchar *        hyscan_object_data_generate_id           (HyScanObjectData           *data,
-                                                                const HyScanObject         *object);
 static gboolean       hyscan_object_data_add_real              (HyScanObjectData           *data,
                                                                 const gchar                *id,
                                                                 const HyScanObject         *object);
@@ -104,14 +102,11 @@ static void
 hyscan_object_data_class_init (HyScanObjectDataClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  HyScanObjectDataClass *data_class = HYSCAN_OBJECT_DATA_CLASS (klass);
 
   object_class->get_property = hyscan_object_data_get_property;
 
   object_class->constructed = hyscan_object_data_object_constructed;
   object_class->finalize = hyscan_object_data_object_finalize;
-
-  data_class->generate_id = hyscan_object_data_generate_id;
 
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "DB", "HyScanDB interface", HYSCAN_TYPE_DB,
@@ -181,18 +176,6 @@ hyscan_object_data_object_finalize (GObject *object)
   G_OBJECT_CLASS (hyscan_object_data_parent_class)->finalize (object);
 }
 
-/* Функция генерирует идентификатор. */
-static gchar *
-hyscan_object_data_generate_id (HyScanObjectData   *data,
-                                const HyScanObject *object)
-{
-  gchar *id;
-
-  id = g_malloc (OBJECT_ID_LEN);
-
-  return hyscan_rand_id (id, OBJECT_ID_LEN);
-}
-
 /* Функция создания объекта в БД. */
 static gboolean
 hyscan_object_data_add_real (HyScanObjectData   *data,
@@ -227,11 +210,10 @@ hyscan_object_data_add (HyScanObjectStore    *store,
                         gchar              **given_id)
 {
   HyScanObjectData *data = HYSCAN_OBJECT_DATA (store);
-  HyScanObjectDataClass *klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
   gboolean status;
   gchar *id;
 
-  id = klass->generate_id (data, object);
+  id = hyscan_object_data_generate_id (data, object);
   if (id == NULL)
     {
       g_warning ("HyScanObjectData: failed to generate object id");
@@ -566,4 +548,32 @@ hyscan_object_data_is_ready (HyScanObjectData *data)
   g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), FALSE);
 
   return data->priv->param_id > 0;
+}
+
+/**
+ * hyscan_object_data_generate_id:
+ * @data: указатель на #HyScanObjectData
+ * @object: объекта
+ *
+ * Функция генерирует идентификатор без обращения к базе данных.
+ * Функция является потокобезопасной.
+ *
+ * Returns: (transfer full): новый идентификатор объекта, для удаления g_free().
+ */
+gchar *
+hyscan_object_data_generate_id (HyScanObjectData   *data,
+                                const HyScanObject *object)
+{
+  HyScanObjectDataClass *klass;
+  gchar *id;
+
+  g_return_val_if_fail (HYSCAN_IS_OBJECT_DATA (data), NULL);
+
+  klass = HYSCAN_OBJECT_DATA_GET_CLASS (data);
+  if (klass->generate_id != NULL)
+    return klass->generate_id (data, object);
+
+  id = g_malloc (OBJECT_ID_LEN);
+
+  return hyscan_rand_id (id, OBJECT_ID_LEN);
 }

@@ -67,7 +67,7 @@ struct _HyScanObjectData
  * @get_read_plist: функция возвращает список параметров #HyScanParamList для чтения объекта с указанным ID
  * @get_full: функция считывает содержимое объекта
  * @set_full: функция записывает значения в существующий объект
- * @generate_id: функция генерирует уникальный идентификатор для указанного объекта
+ * @generate_id: функция потокобезопасно генерирует уникальный идентификатор для указанного объекта
  * @get_schema_id: функция возвращает ИД схемы для указанного объекта
  */
 struct _HyScanObjectDataClass
@@ -112,9 +112,11 @@ gboolean                        hyscan_object_data_project_open      (HyScanObje
                                                                       const gchar        *project);
 
 HYSCAN_API
-gboolean                        hyscan_object_data_is_ready          (HyScanObjectData    *data);
+gboolean                        hyscan_object_data_is_ready          (HyScanObjectData   *data);
 
-
+HYSCAN_API
+gchar *                         hyscan_object_data_generate_id       (HyScanObjectData   *data,
+                                                                      const HyScanObject *object);
 
 G_END_DECLS
 
