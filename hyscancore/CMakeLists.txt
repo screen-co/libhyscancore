@@ -61,6 +61,8 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-object-data.c
              hyscan-object-data-wfmark.c
              hyscan-object-data-geomark.c
+             hyscan-planner.c
+             hyscan-object-data-planner.c
              ${CMAKE_BINARY_DIR}/marshallers/hyscan-core-marshallers.c
              ${CMAKE_BINARY_DIR}/resources/hyscan-core-resources.c)
 
@@ -108,6 +110,8 @@ install (FILES hyscan-core-schemas.h
                hyscan-object-data.h
                hyscan-object-data-wfmark.h
                hyscan-object-data-geomark.h
+               hyscan-planner.h
+               hyscan-object-data-planner.h
          COMPONENT development
          DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

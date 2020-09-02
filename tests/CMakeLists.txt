@@ -16,6 +16,7 @@ add_executable (control-test control-test.c hyscan-dummy-device.c)
 add_executable (view-log view-log.c)
 add_executable (task-queue-test task-queue-test.c)
 add_executable (object-data-test object-data-test.c)
+add_executable (object-data-planner-test object-data-planner-test.c)
 
 target_link_libraries (data-writer-test ${TEST_LIBRARIES})
 target_link_libraries (acoustic-data-test ${TEST_LIBRARIES})
@@ -29,6 +30,7 @@ target_link_libraries (control-test ${TEST_LIBRARIES})
 target_link_libraries (view-log ${TEST_LIBRARIES})
 target_link_libraries (task-queue-test ${TEST_LIBRARIES})
 target_link_libraries (object-data-test ${TEST_LIBRARIES})
+target_link_libraries (object-data-planner-test ${TEST_LIBRARIES})
 
 file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
 file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
@@ -49,6 +51,8 @@ add_test (NAME ControlTest COMMAND control-test file://db
 add_test (NAME TaskQueueTest COMMAND task-queue-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ObjectDataTest COMMAND object-data-test file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_test (NAME ObjectDataPlannerTest COMMAND object-data-planner-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 install (TARGETS data-writer-test
