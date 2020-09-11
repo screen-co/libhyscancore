@@ -37,7 +37,7 @@
 #define __HYSCAN_OBJECT_DATA_H__
 
 #include <hyscan-db.h>
-#include <hyscan-types.h>
+#include <hyscan-object-store.h>
 
 G_BEGIN_DECLS
 
@@ -51,7 +51,6 @@ G_BEGIN_DECLS
 typedef struct _HyScanObjectData HyScanObjectData;
 typedef struct _HyScanObjectDataPrivate HyScanObjectDataPrivate;
 typedef struct _HyScanObjectDataClass HyScanObjectDataClass;
-typedef struct _HyScanObject HyScanObject;
 
 struct _HyScanObjectData
 {
@@ -63,10 +62,12 @@ struct _HyScanObjectData
 /**
  * HyScanObjectDataClass:
  * @group_name: названия группы параметров проекта
+ * @data_types (array-size=n_data_types): обрабатываемые типы объектов HyScanObject
+ * @n_data_types: количество обрабатываемые типов
  * @get_read_plist: функция возвращает список параметров #HyScanParamList для чтения объекта с указанным ID
  * @get_full: функция считывает содержимое объекта
  * @set_full: функция записывает значения в существующий объект
- * @generate_id: функция генерирует уникальный идентификатор для указанного объекта
+ * @generate_id: функция потокобезопасно генерирует уникальный идентификатор для указанного объекта
  * @get_schema_id: функция возвращает ИД схемы для указанного объекта
  */
 struct _HyScanObjectDataClass
@@ -74,6 +75,10 @@ struct _HyScanObjectDataClass
   GObjectClass       parent_class;
 
   const gchar       *group_name;
+
+  const GType       *data_types;
+
+  guint              n_data_types;
 
   HyScanParamList *  (*get_read_plist)   (HyScanObjectData    *data,
                                           const gchar         *id);
@@ -90,63 +95,28 @@ struct _HyScanObjectDataClass
 
   const gchar *      (*get_schema_id)    (HyScanObjectData    *data,
                                           const HyScanObject  *object);
-};
 
-/**
- * HyScanObject:
- * @type: тип GBoxed
- *
- * Все структуры, которые загружаются при помощи #HyScanObjectData, должны быть
- * зарегистрированы как типы GBoxed, а в поле type хранить идентификатор своего типа GType.
- * При передаче структуры в функции hyscan_object_data_add(), hyscan_object_data_modify()
- * и подобные, структура должна быть приведена к типу #HyScanObject.
- */
-struct _HyScanObject
-{
-  GType                   type;
+  GType              (*get_object_type)  (HyScanObjectData    *data,
+                                          const gchar         *id);
 };
 
 HYSCAN_API
 GType                           hyscan_object_data_get_type          (void);
 
 HYSCAN_API
-HyScanObjectData *              hyscan_object_data_new               (GType               type,
+HyScanObjectData *              hyscan_object_data_new               (GType               type);
+
+HYSCAN_API
+gboolean                        hyscan_object_data_project_open      (HyScanObjectData   *data,
                                                                       HyScanDB           *db,
                                                                       const gchar        *project);
 
 HYSCAN_API
-gboolean                        hyscan_object_data_is_ready          (HyScanObjectData    *data);
+gboolean                        hyscan_object_data_is_ready          (HyScanObjectData   *data);
 
 HYSCAN_API
-gboolean                        hyscan_object_data_add               (HyScanObjectData    *data,
-                                                                      HyScanObject        *object,
-                                                                      gchar              **id);
-
-HYSCAN_API
-gboolean                        hyscan_object_data_remove            (HyScanObjectData    *data,
-                                                                      const gchar         *id);
-
-HYSCAN_API
-gboolean                        hyscan_object_data_modify            (HyScanObjectData    *data,
-                                                                      const gchar         *id,
-                                                                      const HyScanObject  *object);
-
-HYSCAN_API
-gchar **                        hyscan_object_data_get_ids           (HyScanObjectData    *data,
-                                                                      guint               *len);
-
-HYSCAN_API
-HyScanObject *                  hyscan_object_data_get               (HyScanObjectData    *data,
-                                                                      const gchar         *id);
-
-HYSCAN_API
-guint32                         hyscan_object_data_get_mod_count     (HyScanObjectData    *data);
-
-HYSCAN_API
-HyScanObject *                  hyscan_object_copy                   (const HyScanObject  *object);
-
-HYSCAN_API
-void                            hyscan_object_free                   (HyScanObject        *object);
+gchar *                         hyscan_object_data_generate_id       (HyScanObjectData   *data,
+                                                                      const HyScanObject *object);
 
 G_END_DECLS
 

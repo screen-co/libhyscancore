@@ -60,13 +60,20 @@
  */
 
 #include "hyscan-mark.h"
+#include "hyscan-object.h"
 
 static void        hyscan_mark_copy_any    (const HyScanMark *mark,
                                             HyScanMark       *copy);
+static gboolean    hyscan_mark_equal_any   (const HyScanMark *mark1,
+                                            const HyScanMark *mark2);
 static void        hyscan_mark_free_any    (HyScanMark       *mark);
 
-G_DEFINE_BOXED_TYPE (HyScanMarkWaterfall, hyscan_mark_waterfall, hyscan_mark_waterfall_copy, hyscan_mark_waterfall_free)
-G_DEFINE_BOXED_TYPE (HyScanMarkGeo, hyscan_mark_geo, hyscan_mark_geo_copy, hyscan_mark_geo_free)
+G_DEFINE_BOXED_TYPE_WITH_CODE (HyScanMarkWaterfall, hyscan_mark_waterfall,
+                               hyscan_mark_waterfall_copy, hyscan_mark_waterfall_free,
+                               HYSCAN_OBJECT_DEFINE_EQUAL_FUNC (hyscan_mark_waterfall_equal))
+G_DEFINE_BOXED_TYPE_WITH_CODE (HyScanMarkGeo, hyscan_mark_geo,
+                               hyscan_mark_geo_copy, hyscan_mark_geo_free,
+                               HYSCAN_OBJECT_DEFINE_EQUAL_FUNC (hyscan_mark_geo_equal))
 
 /* Удаляет общие поля. */
 static void
@@ -89,6 +96,21 @@ hyscan_mark_copy_any (const HyScanMark *mark,
   hyscan_mark_set_ctime (copy, mark->ctime);
   hyscan_mark_set_mtime (copy, mark->mtime);
   hyscan_mark_set_size (copy, mark->width, mark->height);
+}
+
+/* Сравнивает общие поля. */
+static gboolean
+hyscan_mark_equal_any (const HyScanMark *mark1,
+                       const HyScanMark *mark2)
+{
+  return mark1->ctime == mark2->ctime &&
+         mark1->mtime == mark2->mtime &&
+         mark1->labels == mark2->labels &&
+         ABS (mark1->height - mark2->height) < 1e-6 &&
+         ABS (mark1->width - mark2->width) < 1e-6 &&
+         g_strcmp0 (mark1->name, mark2->name) == 0 &&
+         g_strcmp0 (mark1->operator_name, mark2->operator_name) == 0 &&
+         g_strcmp0 (mark1->description, mark2->description) == 0;
 }
 
 /**
@@ -134,8 +156,28 @@ hyscan_mark_waterfall_copy (const HyScanMarkWaterfall *mark)
 }
 
 /**
+ * hyscan_mark_waterfall_equal:
+ * @mark1: указатель на HyScanMarkWaterfall
+ * @mark2: указатель на HyScanMarkWaterfall
+ *
+ * Сравнивает структуры #HyScanMarkWaterfall.
+ *
+ * Returns: %TRUE, если структуры равны; иначе %FALSE.
+ */
+gboolean
+hyscan_mark_waterfall_equal (const HyScanMarkWaterfall *mark1,
+                             const HyScanMarkWaterfall *mark2)
+{
+  return hyscan_mark_equal_any ((const HyScanMark *) mark1, (const HyScanMark *) mark2) &&
+         mark1->count == mark2->count &&
+         mark1->index == mark2->index &&
+         g_strcmp0 (mark1->source, mark2->source) == 0 &&
+         g_strcmp0 (mark1->track, mark2->track) == 0;
+}
+
+/**
  * hyscan_mark_waterfall_free:
- * @mark: указатель на HyScanWaterfallMark
+ * @mark: указатель на HyScanMarkWaterfall
  * 
  * Удаляет структуру #HyScanMarkWaterfall.
  */
@@ -190,6 +232,24 @@ hyscan_mark_geo_copy (const HyScanMarkGeo *mark)
   hyscan_mark_copy_any ((const HyScanMark *) mark, (HyScanMark *) copy);
 
   return copy;
+}
+
+/**
+ * hyscan_mark_geo_equal:
+ * @mark1: указатель на HyScanMarkGeo
+ * @mark2: указатель на HyScanMarkGeo
+ *
+ * Сравнивает структуры #HyScanMarkGeo.
+ *
+ * Returns: %TRUE, если структуры равны; иначе %FALSE.
+ */
+gboolean
+hyscan_mark_geo_equal (const HyScanMarkGeo *mark1,
+                       const HyScanMarkGeo *mark2)
+{
+  return hyscan_mark_equal_any ((const HyScanMark *) mark1, (const HyScanMark *) mark2) &&
+         ABS (mark1->center.lon - mark2->center.lon) < 1e-9 &&
+         ABS (mark1->center.lat - mark2->center.lat) < 1e-9;
 }
 
 /**

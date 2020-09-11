@@ -51,6 +51,7 @@
 
 #define PREFIX_ZONE    "zone-"     /* Префикс объекта зоны. */
 #define PREFIX_TRACK   "track-"    /* Префикс объекта галса. */
+#define OBJECT_ID_LEN   20         /* Длина случайно части идентификатора объекта. */
 
 struct _HyScanObjectDataPlannerPrivate
 {
@@ -88,9 +89,8 @@ static const gchar *       hyscan_object_data_planner_get_schema_id       (HySca
                                                                            const HyScanObject       *object);
 static gchar *             hyscan_object_data_planner_generate_id         (HyScanObjectData         *data,
                                                                            const HyScanObject       *object);
-static inline gboolean     hyscan_object_data_planner_origin_validate_id  (const gchar              *origin_id);
-static inline gboolean     hyscan_object_data_planner_track_validate_id   (const gchar              *track_id);
-static inline gboolean     hyscan_object_data_planner_zone_validate_id    (const gchar              *zone_id);
+static GType               hyscan_object_data_planner_get_object_type     (HyScanObjectData         *data,
+                                                                           const gchar              *id);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectDataPlanner, hyscan_object_data_planner, HYSCAN_TYPE_OBJECT_DATA)
 
@@ -99,16 +99,25 @@ hyscan_object_data_planner_class_init (HyScanObjectDataPlannerClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   HyScanObjectDataClass *data_class = HYSCAN_OBJECT_DATA_CLASS (klass);
+  static GType types[3];
+
+  types[0] = HYSCAN_TYPE_PLANNER_TRACK;
+  types[1] = HYSCAN_TYPE_PLANNER_ZONE;
+  types[2] = HYSCAN_TYPE_PLANNER_ORIGIN;
 
   object_class->constructed = hyscan_object_data_planner_object_constructed;
   object_class->finalize = hyscan_object_data_planner_object_finalize;
 
   data_class->group_name = PLANNER_OBJECT;
+  data_class->data_types = types;
+  data_class->n_data_types = G_N_ELEMENTS (types);
+
   data_class->get_schema_id = hyscan_object_data_planner_get_schema_id;
   data_class->generate_id = hyscan_object_data_planner_generate_id;
   data_class->get_full = hyscan_object_data_planner_get_full;
   data_class->set_full = hyscan_object_data_planner_set_full;
   data_class->get_read_plist = hyscan_object_data_planner_get_read_plist;
+  data_class->get_object_type = hyscan_object_data_planner_get_object_type;
 }
 
 static void
@@ -185,47 +194,50 @@ hyscan_object_data_planner_get_schema_id (HyScanObjectData   *data,
 }
 
 /* HyScanObjectDataClass.generate_id.
- * Геренирует идентификатор для нового объекта. */
+ * Генерирует идентификатор для нового объекта. */
 static gchar *
 hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
                                         const HyScanObject *object)
 {
-  gchar *unique_id;
   gchar *id = NULL;
+  const gchar *prefix;
+  guint buf_size;
 
-  unique_id = HYSCAN_OBJECT_DATA_CLASS (hyscan_object_data_planner_parent_class)->generate_id (data, object);
+  if (HYSCAN_IS_PLANNER_ORIGIN (object))
+    return g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
 
   if (HYSCAN_IS_PLANNER_ZONE (object))
-    id = g_strconcat (PREFIX_ZONE, unique_id, NULL);
+    prefix = PREFIX_ZONE;
   else if (HYSCAN_IS_PLANNER_TRACK (object))
-    id = g_strconcat (PREFIX_TRACK, unique_id, NULL);
-  else if (HYSCAN_IS_PLANNER_ORIGIN (object))
-    id = g_strdup (HYSCAN_PLANNER_ORIGIN_ID);
+    prefix = PREFIX_TRACK;
+  else
+    g_return_val_if_reached (NULL);
 
-  g_free (unique_id);
+  buf_size = strlen (prefix) + OBJECT_ID_LEN;
+
+  id = g_new (gchar, buf_size);
+  g_strlcpy (id, prefix, buf_size);
+  hyscan_rand_id (id + strlen (prefix), OBJECT_ID_LEN);
 
   return id;
 }
 
-/* Проверяет, что идентификатор соответствует зоне. */
-static inline gboolean
-hyscan_object_data_planner_zone_validate_id (const gchar *zone_id)
+/* HyScanObjectDataClass.get_object_type.
+ * Получает тип объекта по его идентификатору. */
+static GType
+hyscan_object_data_planner_get_object_type (HyScanObjectData   *data,
+                                            const gchar        *id)
 {
-  return zone_id != NULL && g_str_has_prefix (zone_id, PREFIX_ZONE);
-}
+  g_return_val_if_fail (id != NULL, G_TYPE_INVALID);
 
-/* Проверяет, что идентификатор соответствует треку. */
-static inline gboolean
-hyscan_object_data_planner_track_validate_id (const gchar *track_id)
-{
-  return track_id != NULL && g_str_has_prefix (track_id, PREFIX_TRACK);
-}
+  if (g_str_has_prefix (id, PREFIX_ZONE))
+    return HYSCAN_TYPE_PLANNER_ZONE;
+  else if (g_str_has_prefix (id, PREFIX_TRACK))
+    return HYSCAN_TYPE_PLANNER_TRACK;
+  else if (g_str_equal (id, HYSCAN_PLANNER_ORIGIN_ID))
+    return HYSCAN_TYPE_PLANNER_ORIGIN;
 
-/* Проверяет, что идентификатор соответствует точке отсчёта. */
-static inline gboolean
-hyscan_object_data_planner_origin_validate_id (const gchar *origin_id)
-{
-  return g_strcmp0 (origin_id, HYSCAN_PLANNER_ORIGIN_ID) == 0;
+  return G_TYPE_INVALID;
 }
 
 /* HyScanObjectDataClass.get_read_plist.
@@ -236,12 +248,15 @@ hyscan_object_data_planner_get_read_plist (HyScanObjectData *data,
 {
   HyScanObjectDataPlanner *object_data_planner = HYSCAN_OBJECT_DATA_PLANNER (data);
   HyScanObjectDataPlannerPrivate *priv = object_data_planner->priv;
+  GType type;
 
-  if (hyscan_object_data_planner_track_validate_id (id))
+  type = hyscan_object_data_planner_get_object_type (data, id);
+
+  if (type == HYSCAN_TYPE_PLANNER_TRACK)
     return g_object_ref (priv->track_read_plist);
-  else if (hyscan_object_data_planner_zone_validate_id (id))
+  else if (type == HYSCAN_TYPE_PLANNER_ZONE)
     return g_object_ref (priv->zone_read_plist);
-  else if (hyscan_object_data_planner_origin_validate_id (id))
+  else if (type == HYSCAN_TYPE_PLANNER_ORIGIN)
     return g_object_ref (priv->origin_read_plist);
   else
     g_return_val_if_reached (NULL);
@@ -479,24 +494,16 @@ hyscan_object_data_planner_set_full (HyScanObjectData   *mdata,
 
 /**
  * hyscan_object_data_planner_new:
- * @db: база данных #HyScanDB
- * @project: имя проекта
  *
  * Returns: указатель на новый объект #HyScanObjectDataPlanner. Для удаления g_object_unref().
  */
 HyScanObjectData *
-hyscan_object_data_planner_new (HyScanDB    *db,
-                                const gchar *project)
+hyscan_object_data_planner_new (void)
 {
   HyScanObjectData * data;
 
   data = g_object_new (HYSCAN_TYPE_OBJECT_DATA_PLANNER,
-                       "db", db,
-                       "project", project,
                        NULL);
-
-  if (!hyscan_object_data_is_ready (data))
-    g_clear_object (&data);
 
   return data;
 }

@@ -62,7 +62,8 @@ static HyScanParamList * hyscan_object_data_wfmark_get_read_plist     (HyScanObj
                                                                        const gchar        *schema_id);
 static const gchar *     hyscan_object_data_wfmark_get_schema_id      (HyScanObjectData   *data,
                                                                        const HyScanObject *object);
-
+static GType             hyscan_object_data_wfmark_get_object_type    (HyScanObjectData   *data,
+                                                                       const gchar        *id);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanObjectDataWfmark, hyscan_object_data_wfmark, HYSCAN_TYPE_OBJECT_DATA);
 
@@ -71,15 +72,22 @@ hyscan_object_data_wfmark_class_init (HyScanObjectDataWfmarkClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   HyScanObjectDataClass *data_class = HYSCAN_OBJECT_DATA_CLASS (klass);
+  static GType types[1];
+
+  types[0] = HYSCAN_TYPE_MARK_WATERFALL;
 
   object_class->constructed = hyscan_object_data_wfmark_object_constructed;
   object_class->finalize = hyscan_object_data_wfmark_object_finalize;
 
   data_class->group_name = WATERFALL_MARK_SCHEMA;
+  data_class->data_types = types;
+  data_class->n_data_types = G_N_ELEMENTS (types);
+
   data_class->get_schema_id = hyscan_object_data_wfmark_get_schema_id;
   data_class->set_full = hyscan_object_data_wfmark_set_full;
   data_class->get_full = hyscan_object_data_wfmark_get_full;
   data_class->get_read_plist = hyscan_object_data_wfmark_get_read_plist;
+  data_class->get_object_type = hyscan_object_data_wfmark_get_object_type;
 }
 
 static void
@@ -138,6 +146,13 @@ hyscan_object_data_wfmark_get_schema_id (HyScanObjectData   *data,
                                          const HyScanObject *object)
 {
   return WATERFALL_MARK_SCHEMA;
+}
+
+static GType
+hyscan_object_data_wfmark_get_object_type (HyScanObjectData   *data,
+                                           const gchar        *id)
+{
+  return HYSCAN_TYPE_MARK_WATERFALL;
 }
 
 /* Функция считывает содержимое объекта. */
@@ -213,14 +228,11 @@ hyscan_object_data_wfmark_set_full (HyScanObjectData   *data,
 
 /**
  * hyscan_object_data_wfmark_new:
- * @db: указатель на #HyScanDB
- * @project: имя проекта
  *
  * Создаёт новый объект для работы с акустическими метками. Для удаления g_object_unref().
  */
 HyScanObjectData *
-hyscan_object_data_wfmark_new (HyScanDB    *db,
-                               const gchar *project)
+hyscan_object_data_wfmark_new (void)
 {
-  return hyscan_object_data_new (HYSCAN_TYPE_OBJECT_DATA_WFMARK, db, project);
+  return hyscan_object_data_new (HYSCAN_TYPE_OBJECT_DATA_WFMARK);
 }

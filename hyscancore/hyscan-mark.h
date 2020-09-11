@@ -156,6 +156,10 @@ HYSCAN_API
 HyScanMarkWaterfall *  hyscan_mark_waterfall_copy                   (const HyScanMarkWaterfall *mark);
 
 HYSCAN_API
+gboolean               hyscan_mark_waterfall_equal                  (const HyScanMarkWaterfall *mark1,
+                                                                     const HyScanMarkWaterfall *mark2);
+
+HYSCAN_API
 void                   hyscan_mark_waterfall_free                   (HyScanMarkWaterfall       *mark);
 
 HYSCAN_API
@@ -163,6 +167,10 @@ HyScanMarkGeo *        hyscan_mark_geo_new                          (void);
 
 HYSCAN_API
 HyScanMarkGeo *        hyscan_mark_geo_copy                         (const HyScanMarkGeo       *mark);
+
+HYSCAN_API
+gboolean               hyscan_mark_geo_equal                        (const HyScanMarkGeo       *mark1,
+                                                                     const HyScanMarkGeo       *mark2);
 
 HYSCAN_API
 void                   hyscan_mark_geo_free                         (HyScanMarkGeo             *mark);
