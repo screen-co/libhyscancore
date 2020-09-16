@@ -92,6 +92,10 @@ hyscan_label_free (HyScanLabel *self)
   if (self == NULL)
     return;
 
+  g_free (self->name);
+  g_free (self->icon_data);
+  g_free (self->description);
+  g_free (self->operator_name);
   g_slice_free (HyScanLabel, self);
 }
 
