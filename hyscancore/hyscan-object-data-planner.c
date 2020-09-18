@@ -128,7 +128,7 @@ hyscan_object_data_planner_object_constructed (GObject *object)
 {
   HyScanObjectDataPlanner *object_data_planner = HYSCAN_OBJECT_DATA_PLANNER (object);
   HyScanObjectDataPlannerPrivate *priv = object_data_planner->priv;
-  
+
   G_OBJECT_CLASS (hyscan_object_data_planner_parent_class)->constructed (object);
 
   priv->track_read_plist = hyscan_param_list_new ();
@@ -215,7 +215,8 @@ hyscan_object_data_planner_generate_id (HyScanObjectData   *data,
   id = g_new (gchar, buf_size);
   g_strlcpy (id, prefix, buf_size);
 
-  return hyscan_rand_id (id, OBJECT_ID_LEN);
+  hyscan_rand_id (id + strlen (prefix), OBJECT_ID_LEN);
+  return id;
 }
 
 /* HyScanObjectDataClass.get_object_type.
