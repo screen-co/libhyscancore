@@ -153,7 +153,7 @@ static void      hyscan_data_writer_sonar_channel_free         (gpointer        
 static void      hyscan_data_writer_raw_signal_free            (gpointer                       data);
 static void      hyscan_data_writer_raw_gain_free              (gpointer                       data);
 
-static gboolean  hyscan_data_writer_create_project             (HyScanDB                      *db,
+static gboolean  hyscan_data_writer_create_project_real        (HyScanDB                      *db,
                                                                 const gchar                   *project_name,
                                                                 gint64                         date_time);
 
@@ -328,9 +328,9 @@ hyscan_data_writer_raw_gain_free (gpointer data)
 
 /* Функция создаёт новый проект в системе хранения. */
 static gboolean
-hyscan_data_writer_create_project (HyScanDB    *db,
-                                   const gchar *project_name,
-                                   gint64       date_time)
+hyscan_data_writer_create_project_real (HyScanDB    *db,
+                                        const gchar *project_name,
+                                        gint64       date_time)
 {
   gboolean status = FALSE;
 
@@ -805,6 +805,31 @@ hyscan_data_writer_set_db (HyScanDataWriter *writer,
 }
 
 /**
+ * hyscan_data_writer_get_db:
+ * @writer: указатель на #HyScanDataWriter
+ *
+ * Функция возвращает систему хранения данных.
+ *
+ * Returns: (transfer full): указатель на #HyScanDB, для удаления g_object_unref().
+ */
+HyScanDB *
+hyscan_data_writer_get_db (HyScanDataWriter *writer)
+{
+  HyScanDataWriterPrivate *priv;
+  HyScanDB *db;
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), NULL);
+
+  priv = writer->priv;
+
+  g_mutex_lock (&priv->lock);
+  db = g_object_ref (priv->db);
+  g_mutex_unlock (&priv->lock);
+
+  return db;
+}
+
+/**
  * hyscan_data_writer_set_operator_name:
  * @writer: указатель на #HyScanDataWriter
  * @name: имя оператора
@@ -947,6 +972,51 @@ hyscan_data_writer_sonar_set_offset (HyScanDataWriter          *writer,
 }
 
 /**
+ * hyscan_data_writer_create_project:
+ * @writer: указатель на #HyScanDataWriter
+ * @project_name: название проекта
+ * @date_time: дата и время создания проека и галса или -1
+ *
+ * Функция создаёт проект. Пользователь может указать дату и время
+ * создания проекта отличные от текущих. Дата и время указываются
+ * в микросекундах прошедших с 1 января 1970 для временной зоны UTC. Если
+ * пользователь передаст отрицательное значение, будут использованы текущие
+ * дата и время.
+ *
+ * Returns: %TRUE если проект создан, иначе %FALSE.
+ */
+gboolean
+hyscan_data_writer_create_project (HyScanDataWriter *writer,
+                                   const gchar      *project_name,
+                                   gint64            date_time)
+{
+  HyScanDataWriterPrivate *priv;
+  HyScanDB *db;
+  gboolean status = FALSE;
+
+  g_return_val_if_fail (HYSCAN_IS_DATA_WRITER (writer), FALSE);
+
+  priv = writer->priv;
+
+  g_mutex_lock (&priv->lock);
+  db = priv->db != NULL ? g_object_ref (priv->db) : NULL;
+  g_mutex_unlock (&priv->lock);
+
+  if (db == NULL)
+    goto exit;
+
+  /* Текущие дата и время. */
+  if (date_time < 0)
+    date_time = g_get_real_time ();
+
+  status = hyscan_data_writer_create_project_real (db, project_name, date_time);
+  g_object_unref (db);
+
+exit:
+  return status;
+}
+
+/**
  * hyscan_data_writer_start:
  * @writer: указатель на #HyScanDataWriter
  * @project_name: название проекта для записи данных
@@ -1018,7 +1088,7 @@ hyscan_data_writer_start (HyScanDataWriter      *writer,
     date_time = g_get_real_time ();
 
   /* Создаём проект, если он еще не создан. */
-  if (!hyscan_data_writer_create_project (priv->db, project_name, date_time))
+  if (!hyscan_data_writer_create_project_real (priv->db, project_name, date_time))
     goto exit;
 
   /* Открываем проект. */

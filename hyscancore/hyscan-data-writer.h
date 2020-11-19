@@ -73,6 +73,9 @@ void                   hyscan_data_writer_set_db               (HyScanDataWriter
                                                                 HyScanDB                      *db);
 
 HYSCAN_API
+HyScanDB *             hyscan_data_writer_get_db               (HyScanDataWriter              *writer);
+
+HYSCAN_API
 void                   hyscan_data_writer_set_operator_name    (HyScanDataWriter              *writer,
                                                                 const gchar                   *name);
 
@@ -93,6 +96,11 @@ HYSCAN_API
 void                   hyscan_data_writer_sonar_set_offset     (HyScanDataWriter              *writer,
                                                                 HyScanSourceType               source,
                                                                 const HyScanAntennaOffset     *offset);
+
+HYSCAN_API
+gboolean               hyscan_data_writer_create_project       (HyScanDataWriter              *writer,
+                                                                const gchar                   *project_name,
+                                                                gint64                         date_time);
 
 HYSCAN_API
 gboolean               hyscan_data_writer_start                (HyScanDataWriter              *writer,

@@ -45,8 +45,8 @@
  * Класс содержит следующие параметры:
  * - /channel-rmc - номер канала для чтения строк RMC
  * - /channel-dpt - номер канала для чтения строк DPT
- * - /channe-port - включено отображения левого борта ГБО
- * - /channe-starboard - включено отображения правого борта ГБО
+ * - /channel-port - включено отображения левого борта ГБО
+ * - /channel-starboard - включено отображения правого борта ГБО
  * - /quality - минимальное значение качества акустических данных, которые необходимо отображать
  *
  * Чтобы сбросить параметры обработки (например, чтобы использовать в галсе
@@ -263,6 +263,7 @@ hyscan_map_track_param_object_finalize (GObject *object)
   g_free (priv->profile);
   g_clear_object (&priv->db);
   g_clear_object (&priv->defaults);
+  g_clear_object (&priv->schema);
 
   G_OBJECT_CLASS (hyscan_map_track_param_parent_class)->finalize (object);
 }

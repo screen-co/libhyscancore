@@ -222,7 +222,7 @@ hyscan_data_estimator_get_leak_size (HyScanDataEstimator *self)
   HyScanDataEstimatorPrivate *priv = self->priv;
 
   guint32 refer_signal_size;
-  guint64 refer_signal_time;
+  gint64 refer_signal_time;
 
   if (hyscan_acoustic_data_get_signal (priv->signal_data,
                                        priv->signal_row_index,
@@ -271,7 +271,6 @@ hyscan_data_estimator_cut_leak (HyScanDataEstimator *self,
     }
   else
     {
-      HyScanDataEstimatorPrivate *priv = self->priv;
       memset (source_signal, 0, sizeof (gfloat) * leak_size);
       return 0;
     }
@@ -334,7 +333,7 @@ hyscan_data_estimator_count_noise_std (HyScanDataEstimator *self,
 {
   HyScanDataEstimatorPrivate *priv = self->priv;
 
-  gfloat* gained_noise;
+  const gfloat* gained_noise;
   gfloat* noise_ampls;
 
   if (priv->prev_noise_index == noise_row_index)
@@ -699,8 +698,6 @@ hyscan_data_estimator_get_navig_quality (HyScanDataEstimator *self,
                                          guint32             *quality)
 {
   HyScanDataEstimatorPrivate *priv = self->priv;
-
-  guint32 source_signal_size;
 
   guint32 lindex, rindex;
   gint64  ltime, rtime;

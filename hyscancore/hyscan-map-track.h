@@ -141,7 +141,7 @@ struct _HyScanMapTrackMod
  */
 struct _HyScanMapTrackPoint
 {
-  HyScanMapTrackSource           source;
+  HyScanMapTrackSource            source;
   guint32                         index;
   gint64                          time;
 

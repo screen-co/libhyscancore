@@ -3,6 +3,7 @@
 #include "hyscan-projector.h"
 #include "hyscan-depthometer.h"
 #include "hyscan-map-track-param.h"
+#include <string.h>
 
 #define CACHE_DATA_MAGIC       0x64747071              /* Идентификатор заголовка записи кэша. */
 
@@ -169,6 +170,7 @@ hyscan_track_proj_quality_object_constructed (GObject *object)
     priv->depthometer = hyscan_map_track_param_get_depthometer (track_param, priv->cache);
 
     g_object_unref (track_param);
+    g_object_unref (list);
   }
 
   priv->header_buffer = hyscan_buffer_new ();
@@ -206,6 +208,8 @@ hyscan_track_proj_quality_object_finalize (GObject *object)
   g_clear_object (&priv->estimator);
   g_clear_object (&priv->projector);
 
+  g_free (priv->buff_counts);
+  g_free (priv->buff_values);
   g_array_free (priv->squashed_array, TRUE);
 
   g_object_unref (priv->header_buffer);
