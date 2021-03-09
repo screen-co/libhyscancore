@@ -179,6 +179,11 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
   if (priv->writer == NULL)
     return FALSE;
 
+  hyscan_data_writer_acoustic_create (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 1,
+                                      NULL, NULL, &priv->info1);
+  hyscan_data_writer_acoustic_create (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2,
+                                      NULL, NULL, &priv->info2);
+
   hyscan_buffer_set_complex_float (priv->values1, NULL, n_points);
   hyscan_buffer_set_complex_float (priv->values2, NULL, n_points);
 
@@ -203,12 +208,12 @@ hyscan_fl_gen_generate (HyScanFLGen *fl_gen,
     }
 
   status = hyscan_data_writer_acoustic_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 1,
-                                                 FALSE, time, &priv->info1, priv->values1);
+                                                 FALSE, time, priv->values1);
   if (!status)
     return FALSE;
 
   status = hyscan_data_writer_acoustic_add_data (priv->writer, HYSCAN_SOURCE_FORWARD_LOOK, 2,
-                                                 FALSE, time, &priv->info2, priv->values2);
+                                                 FALSE, time, priv->values2);
   if (!status)
     return FALSE;
 

@@ -51,6 +51,7 @@
 gchar *db_uri = NULL;
 gchar *project_name = NULL;
 gchar *track_name = NULL;
+gchar *track_name2 = NULL;
 gchar *schema_file = NULL;
 HyScanTrackPlan plan = {.start = {30.11, 50.12}, .end = {30.12, 50.13}, .speed = 1.5};
 
@@ -63,6 +64,7 @@ HyScanControl *control2;
 HyScanControl *control;
 HyScanDevice *device;
 HyScanSensor *sensor;
+HyScanActuator *actuator;
 HyScanSonar *sonar;
 HyScanParam *param;
 
@@ -88,6 +90,20 @@ get_sonar_device (HyScanSourceType source)
   HyScanDummyDeviceType device_type;
 
   device_type = hyscan_dummy_device_get_type_by_source (source);
+  if (device_type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
+    return device1;
+  if (device_type == HYSCAN_DUMMY_DEVICE_PROFILER)
+    return device2;
+
+  return NULL;
+}
+
+HyScanDummyDevice *
+get_actuator_device (const gchar *actuator)
+{
+  HyScanDummyDeviceType device_type;
+
+  device_type = hyscan_dummy_device_get_type_by_actuator (actuator);
   if (device_type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
     return device1;
   if (device_type == HYSCAN_DUMMY_DEVICE_PROFILER)
@@ -140,6 +156,10 @@ verify_source (const HyScanSonarInfoSource *source1,
   /* Описание источника данных. */
   if (g_strcmp0 (source1->description, source2->description) != 0)
     g_error ("description failed");
+
+  /* Название привода. */
+  if (g_strcmp0 (source1->actuator, source2->actuator) != 0)
+    g_error ("actuator failed");
 
   /* Смещение антенн по умолчанию. */
   if ((source1->offset != NULL) ||
@@ -216,6 +236,27 @@ verify_source (const HyScanSonarInfoSource *source1,
           g_error ("tvg failed");
         }
     }
+}
+
+void
+verify_actuator (const HyScanActuatorInfoActuator *actuator1,
+                 const HyScanActuatorInfoActuator *actuator2)
+{
+  if (g_strcmp0 (actuator1->name, actuator2->name) != 0)
+    g_error ("name failed");
+  if (g_strcmp0 (actuator1->dev_id, actuator2->dev_id) != 0)
+    g_error ("dev-id failed");
+  if (g_strcmp0 (actuator1->description, actuator2->description) != 0)
+    g_error ("decripton failed");
+
+      if ((actuator1->capabilities != actuator2->capabilities) ||
+          (actuator1->min_range != actuator2->min_range) ||
+          (actuator1->max_range != actuator2->max_range) ||
+          (actuator1->min_speed != actuator2->min_speed) ||
+          (actuator1->max_speed != actuator2->max_speed))
+        {
+          g_error ("actuator info failed");
+        }
 }
 
 void
@@ -419,6 +460,48 @@ check_sources (void)
 }
 
 void
+check_actuators (void)
+{
+  const gchar * orig_actuators[] =
+    {
+      "actuator-1", "actuator-2",
+      NULL
+    };
+
+  const gchar * const *actuators;
+  guint32 n_actuators;
+  guint32 i, j;
+
+  /* Число приводов. */
+  actuators = hyscan_control_actuators_list (control);
+  n_actuators = g_strv_length ((gchar**)actuators);
+  if (n_actuators != ((sizeof (orig_actuators) / sizeof (gchar*)) - 1))
+    g_error ("n_actuators mismatch");
+
+  for (i = 0; i < n_actuators; i++)
+    {
+      const HyScanActuatorInfoActuator *info;
+      HyScanActuatorInfoActuator *orig_info;
+
+      orig_info = hyscan_dummy_device_get_actuator_info (orig_actuators[i]);
+
+      /* Проверяем список датчиков. */
+      actuators = hyscan_control_actuators_list (control);
+      for (j = 0; j < n_actuators; j++)
+        if (g_strcmp0 (orig_actuators[i], actuators[j]) == 0)
+          break;
+      if (j == n_actuators)
+        g_error ("actuators list failed");
+
+      g_message ("Check actuator %s", actuators[i]);
+      info = hyscan_control_actuator_get_info (control, orig_actuators[i]);
+      verify_actuator (orig_info, info);
+
+      hyscan_actuator_info_actuator_free (orig_info);
+    }
+}
+
+void
 check_state_signal (void)
 {
   const gchar * const *devices;
@@ -472,6 +555,19 @@ check_state_signal (void)
     {
       if (hyscan_control_device_get_status (control, devices[i]) != HYSCAN_DEVICE_STATUS_OK)
         g_error ("%s isn't activated", devices[i]);
+    }
+}
+
+void
+check_device_sync (void)
+{
+  if (!hyscan_device_sync (device))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_sync (device1) ||
+      !hyscan_dummy_device_check_sync (device2))
+    {
+      g_error ("param failed");
     }
 }
 
@@ -657,15 +753,16 @@ check_sonar_tvg_disable (HyScanSourceType source)
 }
 
 void
-check_sonar_start (void)
+check_sonar_start (guint iteration)
 {
   HyScanTrackType track_type = HYSCAN_TRACK_SURVEY;
+  const gchar *real_track_name = (iteration == 1) ? track_name : track_name2;
 
-  if (!hyscan_sonar_start (sonar, project_name, track_name, track_type, &plan))
+  if (!hyscan_sonar_start (sonar, project_name, real_track_name, track_type, &plan))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_start (device1, project_name, track_name, track_type, &plan) ||
-      !hyscan_dummy_device_check_start (device2, project_name, track_name, track_type, &plan))
+  if (!hyscan_dummy_device_check_start (device1, project_name, real_track_name, track_type, &plan) ||
+      !hyscan_dummy_device_check_start (device2, project_name, real_track_name, track_type, &plan))
     {
       g_error ("param_failed");
     }
@@ -685,25 +782,54 @@ check_sonar_stop (void)
 }
 
 void
-check_sonar_sync (void)
+check_actuator_disable (const gchar *actuator_name)
 {
-  if (!hyscan_sonar_sync (sonar))
+  HyScanDummyDevice *device = get_actuator_device (actuator_name);
+
+  if (!hyscan_actuator_disable (actuator, actuator_name))
     g_error ("call failed");
 
-  if (!hyscan_dummy_device_check_sync (device1) ||
-      !hyscan_dummy_device_check_sync (device2))
-    {
-      g_error ("param failed");
-    }
+  if (!hyscan_dummy_device_check_actuator_disable (device, actuator_name))
+    g_error ("param failed");
 }
 
 void
-check_sensor_data (const gchar *sensor)
+check_actuator_scan (const gchar *actuator_name)
+{
+  HyScanDummyDevice *device = get_actuator_device (actuator_name);
+  gdouble from = g_random_double ();
+  gdouble to = g_random_double ();
+  gdouble speed = g_random_double ();
+
+  if (!hyscan_actuator_scan (actuator, actuator_name, from, to, speed))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_actuator_scan (device, actuator_name, from, to, speed))
+    g_error ("param failed");
+}
+
+void
+check_actuator_manual (const gchar *actuator_name)
+{
+  HyScanDummyDevice *device = get_actuator_device (actuator_name);
+  gdouble angle = g_random_double ();
+
+  if (!hyscan_actuator_manual (actuator, actuator_name, angle))
+    g_error ("call failed");
+
+  if (!hyscan_dummy_device_check_actuator_manual (device, actuator_name, angle))
+    g_error ("param failed");
+}
+
+void
+check_sensor_data (guint        iteration,
+                   const gchar *sensor)
 {
   HyScanNMEAData *nmea;
 
   HyScanAntennaOffset  offset;
   HyScanAntennaOffset *orig_offset;
+  const gchar *real_track_name;
 
   gchar *orig_data;
   const gchar *data;
@@ -714,7 +840,8 @@ check_sensor_data (const gchar *sensor)
   orig_offset = hyscan_dummy_device_get_sensor_offset (sensor);
 
   /* открываем канал данных. */
-  nmea = hyscan_nmea_data_new_sensor (db, project_name, track_name, sensor);
+  real_track_name = (iteration == 1) ? track_name : track_name2;
+  nmea = hyscan_nmea_data_new_sensor (db, project_name, real_track_name, sensor);
   if (nmea == NULL)
     g_error ("can't open nmea channel for sensor %s", sensor);
 
@@ -738,12 +865,14 @@ check_sensor_data (const gchar *sensor)
 }
 
 void
-check_sonar_data (HyScanSourceType source)
+check_sonar_data (guint            iteration,
+                  HyScanSourceType source)
 {
   HyScanAcousticData *reader;
 
   HyScanAntennaOffset  offset;
   HyScanAntennaOffset *orig_offset;
+  const gchar *real_track_name;
 
   HyScanAcousticDataInfo orig_info;
   HyScanAcousticDataInfo info;
@@ -762,7 +891,8 @@ check_sonar_data (HyScanSourceType source)
   orig_info = hyscan_dummy_device_get_acoustic_info (source);
 
   /* Открываем канал данных. */
-  reader = hyscan_acoustic_data_new (db, NULL, project_name, track_name, source, 1, FALSE);
+  real_track_name = (iteration == 1) ? track_name : track_name2;
+  reader = hyscan_acoustic_data_new (db, NULL, project_name, real_track_name, source, 1, FALSE);
 
   if (reader == NULL)
     g_error ("can't open %s data", hyscan_source_get_id_by_type (source));
@@ -821,6 +951,7 @@ main (int    argc,
   HyScanAntennaOffset *offset;
   const HyScanSourceType *sources;
   const gchar * const *sensors;
+  const gchar * const *actuators;
   guint n_sources;
   guint i;
 
@@ -870,6 +1001,8 @@ main (int    argc,
     g_strfreev (args);
   }
 
+  track_name2 = g_strdup_printf ("%s-2", track_name);
+
   /* Открываем базу данных. */
   db = hyscan_db_new (db_uri);
   if (db == NULL)
@@ -918,6 +1051,7 @@ main (int    argc,
   hyscan_control_device_bind (control);
 
   device = HYSCAN_DEVICE (control);
+  actuator = HYSCAN_ACTUATOR (control);
   sensor = HYSCAN_SENSOR (control);
   sonar = HYSCAN_SONAR (control);
   param = HYSCAN_PARAM (control);
@@ -938,6 +1072,7 @@ main (int    argc,
   /* Список датчиков и источников данных. */
   sensors = hyscan_control_sensors_list (control);
   sources = hyscan_control_sources_list (control, &n_sources);
+  actuators = hyscan_control_actuators_list (control);
 
   /* Смещение антенн источников данных. */
   g_message ("Check hyscan_sonar_antenna_set_offset");
@@ -989,6 +1124,10 @@ main (int    argc,
   g_message ("Check sources info");
   check_sources ();
 
+  /* Проверка информации о приводах. */
+  g_message ("Check actuators info");
+  check_actuators ();
+
   /* Проверка интерфейса HyScanParam. */
   g_message ("Check hyscan_param");
   check_params (device1);
@@ -999,6 +1138,9 @@ main (int    argc,
   check_state_signal ();
 
   /* Проверка интерфейса HyScanDevice. */
+  g_message ("Check hyscan_device_sync");
+  check_device_sync ();
+
   g_message ("Check hyscan_device_set_sound_velocity");
   check_device_set_sound_velocity ();
 
@@ -1049,23 +1191,43 @@ main (int    argc,
     check_sonar_tvg_disable (sources[i]);
 
   g_message ("Check hyscan_sonar_start");
-  check_sonar_start ();
-  hyscan_dummy_device_send_data (device1);
-  hyscan_dummy_device_send_data (device2);
+  check_sonar_start (1);
+  hyscan_dummy_device_send_data (device1, 1);
+  hyscan_dummy_device_send_data (device2, 1);
+
+  g_message ("Check hyscan_sonar_start - switch track");
+  check_sonar_start (2);
+  hyscan_dummy_device_send_data (device1, 2);
+  hyscan_dummy_device_send_data (device2, 2);
 
   g_message ("Check hyscan_sonar_stop");
   check_sonar_stop ();
 
-  g_message ("Check hyscan_sonar_sync");
-  check_sonar_sync ();
+  g_message ("Check hyscan_actuator_disable");
+  for (i = 0; actuators[i] != NULL; i++)
+    check_actuator_disable (actuators[i]);
+
+  g_message ("Check hyscan_actuator_scan");
+  for (i = 0; actuators[i] != NULL; i++)
+    check_actuator_scan (actuators[i]);
+
+  g_message ("Check hyscan_actuator_manual");
+  for (i = 0; actuators[i] != NULL; i++)
+    check_actuator_manual (actuators[i]);
 
   g_message ("Check sensor data");
   for (i = 0; sensors[i] != NULL; i++)
-    check_sensor_data (sensors[i]);
+    {
+      check_sensor_data (1, sensors[i]);
+      check_sensor_data (2, sensors[i]);
+    }
 
   g_message ("Check sonar data");
   for (i = 0; i < n_sources; i++)
-    check_sonar_data (sources[i]);
+    {
+      check_sonar_data (1, sources[i]);
+      check_sonar_data (2, sources[i]);
+    }
 
   g_message ("Check hyscan_device_disconnect");
   check_device_disconnect ();
@@ -1081,6 +1243,7 @@ main (int    argc,
   g_object_unref (db);
 
   g_free (project_name);
+  g_free (track_name2);
   g_free (track_name);
   g_free (db_uri);
   g_free (schema_file);

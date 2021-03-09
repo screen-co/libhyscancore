@@ -63,47 +63,54 @@ struct _HyScanControlProxyClass
 };
 
 HYSCAN_API
-GType                          hyscan_control_proxy_get_type           (void);
+GType                              hyscan_control_proxy_get_type          (void);
 
 HYSCAN_API
-HyScanControlProxy *           hyscan_control_proxy_new                (HyScanControl                  *control,
-                                                                        const gchar                    *dev_id);
+HyScanControlProxy *               hyscan_control_proxy_new               (HyScanControl                  *control,
+                                                                           const gchar                    *dev_id);
 
 HYSCAN_API
-void                           hyscan_control_proxy_set_scale          (HyScanControlProxy             *proxy,
-                                                                        HyScanSourceType                source,
-                                                                        guint                           line_scale,
-                                                                        guint                           point_scale);
+void                               hyscan_control_proxy_set_scale         (HyScanControlProxy             *proxy,
+                                                                           HyScanSourceType                source,
+                                                                           guint                           line_scale,
+                                                                           guint                           point_scale);
 
 HYSCAN_API
-void                           hyscan_control_proxy_set_data_type      (HyScanControlProxy             *proxy,
-                                                                        HyScanSourceType                source,
-                                                                        HyScanDataType                  type);
+void                               hyscan_control_proxy_set_data_type     (HyScanControlProxy             *proxy,
+                                                                           HyScanSourceType                source,
+                                                                           HyScanDataType                  type);
 
 HYSCAN_API
-const gchar * const *          hyscan_control_proxy_sensors_list      (HyScanControlProxy              *proxy);
+const gchar * const *              hyscan_control_proxy_sensors_list      (HyScanControlProxy              *proxy);
 
 HYSCAN_API
-const HyScanSourceType *       hyscan_control_proxy_sources_list       (HyScanControlProxy             *proxy,
-                                                                        guint32                        *n_sources);
+const HyScanSourceType *           hyscan_control_proxy_sources_list      (HyScanControlProxy             *proxy,
+                                                                           guint32                        *n_sources);
 
 HYSCAN_API
-const HyScanSensorInfoSensor * hyscan_control_proxy_sensor_get_info    (HyScanControlProxy             *proxy,
-                                                                        const gchar                    *sensor);
+const gchar * const *              hyscan_control_proxy_actuators_list    (HyScanControlProxy             *control);
 
 HYSCAN_API
-const HyScanSonarInfoSource *  hyscan_control_proxy_source_get_info    (HyScanControlProxy             *proxy,
-                                                                        HyScanSourceType                source);
+const HyScanSensorInfoSensor *     hyscan_control_proxy_sensor_get_info   (HyScanControlProxy             *proxy,
+                                                                           const gchar                    *sensor);
 
 HYSCAN_API
-void                           hyscan_control_proxy_sensor_set_sender  (HyScanControlProxy             *proxy,
-                                                                        const gchar                    *sensor,
-                                                                        gboolean                        enable);
+const HyScanSonarInfoSource *      hyscan_control_proxy_source_get_info   (HyScanControlProxy             *proxy,
+                                                                           HyScanSourceType                source);
 
 HYSCAN_API
-void                           hyscan_control_proxy_source_set_sender  (HyScanControlProxy             *proxy,
-                                                                        HyScanSourceType                source,
-                                                                        gboolean                        enable);
+const HyScanActuatorInfoActuator * hyscan_control_proxy_actuator_get_info (HyScanControlProxy             *proxy,
+                                                                           const gchar                    *actuator);
+
+HYSCAN_API
+void                               hyscan_control_proxy_sensor_set_sender (HyScanControlProxy             *proxy,
+                                                                           const gchar                    *sensor,
+                                                                           gboolean                        enable);
+
+HYSCAN_API
+void                               hyscan_control_proxy_source_set_sender (HyScanControlProxy             *proxy,
+                                                                           HyScanSourceType                source,
+                                                                           gboolean                        enable);
 
 G_END_DECLS
 
