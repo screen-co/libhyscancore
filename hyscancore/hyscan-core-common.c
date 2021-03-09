@@ -97,6 +97,8 @@ hyscan_core_params_set_sensor_info (HyScanDB    *db,
 gboolean
 hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
                                            gint32                  channel_id,
+                                           const gchar            *description,
+                                           const gchar            *actuator,
                                            HyScanAcousticDataInfo *info)
 {
   HyScanParamList *param_list;
@@ -109,6 +111,8 @@ hyscan_core_params_set_acoustic_data_info (HyScanDB               *db,
 
   param_list = hyscan_param_list_new ();
 
+  hyscan_param_list_set_string  (param_list, "/description", description);
+  hyscan_param_list_set_string  (param_list, "/actuator", actuator);
   hyscan_param_list_set_string  (param_list, "/data/type", hyscan_data_get_id_by_type (info->data_type));
   hyscan_param_list_set_double  (param_list, "/data/rate", info->data_rate);
   hyscan_param_list_set_double  (param_list, "/signal/frequency", info->signal_frequency);

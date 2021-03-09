@@ -38,6 +38,7 @@
 #include <hyscan-device-driver.h>
 #include <hyscan-sonar-driver.h>
 #include <hyscan-sensor-driver.h>
+#include <hyscan-actuator-schema.h>
 
 G_BEGIN_DECLS
 
@@ -79,97 +80,114 @@ struct _HyScanDummyDeviceClass
   GObjectClass parent_class;
 };
 
-GType                    hyscan_dummy_device_get_type                 (void);
+GType                        hyscan_dummy_device_get_type                 (void);
 
-HyScanDummyDevice *      hyscan_dummy_device_new                      (HyScanDummyDeviceType           type);
+HyScanDummyDevice *          hyscan_dummy_device_new                      (HyScanDummyDeviceType           type);
 
-const gchar *            hyscan_dummy_device_get_id                   (HyScanDummyDevice              *dummy);
+const gchar *                hyscan_dummy_device_get_id                   (HyScanDummyDevice              *dummy);
 
-void                     hyscan_dummy_device_change_state             (HyScanDummyDevice              *dummy);
+void                         hyscan_dummy_device_change_state             (HyScanDummyDevice              *dummy);
 
-void                     hyscan_dummy_device_send_data                (HyScanDummyDevice              *dummy);
+void                         hyscan_dummy_device_send_data                (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_sound_velocity     (HyScanDummyDevice              *dummy,
-                                                                       GList                          *svp);
+gboolean                     hyscan_dummy_device_check_sound_velocity     (HyScanDummyDevice              *dummy,
+                                                                           GList                          *svp);
 
-gboolean                 hyscan_dummy_device_check_disconnect         (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_disconnect         (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_antenna_offset     (HyScanDummyDevice              *dummy,
-                                                                       HyScanAntennaOffset            *offset);
+gboolean                     hyscan_dummy_device_check_antenna_offset     (HyScanDummyDevice              *dummy,
+                                                                           HyScanAntennaOffset            *offset);
 
-gboolean                 hyscan_dummy_device_check_receiver_time      (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         receive_time,
-                                                                       gdouble                         wait_time);
+gboolean                     hyscan_dummy_device_check_receiver_time      (HyScanDummyDevice              *dummy,
+                                                                           gdouble                         receive_time,
+                                                                           gdouble                         wait_time);
 
-gboolean                 hyscan_dummy_device_check_receiver_auto      (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_receiver_auto      (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_receiver_disable   (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_receiver_disable   (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_generator_preset   (HyScanDummyDevice              *dummy,
-                                                                       gint64                          preset);
+gboolean                     hyscan_dummy_device_check_generator_preset   (HyScanDummyDevice              *dummy,
+                                                                           gint64                          preset);
 
-gboolean                 hyscan_dummy_device_check_generator_disable  (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_generator_disable  (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_tvg_auto           (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         level,
-                                                                       gdouble                         sensitivity);
+gboolean                     hyscan_dummy_device_check_tvg_auto           (HyScanDummyDevice              *dummy,
+                                                                           gdouble                         level,
+                                                                           gdouble                         sensitivity);
 
-gboolean                 hyscan_dummy_device_check_tvg_constant       (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         gain);
+gboolean                     hyscan_dummy_device_check_tvg_constant       (HyScanDummyDevice              *dummy,
+                                                                           gdouble                         gain);
 
-gboolean                 hyscan_dummy_device_check_tvg_linear_db      (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         gain0,
-                                                                       gdouble                         gain_step);
+gboolean                     hyscan_dummy_device_check_tvg_linear_db      (HyScanDummyDevice              *dummy,
+                                                                           gdouble                         gain0,
+                                                                           gdouble                         gain_step);
 
-gboolean                 hyscan_dummy_device_check_tvg_logarithmic    (HyScanDummyDevice              *dummy,
-                                                                       gdouble                         gain0,
-                                                                       gdouble                         beta,
-                                                                       gdouble                         alpha);
+gboolean                     hyscan_dummy_device_check_tvg_logarithmic    (HyScanDummyDevice              *dummy,
+                                                                           gdouble                         gain0,
+                                                                           gdouble                         beta,
+                                                                           gdouble                         alpha);
 
-gboolean                 hyscan_dummy_device_check_tvg_disable        (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_tvg_disable        (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_start              (HyScanDummyDevice              *dummy,
-                                                                       const gchar                    *project_name,
-                                                                       const gchar                    *track_name,
-                                                                       HyScanTrackType                 track_type,
-                                                                       const HyScanTrackPlan          *track_plan);
+gboolean                     hyscan_dummy_device_check_start              (HyScanDummyDevice              *dummy,
+                                                                           const gchar                    *project_name,
+                                                                           const gchar                    *track_name,
+                                                                           HyScanTrackType                 track_type,
+                                                                           const HyScanTrackPlan          *track_plan);
 
-gboolean                 hyscan_dummy_device_check_stop               (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_stop               (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_sync               (HyScanDummyDevice              *dummy);
+gboolean                     hyscan_dummy_device_check_sync               (HyScanDummyDevice              *dummy);
 
-gboolean                 hyscan_dummy_device_check_sensor_enable      (HyScanDummyDevice              *dummy,
-                                                                       const gchar                    *sensor);
+gboolean                     hyscan_dummy_device_check_sensor_enable      (HyScanDummyDevice              *dummy,
+                                                                           const gchar                    *sensor);
 
-gboolean                 hyscan_dummy_device_check_params             (HyScanDummyDevice              *dummy,
-                                                                       gint32                          info_id,
-                                                                       gint32                          param_id,
-                                                                       gint32                          system_id);
+gboolean                     hyscan_dummy_device_check_actuator_disable   (HyScanDummyDevice              *dummy,
+                                                                           const gchar                    *actuator);
 
-HyScanDummyDeviceType    hyscan_dummy_device_get_type_by_sensor       (const gchar                    *sensor);
+gboolean                     hyscan_dummy_device_check_actuator_scan      (HyScanDummyDevice              *dummy,
+                                                                           const gchar                    *actuator,
+                                                                           gdouble                         from,
+                                                                           gdouble                         to,
+                                                                           gdouble                         speed);
 
-HyScanDummyDeviceType    hyscan_dummy_device_get_type_by_source       (HyScanSourceType                source);
+gboolean                     hyscan_dummy_device_check_actuator_manual    (HyScanDummyDevice              *dummy,
+                                                                           const gchar                    *actuator,
+                                                                           gdouble                         angle);
 
-HyScanAntennaOffset *    hyscan_dummy_device_get_sensor_offset        (const gchar                    *sensor);
+gboolean                     hyscan_dummy_device_check_params             (HyScanDummyDevice              *dummy,
+                                                                           gint32                          info_id,
+                                                                           gint32                          param_id,
+                                                                           gint32                          system_id);
 
-HyScanAntennaOffset *    hyscan_dummy_device_get_source_offset        (HyScanSourceType                source);
+HyScanDummyDeviceType        hyscan_dummy_device_get_type_by_sensor       (const gchar                    *sensor);
 
-HyScanSensorInfoSensor * hyscan_dummy_device_get_sensor_info          (const gchar                    *sensor);
+HyScanDummyDeviceType        hyscan_dummy_device_get_type_by_source       (HyScanSourceType                source);
 
-HyScanSonarInfoSource *  hyscan_dummy_device_get_source_info          (HyScanSourceType                source);
+HyScanDummyDeviceType        hyscan_dummy_device_get_type_by_actuator     (const gchar                    *actuator);
 
-HyScanAcousticDataInfo   hyscan_dummy_device_get_acoustic_info        (HyScanSourceType                source);
+HyScanAntennaOffset *        hyscan_dummy_device_get_sensor_offset        (const gchar                    *sensor);
 
-gchar *                  hyscan_dummy_device_get_sensor_data          (const gchar                    *sensor,
-                                                                       gint64                         *time);
+HyScanAntennaOffset *        hyscan_dummy_device_get_source_offset        (HyScanSourceType                source);
 
-HyScanComplexFloat *     hyscan_dummy_device_get_complex_float_data   (HyScanSourceType                source,
-                                                                       guint32                        *n_points,
-                                                                       gint64                         *time);
+HyScanSensorInfoSensor *     hyscan_dummy_device_get_sensor_info          (const gchar                    *sensor);
 
-gfloat *                 hyscan_dummy_device_get_float_data           (HyScanSourceType                source,
-                                                                       guint32                        *n_points,
-                                                                       gint64                         *time);
+HyScanSonarInfoSource *      hyscan_dummy_device_get_source_info          (HyScanSourceType                source);
+
+HyScanActuatorInfoActuator * hyscan_dummy_device_get_actuator_info        (const gchar                    *actuator);
+
+HyScanAcousticDataInfo       hyscan_dummy_device_get_acoustic_info        (HyScanSourceType                source);
+
+gchar *                      hyscan_dummy_device_get_sensor_data          (const gchar                    *sensor,
+                                                                           gint64                         *time);
+
+HyScanComplexFloat *         hyscan_dummy_device_get_complex_float_data   (HyScanSourceType                source,
+                                                                           guint32                        *n_points,
+                                                                           gint64                         *time);
+
+gfloat *                     hyscan_dummy_device_get_float_data           (HyScanSourceType                source,
+                                                                           guint32                        *n_points,
+                                                                           gint64                         *time);
 
 G_END_DECLS
 
