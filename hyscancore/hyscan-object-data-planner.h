@@ -67,8 +67,7 @@ HYSCAN_API
 GType                  hyscan_object_data_planner_get_type         (void);
 
 HYSCAN_API
-HyScanObjectData *     hyscan_object_data_planner_new              (HyScanDB    *db,
-                                                                    const gchar *project);
+HyScanObjectData *     hyscan_object_data_planner_new              (void);
 
 G_END_DECLS
 

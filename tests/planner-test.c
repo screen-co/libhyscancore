@@ -94,7 +94,7 @@ test_zones (HyScanDB *db,
 {
   HyScanObjectData *planner;
   gchar *zone_id;
-  gchar **zones;
+  GList *zones;
   HyScanGeoPoint *points;
   HyScanPlannerZone *zone;
   HyScanPlannerZone new_zone;
@@ -102,9 +102,11 @@ test_zones (HyScanDB *db,
   gboolean status;
 
   gsize points_len = 10;
-  gsize i = 0;
+  gsize i;
 
-  planner = hyscan_object_data_planner_new (db, project_name);
+  planner = hyscan_object_data_planner_new ();
+  if (!hyscan_object_data_project_open (planner, db, project_name))
+    g_error ("Failed to open project");
 
   /* Добавляем зону. */
   new_zone.type = HYSCAN_TYPE_PLANNER_ZONE;
@@ -113,16 +115,16 @@ test_zones (HyScanDB *db,
   new_zone.name = "Zone 1";
   new_zone.ctime = 1234;
   new_zone.mtime = 1234;
-  status = hyscan_object_data_add (planner, (HyScanObject *) &new_zone, &zone_id);
+  status = hyscan_object_store_add (HYSCAN_OBJECT_STORE (planner), (HyScanObject *) &new_zone, &zone_id);
   g_assert (status != FALSE);
 
   /* Проверяем, что зона добавлена. */
-  zones = hyscan_object_data_get_ids (planner, NULL);
-  g_assert_cmpint (g_strv_length (zones), ==, 1);
-  g_assert_cmpstr (zone_id, ==, zones[0]);
-  g_strfreev (zones);
+  zones = hyscan_object_store_get_ids (HYSCAN_OBJECT_STORE (planner));
+  g_assert_cmpint (g_list_length (zones), ==, 1);
+  g_assert_cmpstr (zone_id, ==, ((HyScanObjectId *) g_list_nth_data (zones, 0))->id);
+  g_list_free_full (zones, (GDestroyNotify) hyscan_object_id_free);
 
-  zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, zone_id);
+  zone = (HyScanPlannerZone *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner), HYSCAN_TYPE_PLANNER_ZONE, zone_id);
   g_assert (HYSCAN_IS_PLANNER_ZONE (zone));
   g_assert_cmpstr (zone->name, ==, new_zone.name);
   g_assert_cmpint (zone->ctime, ==, new_zone.ctime);
@@ -134,11 +136,11 @@ test_zones (HyScanDB *db,
   points = create_points_array (points_len);
   zone->points = create_points_array (points_len);
   zone->points_len = points_len;
-  hyscan_object_data_modify (planner, zone_id, (const HyScanObject *) zone);
+  hyscan_object_store_modify (HYSCAN_OBJECT_STORE (planner), zone_id, (const HyScanObject *) zone);
   hyscan_planner_zone_free (zone);
 
   /* Проверяем, что границы установились. */
-  zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, zone_id);
+  zone = (HyScanPlannerZone *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner), HYSCAN_TYPE_PLANNER_ZONE, zone_id);
   g_assert (zone != NULL);
   g_assert_cmpint (zone->points_len, ==, points_len);
   for (i = 0; i < zone->points_len; ++i)
@@ -155,12 +157,12 @@ test_zones (HyScanDB *db,
   hyscan_planner_zone_free (zone);
 
   /* Проверяем несуществующие зоны. */
-  zone = (HyScanPlannerZone *) hyscan_object_data_get (planner, "zone-nonexistent_id");
+  zone = (HyScanPlannerZone *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner), HYSCAN_TYPE_PLANNER_ZONE, "zone-nonexistent_id");
   g_assert (zone == NULL);
 
   /* Удаляем зону. */
-  hyscan_object_data_remove (planner, zone_id);
-  zones = hyscan_object_data_get_ids (planner, NULL);
+  hyscan_object_store_remove (HYSCAN_OBJECT_STORE (planner), HYSCAN_TYPE_PLANNER_ZONE, zone_id);
+  zones = hyscan_object_store_get_ids (HYSCAN_OBJECT_STORE (planner));
   g_assert (zones == NULL);
 
   g_free (zone_id);
@@ -176,19 +178,21 @@ test_tracks (HyScanDB *db,
   gboolean status;
   gchar *track_id = NULL;
   gchar *zone_id = NULL;
-  gchar **tracks;
+  GList *tracks;
   HyScanPlannerTrack *track_obj;
   HyScanPlannerTrack track_new = {.type = HYSCAN_TYPE_PLANNER_TRACK};
   HyScanPlannerZone zone = {.type = HYSCAN_TYPE_PLANNER_ZONE};
 
-  planner = hyscan_object_data_planner_new (db, project_name);
+  planner = hyscan_object_data_planner_new ();
+  if (!hyscan_object_data_project_open (planner, db, project_name))
+    g_error ("Failed to open project");
 
   zone.name = "Тест";
   zone.points = NULL;
   zone.points_len = 0;
   zone.mtime = 0;
   zone.ctime = 0;
-  status = hyscan_object_data_add (planner, (HyScanObject *) &zone, &zone_id);
+  status = hyscan_object_store_add (HYSCAN_OBJECT_STORE (planner), (HyScanObject *) &zone, &zone_id);
   g_assert_true (status);
 
   /* Добавляем плановый галс. */
@@ -200,30 +204,36 @@ test_tracks (HyScanDB *db,
   track_new.name = "Track 1";
   track_new.number = 0;
   track_new.zone_id = zone_id;
-  status = hyscan_object_data_add (planner, (HyScanObject *) &track_new, &track_id);
+  status = hyscan_object_store_add (HYSCAN_OBJECT_STORE (planner), (HyScanObject *) &track_new, &track_id);
   g_assert_true (status);
   g_assert (track_id != NULL);
 
+#define nth_id(list, n) (((HyScanObjectId *) g_list_nth_data ((list), (n)))->id)
+
   /* Проверяем, что галс добавлен. */
-  tracks = hyscan_object_data_get_ids (planner, NULL);
-  g_assert_cmpint (g_strv_length (tracks), ==, 2);
-  g_assert ((g_str_equal (track_id, tracks[0]) && g_str_equal (zone_id, tracks[1])) ||
-            (g_str_equal (track_id, tracks[1]) && g_str_equal (zone_id, tracks[0])));
-  g_strfreev (tracks);
+  tracks = hyscan_object_store_get_ids (HYSCAN_OBJECT_STORE (planner));
+  g_assert_cmpint (g_list_length (tracks), ==, 2);
+  g_assert ((g_str_equal (track_id, nth_id (tracks, 0)) && g_str_equal (zone_id, nth_id (tracks, 1))) ||
+            (g_str_equal (track_id, nth_id (tracks, 1)) && g_str_equal (zone_id, nth_id (tracks, 0))));
+  g_list_free_full (tracks, (GDestroyNotify) hyscan_object_id_free);
 
   /* Меняем параметры галса. */
-  track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
+  track_obj = (HyScanPlannerTrack *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner),
+                                                              HYSCAN_TYPE_PLANNER_TRACK,
+                                                              track_id);
   g_assert (track_obj != NULL);
   track_obj->plan.speed = 1.0;
   hyscan_planner_track_record_append (track_obj, "rec1");
   hyscan_planner_track_record_append (track_obj, "rec2");
   hyscan_planner_track_record_append (track_obj, "rec3");
   hyscan_planner_track_record_delete (track_obj, "rec3");
-  hyscan_object_data_modify (planner, track_id, (const HyScanObject *) track_obj);
+  hyscan_object_store_modify (HYSCAN_OBJECT_STORE (planner), track_id, (const HyScanObject *) track_obj);
   hyscan_planner_track_free (track_obj);
 
   /* Проверяем, что параметры обновились. */
-  track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, track_id);
+  track_obj = (HyScanPlannerTrack *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner),
+                                                              HYSCAN_TYPE_PLANNER_TRACK,
+                                                              track_id);
   g_assert (track_obj != NULL);
   g_assert_cmpfloat (ABS (track_obj->plan.speed - 1.0), <, 1e-4);
   g_assert_cmpint (g_strv_length (track_obj->records), ==, 2);
@@ -233,14 +243,16 @@ test_tracks (HyScanDB *db,
   hyscan_planner_track_free (track_obj);
 
   /* Проверяем несуществующие галсы. */
-  track_obj = (HyScanPlannerTrack *) hyscan_object_data_get (planner, "track-nonexistent_id");
+  track_obj = (HyScanPlannerTrack *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner),
+                                                              HYSCAN_TYPE_PLANNER_TRACK,
+                                                              "track-nonexistent_id");
   g_assert (track_obj == NULL);
 
   /* Удаляем галс. */
-  status = hyscan_object_data_remove (planner, track_id) &&
-           hyscan_object_data_remove (planner, zone_id);
+  status = hyscan_object_store_remove (HYSCAN_OBJECT_STORE (planner), HYSCAN_TYPE_PLANNER_TRACK, track_id) &&
+           hyscan_object_store_remove (HYSCAN_OBJECT_STORE (planner), HYSCAN_TYPE_PLANNER_ZONE, zone_id);
   g_assert (status != FALSE);
-  tracks = hyscan_object_data_get_ids (planner, NULL);
+  tracks = hyscan_object_store_get_ids (HYSCAN_OBJECT_STORE (planner));
   g_assert (tracks == NULL);
 
   g_free (track_id);
@@ -258,23 +270,27 @@ test_origin (HyScanDB *db,
   HyScanPlannerOrigin *origin_obj;
   HyScanPlannerOrigin origin = {.type = HYSCAN_TYPE_PLANNER_ORIGIN};
 
-  planner = hyscan_object_data_planner_new (db, project_name);
+  planner = hyscan_object_data_planner_new ();
+  if (!hyscan_object_data_project_open (planner, db, project_name))
+    g_error ("Failed to open project");
 
   /* Записываем положение точки отсчета. */
   origin.origin.lat = 50.0;
   origin.origin.lon = 40.0;
-  status = hyscan_object_data_add (planner, (HyScanObject *) &origin, &origin_id);
+  status = hyscan_object_store_add (HYSCAN_OBJECT_STORE (planner), (HyScanObject *) &origin, &origin_id);
   g_assert_true (status);
 
   /* Меняем параметры ТО. */
-  origin_obj = (HyScanPlannerOrigin *) hyscan_object_data_get (planner, origin_id);
+  origin_obj = (HyScanPlannerOrigin *) hyscan_object_store_get (HYSCAN_OBJECT_STORE (planner),
+                                                                HYSCAN_TYPE_PLANNER_ORIGIN,
+                                                                origin_id);
   g_assert (origin_obj != NULL);
   g_assert_cmpint (origin.type, ==, HYSCAN_TYPE_PLANNER_ORIGIN);
 
   g_assert_cmpfloat (ABS (origin_obj->origin.lat - origin.origin.lat), <, 1e-6);
   g_assert_cmpfloat (ABS (origin_obj->origin.lon - origin.origin.lon), <, 1e-6);
 
-  hyscan_object_data_modify (planner, origin_id, (const HyScanObject *) origin_obj);
+  hyscan_object_store_modify (HYSCAN_OBJECT_STORE (planner), origin_id, (const HyScanObject *) origin_obj);
   hyscan_planner_origin_free (origin_obj);
 
   g_free (origin_id);

@@ -606,37 +606,35 @@ hyscan_planner_import_to_db (HyScanDB    *db,
 
   g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
 
-  data = hyscan_object_data_planner_new (db, project_name);
-  if (data == NULL)
+  data = hyscan_object_data_planner_new ();
+  if (!hyscan_object_data_project_open (data, db, project_name))
     return FALSE;
 
   /* Удаляем объекты из БД. */
   if (replace)
     {
-      gint i;
-      gchar **ids;
+      GList *ids, *link;
 
-      ids = hyscan_object_data_get_ids (data, NULL);
-      if (ids != NULL)
+      ids = hyscan_object_store_get_ids (HYSCAN_OBJECT_STORE (data));
+      for (link = ids; link != NULL; link = link->next)
         {
-          for (i = 0; ids[i] != NULL; i++)
-            hyscan_object_data_remove (data, ids[i]);
-          g_strfreev (ids);
+          HyScanObjectId *id = link->data;
+          hyscan_object_store_remove (HYSCAN_OBJECT_STORE (data), id->type, id->id);
         }
+      g_list_free_full (ids, (GDestroyNotify) hyscan_object_id_free);
     }
 
   /* Устанавливаем точку отсчёта, если такая есть. */
   origin = g_hash_table_lookup (objects, HYSCAN_PLANNER_ORIGIN_ID);
   if (HYSCAN_IS_PLANNER_ORIGIN (origin))
     {
-      gchar **ids;
-
-      ids = hyscan_object_data_get_ids (data, NULL);
-      if (ids != NULL && g_strv_contains ((const gchar *const *) ids, HYSCAN_PLANNER_ORIGIN_ID))
-        hyscan_object_data_remove (data, HYSCAN_PLANNER_ORIGIN_ID);
-
-      if (!hyscan_object_data_add (data, (HyScanObject *) origin, NULL))
-        goto exit;
+      if (!hyscan_object_store_set (HYSCAN_OBJECT_STORE (data),
+                                    HYSCAN_TYPE_PLANNER_ORIGIN,
+                                    HYSCAN_PLANNER_ORIGIN_ID,
+                                    (HyScanObject *) origin))
+        {
+          goto exit;
+        }
     }
 
   /* Вставляем все зоны. */
@@ -649,7 +647,7 @@ hyscan_planner_import_to_db (HyScanDB    *db,
       if (!HYSCAN_IS_PLANNER_ZONE (zone))
         continue;
 
-      if (!hyscan_object_data_add (data, (HyScanObject *) zone, &new_id))
+      if (!hyscan_object_store_add (HYSCAN_OBJECT_STORE (data), (HyScanObject *) zone, &new_id))
         goto exit;
 
       g_hash_table_insert (id_map, key, new_id);
@@ -675,7 +673,7 @@ hyscan_planner_import_to_db (HyScanDB    *db,
           track_copy->zone_id = g_strdup (new_zone_id);
         }
 
-      track_added = hyscan_object_data_add (data, (HyScanObject *) track_copy, NULL);
+      track_added = hyscan_object_store_add (HYSCAN_OBJECT_STORE (data), (HyScanObject *) track_copy, NULL);
       hyscan_planner_track_free (track_copy);
 
       if (!track_added)
