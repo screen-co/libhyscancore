@@ -140,4 +140,9 @@ HYSCAN_API
 void               hyscan_data_player_step             (HyScanDataPlayer *player,
                                                         gint32            steps);
 
+HYSCAN_API
+void               hyscan_data_player_get_range        (HyScanDataPlayer *player,
+                                                        gint64           *ltime,
+                                                        gint64           *rtime);
+
 #endif /* __HYSCAN_DATA_PLAYER_H__ */

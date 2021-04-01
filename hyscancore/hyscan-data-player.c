@@ -162,7 +162,7 @@ struct _HyScanDataPlayerPrivate
   HyScanDataPlayerState   new_st;               /* Копия user_st. */
   HyScanDataPlayerState   user_st;              /* Состояние плеера, задаваемое пользователем. */
   HyScanDataPlayerState   main_st;              /* Текущее состояние. */
-  
+
   GMutex                  lock;                 /* Блокировка состояния. */
   GCond                   cond;                 /* Сигнал завершения считывания данных из буфера. */
 
@@ -388,7 +388,7 @@ hyscan_data_player_watcher (HyScanDataPlayer* player)
   HyScanDataPlayerState *main_st = &priv->main_st;
 
   HyScanDataPlayerWatcher info;
-  
+
   main_st->cur_time = -1;
 
   info.project_id = -1;
@@ -422,7 +422,7 @@ hyscan_data_player_watcher (HyScanDataPlayer* player)
 
           hyscan_data_player_copy_state (main_st, new_st);
         }
-      
+
       /* Если сменен галс или есть неоткрытые каналы пытается открыть их.*/
       if (main_st->channels != NULL || main_st->track_changed)
         hyscan_data_player_open_all (player, main_st, &info);
@@ -434,7 +434,7 @@ hyscan_data_player_watcher (HyScanDataPlayer* player)
       /* Обновление диапазона данных, расчет внутреннего времени класса.*/
       hyscan_data_player_update_range (player, main_st);
       time_updated = hyscan_data_player_update_time (player, main_st, &info);
-      
+
       if (time_updated || any_changes)
         {
           g_mutex_lock (&priv->lock);
@@ -520,7 +520,7 @@ hyscan_data_player_copy_state (HyScanDataPlayerState *result,
   if (source->channels_changed)
     {
       g_slist_free_full (result->channels, (GDestroyNotify) hyscan_data_player_free_channel);
-      result->channels = g_slist_copy_deep (source->channels, 
+      result->channels = g_slist_copy_deep (source->channels,
                                             (GCopyFunc) hyscan_data_player_copy_channel, NULL);
 
       g_slist_free_full (result->channels_opened, (GDestroyNotify) hyscan_data_player_free_channel);
@@ -529,7 +529,7 @@ hyscan_data_player_copy_state (HyScanDataPlayerState *result,
       result->channels_changed = TRUE;
       source->channels_changed = FALSE;
     }
-  
+
   if (source->speed_changed)
     {
       result->time_speed = source->time_speed;
@@ -613,7 +613,7 @@ hyscan_data_player_open_track (HyScanDataPlayerState   *state,
   return TRUE;
 }
 
-/* Функция подключения отслеживаемых каналов данных. В случае открытия канала 
+/* Функция подключения отслеживаемых каналов данных. В случае открытия канала
    добавляет его в список открытых, удаляя при этом из общего списка.
    В случае открытия хотя бы одного канала возвращает TRUE, иначе FALSE.*/
 static gboolean
@@ -638,7 +638,7 @@ hyscan_data_player_open_channels (HyScanDataPlayerState   *state,
       if (id < 0)
         continue;
 
-      /* В случае успешного открытия удаляет канал из общего списка и 
+      /* В случае успешного открытия удаляет канал из общего списка и
          добавляет его в список открытых. */
       data->id = id;
       state->channels = g_slist_remove_link (state->channels, link);
@@ -861,7 +861,7 @@ hyscan_data_player_new_channel (HyScanDB    *db,
 {
   HyScanDataPlayerChannel *data;
 
-  data = g_slice_new (HyScanDataPlayerChannel);
+  data = g_slice_new0 (HyScanDataPlayerChannel);
   if (db != NULL)
     data->db = g_object_ref (db);
   data->name = g_strdup (name);
@@ -885,7 +885,7 @@ hyscan_data_player_free_channel (HyScanDataPlayerChannel *data)
   if (data->id > 0)
     hyscan_db_close (data->db, data->id);
   g_clear_pointer (&data->name, g_free);
-  g_object_unref (data->db);
+  g_clear_object (&data->db);
   g_slice_free (HyScanDataPlayerChannel, data);
 }
 
@@ -933,7 +933,7 @@ hyscan_data_player_new (void)
  * hyscan_data_player_shutdown:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция завершения работы плеера. Необходимо вызывать в MainLoop перед 
+ * Функция завершения работы плеера. Необходимо вызывать в MainLoop перед
  * освобождением объекта для избегания утечки памяти.
  */
 void
@@ -1017,7 +1017,7 @@ hyscan_data_player_set_fps (HyScanDataPlayer *player,
  * hyscan_data_player_get_db:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция возвращает указатель на используемый #HyScanDB. Следует использовать только 
+ * Функция возвращает указатель на используемый #HyScanDB. Следует использовать только
  * в callback'ах сигналов HyScanDataPlayer::process и HyScanDataPlayer::open (внутри потока
  * обработки данного #HyScanDataPlayer'а), в противном случае функция вернет NULL.
  *
@@ -1326,7 +1326,7 @@ void
 hyscan_data_player_pause (HyScanDataPlayer *player)
 {
   g_return_if_fail (HYSCAN_IS_DATA_PLAYER (player));
-  
+
   hyscan_data_player_play (player, 0.0);
 }
 
@@ -1334,7 +1334,7 @@ hyscan_data_player_pause (HyScanDataPlayer *player)
  * hyscna_data_player_stop:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция останавливает воспроизведение данных и устанавливает положение 
+ * Функция останавливает воспроизведение данных и устанавливает положение
  * на временную метку с наименьшим значением.
  */
 void
@@ -1366,7 +1366,7 @@ hyscan_data_player_real_time (HyScanDataPlayer *player)
  * @player: указатель на #HyScanDataPlayer
  * @time: новое значение метки.
  *
- * Функция устанавливает метку времени на заданное значение. В фоновом потоке 
+ * Функция устанавливает метку времени на заданное значение. В фоновом потоке
  * обработка данной функции производится ДО обработки функции #hyscan_data_player_step.
  */
 void
@@ -1390,7 +1390,7 @@ hyscan_data_player_seek (HyScanDataPlayer *player,
  * hyscan_data_player_seek_next:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция перемещает #HyScanDataPlayer к ближайшей временной метке с данными 
+ * Функция перемещает #HyScanDataPlayer к ближайшей временной метке с данными
  * в положительном напралении.
  */
 void
@@ -1405,7 +1405,7 @@ hyscan_data_player_seek_next (HyScanDataPlayer *player)
  * hyscan_data_player_seek_prev:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция перемещает #HyScanDataPlayer к ближайшей временной метке с данными 
+ * Функция перемещает #HyScanDataPlayer к ближайшей временной метке с данными
  * в отрицательном напралении.
  */
 void
@@ -1422,7 +1422,7 @@ hyscan_data_player_seek_prev (HyScanDataPlayer *player)
  * @steps: количество перемещений
  *
  * Функция перемещает #HyScanDataPlayer к временной метке с данными на заданное число перемещений.
- * При steps > 0 выполняется заданное число перемещений в положительном направлении, 
+ * При steps > 0 выполняется заданное число перемещений в положительном направлении,
  * при steps < 0 - в отрицательном. При steps = 0 ничего не происходит.
  */
 void
@@ -1437,5 +1437,31 @@ hyscan_data_player_step (HyScanDataPlayer *player,
   g_mutex_lock (&priv->lock);
   priv->user_st.steps += steps;
   hyscan_data_player_check_changing (priv);
+  g_mutex_unlock (&priv->lock);
+}
+
+/**
+ * hyscan_data_player_get_range:
+ * @player: указатель на #HyScanDataPlayer
+ * @ltime: самая ранняя временная метка
+ * @rtime: самая поздняя временная метка
+ *
+ * Функция возвращает актуальный диапазон временных меток.
+ */
+void
+hyscan_data_player_get_range (HyScanDataPlayer *player,
+                              gint64           *ltime,
+                              gint64           *rtime)
+{
+  HyScanDataPlayerPrivate *priv;
+
+  g_return_if_fail (HYSCAN_IS_DATA_PLAYER (player));
+  priv = player->priv;
+
+  g_mutex_lock (&priv->lock);
+  if (ltime != NULL)
+    *ltime = priv->min_time;
+  if (rtime != NULL)
+    *rtime = priv->max_time;
   g_mutex_unlock (&priv->lock);
 }
