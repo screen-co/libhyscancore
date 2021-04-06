@@ -52,6 +52,8 @@ gboolean       hyscan_core_params_set_sensor_info              (HyScanDB        
 HYSCAN_API
 gboolean       hyscan_core_params_set_acoustic_data_info       (HyScanDB                  *db,
                                                                 gint32                     channel_id,
+                                                                const gchar               *description,
+                                                                const gchar               *actuator,
                                                                 HyScanAcousticDataInfo    *info);
 
 HYSCAN_API

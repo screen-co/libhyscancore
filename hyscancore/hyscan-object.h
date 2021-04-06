@@ -1,3 +1,37 @@
+/* hyscan-object.h
+ *
+ * Copyright 2020 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
 #ifndef __HYSCAN_OBJECT_H__
 #define __HYSCAN_OBJECT_H__
 
@@ -46,14 +80,14 @@ struct _HyScanObjectId
  * HyScanObject:
  * @type: тип GBoxed
  *
- * Все структуры, которые загружаются при помощи #HyScanObjectData, должны быть
+ * Все структуры, которые хранятся в #HyScanObjectStore, должны быть
  * зарегистрированы как типы GBoxed, а в поле type хранить идентификатор своего типа GType.
- * При передаче структуры в функции hyscan_object_data_add(), hyscan_object_data_modify()
+ * При передаче структуры в функции hyscan_object_store_add(), hyscan_object_store_modify()
  * и подобные, структура должна быть приведена к типу #HyScanObject.
  */
 struct _HyScanObject
 {
-  GType                type;
+  GType        type;
 };
 
 HYSCAN_API
@@ -63,7 +97,7 @@ HYSCAN_API
 HyScanObjectId *       hyscan_object_id_new                    (void);
 
 HYSCAN_API
-void                   hyscan_object_id_free                   (HyScanObjectId       *object_id);
+void                   hyscan_object_id_free                   (HyScanObjectId     *object_id);
 
 HYSCAN_API
 HyScanObject *         hyscan_object_copy                      (const HyScanObject *object);

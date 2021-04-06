@@ -71,6 +71,10 @@
 #include <hyscan-param-proxy.h>
 #include <hyscan-buffer.h>
 
+#include <hyscan-device-driver.h>
+#include <hyscan-sensor-driver.h>
+#include <hyscan-sonar-driver.h>
+
 #include <glib/gi18n-lib.h>
 #include <math.h>
 
@@ -129,7 +133,7 @@ typedef struct
 
 typedef struct
 {
-  HyScanControlProxyStatus    status;           /* Статус буфера данных. */
+  HyScanControlProxyStatus     status;           /* Статус буфера данных. */
   gint64                       time;             /* Метка времени данных. */
   HyScanAcousticDataInfo       info;             /* Информация о данных. */
   HyScanBuffer                *data;             /* Данные. */
@@ -138,6 +142,9 @@ typedef struct
 typedef struct
 {
   gboolean                     enable;           /* Признак необходимости пересылки данных. */
+  gchar                       *description;      /* Описание источника данных. */
+  gchar                       *actuator;         /* Название привода. */
+  gboolean                     start;            /* Признак начала галса. */
   HyScanControlProxyData       data[AQ_BUF_SZ];  /* Буферы обработки акустических данных. */
   HyScanBuffer                *import;           /* Временный буфер акустических данных. */
   HyScanControlProxySignal     signal;           /* Образ сигнала для свёртки. */
@@ -169,10 +176,11 @@ struct _HyScanControlProxyPrivate
   gchar                       *dev_id;           /* Идентификатор "прокси" устройства. */
 
   HyScanControl               *control;          /* Управление устройством. */
+  HyScanParam                 *param;            /* Интерфейс HyScanParam устройства. */
   HyScanDevice                *device;           /* Интерфейс HyScanDevice устройства. */
   HyScanSonar                 *sonar;            /* Интерфейс HyScanSonar устройства. */
   HyScanSensor                *sensor;           /* Интерфейс HyScanSensor устройства. */
-  HyScanParam                 *param;            /* Интерфейс HyScanParam устройства. */
+  HyScanActuator              *actuator;         /* Интерфейс HyScanActuator устройства. */
 
   GHashTable                  *sources;          /* Буферы данных источников. */
   GHashTable                  *sensors;          /* Буферы данных датчиков. */
@@ -188,64 +196,66 @@ struct _HyScanControlProxyPrivate
   GCond                        cond;             /* Сигнализатор обработки. */
 };
 
-static void      hyscan_control_proxy_param_interface_init   (HyScanParamInterface    *iface);
-static void      hyscan_control_proxy_device_interface_init  (HyScanDeviceInterface   *iface);
-static void      hyscan_control_proxy_sonar_interface_init   (HyScanSonarInterface    *iface);
-static void      hyscan_control_proxy_sensor_interface_init  (HyScanSensorInterface   *iface);
+static void      hyscan_control_proxy_param_interface_init     (HyScanParamInterface    *iface);
+static void      hyscan_control_proxy_device_interface_init    (HyScanDeviceInterface   *iface);
+static void      hyscan_control_proxy_sonar_interface_init     (HyScanSonarInterface    *iface);
+static void      hyscan_control_proxy_sensor_interface_init    (HyScanSensorInterface   *iface);
+static void      hyscan_control_proxy_actuator_interface_init  (HyScanActuatorInterface *iface);
 
-static void      hyscan_control_proxy_set_property           (GObject                 *object,
-                                                              guint                    prop_id,
-                                                              const GValue            *value,
-                                                              GParamSpec              *pspec);
-static void      hyscan_control_proxy_object_constructed     (GObject                 *object);
-static void      hyscan_control_proxy_object_finalize        (GObject                 *object);
+static void      hyscan_control_proxy_set_property             (GObject                 *object,
+                                                                guint                    prop_id,
+                                                                const GValue            *value,
+                                                                GParamSpec              *pspec);
+static void      hyscan_control_proxy_object_constructed       (GObject                 *object);
+static void      hyscan_control_proxy_object_finalize          (GObject                 *object);
 
 static HyScanDataSchema *
-                 hyscan_control_proxy_create_schema          (HyScanControl           *control,
-                                                              const gchar             *dev_id);
+                 hyscan_control_proxy_create_schema            (HyScanControl           *control,
+                                                                const gchar             *dev_id);
 
-static void      hyscan_control_proxy_disconnect             (HyScanControlProxy      *proxy);
+static void      hyscan_control_proxy_disconnect               (HyScanControlProxy      *proxy);
 
-static void      hyscan_control_proxy_source_free            (gpointer                 data);
-static void      hyscan_control_proxy_sensor_free            (gpointer                 data);
+static void      hyscan_control_proxy_source_free              (gpointer                 data);
+static void      hyscan_control_proxy_sensor_free              (gpointer                 data);
 
-static void      hyscan_control_proxy_device_state           (HyScanControlProxy      *proxy,
-                                                              const gchar             *dev_id);
+static void      hyscan_control_proxy_device_state             (HyScanControlProxy      *proxy,
+                                                                const gchar             *dev_id);
 
-static void      hyscan_control_proxy_device_log             (HyScanControlProxy      *proxy,
-                                                              const gchar             *source,
-                                                              gint64                   time,
-                                                              gint                     level,
-                                                              const gchar             *message);
+static void      hyscan_control_proxy_device_log               (HyScanControlProxy      *proxy,
+                                                                const gchar             *source,
+                                                                gint64                   time,
+                                                                gint                     level,
+                                                                const gchar             *message);
 
-static void      hyscan_control_proxy_sonar_signal           (HyScanControlProxy      *proxy,
-                                                              gint                     source,
-                                                              guint                    channel,
-                                                              gint64                   time,
-                                                              HyScanBuffer            *image);
+static void      hyscan_control_proxy_sonar_signal             (HyScanControlProxy      *proxy,
+                                                                gint                     source,
+                                                                guint                    channel,
+                                                                gint64                   time,
+                                                                HyScanBuffer            *image);
 
-static void      hyscan_control_proxy_sonar_acoustic_data    (HyScanControlProxy      *proxy,
-                                                              gint                     source,
-                                                              guint                    channel,
-                                                              gboolean                 noise,
-                                                              gint64                   time,
-                                                              HyScanAcousticDataInfo  *info,
-                                                              HyScanBuffer            *data);
+static void      hyscan_control_proxy_sonar_acoustic_data      (HyScanControlProxy      *proxy,
+                                                                gint                     source,
+                                                                guint                    channel,
+                                                                gboolean                 noise,
+                                                                gint64                   time,
+                                                                HyScanAcousticDataInfo  *info,
+                                                                HyScanBuffer            *data);
 
-static void      hyscan_control_proxy_sensor_data            (HyScanControlProxy      *proxy,
-                                                              const gchar             *sensor,
-                                                              gint                     source,
-                                                              gint64                   time,
-                                                              HyScanBuffer            *data);
+static void      hyscan_control_proxy_sensor_data              (HyScanControlProxy      *proxy,
+                                                                const gchar             *sensor,
+                                                                gint                     source,
+                                                                gint64                   time,
+                                                                HyScanBuffer            *data);
 
-static gpointer  hyscan_control_proxy_sender                 (gpointer                 user_data);
+static gpointer  hyscan_control_proxy_sender                   (gpointer                 user_data);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanControlProxy, hyscan_control_proxy, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanControlProxy)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_PARAM,  hyscan_control_proxy_param_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_DEVICE, hyscan_control_proxy_device_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SENSOR, hyscan_control_proxy_sensor_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SONAR,  hyscan_control_proxy_sonar_interface_init))
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_PARAM,    hyscan_control_proxy_param_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_DEVICE,   hyscan_control_proxy_device_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SENSOR,   hyscan_control_proxy_sensor_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SONAR,    hyscan_control_proxy_sonar_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_ACTUATOR, hyscan_control_proxy_actuator_interface_init))
 
 static void
 hyscan_control_proxy_class_init (HyScanControlProxyClass *klass)
@@ -342,6 +352,7 @@ hyscan_control_proxy_object_constructed (GObject *object)
   priv->device = HYSCAN_DEVICE (priv->control);
   priv->sonar = HYSCAN_SONAR (priv->control);
   priv->sensor = HYSCAN_SENSOR (priv->control);
+  priv->actuator = HYSCAN_ACTUATOR (priv->control);
   priv->param = HYSCAN_PARAM (proxy_param);
 
   /* Таблицы буферов данных. */
@@ -585,6 +596,8 @@ hyscan_control_proxy_source_free (gpointer data)
   g_object_unref (buffer->signal.conv);
   g_object_unref (buffer->import);
   g_mutex_clear (&buffer->signal.lock);
+  g_free (buffer->description);
+  g_free (buffer->actuator);
 
   g_slice_free (HyScanControlProxyAcoustic, buffer);
 }
@@ -605,7 +618,7 @@ static void
 hyscan_control_proxy_device_state (HyScanControlProxy *proxy,
                                    const gchar        *dev_id)
 {
-  g_signal_emit_by_name (proxy, "device-state", dev_id);
+  hyscan_device_driver_send_state (proxy, dev_id);
 }
 
 /* Функция обрабатывает информационные сообщения от устройств. */
@@ -837,9 +850,9 @@ hyscan_control_proxy_sender (gpointer user_data)
           if (log == NULL)
             break;
 
-          g_signal_emit_by_name (proxy, "device-log",
-                                 log->src, log->time,
-                                 log->level, log->msg);
+          hyscan_device_driver_send_log (proxy,
+                                         log->src, log->time,
+                                         log->level, log->msg);
 
           g_atomic_int_set (&log->status, HYSCAN_CONTROL_PROXY_EMPTY);
         }
@@ -857,9 +870,9 @@ hyscan_control_proxy_sender (gpointer user_data)
           /* Отправляем данные только в рабочем режиме. */
           if (g_atomic_int_get (&priv->started))
             {
-              g_signal_emit_by_name (proxy, "sensor-data",
-                                     sensor, buffer->source,
-                                     buffer->time, buffer->data);
+              hyscan_sensor_driver_send_data (proxy,
+                                              sensor, buffer->source,
+                                              buffer->time, buffer->data);
             }
 
           g_atomic_int_set (&buffer->status, HYSCAN_CONTROL_PROXY_EMPTY);
@@ -994,9 +1007,20 @@ hyscan_control_proxy_sender (gpointer user_data)
 
               info.data_rate /= p_scale;
               info.data_type = buffer->cur_data_type;
-              g_signal_emit_by_name (proxy, "sonar-acoustic-data",
-                                     source, 1, FALSE, acoustic->time,
-                                     &info, sbuffer);
+
+              if (buffer->start)
+                {
+                  hyscan_sonar_driver_send_source_info (proxy, source, 1,
+                                                        buffer->description,
+                                                        buffer->actuator,
+                                                        &info);
+
+                  buffer->start = FALSE;
+                }
+
+              hyscan_sonar_driver_send_acoustic_data (proxy,
+                                                      source, 1, FALSE, acoustic->time,
+                                                      &info, sbuffer);
             }
 
           g_atomic_int_set (&acoustic->status, HYSCAN_CONTROL_PROXY_EMPTY);
@@ -1041,7 +1065,19 @@ hyscan_control_proxy_param_get (HyScanParam     *param,
   return hyscan_param_get (priv->param, list);
 }
 
-/* Интерфейс HyScanDriver. */
+/* Интерфейс HyScanDevice. */
+
+static gboolean
+hyscan_control_proxy_device_sync (HyScanDevice *device)
+{
+  HyScanControlProxy *proxy = HYSCAN_CONTROL_PROXY (device);
+  HyScanControlProxyPrivate *priv = proxy->priv;
+
+  if (priv->sonar == NULL)
+    return FALSE;
+
+  return hyscan_device_sync (priv->device);
+}
 
 static gboolean
 hyscan_control_proxy_device_set_sound_velocity (HyScanDevice *device,
@@ -1238,7 +1274,7 @@ hyscan_control_proxy_sonar_start (HyScanSonar           *sonar,
   if (priv->sonar == NULL)
     return FALSE;
 
-  /* Рьновляем параметры прореживания данных. */
+  /* Обновляем параметры прореживания данных. */
   g_hash_table_iter_init (&iter, priv->sources);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
@@ -1247,6 +1283,7 @@ hyscan_control_proxy_sonar_start (HyScanSonar           *sonar,
       buffer->cur_data_type = buffer->new_data_type;
       buffer->cur_line_scale = buffer->new_line_scale;
       buffer->cur_point_scale = buffer->new_point_scale;
+      buffer->start = TRUE;
     }
 
   /* Запускаем оборудование и если всё прошло нормально,
@@ -1307,6 +1344,7 @@ hyscan_control_proxy_sonar_stop (HyScanSonar *sonar)
           g_mutex_lock (&buffer->signal.lock);
           buffer->line_counter = 0;
           buffer->signal.time = -1;
+          buffer->start = FALSE;
           g_mutex_unlock (&buffer->signal.lock);
         }
 
@@ -1317,18 +1355,6 @@ hyscan_control_proxy_sonar_stop (HyScanSonar *sonar)
     }
 
   return status;
-}
-
-static gboolean
-hyscan_control_proxy_sonar_sync (HyScanSonar *sonar)
-{
-  HyScanControlProxy *proxy = HYSCAN_CONTROL_PROXY (sonar);
-  HyScanControlProxyPrivate *priv = proxy->priv;
-
-  if (priv->sonar == NULL)
-    return FALSE;
-
-  return hyscan_sonar_sync (priv->sonar);
 }
 
 /* Интерфейс HyScanSensor. */
@@ -1359,6 +1385,51 @@ hyscan_control_proxy_sensor_antenna_set_offset (HyScanSensor              *senso
     return FALSE;
 
   return hyscan_sensor_antenna_set_offset (priv->sensor, name, offset);
+}
+
+/* Интерфейс HyScanActuator. */
+
+static gboolean
+hyscan_control_proxy_actuator_disable (HyScanActuator *actuator,
+                                       const gchar    *name)
+{
+  HyScanControlProxy *proxy = HYSCAN_CONTROL_PROXY (actuator);
+  HyScanControlProxyPrivate *priv = proxy->priv;
+
+  if (priv->actuator == NULL)
+    return FALSE;
+
+  return hyscan_actuator_disable (priv->actuator, name);
+}
+
+static gboolean
+hyscan_control_proxy_actuator_scan (HyScanActuator *actuator,
+                                    const gchar    *name,
+                                    gdouble         from,
+                                    gdouble         to,
+                                    gdouble         speed)
+{
+  HyScanControlProxy *proxy = HYSCAN_CONTROL_PROXY (actuator);
+  HyScanControlProxyPrivate *priv = proxy->priv;
+
+  if (priv->actuator == NULL)
+    return FALSE;
+
+  return hyscan_actuator_scan (priv->actuator, name, from, to, speed);
+}
+
+static gboolean
+hyscan_control_proxy_actuator_manual (HyScanActuator *actuator,
+                                      const gchar    *name,
+                                      gdouble         angle)
+{
+  HyScanControlProxy *proxy = HYSCAN_CONTROL_PROXY (actuator);
+  HyScanControlProxyPrivate *priv = proxy->priv;
+
+  if (priv->actuator == NULL)
+    return FALSE;
+
+  return hyscan_actuator_manual (priv->actuator, name, angle);
 }
 
 /**
@@ -1599,6 +1670,7 @@ hyscan_control_proxy_param_interface_init (HyScanParamInterface *iface)
 static void
 hyscan_control_proxy_device_interface_init (HyScanDeviceInterface *iface)
 {
+  iface->sync = hyscan_control_proxy_device_sync;
   iface->set_sound_velocity = hyscan_control_proxy_device_set_sound_velocity;
   iface->disconnect = hyscan_control_proxy_device_disconnect;
 }
@@ -1619,7 +1691,6 @@ hyscan_control_proxy_sonar_interface_init (HyScanSonarInterface *iface)
   iface->tvg_disable = hyscan_control_proxy_sonar_tvg_disable;
   iface->start = hyscan_control_proxy_sonar_start;
   iface->stop = hyscan_control_proxy_sonar_stop;
-  iface->sync = hyscan_control_proxy_sonar_sync;
 }
 
 static void
@@ -1627,4 +1698,12 @@ hyscan_control_proxy_sensor_interface_init (HyScanSensorInterface *iface)
 {
   iface->antenna_set_offset = hyscan_control_proxy_sensor_antenna_set_offset;
   iface->set_enable = hyscan_control_proxy_sensor_set_enable;
+}
+
+static void
+hyscan_control_proxy_actuator_interface_init (HyScanActuatorInterface *iface)
+{
+  iface->disable = hyscan_control_proxy_actuator_disable;
+  iface->scan = hyscan_control_proxy_actuator_scan;
+  iface->manual = hyscan_control_proxy_actuator_manual;
 }

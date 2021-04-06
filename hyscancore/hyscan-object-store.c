@@ -1,3 +1,74 @@
+/* hyscan-object-store.c
+ *
+ * Copyright 2020 Screen LLC, Alexey Sakhnov <alexsakhnov@gmail.com>
+ *
+ * This file is part of HyScanCore library.
+ *
+ * HyScanCore is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanCore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanCore имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanCore на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-object-store
+ * @Short_description: Хранилище объектов HyScanObject
+ * @Title: HyScanObjectStore
+ * @See_also: HyScanObject
+ *
+ * Интерфейс HyScanObjectStore определяет набор функций для записи, получения
+ * и модификации объектов HyScanObject в некотором хранилище.
+ *
+ * Хранилище может управлять как одним, так и несколькими типами объектов #HyScanObject.
+ * Получить список типов объектов, которые могут находится в данном хранилище
+ * можно при помощи функции hyscan_object_store_list_types().
+ *
+ * Для получения информации об объектах доступны следующие функции:
+ *
+ * - hyscan_object_store_get() - получение одного объекта,
+ * - hyscan_object_store_get_all() - получение всех объектов указанного типа,
+ * - hyscan_object_store_get_ids() - получение идентификаторо всех объектов.
+ *
+ * Для изменения объектов используются функции:
+ *
+ * - hyscan_object_store_add() - добавляет новый объект,
+ * - hyscan_object_store_modify() - модифицирует существующий объект,
+ * - hyscan_object_store_remove() - удаляет существующий объект,
+ * - hyscan_object_store_set() - устанавливает значение объекта.
+ *
+ * Последняя функция в зависимости от переданных параметров, может как создать,
+ * так и модифицировать или удалить объект. Её полезно использовать, если
+ * идентификатор объекта известен заранее.
+ *
+ * Информацию о том, что в хранилище что-то поменялось, можно получить при помощи
+ * функции hyscan_object_store_get_mod_count(). Возвращаемое значение этой функции
+ * меняется каждый раз при поступлении каких-либо изменений; или остаётся постоянным,
+ * если никаких изменений не было.
+ *
+ */
+
 #include "hyscan-object-store.h"
 
 G_DEFINE_INTERFACE (HyScanObjectStore, hyscan_object_store, G_TYPE_OBJECT)

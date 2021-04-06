@@ -40,6 +40,7 @@
 #include <hyscan-device.h>
 #include <hyscan-sonar-info.h>
 #include <hyscan-sensor-info.h>
+#include <hyscan-actuator-info.h>
 
 G_BEGIN_DECLS
 
@@ -67,64 +68,71 @@ struct _HyScanControlClass
 };
 
 HYSCAN_API
-GType                          hyscan_control_get_type                   (void);
+GType                              hyscan_control_get_type                   (void);
 
 HYSCAN_API
-HyScanControl *                hyscan_control_new                        (void);
+HyScanControl *                    hyscan_control_new                        (void);
 
 HYSCAN_API
-gboolean                       hyscan_control_device_add                 (HyScanControl                  *control,
-                                                                          HyScanDevice                   *device);
+gboolean                           hyscan_control_device_add                 (HyScanControl                  *control,
+                                                                              HyScanDevice                   *device);
 
 HYSCAN_API
-gboolean                       hyscan_control_device_bind                (HyScanControl                  *control);
+gboolean                           hyscan_control_device_bind                (HyScanControl                  *control);
 
 HYSCAN_API
-const gchar * const *          hyscan_control_devices_list               (HyScanControl                  *control);
+const gchar * const *              hyscan_control_devices_list               (HyScanControl                  *control);
 
 HYSCAN_API
-HyScanDeviceStatusType         hyscan_control_device_get_status          (HyScanControl                  *control,
-                                                                          const gchar                    *dev_id);
+HyScanDeviceStatusType             hyscan_control_device_get_status          (HyScanControl                  *control,
+                                                                              const gchar                    *dev_id);
 
 HYSCAN_API
-const gchar * const *          hyscan_control_sensors_list               (HyScanControl                  *control);
+const gchar * const *              hyscan_control_sensors_list               (HyScanControl                  *control);
 
 HYSCAN_API
-const HyScanSourceType *       hyscan_control_sources_list               (HyScanControl                  *control,
-                                                                          guint32                        *n_sources);
+const HyScanSourceType *           hyscan_control_sources_list               (HyScanControl                  *control,
+                                                                              guint32                        *n_sources);
 
 HYSCAN_API
-const HyScanSensorInfoSensor * hyscan_control_sensor_get_info            (HyScanControl                  *control,
-                                                                          const gchar                    *sensor);
+const gchar * const *              hyscan_control_actuators_list             (HyScanControl                  *control);
 
 HYSCAN_API
-const HyScanSonarInfoSource *  hyscan_control_source_get_info            (HyScanControl                  *control,
-                                                                          HyScanSourceType                source);
+const HyScanSonarInfoSource *      hyscan_control_source_get_info            (HyScanControl                  *control,
+                                                                              HyScanSourceType                source);
 
 HYSCAN_API
-gboolean                       hyscan_control_sensor_set_default_offset  (HyScanControl                  *control,
-                                                                          const gchar                    *sensor,
-                                                                          const HyScanAntennaOffset      *offset);
+const HyScanSensorInfoSensor *     hyscan_control_sensor_get_info            (HyScanControl                  *control,
+                                                                              const gchar                    *sensor);
 
 HYSCAN_API
-gboolean                       hyscan_control_source_set_default_offset  (HyScanControl                  *control,
-                                                                          HyScanSourceType                source,
-                                                                          const HyScanAntennaOffset      *offset);
+const HyScanActuatorInfoActuator * hyscan_control_actuator_get_info          (HyScanControl                  *control,
+                                                                              const gchar                    *actuator);
 
 HYSCAN_API
-void                           hyscan_control_writer_set_db              (HyScanControl                  *control,
-                                                                          HyScanDB                       *db);
+gboolean                           hyscan_control_sensor_set_default_offset  (HyScanControl                  *control,
+                                                                              const gchar                    *sensor,
+                                                                              const HyScanAntennaOffset      *offset);
 
 HYSCAN_API
-HyScanDB *                     hyscan_control_writer_get_db              (HyScanControl                  *control);
+gboolean                           hyscan_control_source_set_default_offset  (HyScanControl                  *control,
+                                                                              HyScanSourceType                source,
+                                                                              const HyScanAntennaOffset      *offset);
 
 HYSCAN_API
-void                           hyscan_control_writer_set_operator_name   (HyScanControl                  *control,
-                                                                          const gchar                    *name);
+void                               hyscan_control_writer_set_db              (HyScanControl                  *control,
+                                                                              HyScanDB                       *db);
 
 HYSCAN_API
-void                           hyscan_control_writer_set_chunk_size      (HyScanControl                  *control,
-                                                                          gint32                          chunk_size);
+HyScanDB *                         hyscan_control_writer_get_db              (HyScanControl                  *control);
+
+HYSCAN_API
+void                               hyscan_control_writer_set_operator_name   (HyScanControl                  *control,
+                                                                              const gchar                    *name);
+
+HYSCAN_API
+void                               hyscan_control_writer_set_chunk_size      (HyScanControl                  *control,
+                                                                              gint32                          chunk_size);
 
 G_END_DECLS
 

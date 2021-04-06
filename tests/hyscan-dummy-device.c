@@ -42,10 +42,10 @@
  * эмулируемого устройства задаётся при создании объекта драйвера. От выбранного
  * типа зависит только список источников данных и датчиков.
  *
- * Драйвер реализует интерфейсы #HyScanSonar, #HyScanSensor и #HyScanParam.
- * Он запоминает значения параметров для последней вызваной функции этих
- * интерфейсов, а также содержит функции проверяющие эти параметры. Логика
- * тестирования предполагает вызов каждой функции интерфейса и сравнение
+ * Драйвер реализует интерфейсы #HyScanSonar, #HyScanSensor, #HyScanActuator
+ * и #HyScanParam. Он запоминает значения параметров для последней вызваной
+ * функции этих интерфейсов, а также содержит функции проверяющие эти параметры.
+ * Логика тестирования предполагает вызов каждой функции интерфейса и сравнение
  * полученных параметров с эталоном.
  *
  * Кроме этого драйвер осуществляет однократную отправку данных каждого типа
@@ -82,6 +82,7 @@ enum
 typedef enum
 {
   HYSCAN_DUMMY_DEVICE_COMMAND_INVALID,
+  HYSCAN_DUMMY_DEVICE_COMMAND_SYNC,
   HYSCAN_DUMMY_DEVICE_COMMAND_SET_SOUND_VELOCITY,
   HYSCAN_DUMMY_DEVICE_COMMAND_DISCONNECT,
   HYSCAN_DUMMY_DEVICE_COMMAND_ANTENNA_SET_OFFSET,
@@ -97,8 +98,10 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_TVG_DISABLE,
   HYSCAN_DUMMY_DEVICE_COMMAND_START,
   HYSCAN_DUMMY_DEVICE_COMMAND_STOP,
-  HYSCAN_DUMMY_DEVICE_COMMAND_SYNC,
-  HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE
+  HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE,
+  HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_DISABLE,
+  HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_SCAN,
+  HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_MANUAL
 } HyScanDummyDeviceCommand;
 
 struct _HyScanDummyDevicePrivate
@@ -135,20 +138,27 @@ struct _HyScanDummyDevicePrivate
   const HyScanTrackPlan           *track_plan;
 
   const gchar                     *sensor_name;
+
+  const gchar                     *actuator_name;
+  gdouble                          actuator_from;
+  gdouble                          actuator_to;
+  gdouble                          actuator_speed;
+  gdouble                          actuator_angle;
 };
 
-static void        hyscan_dummy_device_param_interface_init     (HyScanParamInterface  *iface);
-static void        hyscan_dummy_device_device_interface_init    (HyScanDeviceInterface *iface);
-static void        hyscan_dummy_device_sonar_interface_init     (HyScanSonarInterface  *iface);
-static void        hyscan_dummy_device_sensor_interface_init    (HyScanSensorInterface *iface);
+static void        hyscan_dummy_device_param_interface_init     (HyScanParamInterface    *iface);
+static void        hyscan_dummy_device_device_interface_init    (HyScanDeviceInterface   *iface);
+static void        hyscan_dummy_device_sonar_interface_init     (HyScanSonarInterface    *iface);
+static void        hyscan_dummy_device_sensor_interface_init    (HyScanSensorInterface   *iface);
+static void        hyscan_dummy_device_actuator_interface_init  (HyScanActuatorInterface *iface);
 
-static void        hyscan_dummy_device_set_property             (GObject               *object,
-                                                                 guint                  prop_id,
-                                                                 const GValue          *value,
-                                                                 GParamSpec            *pspec);
+static void        hyscan_dummy_device_set_property             (GObject                 *object,
+                                                                 guint                    prop_id,
+                                                                 const GValue            *value,
+                                                                 GParamSpec              *pspec);
 
-static void        hyscan_dummy_device_object_constructed       (GObject               *object);
-static void        hyscan_dummy_device_object_finalize          (GObject               *object);
+static void        hyscan_dummy_device_object_constructed       (GObject                 *object);
+static void        hyscan_dummy_device_object_finalize          (GObject                 *object);
 
 static const gchar *hyscan_dummy_device_sensors[] =
 {
@@ -168,10 +178,11 @@ static HyScanSourceType hyscan_dummy_device_sources[] =
 
 G_DEFINE_TYPE_WITH_CODE (HyScanDummyDevice, hyscan_dummy_device, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanDummyDevice)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_PARAM,  hyscan_dummy_device_param_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_DEVICE, hyscan_dummy_device_device_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SONAR,  hyscan_dummy_device_sonar_interface_init)
-                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SENSOR, hyscan_dummy_device_sensor_interface_init))
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_PARAM,    hyscan_dummy_device_param_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_DEVICE,   hyscan_dummy_device_device_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SONAR,    hyscan_dummy_device_sonar_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_SENSOR,   hyscan_dummy_device_sensor_interface_init)
+                         G_IMPLEMENT_INTERFACE (HYSCAN_TYPE_ACTUATOR, hyscan_dummy_device_actuator_interface_init))
 
 static void
 hyscan_dummy_device_class_init (HyScanDummyDeviceClass *klass)
@@ -226,6 +237,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
 
   HyScanDeviceSchema *device_schema;
   HyScanSensorSchema *sensor_schema;
+  HyScanActuatorSchema *actuator_schema;
   HyScanSonarSchema *sonar_schema;
   HyScanDataSchemaBuilder *builder;
 
@@ -235,6 +247,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
   device_schema = hyscan_device_schema_new (HYSCAN_DEVICE_SCHEMA_VERSION);
   sensor_schema = hyscan_sensor_schema_new (device_schema);
   sonar_schema = hyscan_sonar_schema_new (device_schema);
+  actuator_schema = hyscan_actuator_schema_new (device_schema);
   builder = HYSCAN_DATA_SCHEMA_BUILDER (device_schema);
 
   /* ГБО. */
@@ -242,6 +255,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
     {
       HyScanSensorInfoSensor *sensor_info;
       HyScanSonarInfoSource *source_info;
+      HyScanActuatorInfoActuator *actuator_info;
 
       sensor_info = hyscan_dummy_device_get_sensor_info ("nmea-1");
       hyscan_sensor_schema_add_full (sensor_schema, sensor_info);
@@ -259,6 +273,10 @@ hyscan_dummy_device_object_constructed (GObject *object)
       hyscan_sonar_schema_source_add_full (sonar_schema, source_info);
       hyscan_sonar_info_source_free (source_info);
 
+      actuator_info = hyscan_dummy_device_get_actuator_info ("actuator-1");
+      hyscan_actuator_schema_add_full (actuator_schema, actuator_info);
+      hyscan_actuator_info_actuator_free (actuator_info);
+
       priv->device_id = "ss";
     }
 
@@ -267,6 +285,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
     {
       HyScanSensorInfoSensor *sensor_info;
       HyScanSonarInfoSource *source_info;
+      HyScanActuatorInfoActuator *actuator_info;
 
       sensor_info = hyscan_dummy_device_get_sensor_info ("nmea-3");
       hyscan_sensor_schema_add_full (sensor_schema, sensor_info);
@@ -283,6 +302,10 @@ hyscan_dummy_device_object_constructed (GObject *object)
       source_info = hyscan_dummy_device_get_source_info (HYSCAN_SOURCE_PROFILER_ECHO);
       hyscan_sonar_schema_source_add_full (sonar_schema, source_info);
       hyscan_sonar_info_source_free (source_info);
+
+      actuator_info = hyscan_dummy_device_get_actuator_info ("actuator-2");
+      hyscan_actuator_schema_add_full (actuator_schema, actuator_info);
+      hyscan_actuator_info_actuator_free (actuator_info);
 
       priv->device_id = "pf";
     }
@@ -314,6 +337,7 @@ hyscan_dummy_device_object_constructed (GObject *object)
   g_object_unref (device_schema);
   g_object_unref (sensor_schema);
   g_object_unref (sonar_schema);
+  g_object_unref (actuator_schema);
 }
 
 static void
@@ -393,6 +417,17 @@ hyscan_dummy_device_param_get (HyScanParam     *param,
 
       hyscan_param_list_set_integer (list, keys[i], GPOINTER_TO_INT (value));
     }
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_sync (HyScanDevice *device)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (device);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SYNC;
 
   return TRUE;
 }
@@ -588,11 +623,47 @@ hyscan_dummy_device_sonar_start (HyScanSonar           *sonar,
   HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
+  HyScanAcousticDataInfo info;
+  HyScanSourceType source;
+
   priv->project_name = project_name;
   priv->track_name = track_name;
   priv->track_type = track_type;
   priv->track_plan = track_plan;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_START;
+
+  if (priv->type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
+    {
+      source = HYSCAN_SOURCE_SIDE_SCAN_PORT;
+      info = hyscan_dummy_device_get_acoustic_info (source);
+      hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                            hyscan_source_get_name_by_type (source),
+                                            "actuator-1",
+                                            &info);
+
+      source = HYSCAN_SOURCE_SIDE_SCAN_STARBOARD;
+      info = hyscan_dummy_device_get_acoustic_info (source);
+      hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                            hyscan_source_get_name_by_type (source),
+                                            "actuator-1",
+                                            &info);
+    }
+  else
+    {
+      source = HYSCAN_SOURCE_PROFILER;
+      info = hyscan_dummy_device_get_acoustic_info (source);
+      hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                            hyscan_source_get_name_by_type (source),
+                                            "actuator-2",
+                                            &info);
+
+      source = HYSCAN_SOURCE_PROFILER_ECHO;
+      info = hyscan_dummy_device_get_acoustic_info (source);
+      hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                            hyscan_source_get_name_by_type (source),
+                                            "actuator-2",
+                                            &info);
+    }
 
   return TRUE;
 }
@@ -604,17 +675,6 @@ hyscan_dummy_device_sonar_stop (HyScanSonar *sonar)
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_STOP;
-
-  return TRUE;
-}
-
-static gboolean
-hyscan_dummy_device_sonar_sync (HyScanSonar *sonar)
-{
-  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (sonar);
-  HyScanDummyDevicePrivate *priv = dummy->priv;
-
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SYNC;
 
   return TRUE;
 }
@@ -646,6 +706,53 @@ hyscan_dummy_device_sensor_set_enable (HyScanSensor *sensor,
 
   priv->sensor_name = sensor_name;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_actuator_disable (HyScanActuator *actuator,
+                                      const gchar    *actuator_name)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (actuator);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->actuator_name = actuator_name;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_DISABLE;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_actuator_scan (HyScanActuator *actuator,
+                                   const gchar    *actuator_name,
+                                   gdouble         from,
+                                   gdouble         to,
+                                   gdouble         speed)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (actuator);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->actuator_name = actuator_name;
+  priv->actuator_from = from;
+  priv->actuator_to = to;
+  priv->actuator_speed = speed;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_SCAN;
+
+  return TRUE;
+}
+
+static gboolean
+hyscan_dummy_device_actuator_manual (HyScanActuator *actuator,
+                                     const gchar    *actuator_name,
+                                     gdouble         angle)
+{
+  HyScanDummyDevice *dummy = HYSCAN_DUMMY_DEVICE (actuator);
+  HyScanDummyDevicePrivate *priv = dummy->priv;
+
+  priv->actuator_name = actuator_name;
+  priv->actuator_angle = angle;
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_MANUAL;
 
   return TRUE;
 }
@@ -1282,6 +1389,113 @@ hyscan_dummy_device_check_sensor_enable (HyScanDummyDevice *dummy,
 }
 
 /**
+ * hyscan_dummy_device_check_actuator_disable:
+ * @dummy: указатель на #HyScanDummyDevice
+ * @actuator: название привода
+ *
+ * Функция проверяет параметры функций #hyscan_actuator_disable.
+ */
+gboolean
+hyscan_dummy_device_check_actuator_disable (HyScanDummyDevice *dummy,
+                                            const gchar       *actuator)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_DISABLE)
+    return FALSE;
+
+  if (priv->actuator_name != actuator)
+    return FALSE;
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+  priv->actuator_name = NULL;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_actuator_scan:
+ * @dummy: указатель на #HyScanDummyDevice
+ * @actuator: название привода
+ * @from: начальный угол сектора обзора
+ * @to: конечный угол сектора обзора
+ * @speed: скорость вращения привода
+ *
+ * Функция проверяет параметры функций #hyscan_actuator_scan.
+ */
+gboolean
+hyscan_dummy_device_check_actuator_scan (HyScanDummyDevice *dummy,
+                                         const gchar       *actuator,
+                                         gdouble            from,
+                                         gdouble            to,
+                                         gdouble            speed)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_SCAN)
+    return FALSE;
+
+  if ((priv->actuator_name != actuator) ||
+      (priv->actuator_from != from) ||
+      (priv->actuator_to != to) ||
+      (priv->actuator_speed != speed))
+    {
+      return FALSE;
+    }
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+  priv->actuator_name = NULL;
+  priv->actuator_from = 0.0;
+  priv->actuator_to = 0.0;
+  priv->actuator_speed = 0.0;
+
+  return TRUE;
+}
+
+/**
+ * hyscan_dummy_device_check_actuator_manual:
+ * @dummy: указатель на #HyScanDummyDevice
+ * @actuator: название привода
+ * @angle: угол направления привода
+ *
+ * Функция проверяет параметры функций #hyscan_actuator_manual.
+ */
+gboolean
+hyscan_dummy_device_check_actuator_manual (HyScanDummyDevice *dummy,
+                                           const gchar       *actuator,
+                                           gdouble            angle)
+{
+  HyScanDummyDevicePrivate *priv;
+
+  g_return_val_if_fail (HYSCAN_IS_DUMMY_DEVICE (dummy), FALSE);
+
+  priv = dummy->priv;
+
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_MANUAL)
+    return FALSE;
+
+  if ((priv->actuator_name != actuator) ||
+      (priv->actuator_angle != angle))
+    {
+      return FALSE;
+    }
+
+  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_INVALID;
+  priv->actuator_name = NULL;
+  priv->actuator_angle = 0.0;
+
+  return TRUE;
+}
+
+/**
  * hyscan_dummy_device_check_params:
  * @info_id: параметр ветки /info
  * @param_id: параметр ветки /param
@@ -1355,6 +1569,18 @@ hyscan_dummy_device_get_type_by_source (HyScanSourceType source)
     {
       return HYSCAN_DUMMY_DEVICE_PROFILER;
     }
+
+  return HYSCAN_DUMMY_DEVICE_INVALID;
+}
+
+HyScanDummyDeviceType
+hyscan_dummy_device_get_type_by_actuator (const gchar *actuator)
+{
+  if (g_strcmp0 (actuator, "actuator-1") == 0)
+    return HYSCAN_DUMMY_DEVICE_SIDE_SCAN;
+
+  if (g_strcmp0 (actuator, "actuator-2") == 0)
+    return HYSCAN_DUMMY_DEVICE_PROFILER;
 
   return HYSCAN_DUMMY_DEVICE_INVALID;
 }
@@ -1520,6 +1746,7 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
   info.source = source;
   info.dev_id = dev_id;
   info.description = source_name;
+  info.actuator = (dev_type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN) ? "actuator-1" : "actuator-2";
   info.offset = NULL;
   info.receiver = &receiver;
   info.presets = presets;
@@ -1571,6 +1798,50 @@ hyscan_dummy_device_get_source_info (HyScanSourceType source)
 
 exit:
   g_list_free_full (presets, (GDestroyNotify)hyscan_data_schema_enum_value_free);
+
+  return pinfo;
+}
+
+/**
+ * hyscan_dummy_device_get_actuator_info:
+ * @sensor: название привода
+ *
+ * Функция возвращает эталонные значения параметров привода.
+ *
+ * Returns: (transfer full): Параметры привода #HyScanActuatorInfoActuator.
+ * Для удаления #hyscan_actuator_info_actuator_free.
+ */
+HyScanActuatorInfoActuator *
+hyscan_dummy_device_get_actuator_info (const gchar *actuator)
+{
+  HyScanActuatorInfoActuator *pinfo;
+  HyScanActuatorInfoActuator info;
+
+  HyScanDummyDeviceType dev_type;
+  const gchar *dev_id;
+
+  /* Идентификатор устройства. */
+  dev_type = hyscan_dummy_device_get_type_by_actuator (actuator);
+  if (dev_type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
+    dev_id = "ss";
+  else if (dev_type == HYSCAN_DUMMY_DEVICE_PROFILER)
+    dev_id = "pf";
+  else
+    return NULL;
+
+  info.name = actuator;
+  info.dev_id = dev_id;
+  info.description = g_strdup_printf ("%s description", actuator);
+
+  info.capabilities = HYSCAN_ACTUATOR_MODE_SCAN |
+                      HYSCAN_ACTUATOR_MODE_MANUAL;
+  info.min_range = -G_PI;
+  info.max_range = G_PI;
+  info.min_speed = G_PI / 10.0;
+  info.max_speed = G_PI / 2.0;
+
+  pinfo = hyscan_actuator_info_actuator_copy (&info);
+  g_free ((gchar*)info.description);
 
   return pinfo;
 }
@@ -1691,6 +1962,7 @@ hyscan_dummy_device_param_interface_init (HyScanParamInterface *iface)
 static void
 hyscan_dummy_device_device_interface_init (HyScanDeviceInterface *iface)
 {
+  iface->sync = hyscan_dummy_device_sync;
   iface->set_sound_velocity = hyscan_dummy_device_set_sound_velocity;
   iface->disconnect = hyscan_dummy_device_disconnect;
 }
@@ -1711,7 +1983,6 @@ hyscan_dummy_device_sonar_interface_init (HyScanSonarInterface *iface)
   iface->tvg_disable = hyscan_dummy_device_sonar_tvg_disable;
   iface->start = hyscan_dummy_device_sonar_start;
   iface->stop = hyscan_dummy_device_sonar_stop;
-  iface->sync = hyscan_dummy_device_sonar_sync;
 }
 
 static void
@@ -1719,4 +1990,12 @@ hyscan_dummy_device_sensor_interface_init (HyScanSensorInterface *iface)
 {
   iface->antenna_set_offset = hyscan_dummy_device_sensor_antenna_set_offset;
   iface->set_enable = hyscan_dummy_device_sensor_set_enable;
+}
+
+static void
+hyscan_dummy_device_actuator_interface_init (HyScanActuatorInterface *iface)
+{
+  iface->disable = hyscan_dummy_device_actuator_disable;
+  iface->scan = hyscan_dummy_device_actuator_scan;
+  iface->manual = hyscan_dummy_device_actuator_manual;
 }

@@ -93,9 +93,11 @@
         <default>3533456721320349085</default>
       </key>
       <key id="version" name="Acoustic channel schema version" type="integer" access="r">
-        <default>20200200</default>
+        <default>20210100</default>
       </key>
     </node>
+    <key id="description" name="Source description" type="string"/>
+    <key id="actuator" name="Actuator name" type="string"/>
     <node id="offset" schema="offset"/>
     <node id="antenna" schema="antenna"/>
     <node id="data" schema="data"/>

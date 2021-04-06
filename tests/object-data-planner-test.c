@@ -39,76 +39,11 @@
 #define PROJECT_NAME  "test"      /* Имя проекта. */
 #define TRACK_NAME    "test"      /* Имя галса. */
 
-static gboolean
-geo_point_equal (HyScanGeoPoint *a,
-                 HyScanGeoPoint *b)
-{
-  return fabs (a->lat - b->lat) < 1e-9 && fabs (a->lon - b->lon) < 1e-9;
-}
-
-static gboolean
-tracks_equal (HyScanPlannerTrack *a,
-              HyScanPlannerTrack *b)
-{
-  gint i;
-
-  if (g_strcmp0 (a->zone_id, b->zone_id) != 0 ||
-      g_strcmp0 (a->name, b->name) != 0 ||
-      a->number != b->number ||
-      fabs (a->plan.speed - b->plan.speed) > 1e-5 ||
-      !geo_point_equal (&a->plan.start, &b->plan.start) ||
-      !geo_point_equal (&a->plan.end, &b->plan.end))
-    {
-      return FALSE;
-    }
-
-  if (a->records == NULL && b->records == NULL)
-    return TRUE;
-  else if (a->records == NULL || b->records == NULL)
-    return FALSE;
-
-  if (g_strv_length (a->records) != g_strv_length (b->records))
-    return FALSE;
-
-  for (i = 0; a->records[i] != NULL; i++)
-    {
-      if (g_strcmp0 (a->records[i], b->records[i]) != 0)
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
-static gboolean
-zones_equal (HyScanPlannerZone *a,
-             HyScanPlannerZone *b)
-{
-  guint i;
-  
-  if (a->type != b->type ||
-      a->ctime != b->ctime ||
-      a->mtime != b->mtime ||
-      a->points_len != b->points_len ||
-      g_strcmp0 (a->name, b->name) != 0)
-    {
-      return FALSE;
-    }
-    
-  for (i = 0; i < a->points_len; i++)
-    {
-      if (!geo_point_equal (&a->points[i], &b->points[i]))
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
 /* Общий тест на работу класса HyScanObjectDataPlanner. */
 static void
 test_objects (HyScanObjectStore *data,
               HyScanObject *object0,
-              HyScanObject *object1,
-              GEqualFunc    equal_func)
+              HyScanObject *object1)
 {
   HyScanObject *db_object[2];
   gchar *db_id[2];
@@ -117,7 +52,7 @@ test_objects (HyScanObjectStore *data,
   gboolean status;
   gint i;
 
-  if (equal_func (object0, object1))
+  if (hyscan_object_equal (object0, object1))
     g_error ("Objects must differ");
 
   /* Проверяем добавление объектов в БД. */
@@ -146,7 +81,9 @@ test_objects (HyScanObjectStore *data,
 
   db_object[0] = hyscan_object_store_get (data, object0->type, db_id[0]);
   db_object[1] = hyscan_object_store_get (data, object1->type, db_id[1]);
-  if (!equal_func (db_object[0], object0) || !equal_func (db_object[1], object1))
+  g_message ("Object0: %p", db_object[0]);
+  g_message ("Object1: %p", db_object[1]);
+  if (!hyscan_object_equal (db_object[0], object0) || !hyscan_object_equal (db_object[1], object1))
     g_error ("Db objects differ from original objects");
 
   hyscan_object_free (db_object[0]);
@@ -157,7 +94,7 @@ test_objects (HyScanObjectStore *data,
     g_error ("Failed to modify object");
 
   db_object[0] = hyscan_object_store_get (data, object0->type, db_id[0]);
-  if (!equal_func (db_object[0], object1))
+  if (!hyscan_object_equal (db_object[0], object1))
     g_error ("Object has not been modified");
   hyscan_object_free (db_object[0]);
 
@@ -181,6 +118,7 @@ static void
 test_zones (HyScanObjectStore *data)
 {
   HyScanPlannerZone *zone2, *zone1;
+  HyScanGeoPoint *vertex1, *vertex2;
   gint i;
 
   zone1 = hyscan_planner_zone_new ();
@@ -189,9 +127,9 @@ test_zones (HyScanObjectStore *data)
   zone1->name = g_strdup ("Zone 1");
 
   zone2 = (HyScanPlannerZone *) hyscan_object_copy ((HyScanObject *) zone1);
-  if (!zones_equal (zone2, zone1))
+  if (!hyscan_object_equal (zone2, zone1))
     g_error ("Zone copy is not equal to the source");
-  
+
   for (i = 0; i < 10; i++)
     {
       HyScanGeoPoint point = {i, i + 1};
@@ -199,16 +137,22 @@ test_zones (HyScanObjectStore *data)
     }
   if (zone2->points_len != 10)
     g_error ("Failed to add vertex to zone");
-  
+
   hyscan_planner_zone_vertex_dup (zone2, 1);
-  if (!geo_point_equal (&zone2->points[1], &zone2->points[2]) || zone2->points_len != 11)
-    g_error ("Failed to duplicate vertex");
-  
+  vertex1 = &zone2->points[1];
+  vertex2 = &zone2->points[2];
+  if (fabs (vertex1->lat - vertex2->lat) > 1e-9 ||
+      fabs (vertex1->lon - vertex2->lon) > 1e-9 ||
+      zone2->points_len != 11)
+    {
+      g_error ("Failed to duplicate vertex");
+    }
+
   hyscan_planner_zone_vertex_remove (zone2, 1);
   if (zone2->points_len != 10)
     g_error ("Failed to remove vertex");
 
-  test_objects (data, (HyScanObject *) zone1, (HyScanObject *) zone2, (GEqualFunc) zones_equal);
+  test_objects (data, (HyScanObject *) zone1, (HyScanObject *) zone2);
 
   hyscan_planner_zone_free (zone1);
   hyscan_planner_zone_free (zone2);
@@ -227,7 +171,7 @@ test_tracks (HyScanObjectStore *data)
   track1->zone_id = g_strdup ("abcdef");
 
   track2 = (HyScanPlannerTrack *) hyscan_object_copy ((HyScanObject *) track1);
-  if (!tracks_equal (track2, track1))
+  if (!hyscan_object_equal (track2, track1))
     g_error ("Track copy is not equal to the source");
 
   hyscan_planner_track_record_append (track2, "track_id_1");
@@ -241,7 +185,7 @@ test_tracks (HyScanObjectStore *data)
   if (g_strv_length (track2->records) != 2)
     g_error ("Failed to remove records from track plan");
 
-  test_objects (data, (HyScanObject *) track1, (HyScanObject *) track2, (GEqualFunc) tracks_equal);
+  test_objects (data, (HyScanObject *) track1, (HyScanObject *) track2);
 
   hyscan_planner_track_free (track1);
   hyscan_planner_track_free (track2);
@@ -320,7 +264,8 @@ main (int argc, char **argv)
   make_track (db);
 
   data = hyscan_object_data_planner_new ();
-  hyscan_object_data_project_open (data, db, PROJECT_NAME);
+  if (!hyscan_object_data_project_open (data, db, PROJECT_NAME))
+    g_error ("Failed to open project");
 
   test_zones (HYSCAN_OBJECT_STORE (data));
   test_tracks (HYSCAN_OBJECT_STORE (data));

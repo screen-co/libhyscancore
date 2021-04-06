@@ -129,6 +129,14 @@ gboolean               hyscan_data_writer_sensor_add_data      (HyScanDataWriter
                                                                 HyScanBuffer                  *data);
 
 HYSCAN_API
+gboolean               hyscan_data_writer_acoustic_create      (HyScanDataWriter              *writer,
+                                                                HyScanSourceType               source,
+                                                                guint                          channel,
+                                                                const gchar                   *description,
+                                                                const gchar                   *actuator,
+                                                                HyScanAcousticDataInfo        *info);
+
+HYSCAN_API
 gboolean               hyscan_data_writer_acoustic_add_data    (HyScanDataWriter              *writer,
                                                                 HyScanSourceType               source,
                                                                 guint                          channel,
