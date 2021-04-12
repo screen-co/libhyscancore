@@ -43,6 +43,7 @@
 #define OPERATOR_NAME          "tester"
 #define SONAR_INFO             "This is sonar info"
 #define PROJECT_NAME           "test"
+#define ACTUATOR_NAME          "actuator"
 
 #define N_CHANNELS_PER_TYPE    4
 #define N_RECORDS_PER_CHANNEL  100
@@ -311,6 +312,43 @@ antenna_check_offset (HyScanDB *db,
   hyscan_db_close (db, param_id);
 }
 
+/* Функция проверяет описание канала гидроакустических данных. */
+void
+acoustic_check_description (HyScanDB         *db,
+                            gint32            channel_id,
+                            HyScanSourceType  source)
+{
+  HyScanParamList *list = hyscan_param_list_new ();
+  gint32 param_id;
+
+  param_id = hyscan_db_channel_param_open (db, channel_id);
+  if (param_id < 0)
+    g_error ("can't open parameters");
+
+  hyscan_param_list_add (list, "/description");
+  hyscan_param_list_add (list, "/actuator");
+  if (!hyscan_db_param_get (db, param_id, NULL, list))
+    {
+      g_error ("can't read description");
+    }
+
+  if (g_strcmp0 (hyscan_param_list_get_string (list, "/description"),
+                 hyscan_source_get_name_by_type (source)) != 0)
+    {
+      g_error ("description mismatch");
+    }
+
+  if (g_strcmp0 (hyscan_param_list_get_string (list, "/actuator"),
+                 ACTUATOR_NAME) != 0)
+    {
+      g_error ("actuator info mismatch");
+    }
+
+  hyscan_db_close (db, param_id);
+
+  g_object_unref (list);
+}
+
 /* Функция проверяет информацию о гидроакустических данных. */
 void
 acoustic_check_info (HyScanDB *db,
@@ -439,6 +477,7 @@ sonar_add_data (HyScanDataWriter *writer,
   HyScanComplexFloat *signal_points;
   gfloat *tvg_gains;
 
+  gboolean status;
   guint i, j;
 
   data_buffer = hyscan_buffer_new ();
@@ -461,10 +500,18 @@ sonar_add_data (HyScanDataWriter *writer,
 
   source = sonar_get_type (channel);
 
+  status = hyscan_data_writer_acoustic_create (writer, source, channel,
+                                               hyscan_source_get_name_by_type (source),
+                                               ACTUATOR_NAME,
+                                               &acoustic_info);
+  if (status != fail)
+    {
+      g_error ("can't create channel '%s-%d'",
+               hyscan_source_get_id_by_type (source), channel);
+    }
+
   for (i = 0; i < N_RECORDS_PER_CHANNEL; i++)
     {
-      gboolean status;
-
       /* Образ сигнала. */
       if ((i % N_LINES_PER_SIGNAL) == 0)
         {
@@ -503,7 +550,7 @@ sonar_add_data (HyScanDataWriter *writer,
         data_values[j] = channel + i + j;
 
       status = hyscan_data_writer_acoustic_add_data (writer, source, channel, FALSE,
-                                                     timestamp + i, &acoustic_info, data_buffer);
+                                                     timestamp + i, data_buffer);
       if (status != fail)
         {
           g_error ("error adding data to '%s-%d'",
@@ -511,7 +558,7 @@ sonar_add_data (HyScanDataWriter *writer,
         }
 
       status = hyscan_data_writer_acoustic_add_data (writer, source, channel, TRUE,
-                                                     timestamp + i, &acoustic_info, data_buffer);
+                                                     timestamp + i, data_buffer);
       if (status != fail)
         {
           g_error ("error adding noise to '%s-%d'",
@@ -683,6 +730,7 @@ sonar_check_data (HyScanDB    *db,
 
   /* Проверка параметров. */
   antenna_check_offset (db, data_channel_id, ACOUSTIC_CHANNEL_SCHEMA_ID, channel);
+  acoustic_check_description (db, data_channel_id, source);
   acoustic_check_info (db, data_channel_id, channel);
   signal_check_info (db, signal_channel_id, channel);
   tvg_check_info (db, tvg_channel_id, channel);

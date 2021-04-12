@@ -88,7 +88,8 @@ const gchar *                hyscan_dummy_device_get_id                   (HySca
 
 void                         hyscan_dummy_device_change_state             (HyScanDummyDevice              *dummy);
 
-void                         hyscan_dummy_device_send_data                (HyScanDummyDevice              *dummy);
+void                         hyscan_dummy_device_send_data                (HyScanDummyDevice              *dummy,
+                                                                           guint                           iteration);
 
 gboolean                     hyscan_dummy_device_check_sound_velocity     (HyScanDummyDevice              *dummy,
                                                                            GList                          *svp);

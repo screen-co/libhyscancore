@@ -87,19 +87,24 @@ main (int argc, char **argv)
       goto exit;
     }
 
+  {
+    HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1000.0}; /* Информация о датчике. */
+    hyscan_data_writer_acoustic_create (writer, SSS, 1, NULL, NULL, &info);
+    hyscan_data_writer_acoustic_create (writer, SSP, 1, NULL, NULL, &info);
+  }
+
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)
     {
       gfloat *acoustic;  /* Акустическая строка. */
       gchar *nmea;
 
       guint32 real_size;
-      HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
 
       acoustic = make_acoustic_string (SIZE, &real_size);
       hyscan_buffer_wrap (buffer, HYSCAN_DATA_FLOAT, acoustic, real_size);
 
-      hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time, &info, buffer);
-      hyscan_data_writer_acoustic_add_data (writer, SSP, 1, FALSE, time, &info, buffer);
+      hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time, buffer);
+      hyscan_data_writer_acoustic_add_data (writer, SSP, 1, FALSE, time, buffer);
 
       g_free (acoustic);
 

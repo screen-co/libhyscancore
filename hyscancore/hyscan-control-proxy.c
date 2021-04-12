@@ -52,11 +52,14 @@
  * #hyscan_control_proxy_set_scale. Тип выходных данных задаётся функцией
  * #hyscan_control_proxy_set_data_type.
  *
- * Список датчиков и источников данных можно получить с помощью функций
- * #hyscan_control_proxy_sources_list и #hyscan_control_proxy_sensors_list.
+ * Список источников гидролокационных данных можно получить с помощью функции
+ * #hyscan_control_proxy_sources_list, список датчиков
+ * #hyscan_control_proxy_sensors_list,
+ * а список приводов #hyscan_control_proxy_actuators_list.
  *
- * Информацию о датчиках и источниках данных можно получить с помощью функций
- * #hyscan_control_proxy_sensor_get_info и #hyscan_control_proxy_source_get_info.
+ * Информацию об источниках данных,датчиках и приводах  можно получить с
+ * помощью функций #hyscan_control_proxy_source_get_info,
+ * #hyscan_control_proxy_sensor_get_info и #hyscan_control_proxy_actuator_get_info.
  *
  * Управлять включением и отключением пересылки данных (и соответственно их
  * обработкой) можно с помощью функций #hyscan_control_proxy_sensor_set_sender
@@ -135,7 +138,6 @@ typedef struct
 {
   HyScanControlProxyStatus     status;           /* Статус буфера данных. */
   gint64                       time;             /* Метка времени данных. */
-  HyScanAcousticDataInfo       info;             /* Информация о данных. */
   HyScanBuffer                *data;             /* Данные. */
 } HyScanControlProxyData;
 
@@ -144,7 +146,8 @@ typedef struct
   gboolean                     enable;           /* Признак необходимости пересылки данных. */
   gchar                       *description;      /* Описание источника данных. */
   gchar                       *actuator;         /* Название привода. */
-  gboolean                     start;            /* Признак начала галса. */
+  HyScanAcousticDataInfo       info;             /* Параметры акустических данных. */
+  gboolean                     send_info;        /* Признак отправки параметров в начале галса. */
   HyScanControlProxyData       data[AQ_BUF_SZ];  /* Буферы обработки акустических данных. */
   HyScanBuffer                *import;           /* Временный буфер акустических данных. */
   HyScanControlProxySignal     signal;           /* Образ сигнала для свёртки. */
@@ -227,6 +230,13 @@ static void      hyscan_control_proxy_device_log               (HyScanControlPro
                                                                 gint                     level,
                                                                 const gchar             *message);
 
+static void      hyscan_control_proxy_sonar_source_info        (HyScanControlProxy      *proxy,
+                                                                gint                     source,
+                                                                guint                    channel,
+                                                                const gchar             *description,
+                                                                const gchar             *actuator,
+                                                                HyScanAcousticDataInfo  *info);
+
 static void      hyscan_control_proxy_sonar_signal             (HyScanControlProxy      *proxy,
                                                                 gint                     source,
                                                                 guint                    channel,
@@ -238,7 +248,6 @@ static void      hyscan_control_proxy_sonar_acoustic_data      (HyScanControlPro
                                                                 guint                    channel,
                                                                 gboolean                 noise,
                                                                 gint64                   time,
-                                                                HyScanAcousticDataInfo  *info,
                                                                 HyScanBuffer            *data);
 
 static void      hyscan_control_proxy_sensor_data              (HyScanControlProxy      *proxy,
@@ -371,6 +380,7 @@ hyscan_control_proxy_object_constructed (GObject *object)
           const gchar *source_id = hyscan_source_get_id_by_type (sources[i]);
 
           g_mutex_init (&buffer->signal.lock);
+          buffer->send_info = TRUE;
           buffer->new_data_type = HYSCAN_DATA_AMPLITUDE_INT16LE;
           buffer->new_line_scale = 1;
           buffer->new_point_scale = 1;
@@ -428,6 +438,8 @@ hyscan_control_proxy_object_constructed (GObject *object)
                             G_CALLBACK (hyscan_control_proxy_device_state), proxy);
   g_signal_connect_swapped (priv->device, "device-log",
                             G_CALLBACK (hyscan_control_proxy_device_log), proxy);
+  g_signal_connect_swapped (priv->sonar, "sonar-source-info",
+                            G_CALLBACK (hyscan_control_proxy_sonar_source_info), proxy);
   g_signal_connect_swapped (priv->sonar, "sonar-signal",
                             G_CALLBACK (hyscan_control_proxy_sonar_signal), proxy);
   g_signal_connect_swapped (priv->sonar, "sonar-acoustic-data",
@@ -656,6 +668,33 @@ hyscan_control_proxy_device_log (HyScanControlProxy *proxy,
   g_cond_signal (&priv->cond);
 }
 
+/* Функция запоминает параметры акустичсеких данных. */
+static void
+hyscan_control_proxy_sonar_source_info (HyScanControlProxy     *proxy,
+                                        gint                    source,
+                                        guint                   channel,
+                                        const gchar            *description,
+                                        const gchar            *actuator,
+                                        HyScanAcousticDataInfo *info)
+{
+  HyScanControlProxyPrivate *priv = proxy->priv;
+  HyScanControlProxyAcoustic *buffer;
+
+  if (channel != 1)
+    return;
+
+  buffer = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if (buffer == NULL)
+    return;
+
+  g_free (buffer->description);
+  g_free (buffer->actuator);
+
+  buffer->description = g_strdup (description);
+  buffer->actuator = g_strdup (actuator);
+  buffer->info = *info;
+}
+
 /* Функция запоминает новый образ сигнала. */
 static void
 hyscan_control_proxy_sonar_signal (HyScanControlProxy *proxy,
@@ -666,9 +705,6 @@ hyscan_control_proxy_sonar_signal (HyScanControlProxy *proxy,
 {
   HyScanControlProxyPrivate *priv = proxy->priv;
   HyScanControlProxyAcoustic *buffer;
-
-  if (!g_atomic_int_get (&priv->started))
-    return;
 
   if (channel != 1)
     return;
@@ -699,7 +735,6 @@ hyscan_control_proxy_sonar_acoustic_data (HyScanControlProxy     *proxy,
                                           guint                   channel,
                                           gboolean                noise,
                                           gint64                  time,
-                                          HyScanAcousticDataInfo *info,
                                           HyScanBuffer           *data)
 {
   HyScanControlProxyPrivate *priv = proxy->priv;
@@ -708,28 +743,25 @@ hyscan_control_proxy_sonar_acoustic_data (HyScanControlProxy     *proxy,
   HyScanDiscretizationType discretization;
   guint32 i;
 
-  if (!g_atomic_int_get (&priv->started))
-    return;
-
   if (source == HYSCAN_SOURCE_FORWARD_LOOK)
     return;
 
   if ((channel != 1) || noise)
     return;
 
-  if (info->data_type != hyscan_buffer_get_data_type (data))
+  buffer = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
+  if ((buffer == NULL) || (!g_atomic_int_get (&buffer->enable)))
     return;
 
-  discretization = hyscan_discretization_get_type_by_data (info->data_type);
+  if (buffer->info.data_type != hyscan_buffer_get_data_type (data))
+    return;
+
+  discretization = hyscan_discretization_get_type_by_data (buffer->info.data_type);
   if ((discretization != HYSCAN_DISCRETIZATION_COMPLEX) &&
       (discretization != HYSCAN_DISCRETIZATION_AMPLITUDE))
     {
       return;
     }
-
-  buffer = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
-  if ((buffer == NULL) || (!g_atomic_int_get (&buffer->enable)))
-    return;
 
   buffer->received += 1;
   buffer->line_counter += 1;
@@ -760,7 +792,6 @@ hyscan_control_proxy_sonar_acoustic_data (HyScanControlProxy     *proxy,
     return;
 
   buffer->line_counter = 0;
-  acoustic->info = *info;
   acoustic->time = time;
 
   /* Сигнализируем об обработке. */
@@ -778,9 +809,6 @@ hyscan_control_proxy_sensor_data (HyScanControlProxy *proxy,
 {
   HyScanControlProxyPrivate *priv = proxy->priv;
   HyScanControlProxySensor *buffer;
-
-  if (!g_atomic_int_get (&priv->started))
-    return;
 
   buffer = g_hash_table_lookup (priv->sensors, sensor);
   if ((buffer == NULL) || (!g_atomic_int_get (&buffer->enable)))
@@ -933,7 +961,7 @@ hyscan_control_proxy_sender (gpointer user_data)
             }
 
           /* Обработка данных. */
-          discretization = hyscan_discretization_get_type_by_data (acoustic->info.data_type);
+          discretization = hyscan_discretization_get_type_by_data (buffer->info.data_type);
 
           /* Коэффициент масштабирования по дальности. */
           p_scale = buffer->cur_point_scale;
@@ -1003,24 +1031,23 @@ hyscan_control_proxy_sender (gpointer user_data)
           if (send_data && g_atomic_int_get (&priv->started) &&
               hyscan_buffer_export (abuffer, sbuffer, buffer->cur_data_type))
             {
-              HyScanAcousticDataInfo info = acoustic->info;
+              HyScanAcousticDataInfo info = buffer->info;
 
               info.data_rate /= p_scale;
               info.data_type = buffer->cur_data_type;
 
-              if (buffer->start)
+              if (buffer->send_info)
                 {
                   hyscan_sonar_driver_send_source_info (proxy, source, 1,
                                                         buffer->description,
                                                         buffer->actuator,
                                                         &info);
 
-                  buffer->start = FALSE;
+                  buffer->send_info = FALSE;
                 }
 
-              hyscan_sonar_driver_send_acoustic_data (proxy,
-                                                      source, 1, FALSE, acoustic->time,
-                                                      &info, sbuffer);
+              hyscan_sonar_driver_send_acoustic_data (proxy, source, 1, FALSE,
+                                                      acoustic->time, sbuffer);
             }
 
           g_atomic_int_set (&acoustic->status, HYSCAN_CONTROL_PROXY_EMPTY);
@@ -1275,15 +1302,17 @@ hyscan_control_proxy_sonar_start (HyScanSonar           *sonar,
     return FALSE;
 
   /* Обновляем параметры прореживания данных. */
-  g_hash_table_iter_init (&iter, priv->sources);
-  while (g_hash_table_iter_next (&iter, &key, &value))
+  if (!g_atomic_int_get (&priv->started))
     {
-      HyScanControlProxyAcoustic *buffer = value;
+      g_hash_table_iter_init (&iter, priv->sources);
+      while (g_hash_table_iter_next (&iter, &key, &value))
+        {
+          HyScanControlProxyAcoustic *buffer = value;
 
-      buffer->cur_data_type = buffer->new_data_type;
-      buffer->cur_line_scale = buffer->new_line_scale;
-      buffer->cur_point_scale = buffer->new_point_scale;
-      buffer->start = TRUE;
+          buffer->cur_data_type = buffer->new_data_type;
+          buffer->cur_line_scale = buffer->new_line_scale;
+          buffer->cur_point_scale = buffer->new_point_scale;
+        }
     }
 
   /* Запускаем оборудование и если всё прошло нормально,
@@ -1341,11 +1370,9 @@ hyscan_control_proxy_sonar_stop (HyScanSonar *sonar)
                 goto wait_for_empty;
             }
 
-          g_mutex_lock (&buffer->signal.lock);
           buffer->line_counter = 0;
           buffer->signal.time = -1;
-          buffer->start = FALSE;
-          g_mutex_unlock (&buffer->signal.lock);
+          buffer->send_info = TRUE;
         }
 
       break;
@@ -1532,7 +1559,7 @@ hyscan_control_proxy_set_data_type (HyScanControlProxy *proxy,
  * терминированного массива строк с названиями датчиков. Список принадлежит
  * объекту #HyScanControl и не должен изменяться пользователем.
  *
- * Returns: (transfer none): Список портов или NULL.
+ * Returns: (transfer none): Список датчиков или NULL.
  */
 const gchar * const *
 hyscan_control_proxy_sensors_list (HyScanControlProxy *proxy)
@@ -1560,6 +1587,24 @@ hyscan_control_proxy_sources_list (HyScanControlProxy *proxy,
   g_return_val_if_fail (HYSCAN_IS_CONTROL_PROXY (proxy), NULL);
 
   return hyscan_control_sources_list (proxy->priv->control, n_sources);
+}
+
+/**
+ * hyscan_control_proxy_actuators_list:
+ * @proxy: указатель на #HyScanControlProxy
+ *
+ * Функция возвращает список приводов. Список возвращается в виде NULL
+ * терминированного массива строк с названиями приводов. Список принадлежит
+ * объекту #HyScanControl и не должен изменяться пользователем.
+ *
+ * Returns: (transfer none): Список портов или NULL.
+ */
+const gchar * const *
+hyscan_control_proxy_actuators_list (HyScanControlProxy *proxy)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL_PROXY (proxy), NULL);
+
+  return hyscan_control_actuators_list (proxy->priv->control);
 }
 
 /**
@@ -1596,6 +1641,24 @@ hyscan_control_proxy_source_get_info (HyScanControlProxy *proxy,
   g_return_val_if_fail (HYSCAN_IS_CONTROL_PROXY (proxy), NULL);
 
   return hyscan_control_source_get_info (proxy->priv->control, source);
+}
+
+/**
+ * hyscan_control_proxy_actuator_get_info:
+ * @proxy: указатель на #HyScanControlProxy
+ * @actuator: название привода
+ *
+ * Функция возвращает параметры привода.
+ *
+ * Returns: (nullable) (transfer none): Параметры привода или NULL.
+ */
+const HyScanActuatorInfoActuator *
+hyscan_control_proxy_actuator_get_info (HyScanControlProxy *proxy,
+                                        const gchar        *actuator)
+{
+  g_return_val_if_fail (HYSCAN_IS_CONTROL_PROXY (proxy), NULL);
+
+  return hyscan_control_actuator_get_info (proxy->priv->control, actuator);
 }
 
 /**

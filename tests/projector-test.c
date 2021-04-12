@@ -82,10 +82,15 @@ main (int argc, char **argv)
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, NULL, -1))
     FAIL ("Couldn't start data writer.");
 
+  {
+    HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1000.0}; /* Информация о датчике. */
+    hyscan_data_writer_acoustic_create (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD, 1, NULL, NULL, &info);
+    hyscan_data_writer_acoustic_create (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT, 1, NULL, NULL, &info);
+  }
+
   for (i = 0, time = 100000000; i < SIZE; i++, time += DB_TIME_INC)
     {
       guint32 data_size;
-      HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1000.0}; /* Информация о датчике. */
       gfloat vals[100] = {0};  /* Акустическая строка. */
 
       data_size = 100 * sizeof (HyScanComplexFloat);
@@ -94,9 +99,9 @@ main (int argc, char **argv)
 
 
       hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_STARBOARD,
-                                            1, FALSE, time, &info, buffer);
+                                            1, FALSE, time, buffer);
       hyscan_data_writer_acoustic_add_data (writer, HYSCAN_SOURCE_SIDE_SCAN_PORT,
-                                            1, FALSE, time - DB_TIME_INC * 10, &info, buffer);
+                                            1, FALSE, time - DB_TIME_INC * 10, buffer);
     }
 
   sv = g_array_new (FALSE, FALSE, sizeof (HyScanSoundVelocity));

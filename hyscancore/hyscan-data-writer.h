@@ -137,12 +137,16 @@ gboolean               hyscan_data_writer_acoustic_create      (HyScanDataWriter
                                                                 HyScanAcousticDataInfo        *info);
 
 HYSCAN_API
+gboolean               hyscan_data_writer_acoustic_is_created  (HyScanDataWriter              *writer,
+                                                                HyScanSourceType               source,
+                                                                guint                          channel);
+
+HYSCAN_API
 gboolean               hyscan_data_writer_acoustic_add_data    (HyScanDataWriter              *writer,
                                                                 HyScanSourceType               source,
                                                                 guint                          channel,
                                                                 gboolean                       noise,
                                                                 gint64                         time,
-                                                                HyScanAcousticDataInfo        *info,
                                                                 HyScanBuffer                  *data);
 
 HYSCAN_API

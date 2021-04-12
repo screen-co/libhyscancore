@@ -626,44 +626,47 @@ hyscan_dummy_device_sonar_start (HyScanSonar           *sonar,
   HyScanAcousticDataInfo info;
   HyScanSourceType source;
 
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_START)
+    {
+      if (priv->type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
+        {
+          source = HYSCAN_SOURCE_SIDE_SCAN_PORT;
+          info = hyscan_dummy_device_get_acoustic_info (source);
+          hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                                hyscan_source_get_name_by_type (source),
+                                                "actuator-1",
+                                                &info);
+
+          source = HYSCAN_SOURCE_SIDE_SCAN_STARBOARD;
+          info = hyscan_dummy_device_get_acoustic_info (source);
+          hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                                hyscan_source_get_name_by_type (source),
+                                                "actuator-1",
+                                                &info);
+        }
+      else
+        {
+          source = HYSCAN_SOURCE_PROFILER;
+          info = hyscan_dummy_device_get_acoustic_info (source);
+          hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                                hyscan_source_get_name_by_type (source),
+                                                "actuator-2",
+                                                &info);
+
+          source = HYSCAN_SOURCE_PROFILER_ECHO;
+          info = hyscan_dummy_device_get_acoustic_info (source);
+          hyscan_sonar_driver_send_source_info (sonar, source, 1,
+                                                hyscan_source_get_name_by_type (source),
+                                                "actuator-2",
+                                                &info);
+        }
+    }
+
   priv->project_name = project_name;
   priv->track_name = track_name;
   priv->track_type = track_type;
   priv->track_plan = track_plan;
   priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_START;
-
-  if (priv->type == HYSCAN_DUMMY_DEVICE_SIDE_SCAN)
-    {
-      source = HYSCAN_SOURCE_SIDE_SCAN_PORT;
-      info = hyscan_dummy_device_get_acoustic_info (source);
-      hyscan_sonar_driver_send_source_info (sonar, source, 1,
-                                            hyscan_source_get_name_by_type (source),
-                                            "actuator-1",
-                                            &info);
-
-      source = HYSCAN_SOURCE_SIDE_SCAN_STARBOARD;
-      info = hyscan_dummy_device_get_acoustic_info (source);
-      hyscan_sonar_driver_send_source_info (sonar, source, 1,
-                                            hyscan_source_get_name_by_type (source),
-                                            "actuator-1",
-                                            &info);
-    }
-  else
-    {
-      source = HYSCAN_SOURCE_PROFILER;
-      info = hyscan_dummy_device_get_acoustic_info (source);
-      hyscan_sonar_driver_send_source_info (sonar, source, 1,
-                                            hyscan_source_get_name_by_type (source),
-                                            "actuator-2",
-                                            &info);
-
-      source = HYSCAN_SOURCE_PROFILER_ECHO;
-      info = hyscan_dummy_device_get_acoustic_info (source);
-      hyscan_sonar_driver_send_source_info (sonar, source, 1,
-                                            hyscan_source_get_name_by_type (source),
-                                            "actuator-2",
-                                            &info);
-    }
 
   return TRUE;
 }
@@ -814,7 +817,8 @@ hyscan_dummy_device_change_state (HyScanDummyDevice *dummy)
  * Функция отправляет тестовые данные от источников данных и датчиков.
  */
 void
-hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
+hyscan_dummy_device_send_data (HyScanDummyDevice *dummy,
+                               guint              iteration)
 {
   HyScanBuffer *data;
   guint i;
@@ -843,23 +847,23 @@ hyscan_dummy_device_send_data (HyScanDummyDevice *dummy)
   for (i = 0; hyscan_dummy_device_sources[i] != HYSCAN_SOURCE_INVALID; i++)
     {
       HyScanSourceType source;
-      HyScanAcousticDataInfo info;
       HyScanComplexFloat *cdata;
       gfloat *fdata;
       guint32 n_points;
       gint64 time;
 
       source = hyscan_dummy_device_sources[i];
-      info = hyscan_dummy_device_get_acoustic_info (source);
 
       cdata = hyscan_dummy_device_get_complex_float_data (source, &n_points, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_COMPLEX_FLOAT32LE, cdata, n_points * sizeof (HyScanComplexFloat));
-      hyscan_sonar_driver_send_signal (dummy, source, 1, time, data);
-      hyscan_sonar_driver_send_acoustic_data (dummy, source, 1, FALSE, time, &info, data);
+      if (iteration == 1)
+        hyscan_sonar_driver_send_signal (dummy, source, 1, time, data);
+      hyscan_sonar_driver_send_acoustic_data (dummy, source, 1, FALSE, time, data);
 
       fdata = hyscan_dummy_device_get_float_data (source, &n_points, &time);
       hyscan_buffer_wrap (data, HYSCAN_DATA_FLOAT32LE, fdata, n_points * sizeof (gfloat));
-      hyscan_sonar_driver_send_tvg (dummy, source, 1, time, data);
+      if (iteration == 1)
+        hyscan_sonar_driver_send_tvg (dummy, source, 1, time, data);
 
       g_free (cdata);
       g_free (fdata);

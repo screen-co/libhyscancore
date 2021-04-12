@@ -88,16 +88,19 @@ main (int argc, char **argv)
   if (!hyscan_data_writer_start (writer, name, name, HYSCAN_TRACK_SURVEY, NULL, -1))
     FAIL ("Couldn't start data writer.");
 
+  {
+    HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
+    hyscan_data_writer_acoustic_create (writer, SSS, 1, NULL, NULL, &info);
+  }
+
   for (i = 0, time = 0; i < SIZE; i++, time += DB_TIME_INC)
     {
       guint32 real_size;
-      HyScanAcousticDataInfo info = {.data_type = HYSCAN_DATA_FLOAT, .data_rate = 1.0}; /* Информация о датчике. */
 
       vals = make_acoustic_string (SIZE, &real_size);
       hyscan_buffer_wrap (buffer, HYSCAN_DATA_FLOAT, vals, real_size);
 
-      hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time,
-                                            &info, buffer);
+      hyscan_data_writer_acoustic_add_data (writer, SSS, 1, FALSE, time, buffer);
 
       g_free (vals);
     }

@@ -142,6 +142,8 @@ create_complex_data (HyScanDataWriter *writer,
   offset.roll = 0.0;
 
   hyscan_data_writer_sonar_set_offset (writer, source, &offset);
+  hyscan_data_writer_acoustic_create (writer, source, channel,
+                                      NULL, NULL, &acoustic_info);
 
   n_signal_points = discretization * duration;
   n_data_points = 100 * n_signal_points;
@@ -226,7 +228,7 @@ create_complex_data (HyScanDataWriter *writer,
             g_error ("can't export channel data");
 
           status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
-                                                         data_time, &acoustic_info, channel_buffer);
+                                                         data_time, channel_buffer);
           if (!status)
             g_error ("can't add channel data");
         }
@@ -254,7 +256,7 @@ create_complex_data (HyScanDataWriter *writer,
             g_error ("can't export channel data");
 
           status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
-                                                         data_time, &acoustic_info, channel_buffer);
+                                                         data_time, channel_buffer);
           if (!status)
             g_error ("can't add channel data");
         }
@@ -319,6 +321,8 @@ create_amplitude_data (HyScanDataWriter *writer,
   offset.roll = 0.0;
 
   hyscan_data_writer_sonar_set_offset (writer, source, &offset);
+  hyscan_data_writer_acoustic_create (writer, source, channel,
+                                      NULL, NULL, &acoustic_info);
 
   n_signal_points = discretization * duration;
   n_data_points = 100 * n_signal_points;
@@ -347,7 +351,7 @@ create_amplitude_data (HyScanDataWriter *writer,
         g_error ("can't export amplitude data");
 
       status = hyscan_data_writer_acoustic_add_data (writer, source, channel, noise,
-                                                     data_time, &acoustic_info, channel_buffer);
+                                                     data_time, channel_buffer);
       if (!status)
         g_error ("can't add acoustic data");
     }

@@ -122,7 +122,15 @@ typedef struct
   HyScanDevice                *device;                         /* Указатель на подключенное устройство. */
   HyScanSonarInfoSource       *info;                           /* Информация об источнике данных. */
   HyScanAntennaOffset         *offset;                         /* Смещение антенны. */
+  GHashTable                  *channels;                       /* Список записываемых каналов. */
 } HyScanControlSourceInfo;
+
+typedef struct
+{
+  gchar                       *description;                    /* Описание источника данных. */
+  gchar                       *actuator;                       /* Название привода. */
+  HyScanAcousticDataInfo       info;                           /* Параметры акустических данных. */
+} HyScanControlChannelInfo;
 
 typedef struct
 {
@@ -150,8 +158,10 @@ struct _HyScanControlPrivate
   HyScanDataSchema            *schema;                         /* Схема управления устройствами. */
   HyScanDataWriter            *writer;                         /* Объект записи данных. */
   gint64                       log_time;                       /* Метка времени последней записи информационного сообщения. */
+  gboolean                     started;                        /* Признак запуска локатора в работу. */
 
-  GMutex                       lock;                           /* Блокировка доступа. */
+  GMutex                       writer_lock;                    /* Блокировка доступа при записи данных. */
+  GMutex                       list_lock;                      /* Блокировка доступа к списку параметров. */
 };
 
 static void        hyscan_control_param_interface_init         (HyScanParamInterface           *iface);
@@ -165,9 +175,15 @@ static void        hyscan_control_object_finalize              (GObject         
 
 static void        hyscan_control_free_sensor_info             (gpointer                        data);
 static void        hyscan_control_free_source_info             (gpointer                        data);
+static void        hyscan_control_free_channel_info            (gpointer                        data);
 static void        hyscan_control_free_actuator_info           (gpointer                        data);
 
 static void        hyscan_control_create_device_schema         (HyScanControlPrivate           *priv);
+
+static gboolean    hyscan_control_check_acoustic_channel       (HyScanDataWriter               *writer,
+                                                                HyScanSourceType                source,
+                                                                guint                           channel,
+                                                                HyScanControlSourceInfo        *info);
 
 static void        hyscan_control_sensor_data                  (HyScanDevice                   *device,
                                                                 const gchar                    *sensor,
@@ -203,7 +219,6 @@ static void        hyscan_control_sonar_acoustic_data          (HyScanDevice    
                                                                 guint                           channel,
                                                                 gboolean                        noise,
                                                                 gint64                          time,
-                                                                HyScanAcousticDataInfo         *info,
                                                                 HyScanBuffer                   *data,
                                                                 HyScanControl                  *control);
 
@@ -325,7 +340,8 @@ hyscan_control_object_constructed (GObject *object)
 
   G_OBJECT_CLASS (hyscan_control_parent_class)->constructed (object);
 
-  g_mutex_init (&priv->lock);
+  g_mutex_init (&priv->writer_lock);
+  g_mutex_init (&priv->list_lock);
 
   priv->devices   = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
                                            g_object_unref);
@@ -377,7 +393,8 @@ hyscan_control_object_finalize (GObject *object)
   g_object_unref (priv->writer);
   g_object_unref (priv->list);
 
-  g_mutex_clear (&priv->lock);
+  g_mutex_clear (&priv->writer_lock);
+  g_mutex_clear (&priv->list_lock);
 
   G_OBJECT_CLASS (hyscan_control_parent_class)->finalize (object);
 }
@@ -390,7 +407,7 @@ hyscan_control_free_sensor_info (gpointer data)
 
   hyscan_sensor_info_sensor_free (info->info);
   hyscan_antenna_offset_free (info->offset);
-  g_free (info);
+  g_slice_free (HyScanControlSensorInfo, info);
 }
 
 /* Функция освобождает память занятую структурой HyScanControlSourceInfo */
@@ -401,7 +418,19 @@ hyscan_control_free_source_info (gpointer data)
 
   hyscan_sonar_info_source_free (info->info);
   hyscan_antenna_offset_free (info->offset);
-  g_free (info);
+  g_hash_table_unref (info->channels);
+  g_slice_free (HyScanControlSourceInfo, info);
+}
+
+/* Функция освобождает память занятую структурой HyScanControlChannelInfo */
+static void
+hyscan_control_free_channel_info (gpointer data)
+{
+  HyScanControlChannelInfo *info = data;
+
+  g_free (info->description);
+  g_free (info->actuator);
+  g_slice_free (HyScanControlChannelInfo, info);
 }
 
 /* Функция освобождает память занятую структурой HyScanControlActuatorInfo */
@@ -411,7 +440,7 @@ hyscan_control_free_actuator_info (gpointer data)
   HyScanControlActuatorInfo *info = data;
 
   hyscan_actuator_info_actuator_free (info->info);
-  g_free (info);
+  g_slice_free (HyScanControlActuatorInfo, info);
 }
 
 /* функция создаёт схему устройства. */
@@ -525,6 +554,36 @@ exit:
   g_object_unref (builder);
 }
 
+/* Функция, при необходимости, создаёт канал для записи акустических данных. */
+static gboolean
+hyscan_control_check_acoustic_channel (HyScanDataWriter        *writer,
+                                       HyScanSourceType         source,
+                                       guint                    channel,
+                                       HyScanControlSourceInfo *info)
+{
+  HyScanControlChannelInfo *channel_info;
+
+  channel_info = g_hash_table_lookup (info->channels, GINT_TO_POINTER (channel));
+  if (channel_info == NULL)
+    return FALSE;
+
+  if (!hyscan_data_writer_acoustic_is_created (writer, source, channel))
+    {
+      if (!hyscan_data_writer_acoustic_create (writer, source, channel,
+                                               channel_info->description,
+                                               channel_info->actuator,
+                                               &channel_info->info))
+        {
+          g_warning ("HyScanControl: can't create channel for %s",
+                     hyscan_source_get_id_by_type (source));
+
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 /* Обработчик сигнала sensor-data. */
 static void
 hyscan_control_sensor_data (HyScanDevice  *device,
@@ -536,7 +595,6 @@ hyscan_control_sensor_data (HyScanDevice  *device,
 {
   HyScanControlPrivate *priv = control->priv;
   HyScanControlSensorInfo *sensor_info;
-  guint channel;
 
   if (!g_atomic_int_get (&priv->binded))
     return;
@@ -545,8 +603,18 @@ hyscan_control_sensor_data (HyScanDevice  *device,
   if ((sensor_info == NULL) || (sensor_info->device != device))
     return;
 
-  channel = g_atomic_int_get (&sensor_info->channel);
-  hyscan_data_writer_sensor_add_data (priv->writer, sensor, source, channel, time, data);
+  g_mutex_lock (&priv->writer_lock);
+  if (priv->started)
+    {
+      gboolean status;
+
+      status = hyscan_data_writer_sensor_add_data (priv->writer,
+                                                   sensor, source, sensor_info->channel,
+                                                   time, data);
+      if (!status)
+        g_warning ("HyScanControl: can't add sensor data for %s", sensor);
+    }
+  g_mutex_unlock (&priv->writer_lock);
 
   hyscan_sensor_driver_send_data (control, sensor, source, time, data);
 }
@@ -563,6 +631,7 @@ hyscan_control_sonar_source_info (HyScanDevice                   *device,
 {
   HyScanControlPrivate *priv = control->priv;
   HyScanControlSourceInfo *source_info;
+  HyScanControlChannelInfo *channel_info;
 
   if (!g_atomic_int_get (&priv->binded))
     return;
@@ -571,11 +640,25 @@ hyscan_control_sonar_source_info (HyScanDevice                   *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_acoustic_create (priv->writer, source, channel, description, actuator, info))
+  g_mutex_lock (&priv->writer_lock);
+
+  channel_info = g_hash_table_lookup (source_info->channels, GINT_TO_POINTER (channel));
+  if (channel_info == NULL)
     {
-      g_warning ("HyScanControl: can't create channel for %s",
-                 hyscan_source_get_id_by_type (source));
+      channel_info = g_slice_new0 (HyScanControlChannelInfo);
+      g_hash_table_insert (source_info->channels, GINT_TO_POINTER (channel), channel_info);
     }
+  else
+    {
+      g_free (channel_info->description);
+      g_free (channel_info->actuator);
+    }
+
+  channel_info->description = g_strdup (description);
+  channel_info->actuator = g_strdup (actuator);
+  channel_info->info = *info;
+
+  g_mutex_unlock (&priv->writer_lock);
 
   hyscan_sonar_driver_send_source_info (control, source, channel, description, actuator, info);
 }
@@ -599,11 +682,30 @@ hyscan_control_sonar_signal (HyScanDevice  *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_acoustic_add_signal (priv->writer, source, channel, time, image))
+  g_mutex_lock (&priv->writer_lock);
+
+  if (priv->started)
     {
-      g_warning ("HyScanControl: can't set signal image for %s",
-                 hyscan_source_get_id_by_type (source));
+      gboolean status;
+
+      status = hyscan_control_check_acoustic_channel (priv->writer,
+                                                      source, channel,
+                                                      source_info);
+      if (!status)
+        goto exit;
+
+      status = hyscan_data_writer_acoustic_add_signal (priv->writer,
+                                                       source, channel,
+                                                       time, image);
+      if (!status)
+        {
+          g_warning ("HyScanControl: can't set signal image for %s",
+                     hyscan_source_get_id_by_type (source));
+        }
     }
+
+exit:
+  g_mutex_unlock (&priv->writer_lock);
 
   hyscan_sonar_driver_send_signal (control, source, channel, time, image);
 }
@@ -627,11 +729,31 @@ hyscan_control_sonar_tvg (HyScanDevice  *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_acoustic_add_tvg (priv->writer, source, channel, time, gains))
+  g_mutex_lock (&priv->writer_lock);
+
+  if (priv->started)
     {
-      g_warning ("HyScanControl: can't set tvg for %s",
-                 hyscan_source_get_id_by_type (source));
+      gboolean status;
+
+      status = hyscan_control_check_acoustic_channel (priv->writer,
+                                                      source, channel,
+                                                      source_info);
+      if (!status)
+        goto exit;
+
+
+      status = hyscan_data_writer_acoustic_add_tvg (priv->writer,
+                                                    source, channel,
+                                                    time, gains);
+      if (!status)
+        {
+          g_warning ("HyScanControl: can't set tvg for %s",
+                     hyscan_source_get_id_by_type (source));
+        }
     }
+
+exit:
+  g_mutex_unlock (&priv->writer_lock);
 
   hyscan_sonar_driver_send_tvg (control, source, channel, time, gains);
 }
@@ -643,7 +765,6 @@ hyscan_control_sonar_acoustic_data (HyScanDevice           *device,
                                     guint                   channel,
                                     gboolean                noise,
                                     gint64                  time,
-                                    HyScanAcousticDataInfo *info,
                                     HyScanBuffer           *data,
                                     HyScanControl          *control)
 {
@@ -657,15 +778,32 @@ hyscan_control_sonar_acoustic_data (HyScanDevice           *device,
   if ((source_info == NULL) || (source_info->device != device))
     return;
 
-  if (!hyscan_data_writer_acoustic_add_data (control->priv->writer,
-                                             source, channel, noise,
-                                             time, info, data))
+  g_mutex_lock (&priv->writer_lock);
+
+  if (priv->started)
     {
-      g_warning ("HyScanControl: can't add acoustic data for %s",
-                 hyscan_source_get_id_by_type (source));
+      gboolean status;
+
+      status = hyscan_control_check_acoustic_channel (priv->writer,
+                                                      source, channel,
+                                                      source_info);
+      if (!status)
+        goto exit;
+
+      status = hyscan_data_writer_acoustic_add_data (priv->writer,
+                                                     source, channel, noise,
+                                                     time, data);
+      if (!status)
+        {
+          g_warning ("HyScanControl: can't add acoustic data for %s",
+                     hyscan_source_get_id_by_type (source));
+        }
     }
 
-  hyscan_sonar_driver_send_acoustic_data (control, source, channel, noise, time, info, data);
+exit:
+  g_mutex_unlock (&priv->writer_lock);
+
+  hyscan_sonar_driver_send_acoustic_data (control, source, channel, noise, time, data);
 }
 
 /* Обработчик сигнала device-state. */
@@ -691,7 +829,7 @@ hyscan_control_device_log (HyScanDevice  *device,
   if (!g_atomic_int_get (&priv->binded))
     return;
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->writer_lock);
 
   /* Если несколько сообщений приходит одновременно, разносим их на 1 мкс. */
   if (time <= priv->log_time)
@@ -699,9 +837,9 @@ hyscan_control_device_log (HyScanDevice  *device,
 
   priv->log_time = time;
 
-  g_mutex_unlock (&priv->lock);
-
   hyscan_data_writer_log_add_message (priv->writer, source, time, level, message);
+
+  g_mutex_unlock (&priv->writer_lock);
 
   hyscan_device_driver_send_log (control, source, time, level, message);
 }
@@ -749,7 +887,7 @@ hyscan_control_param_set (HyScanParam     *param,
         return FALSE;
     }
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->list_lock);
 
   /* Просматриваем все драйверы. */
   g_hash_table_iter_init (&iter, priv->devices);
@@ -781,7 +919,7 @@ hyscan_control_param_set (HyScanParam     *param,
 
   hyscan_param_list_clear (priv->list);
 
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->list_lock);
 
   return status;
 }
@@ -816,7 +954,7 @@ hyscan_control_param_get (HyScanParam     *param,
         return FALSE;
     }
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->list_lock);
 
   /* Просматриваем все драйверы. */
   g_hash_table_iter_init (&iter, priv->devices);
@@ -854,7 +992,7 @@ hyscan_control_param_get (HyScanParam     *param,
         }
     }
 
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->list_lock);
 
   return status;
 }
@@ -951,7 +1089,7 @@ hyscan_control_sonar_antenna_set_offset (HyScanSonar               *sonar,
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->writer_lock);
 
   /* Если нет источника или задано смещение по умолчанию - выходим. */
   source_info = g_hash_table_lookup (priv->sources, GINT_TO_POINTER (source));
@@ -968,7 +1106,7 @@ hyscan_control_sonar_antenna_set_offset (HyScanSonar               *sonar,
                                             source, offset);
 
 exit:
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->writer_lock);
 
   return status;
 }
@@ -1194,27 +1332,36 @@ hyscan_control_sonar_start (HyScanSonar           *sonar,
   gboolean status = TRUE;
 
   GHashTableIter iter;
-  gpointer device;
+  gpointer value;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
+  g_mutex_lock (&priv->writer_lock);
+
   if (!hyscan_data_writer_start (priv->writer, project_name, track_name, track_type, track_plan, -1))
-    return FALSE;
+    {
+      status = FALSE;
+      goto exit;
+    }
+
+  priv->started = TRUE;
+
+  g_mutex_unlock (&priv->writer_lock);
 
   g_hash_table_iter_init (&iter, priv->devices);
-  while (g_hash_table_iter_next (&iter, NULL, &device))
+  while (g_hash_table_iter_next (&iter, NULL, &value))
     {
-      if (!HYSCAN_IS_SONAR (device))
+      HyScanSonar *sonar = value;
+
+      if (!HYSCAN_IS_SONAR (sonar))
         continue;
 
-      if (!hyscan_sonar_start (device, project_name, track_name, track_type, track_plan))
+      if (!hyscan_sonar_start (sonar, project_name, track_name, track_type, track_plan))
         status = FALSE;
     }
 
-  if (!status)
-    hyscan_control_sonar_stop (sonar);
-
+exit:
   return status;
 }
 
@@ -1228,22 +1375,37 @@ hyscan_control_sonar_stop (HyScanSonar *sonar)
   gboolean status = TRUE;
 
   GHashTableIter iter;
-  gpointer device;
+  gpointer value;
 
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
   g_hash_table_iter_init (&iter, priv->devices);
-  while (g_hash_table_iter_next (&iter, NULL, &device))
+  while (g_hash_table_iter_next (&iter, NULL, &value))
     {
-      if (!HYSCAN_IS_SONAR (device))
+      HyScanSonar *sonar = value;
+
+      if (!HYSCAN_IS_SONAR (sonar))
         continue;
 
-      if (!hyscan_sonar_stop (device))
+      if (!hyscan_sonar_stop (sonar))
         status = FALSE;
     }
 
+  g_mutex_lock (&priv->writer_lock);
+
+  priv->started = FALSE;
   hyscan_data_writer_stop (priv->writer);
+
+  g_hash_table_iter_init (&iter, priv->sources);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      HyScanControlSourceInfo *source_info = value;
+
+      g_hash_table_remove_all (source_info->channels);
+    }
+
+  g_mutex_unlock (&priv->writer_lock);
 
   return status;
 }
@@ -1266,7 +1428,7 @@ hyscan_control_sensor_antenna_set_offset (HyScanSensor              *sensor,
   if (!g_atomic_int_get (&priv->binded))
     return FALSE;
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->writer_lock);
 
   /* Если нет датчика или задано смещение по умолчанию - выходим. */
   sensor_info = g_hash_table_lookup (priv->sensors, name);
@@ -1283,7 +1445,7 @@ hyscan_control_sensor_antenna_set_offset (HyScanSensor              *sensor,
                                              name, offset);
 
 exit:
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->writer_lock);
 
   return status;
 }
@@ -1467,7 +1629,7 @@ hyscan_control_device_add (HyScanControl *control,
   else
     n_actuators = 0;
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->writer_lock);
 
   /* Название устройства. */
   device_name = g_strdup_printf ("device%d", g_hash_table_size (priv->devices) + 1);
@@ -1518,7 +1680,7 @@ hyscan_control_device_add (HyScanControl *control,
     {
       for (i = 0; i < n_sensors; i++)
         {
-          HyScanControlSensorInfo *info = g_new0 (HyScanControlSensorInfo, 1);
+          HyScanControlSensorInfo *info = g_slice_new0 (HyScanControlSensorInfo);
           gboolean add_device = TRUE;
 
           info->device = device;
@@ -1544,11 +1706,14 @@ hyscan_control_device_add (HyScanControl *control,
     {
       for (i = 0; i < n_sources; i++)
         {
-          HyScanControlSourceInfo *info = g_new0 (HyScanControlSourceInfo, 1);
+          HyScanControlSourceInfo *info = g_slice_new0 (HyScanControlSourceInfo);
           gboolean add_device = TRUE;
 
           info->device = device;
           info->info = hyscan_sonar_info_source_copy (hyscan_sonar_info_get_source (sonar_info, sources[i]));
+          info->channels = g_hash_table_new_full (NULL, NULL,
+                                                  NULL,
+                                                  hyscan_control_free_channel_info);
 
           g_hash_table_insert (priv->sources, GINT_TO_POINTER (sources[i]), info);
           g_array_append_val (priv->sources_list, sources[i]);
@@ -1569,7 +1734,7 @@ hyscan_control_device_add (HyScanControl *control,
     {
       for (i = 0; i < n_actuators; i++)
         {
-          HyScanControlActuatorInfo *info = g_new0 (HyScanControlActuatorInfo, 1);
+          HyScanControlActuatorInfo *info = g_slice_new0 (HyScanControlActuatorInfo);
           gboolean add_device = TRUE;
 
           info->device = device;
@@ -1621,7 +1786,7 @@ hyscan_control_device_add (HyScanControl *control,
   status = TRUE;
 
 exit:
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->writer_lock);
 
   g_clear_object (&device_schema);
   g_clear_object (&sensor_info);
@@ -1650,7 +1815,7 @@ hyscan_control_device_bind (HyScanControl *control)
 
   priv = control->priv;
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->writer_lock);
 
   if ((priv->schema != NULL) || priv->binded)
     goto exit;
@@ -1664,7 +1829,7 @@ hyscan_control_device_bind (HyScanControl *control)
   status = TRUE;
 
 exit:
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->writer_lock);
 
   return status;
 }
@@ -1715,14 +1880,14 @@ hyscan_control_device_get_status (HyScanControl *control,
   if (device == NULL)
     return HYSCAN_DEVICE_STATUS_ERROR;
 
-  g_mutex_lock (&priv->lock);
+  g_mutex_lock (&priv->list_lock);
 
   hyscan_param_list_clear (priv->list);
   hyscan_param_list_add (priv->list, key_id);
   if (hyscan_param_get (device, priv->list))
     status = hyscan_param_list_get_enum (priv->list, key_id);
 
-  g_mutex_unlock (&priv->lock);
+  g_mutex_unlock (&priv->list_lock);
 
   return status;
 }
@@ -1948,9 +2113,15 @@ void
 hyscan_control_writer_set_db (HyScanControl *control,
                               HyScanDB      *db)
 {
+  HyScanControlPrivate *priv;
+
   g_return_if_fail (HYSCAN_IS_CONTROL (control));
 
+  priv = control->priv;
+
+  g_mutex_lock (&priv->writer_lock);
   hyscan_data_writer_set_db (control->priv->writer, db);
+  g_mutex_unlock (&priv->writer_lock);
 }
 
 /**
@@ -1981,9 +2152,15 @@ void
 hyscan_control_writer_set_operator_name (HyScanControl *control,
                                          const gchar   *name)
 {
+  HyScanControlPrivate *priv;
+
   g_return_if_fail (HYSCAN_IS_CONTROL (control));
 
+  priv = control->priv;
+
+  g_mutex_lock (&priv->writer_lock);
   hyscan_data_writer_set_operator_name (control->priv->writer, name);
+  g_mutex_unlock (&priv->writer_lock);
 }
 
 /**
@@ -1999,9 +2176,15 @@ void
 hyscan_control_writer_set_chunk_size (HyScanControl *control,
                                       gint32         chunk_size)
 {
+  HyScanControlPrivate *priv;
+
   g_return_if_fail (HYSCAN_IS_CONTROL (control));
 
+  priv = control->priv;
+
+  g_mutex_lock (&priv->writer_lock);
   hyscan_data_writer_set_chunk_size (control->priv->writer, chunk_size);
+  g_mutex_unlock (&priv->writer_lock);
 }
 
 static void
