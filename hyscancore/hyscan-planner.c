@@ -43,12 +43,14 @@
  *
  * - hyscan_planner_origin_new() - создание,
  * - hyscan_planner_origin_copy() - копирование,
+ * - hyscan_planner_origin_equal() - сравнение,
  * - hyscan_planner_origin_free() - удаление.
  *
  * #HyScanPlannerTrack - непосредственно план прямолинейного галса.
  *
  * - hyscan_planner_track_new() - создание,
  * - hyscan_planner_track_copy() - копирование,
+ * - hyscan_planner_track_equal() - сравнение,
  * - hyscan_planner_track_free() - удаление,
  * - hyscan_planner_track_record_append() - добавление галса в список записанных по этому плану,
  * - hyscan_planner_track_record_delete()- удаление галса из списка записанных по этому плану.
@@ -57,6 +59,7 @@
  *
  * - hyscan_planner_zone_new() - создание,
  * - hyscan_planner_zone_copy() - копирование,
+ * - hyscan_planner_zone_equal() - сравнение,
  * - hyscan_planner_zone_free() - удаление,
  * - hyscan_planner_zone_vertex_append() - добавление вершины,
  * - hyscan_planner_zone_vertex_dup() - дублирование вершины,
@@ -71,9 +74,26 @@
 #define DEG2RAD(x) ((x) * G_PI / 180.0)   /* Перевод из градусов в радианы. */
 #define EARTH_RADIUS        6378137.0     /* Радиус Земли. */
 
-G_DEFINE_BOXED_TYPE (HyScanPlannerOrigin, hyscan_planner_origin, hyscan_planner_origin_copy, hyscan_planner_origin_free)
-G_DEFINE_BOXED_TYPE (HyScanPlannerTrack, hyscan_planner_track, hyscan_planner_track_copy, hyscan_planner_track_free)
-G_DEFINE_BOXED_TYPE (HyScanPlannerZone, hyscan_planner_zone, hyscan_planner_zone_copy, hyscan_planner_zone_free)
+static gboolean      hyscan_planner_geo_point_equal  (const HyScanGeoPoint   *a,
+                                                      const HyScanGeoPoint   *b);
+
+G_DEFINE_BOXED_TYPE_WITH_CODE (HyScanPlannerOrigin, hyscan_planner_origin,
+                               hyscan_planner_origin_copy, hyscan_planner_origin_free,
+                               HYSCAN_OBJECT_DEFINE_EQUAL_FUNC (hyscan_planner_origin_equal))
+G_DEFINE_BOXED_TYPE_WITH_CODE (HyScanPlannerTrack, hyscan_planner_track,
+                               hyscan_planner_track_copy, hyscan_planner_track_free,
+                               HYSCAN_OBJECT_DEFINE_EQUAL_FUNC (hyscan_planner_track_equal))
+G_DEFINE_BOXED_TYPE_WITH_CODE (HyScanPlannerZone, hyscan_planner_zone,
+                               hyscan_planner_zone_copy, hyscan_planner_zone_free,
+                               HYSCAN_OBJECT_DEFINE_EQUAL_FUNC (hyscan_planner_zone_equal))
+
+/* Функция сравнивает значения двух #HyScanGeoPoint. */
+static gboolean
+hyscan_planner_geo_point_equal (const HyScanGeoPoint *a,
+                                const HyScanGeoPoint *b)
+{
+  return fabs (a->lat - b->lat) < 1e-9 && fabs (a->lon - b->lon) < 1e-9;
+}
 
 /**
  * hyscan_planner_origin_new:
@@ -107,9 +127,26 @@ hyscan_planner_origin_copy (const HyScanPlannerOrigin *origin)
 
   copy = hyscan_planner_origin_new ();
   copy->origin = origin->origin;
-  copy->ox = origin->ox;
+  copy->azimuth = origin->azimuth;
 
   return copy;
+}
+
+/**
+ * hyscan_planner_origin_equal:
+ * @origin1: указатель на структуру HyScanPlannerOrigin
+ * @origin2: указатель на структуру HyScanPlannerOrigin для сравнения
+ *
+ * Функция сравнивает значения двух структур #HyScanPlannerOrigin.
+ *
+ * Returns: %TRUE, если значения двух структур равны; иначе %FALSE.
+ */
+gboolean
+hyscan_planner_origin_equal (const HyScanPlannerOrigin *origin1,
+                             const HyScanPlannerOrigin *origin2)
+{
+  return fabs (origin1->azimuth - origin2->azimuth) < 1e-9 &&
+         hyscan_planner_geo_point_equal (&origin1->origin, &origin2->origin);
 }
 
 /**
@@ -136,7 +173,7 @@ HyScanPlannerTrack *
 hyscan_planner_track_new (void)
 {
   HyScanPlannerTrack *track;
-  
+
   track = g_slice_new0 (HyScanPlannerTrack);
   track->type = HYSCAN_TYPE_PLANNER_TRACK;
 
@@ -166,6 +203,49 @@ hyscan_planner_track_copy (const HyScanPlannerTrack *track)
 
   return copy;
 }
+
+/**
+ * hyscan_planner_track_equal:
+ * @zone1: указатель на структуру HyScanPlannerTrack
+ * @zone2: указатель на структуру HyScanPlannerTrack для сравнения
+ *
+ * Функция сравнивает значения двух структур #HyScanPlannerTrack.
+ *
+ * Returns: %TRUE, если значения двух структур равны; иначе %FALSE.
+ */
+gboolean
+hyscan_planner_track_equal (const HyScanPlannerTrack *a,
+                            const HyScanPlannerTrack *b)
+{
+  gint i;
+
+  if (g_strcmp0 (a->zone_id, b->zone_id) != 0 ||
+      g_strcmp0 (a->name, b->name) != 0 ||
+      a->number != b->number ||
+      fabs (a->plan.speed - b->plan.speed) > 1e-5 ||
+      !hyscan_planner_geo_point_equal(&a->plan.start, &b->plan.start) ||
+      !hyscan_planner_geo_point_equal(&a->plan.end, &b->plan.end))
+    {
+      return FALSE;
+    }
+
+  if (a->records == NULL && b->records == NULL)
+    return TRUE;
+  else if (a->records == NULL || b->records == NULL)
+    return FALSE;
+
+  if (g_strv_length (a->records) != g_strv_length (b->records))
+    return FALSE;
+
+  for (i = 0; a->records[i] != NULL; i++)
+    {
+      if (g_strcmp0 (a->records[i], b->records[i]) != 0)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 
 /**
  * hyscan_planner_track_free:
@@ -523,6 +603,39 @@ hyscan_planner_zone_copy (const HyScanPlannerZone *zone)
   memcpy (copy->points, zone->points, sizeof (HyScanGeoPoint) * zone->points_len);
 
   return copy;
+}
+
+/**
+ * hyscan_planner_zone_equal:
+ * @zone1: указатель на структуру HyScanPlannerZone
+ * @zone2: указатель на структуру HyScanPlannerZone для сравнения
+ *
+ * Функция сравнивает значения двух структур #HyScanPlannerZone.
+ *
+ * Returns: %TRUE, если значения двух структур равны; иначе %FALSE.
+ */
+gboolean
+hyscan_planner_zone_equal (const HyScanPlannerZone *zone1,
+                           const HyScanPlannerZone *zone2)
+{
+  guint i;
+
+  if (zone1->type != zone2->type ||
+      zone1->ctime != zone2->ctime ||
+      zone1->mtime != zone2->mtime ||
+      zone1->points_len != zone2->points_len ||
+      g_strcmp0 (zone1->name, zone2->name) != 0)
+    {
+      return FALSE;
+    }
+
+  for (i = 0; i < zone1->points_len; i++)
+    {
+      if (!hyscan_planner_geo_point_equal (&zone1->points[i], &zone2->points[i]))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 /**

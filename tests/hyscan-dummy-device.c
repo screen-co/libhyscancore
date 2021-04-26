@@ -99,6 +99,7 @@ typedef enum
   HYSCAN_DUMMY_DEVICE_COMMAND_START,
   HYSCAN_DUMMY_DEVICE_COMMAND_STOP,
   HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE,
+  HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_DISABLE,
   HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_DISABLE,
   HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_SCAN,
   HYSCAN_DUMMY_DEVICE_COMMAND_ACTUATOR_MANUAL
@@ -705,10 +706,11 @@ hyscan_dummy_device_sensor_set_enable (HyScanSensor *sensor,
   HyScanDummyDevicePrivate *priv = dummy->priv;
 
   if (!enable)
-    return FALSE;
+    priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_DISABLE;
+  else
+    priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE;
 
   priv->sensor_name = sensor_name;
-  priv->command = HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE;
 
   return TRUE;
 }
@@ -1380,8 +1382,11 @@ hyscan_dummy_device_check_sensor_enable (HyScanDummyDevice *dummy,
 
   priv = dummy->priv;
 
-  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE)
-    return FALSE;
+  if (priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_ENABLE &&
+      priv->command != HYSCAN_DUMMY_DEVICE_COMMAND_SENSOR_DISABLE)
+    {
+      return FALSE;
+    }
 
   if (priv->sensor_name != sensor)
     return FALSE;

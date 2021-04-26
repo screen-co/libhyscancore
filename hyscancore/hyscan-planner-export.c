@@ -321,7 +321,7 @@ hyscan_planner_export_read_origin (xmlNodePtr  node,
   origin_copy = hyscan_planner_origin_copy (&origin);
 
   result &= hyscan_planner_export_read_point (node, &origin_copy->origin, "lat", "lon");
-  result &= hyscan_planner_export_read_d (node, "ox", &origin_copy->ox);
+  result &= hyscan_planner_export_read_d (node, "azimuth", &origin_copy->azimuth);
 
   if (result)
     g_hash_table_insert (objects, g_strdup (HYSCAN_PLANNER_ORIGIN_ID), origin_copy);
@@ -349,7 +349,7 @@ hyscan_planner_export_xml_inner (xmlTextWriterPtr  writer,
     {
       xmlTextWriterStartElement (writer, BAD_CAST "origin");
       hyscan_planner_export_write_point (writer, &origin->origin, "lat", "lon");
-      hyscan_planner_export_write_double (writer, "ox", origin->ox);
+      hyscan_planner_export_write_double (writer, "azimuth", origin->azimuth);
       xmlTextWriterEndElement (writer);
     }
 

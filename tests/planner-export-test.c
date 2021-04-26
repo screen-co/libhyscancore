@@ -42,7 +42,7 @@ compare_objects (GHashTable *table1,
   while (g_hash_table_iter_next (&iter, (gpointer *) &key, (gpointer *) &value1))
     {
       value2 = g_hash_table_lookup (table2, key);
-      
+
       g_message ("Processing id = \"%s\"", key);
 
       if (HYSCAN_IS_PLANNER_ORIGIN (value1))
@@ -174,7 +174,7 @@ generate_objects (void)
 
   origin.origin.lat = 22;
   origin.origin.lon = 23;
-  origin.ox = 24;
+  origin.azimuth = 24;
   origin_ptr = hyscan_planner_origin_copy (&origin);
   g_hash_table_insert (objects, g_strdup (HYSCAN_PLANNER_ORIGIN_ID), origin_ptr);
 

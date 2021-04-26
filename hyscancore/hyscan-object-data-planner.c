@@ -388,7 +388,7 @@ hyscan_object_data_planner_get_origin (HyScanObjectData *mdata,
   origin = hyscan_planner_origin_new ();
   origin->origin.lat = hyscan_param_list_get_double (plist, "/lat");
   origin->origin.lon = hyscan_param_list_get_double (plist, "/lon");
-  origin->ox = hyscan_param_list_get_double (plist, "/azimuth");
+  origin->azimuth = hyscan_param_list_get_double (plist, "/azimuth");
 
   return (HyScanObject *) origin;
 }
@@ -447,7 +447,7 @@ hyscan_object_data_planner_set_origin (HyScanObjectData          *data,
 {
   hyscan_param_list_set_double (write_plist, "/lat", origin->origin.lat);
   hyscan_param_list_set_double (write_plist, "/lon", origin->origin.lon);
-  hyscan_param_list_set_double (write_plist, "/azimuth", origin->ox);
+  hyscan_param_list_set_double (write_plist, "/azimuth", origin->azimuth);
 
   return TRUE;
 }

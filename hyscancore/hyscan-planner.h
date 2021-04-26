@@ -110,7 +110,7 @@ struct _HyScanPlannerOrigin
 {
   GType                    type;
   HyScanGeoPoint           origin;
-  gdouble                  ox;
+  gdouble                  azimuth;
 };
 
 HYSCAN_API
@@ -129,6 +129,10 @@ HYSCAN_API
 HyScanPlannerOrigin *  hyscan_planner_origin_copy         (const HyScanPlannerOrigin *origin);
 
 HYSCAN_API
+gboolean               hyscan_planner_origin_equal        (const HyScanPlannerOrigin *origin1,
+                                                           const HyScanPlannerOrigin *origin2);
+
+HYSCAN_API
 void                   hyscan_planner_origin_free         (HyScanPlannerOrigin       *origin);
 
 HYSCAN_API
@@ -136,6 +140,10 @@ HyScanPlannerTrack *   hyscan_planner_track_new           (void);
 
 HYSCAN_API
 HyScanPlannerTrack *   hyscan_planner_track_copy          (const HyScanPlannerTrack  *track);
+
+HYSCAN_API
+gboolean               hyscan_planner_track_equal         (const HyScanPlannerTrack  *track1,
+                                                           const HyScanPlannerTrack  *track2);
 
 HYSCAN_API
 void                   hyscan_planner_track_free          (HyScanPlannerTrack        *track);
@@ -178,6 +186,10 @@ HyScanPlannerZone *    hyscan_planner_zone_new            (void);
 
 HYSCAN_API
 HyScanPlannerZone *    hyscan_planner_zone_copy           (const HyScanPlannerZone   *zone);
+
+HYSCAN_API
+gboolean               hyscan_planner_zone_equal          (const HyScanPlannerZone   *zone1,
+                                                           const HyScanPlannerZone   *zone2);
 
 HYSCAN_API
 void                   hyscan_planner_zone_free           (HyScanPlannerZone         *zone);
