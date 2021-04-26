@@ -78,14 +78,13 @@ configure_file (hyscancore.pc.in
 
 install (TARGETS ${HYSCAN_CORE_LIBRARY}
          COMPONENT runtime
-         RUNTIME DESTINATION bin
-         LIBRARY DESTINATION lib
-         ARCHIVE DESTINATION lib
+         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscancore-${HYSCAN_MAJOR_VERSION}.pc"
          COMPONENT development
-         DESTINATION "lib/pkgconfig"
+         DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 install (FILES hyscan-core-schemas.h
@@ -114,5 +113,5 @@ install (FILES hyscan-core-schemas.h
                hyscan-planner.h
                hyscan-object-data-planner.h
          COMPONENT development
-         DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
+         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/hyscan-${HYSCAN_MAJOR_VERSION}/hyscancore"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
