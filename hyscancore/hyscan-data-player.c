@@ -38,11 +38,14 @@
  * @Short_description: класс воспроизведения данных
  * @Title: HyScanDataPlayer
  *
- * Класс HyScanDataPlayer используется для воспроизведения данных. Класс обрабатывает данные
- * в фоновом потоке, из которого посылает сигнал на подготовку данных (::process), а так же сигнал
- * смены рабочего галса. Класс добавляет таймер в контекст по умолчанию (MainLoop), по срабатыванию
- * которого при наличии новых данных отправляет сигнал ::ready, а при изменении рабочего диапазона -
- * ::range. Все функции являются неблокирующими и потокобезопасными.
+ * Класс HyScanDataPlayer используется для воспроизведения данных. Класс
+ * обрабатывает данные в фоновом потоке из которого посылает сигнал на подготовку
+ * данных (::process), а так же сигналы смены рабочего галса (::track-changed) и
+ * открытия каналов (::channels-opened).
+ * Класс добавляет таймер в контекст по умолчанию (MainLoop), по срабатыванию
+ * которого при наличии новых данных отправляет сигнал ::ready, а при изменении
+ * рабочего диапазона - ::range. Все функции являются неблокирующими и
+ * потокобезопасными.
  *
  * Функции класса можно условно разделить на следующие категории:
  * - создание объекта: #hyscan_data_player_new;
@@ -65,40 +68,51 @@
  *                     #hyscan_data_player_get_track.
  *                     #hyscan_data_player_is_played.
  *
- * При воспроизведении класс старается максимально точно по времени выдать сигнал подготовки новых
- * данных (::process). Сигналы готовности (::ready) и изменения диапозона (::range) выдаются при
- * наличии соответствующих условий с частотой, заданной пользователем функцией #hyscan_data_player_set_fps.
- * Возможны пропуски некоторых строк, для поддержания требуемой скорости воспроизведения.
+ * При воспроизведении класс старается максимально точно по времени выдать сигнал
+ * подготовки новых данных (::process). Сигналы готовности (::ready) и изменения
+ * диапозона (::range) выдаются при наличии соответствующих условий с частотой,
+ * заданной пользователем функцией #hyscan_data_player_set_fps. Возможны пропуски
+ * некоторых строк, для поддержания требуемой скорости воспроизведения.
  *
- * Навигацию по временнЫм меткам класс совершает на основании списка отслеживаемых каналов данных.
- * Временная шкала объекта HyScanDataPlayer ограничена минимальной и максимальной временными метками
- * среди всех входящих в список каналов. Эта шкала обновляется в режиме реального времени. Список
- * каналов открывается из галса установленного посредством функции #hyscan_data_player_set_track. При
- * смене галса предыдущий список автоматически удаляется. Редактирование данного списка осуществляется
- * функциями #hyscan_data_player_add_channel, #hyscan_data_player_remove_channel и #hyscan_data_player_clear_channels.
- * В случае добавления канала по которому нет данных в базе, класс продолжает свою работу с каналами которые
- * удалось открыть. Если имеются неоткрытые каналы класс будет постоянно предпринимать попытки по их открытию.
+ * Навигацию по временнЫм меткам класс совершает на основании списка отслеживаемых
+ * каналов данных. Временная шкала объекта HyScanDataPlayer ограничена минимальной
+ * и максимальной временными метками среди всех входящих в список каналов. Эта
+ * шкала обновляется в режиме реального времени. Список каналов открывается из
+ * галса установленного посредством функции #hyscan_data_player_set_track. При
+ * смене галса предыдущий список автоматически удаляется, пользователь должен
+ * позаботиться о создании новых каналов. Редактирование списка каналов осуществляется
+ * функциями #hyscan_data_player_add_channel, #hyscan_data_player_remove_channel
+ * и #hyscan_data_player_clear_channels.
+ * В случае добавления канала по которому нет данных в базе, класс продолжает свою
+ * работу с каналами которые удалось открыть. Если имеются неоткрытые каналы класс
+ * будет постоянно предпринимать попытки по их открытию.
  *
- * Скорость воспроизведения настраивается функцией #hyscan_data_player_play. Текущая временная метка
- * #HyScanDataPlayer'а не может выйти за временную шкалы. При достижении границы, текущая метка будет
- * установлена в крайнее положение. Воспроизведение не будет остановлено, таким образом, при обнаружении
- * новых данных воспроизведение будет продолжено с ранее установленной скоростью. Приостановка воспроизведения
- * производится функцией #hyscan_data_player_pause, текущее положение останется неизменным. Функция
- * #hyscan_data_player_stop останавливает воспроизведение и перемещает временной указатель к левой границе
- * временной шкалы. Воспроизведение в режиме реального времени производится с помощью функции
- * #hyscan_data_player_real_time. Данные будут отображены максимально быстро после записи.
+ * Скорость воспроизведения настраивается функцией #hyscan_data_player_play.
+ * Текущая временная метка #HyScanDataPlayer'а не может выйти за временную шкалы.
+ * При достижении границы, текущая метка будет установлена в крайнее положение.
+ * Воспроизведение не будет остановлено, таким образом, при обнаружении новых данных
+ * воспроизведение будет продолжено с ранее установленной скоростью. Приостановка
+ * воспроизведения производится функцией #hyscan_data_player_pause, текущее положение
+ * останется неизменным. Функция #hyscan_data_player_stop останавливает воспроизведение
+ * и перемещает временной указатель к левой границе временной шкалы. Воспроизведение
+ * в режиме реального времени производится с помощью функции #hyscan_data_player_real_time.
+ * Данные будут отображены максимально быстро после записи.
  * Чтобы узнать статус проигрывателя имеется функция #hyscan_data_player_is_played.
  *
- * Переместиться на определенную временную метку можно с помощью функции #hyscan_data_player_seek.
- * Перемещения относительно текущего положения осуществляются последством функций #hyscan_data_player_seek_next
- * и #hyscan_data_player_seek_prev. Они позволяют перемещаться к ближайшей метке, содержащей данные.
- * Функция #hyscan_data_player_step является альтернативой предыдущих для более чем одного перемещения.
+ * Переместиться на определенную временную метку можно с помощью функции
+ * #hyscan_data_player_seek. Перемещения относительно текущего положения осуществляются
+ * последством функций #hyscan_data_player_seek_next и #hyscan_data_player_seek_prev.
+ * Они позволяют перемещаться к ближайшей метке, содержащей данные. Функция
+ * #hyscan_data_player_step является альтернативой предыдущих для более чем одного
+ * перемещения.
  *
- * Обработчики сигналов ::process и ::open могут получить информацию о текущем рабочем галсе с помощью
- * функций #hyscan_data_player_get_db, #hyscan_data_player_get_project и #hyscan_data_player_get_track.
+ * Обработчики сигналов ::process, ::track-changed и ::channels-opened могут получить
+ * информацию о текущем рабочем галсе с помощью функций #hyscan_data_player_get_db,
+ * #hyscan_data_player_get_project и #hyscan_data_player_get_track.
  *
- * Перед удалением экземпляра данного класса необходимо вызвать функцию #hyscan_data_player_shutdown,
- * для остановки внутреннего потока и освобождения связанной с ним памяти.
+ * Перед удалением экземпляра данного класса необходимо вызвать функцию
+ * #hyscan_data_player_shutdown, для остановки внутреннего потока и освобождения
+ * связанной с ним памяти.
  */
 
 #include <hyscan-data-player.h>
@@ -116,6 +130,7 @@ enum
   SIGNAL_DATA_READY,
   SIGNAL_RANGE_CHANGED,
   SIGNAL_TRACK_CHANGED,
+  SIGNAL_CHANNELS_OPENED,
   SIGNAL_LAST,
 };
 
@@ -260,7 +275,6 @@ hyscan_data_player_class_init (HyScanDataPlayerClass *klass)
    * чаще одного раза за период работы класса и НЕ отправляется дважды для одной и той же временнОй
    * метки. Предполагается, что буфер будет передан пользователем посредством user_data при
    * подключении сигнала.
-   *
    */
   hyscan_data_player_signal[SIGNAL_PROCESS] =
                   g_signal_new ("process", HYSCAN_TYPE_DATA_PLAYER, G_SIGNAL_RUN_LAST, 0,
@@ -274,10 +288,9 @@ hyscan_data_player_class_init (HyScanDataPlayerClass *klass)
    * @player: указатель на #HyScanDataPlayer
    * @time: метка времени данных, содержащихся в буфере
    *
-   * Сигнал ::ready посылается каждый заданный период (#hyscan_data_player_set_fps), при
-   * условии того, что данные были подготовлены. Отправка сигнала производится внутри контекста
-   * по умолчанию.
-   *
+   * Сигнал ::ready посылается каждый заданный период (#hyscan_data_player_set_fps),
+   * при условии того, что данные были подготовлены. Отправка сигнала производится
+   * внутри контекста по умолчанию.
    */
   hyscan_data_player_signal[SIGNAL_DATA_READY] =
                   g_signal_new ("ready", HYSCAN_TYPE_DATA_PLAYER, G_SIGNAL_RUN_LAST, 0,
@@ -292,9 +305,9 @@ hyscan_data_player_class_init (HyScanDataPlayerClass *klass)
    * @min_time: минимальная метка времени среди всех отслеживаемых каналов
    * @max_time: максимальня метка времени среди всех отслеживаемых каналов
    *
-   * Сигнал ::range посылается непосредственно перед сигналом ::ready, при условии изменения
-   * допустимого временнОго диапазона класса в течение последнего периода.
-   *
+   * Сигнал ::range посылается непосредственно перед сигналом ::ready,
+   * при условии изменения допустимого временнОго диапазона класса в течение
+   * последнего периода.
    */
   hyscan_data_player_signal[SIGNAL_RANGE_CHANGED] =
                   g_signal_new ("range", HYSCAN_TYPE_DATA_PLAYER, G_SIGNAL_RUN_LAST, 0,
@@ -304,23 +317,34 @@ hyscan_data_player_class_init (HyScanDataPlayerClass *klass)
                   2, G_TYPE_INT64, G_TYPE_INT64);
 
   /**
-   * HyScanDataPlayer::open:
+   * HyScanDataPlayer::track-changed:
    * @player: указатель на #HyScanDataPlayer
    * @db: указатель на #HyScanDB;
    * @project_name: имя нового проекта;
    * @track_name: имя нового галса.
    *
-   * Сигнал ::open посылается непосредственно после удачного открытия нового галса
-   * или любой смены каналов.
-   *
+   * Сигнал ::track-changed посылается непосредственно после удачного открытия
+   * нового галса.
    */
   hyscan_data_player_signal[SIGNAL_TRACK_CHANGED] =
-                  g_signal_new ("open", HYSCAN_TYPE_DATA_PLAYER, G_SIGNAL_RUN_LAST, 0,
+                  g_signal_new ("track-changed", HYSCAN_TYPE_DATA_PLAYER, G_SIGNAL_RUN_LAST, 0,
                   NULL, NULL,
                   hyscan_core_marshal_VOID__OBJECT_STRING_STRING,
                   G_TYPE_NONE,
                   3, G_TYPE_OBJECT, G_TYPE_STRING, G_TYPE_STRING);
 
+  /**
+   * HyScanDataPlayer::channels-opened:
+   * @player: указатель на #HyScanDataPlayer
+   *
+   * Сигнал ::channels-opened посылается непосредственно после удачного открытия
+   * каналов. Сигнал будет послан если в списке каналов был открыт хотя бы один.
+   */
+  hyscan_data_player_signal[SIGNAL_CHANNELS_OPENED] =
+                  g_signal_new ("channels-opened", HYSCAN_TYPE_DATA_PLAYER, G_SIGNAL_RUN_LAST, 0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 }
 
 static void
@@ -381,7 +405,6 @@ hyscan_data_player_watcher (HyScanDataPlayer* player)
 
   gboolean any_changes;
   gboolean time_updated;
-  gboolean awaken;
 
   HyScanDataPlayerState *new_st = &priv->new_st;
   HyScanDataPlayerState *user_st = &priv->user_st;
@@ -400,8 +423,7 @@ hyscan_data_player_watcher (HyScanDataPlayer* player)
       g_mutex_lock (&priv->lock);
       /* Ожидание пользовательского события или g_cond сигнала от signaller.*/
       wait_time = g_get_monotonic_time () + HYSCAN_DATA_PLAYER_RECONNECT_WAIT;
-      awaken = g_cond_wait_until (&priv->cond, &priv->lock, wait_time);
-      if (!awaken)
+      if (!g_cond_wait_until (&priv->cond, &priv->lock, wait_time))
         {
           g_mutex_unlock (&priv->lock);
           continue;
@@ -423,7 +445,7 @@ hyscan_data_player_watcher (HyScanDataPlayer* player)
           hyscan_data_player_copy_state (main_st, new_st);
         }
 
-      /* Если сменен галс или есть неоткрытые каналы пытается открыть их.*/
+      /* Если сменен галс или есть неоткрытые каналы пытается открыть их. */
       if (main_st->channels != NULL || main_st->track_changed)
         hyscan_data_player_open_all (player, main_st, &info);
 
@@ -571,12 +593,8 @@ hyscan_data_player_open_all (HyScanDataPlayer        *player,
       state->track_changed = FALSE;
     }
 
-  if (!hyscan_data_player_open_channels (state, info))
-    return;
-
-  /* Сообщает об изменении списка каналов.*/
-  g_signal_emit (player, hyscan_data_player_signal[SIGNAL_TRACK_CHANGED], 0,
-                 state->db, state->project_name, state->track_name);
+  if (hyscan_data_player_open_channels (state, info))
+    g_signal_emit (player, hyscan_data_player_signal[SIGNAL_CHANNELS_OPENED], 0);
 }
 
 /* Функция подключения к базе данных и открытия галса.*/
@@ -691,7 +709,8 @@ hyscan_data_player_update_time (HyScanDataPlayer        *player,
   return result;
 }
 
-/* Функция обновления минимальной и максимальной меток, содержащих данные в отслеживаемых каналах.*/
+/* Функция обновления минимальной и максимальной меток, содержащих данные в
+   отслеживаемых каналах.*/
 static void
 hyscan_data_player_update_range (HyScanDataPlayer      *player,
                                  HyScanDataPlayerState *state)
@@ -766,17 +785,18 @@ hyscan_data_player_get_step_time (GSList  *list,
                                            time + step,
                                            NULL, NULL,
                                            &ltime, &rtime);
-      /* При обычном результате, берется ближайшая метка в текущем канале, и если это первая
-       * валидная метка или она ближе предыдущего варианта, то записывается в результат. */
+      /* При обычном результате, берется ближайшая метка в текущем канале,
+       * и если это первая валидная метка или она ближе предыдущего варианта,
+       * то записывается в результат. */
       if (found == HYSCAN_DB_FIND_OK)
         {
           alter = next ? rtime : ltime;
         }
-      /* Если искомая метка находится раньше первой метки канала, то рассматривается только
-       * вариант при движении вперед и берется крайняя левая метка. При движении назад предполагается,
-       * что левая граница канала уже была пройдена, и, в случае необходимости, это значение будет
-       * установлено в конце функции hysan_data_player_update_time. Поэтому нет необходимости дважды
-       * его проверять. */
+      /* Если искомая метка находится раньше первой метки канала, то рассматривается
+       * только вариант при движении вперед и берется крайняя левая метка.
+       * При движении назад предполагается, что левая граница канала уже была пройдена,
+       * и, в случае необходимости, это значение будет установлено в конце функции
+       * hysan_data_player_update_time. Поэтому нет необходимости дважды его проверять. */
       else if (next && found == HYSCAN_DB_FIND_LESS)
         {
           hyscan_db_channel_get_data_range (data->db, data->id, &index, NULL);
@@ -861,7 +881,7 @@ hyscan_data_player_new_channel (HyScanDB    *db,
 {
   HyScanDataPlayerChannel *data;
 
-  data = g_slice_new0 (HyScanDataPlayerChannel);
+  data = g_slice_new (HyScanDataPlayerChannel);
   if (db != NULL)
     data->db = g_object_ref (db);
   data->name = g_strdup (name);
@@ -885,7 +905,7 @@ hyscan_data_player_free_channel (HyScanDataPlayerChannel *data)
   if (data->id > 0)
     hyscan_db_close (data->db, data->id);
   g_clear_pointer (&data->name, g_free);
-  g_clear_object (&data->db);
+  g_object_unref (data->db);
   g_slice_free (HyScanDataPlayerChannel, data);
 }
 
@@ -1017,9 +1037,10 @@ hyscan_data_player_set_fps (HyScanDataPlayer *player,
  * hyscan_data_player_get_db:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция возвращает указатель на используемый #HyScanDB. Следует использовать только
- * в callback'ах сигналов HyScanDataPlayer::process и HyScanDataPlayer::open (внутри потока
- * обработки данного #HyScanDataPlayer'а), в противном случае функция вернет NULL.
+ * Функция возвращает указатель на используемый #HyScanDB. Следует использовать
+ * только  в callback'ах сигналов HyScanDataPlayer::process,
+ * HyScanDataPlayer::track-changed и HyScanDataPlayer::channels-changed (внутри
+ * потока обработки данного #HyScanDataPlayer'а), в противном случае функция вернет NULL.
  *
  * Returns: (transfer none): указатель на #HyScanDB.
  */
@@ -1040,8 +1061,9 @@ hyscan_data_player_get_db (HyScanDataPlayer *player)
  * hyscan_data_player_get_project_name:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция возвращает название используемого проекта. Следует использовать только в callback'ах
- * сигналов HyScanDataPlayer::process и HyScanDataPlayer::open (внутри потока обработки данного
+ * Функция возвращает название используемого проекта. Следует использовать только
+ * в callback'ах сигналов HyScanDataPlayer::process, HyScanDataPlayer::track-changed
+ * и HyScanDataPlayer::channels-changed (внутри потока обработки данного
  * #HyScanDataPlayer'а), в противном случае функция вернет NULL.
  *
  * Returns: (transfer none): название проекта.
@@ -1063,8 +1085,9 @@ hyscan_data_player_get_project_name (HyScanDataPlayer *player)
  * hyscan_data_player_get_track_name:
  * @player: указатель на #HyScanDataPlayer
  *
- * Функция возвращает название используемого галса. Следует использовать только в callback'ах сигналов
- * HyScanDataPlayer::process и HyScanDataPlayer::open (внутри потока обработки данного
+ * Функция возвращает название используемого галса. Следует использовать только
+ * в callback'ах сигналов HyScanDataPlayer::process, HyScanDataPlayer::track-changed
+ * и HyScanDataPlayer::channels-changed (внутри потока обработки данного
  * #HyScanDataPlayer'а), в противном случае функция вернет NULL.
  *
  * Returns: (transfer none): название галса.
@@ -1105,8 +1128,9 @@ hyscan_data_player_is_played (HyScanDataPlayer *player)
  * @channel: индекс канала данных
  * @type: тип канала данных
  *
- * Функция добавляет канал данных в список отслеживаемых. По данному списку формируются допустимые
- * временные метки, а так же производятся переходы фунцией #hysca_data_player_step.
+ * Функция добавляет канал данных в список отслеживаемых. По данному списку
+ * формируются допустимые временные метки, а так же производятся переходы фунцией
+ * #hysca_data_player_step.
  *
  * Returns: id канала, необходимый для удаления. id < 0 при некорректных параметрах.
  */
@@ -1290,9 +1314,10 @@ hyscan_data_player_channel_is_exist (HyScanDataPlayer *player,
  * @player: указатель на #HyScanDataPlayer
  * @speed: новое значение скорости
  *
- * Функция устанавливает скорость воспроизведения. Скорость воспроизведения замедляется (< 1.0)
- * или ускоряется (> 1.0) относительно нормального течения времени. Если скорость воспроизведения
- * отрицательная, проигрывание осуществляется в обратном направлении.
+ * Функция устанавливает скорость воспроизведения. Скорость воспроизведения
+ * замедляется (< 1.0) или ускоряется (> 1.0) относительно нормального течения
+ * времени. Если скорость воспроизведения отрицательная, проигрывание осуществляется
+ * в обратном направлении.
  */
 void
 hyscan_data_player_play (HyScanDataPlayer *player,
@@ -1421,9 +1446,10 @@ hyscan_data_player_seek_prev (HyScanDataPlayer *player)
  * @player: указатель на #HyScanDataPlayer
  * @steps: количество перемещений
  *
- * Функция перемещает #HyScanDataPlayer к временной метке с данными на заданное число перемещений.
- * При steps > 0 выполняется заданное число перемещений в положительном направлении,
- * при steps < 0 - в отрицательном. При steps = 0 ничего не происходит.
+ * Функция перемещает #HyScanDataPlayer к временной метке с данными на заданное
+ * число перемещений. При steps > 0 выполняется заданное число перемещений в
+ * положительном направлении, при steps < 0 - в отрицательном. При steps = 0
+ * ничего не происходит.
  */
 void
 hyscan_data_player_step (HyScanDataPlayer *player,

@@ -476,7 +476,7 @@ test_set_db (gpointer user_data)
   /* В первом цикле теста устанавливает исходное состояние. */
   if (test_state->stage == 0)
     {
-      g_signal_connect (player, "open", G_CALLBACK (open_callback), NULL);
+      g_signal_connect (player, "channels-opened", G_CALLBACK (open_callback), NULL);
       reset_player (test_state);
     }
   /* Проверка установки галса. После установки исходного состояния,где происходит 
