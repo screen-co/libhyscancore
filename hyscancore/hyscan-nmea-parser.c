@@ -470,7 +470,9 @@ hyscan_nmea_parser_parse_helper (HyScanNMEAParserPrivate *priv,
   sentence = hyscan_nmea_parser_shift (sentence, priv->field_n);
   if (sentence == NULL)
     return FALSE;
-
+  /* Костылик на случай если в RMC нет данных о курсе, совсем! */
+  if (*sentence == ',') /* Тогда идёт "запятая" и дата... */
+    return FALSE;
   /* Теперь парсим строчку и возвращаем результат. */
   return (priv->parse_func)(sentence, value);
 }
