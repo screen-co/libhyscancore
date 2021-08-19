@@ -107,7 +107,7 @@ add_test (NAME DataPlayerTest COMMAND data-player-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME NavSmoothTest COMMAND nav-smooth-test
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-add_test (NAME ProfileTest COMMAND profile-test
+add_test (NAME ProfileTest COMMAND profile-test -d .
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_test (NAME ObjectDataTest COMMAND object-data-test file://db
           WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
