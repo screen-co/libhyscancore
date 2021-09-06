@@ -1,6 +1,6 @@
-/* control-test.c
+/* profile-test.c
  *
- * Copyright 2016-2018 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
+ * Copyright 2019-2020 Screen LLC, Alexander Dmitriev <m1n7@yandex.ru>
  *
  * This file is part of HyScanCore library.
  *
@@ -37,25 +37,28 @@
 #include <hyscan-profile-offset.h>
 #include "hyscan-dummy-device.h"
 
+#include <glib/gstdio.h>
+
 #define TEST_NAME "test_name"
 #define TEST_SENSOR "random_sensor_name"
 #define EMPTY_SENSOR ""
 #define TEST_SOURCE HYSCAN_SOURCE_ECHOSOUNDER
 #define HW_URI "nmea://auto"
 
-static void     test_db                 (void);
-static gboolean compare_antenna_offsets (HyScanAntennaOffset *a,
-                                         HyScanAntennaOffset *b);
-static void     check_offsets           (HyScanProfileOffset *pof,
-                                         HyScanAntennaOffset *reference);
+static void     test_db                 (const gchar          *uri);
+static gboolean compare_antenna_offsets (HyScanAntennaOffset  *a,
+                                         HyScanAntennaOffset  *b);
+static void     check_offsets           (HyScanProfileOffset  *pof,
+                                         HyScanAntennaOffset  *reference);
 static void     test_offset             (void);
-static void     test_hw                 (gchar **paths);
+static void     test_hw                 (gchar               **paths);
 
 int
 main (int    argc,
       char **argv)
 {
-  gchar **paths;
+  gchar **paths = NULL;
+  gchar *uri = NULL;
 
   {
     gchar **args;
@@ -82,11 +85,17 @@ main (int    argc,
         g_print ("%s\n", error->message);
         return -1;
       }
+    if ((g_strv_length (args) != 2))
+      {
+        g_print ("%s", g_option_context_get_help (context, FALSE, NULL));
+        return 0;
+      }
     g_option_context_free (context);
+    uri = g_strdup (args[1]);
     g_strfreev (args);
   }
 
-  test_db ();
+  test_db (uri);
   test_offset ();
 
   if (paths != NULL)
@@ -95,16 +104,16 @@ main (int    argc,
   g_message ("Passed.");
 
   g_strfreev (paths);
-
+  g_free (uri);
 
   return 0;
 }
 
 static void
-test_db (void)
+test_db (const gchar *uri)
 {
   gchar buf[25];
-  gchar *file, *uri;
+  gchar *file;
   HyScanDB *db;
   HyScanProfileDB *pdb;
   HyScanProfile *p;
@@ -113,7 +122,6 @@ test_db (void)
   pdb = hyscan_profile_db_new (file);
   p = HYSCAN_PROFILE (pdb);
 
-  uri = g_strdup_printf ("file://%s", g_get_tmp_dir ());
   hyscan_profile_set_name (p, TEST_NAME);
   hyscan_profile_db_set_uri (pdb, uri);
 
@@ -144,7 +152,6 @@ test_db (void)
     g_error ("DB profile deletion failure");
 
   g_free (file);
-  g_free (uri);
   g_clear_object (&db);
   g_clear_object (&pdb);
 }
@@ -303,5 +310,6 @@ test_hw (gchar **paths)
   g_list_free (list);
   g_clear_object (&phw);
   g_clear_object (&ctrl);
+  g_unlink (file);
   g_free (file);
 }
