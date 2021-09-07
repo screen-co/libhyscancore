@@ -159,8 +159,8 @@ main (int    argc,
   g_assert_cmpfloat (ABS (value - 180), <, 1e-2);
 
   /* Для угловых значений среднее между 355 и 5 равно 0. */
-  g_assert_true (hyscan_nav_smooth_get (smooth_circular, NULL, 1700, &value));
-  g_assert_cmpfloat (ABS (value - 0), <, 1e-2);
+  g_assert_true (hyscan_nav_smooth_get (smooth_circular, NULL, 1650, &value));
+  g_assert_cmpfloat (ABS (value - 357.5), <, 1e-2);
   g_assert_true (hyscan_nav_smooth_get (smooth_circular, NULL, 1750, &value));
   g_assert_cmpfloat (ABS (value - 2.5), <, 1e-2);
 
