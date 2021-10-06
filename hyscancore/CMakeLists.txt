@@ -70,6 +70,7 @@ add_library (${HYSCAN_CORE_LIBRARY} SHARED
              hyscan-object-data-wfmark.c
              hyscan-object-data-geomark.c
              hyscan-object-data-label.c
+             hyscan-mark-manager-extension.c
              hyscan-mloc.c
              hyscan-hw-connector.c
              hyscan-profile.c
@@ -159,6 +160,7 @@ install (FILES hyscan-core-schemas.h
                hyscan-object-data-wfmark.h
                hyscan-object-data-geomark.h
                hyscan-object-data-label.h
+               hyscan-mark-manager-extension.h
                hyscan-hw-connector.h
                hyscan-profile.h
                hyscan-profile-db.h
