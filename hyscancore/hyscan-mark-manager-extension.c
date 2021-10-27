@@ -49,6 +49,11 @@
 
 #include <hyscan-mark-manager-extension.h>
 
+G_DEFINE_BOXED_TYPE (HyScanMarkManagerExtension,
+                     hyscan_mark_manager_extension,
+                     hyscan_mark_manager_extension_copy,
+                     hyscan_mark_manager_extension_free)
+
 /**
  * hyscan_mark_manager_extension_new:
  * @type: тип записи
@@ -65,16 +70,18 @@ hyscan_mark_manager_extension_new (HyScanMarkManagerExtensionType  type,
                                    gboolean                        active,
                                    gboolean                        expanded)
 {
-  HyScanMarkManagerExtension *extension = g_new (HyScanMarkManagerExtension, 1);
+  HyScanMarkManagerExtension *extension = g_slice_new (HyScanMarkManagerExtension);
+
   extension->type     = type;
   extension->active   = active;
   extension->expanded = expanded;
+
   return extension;
 }
 
 /**
  * hyscan_mark_manager_extension_copy:
- * @self: указатель на копируемую структуру
+ * @self: указатель на копируемую структуру #HyScanMarkManagerExtension
  *
  * Создаёт копию структуры #HyScanMarkManagerExtension.
  *
@@ -84,28 +91,26 @@ hyscan_mark_manager_extension_new (HyScanMarkManagerExtensionType  type,
 HyScanMarkManagerExtension*
 hyscan_mark_manager_extension_copy (HyScanMarkManagerExtension *self)
 {
-  HyScanMarkManagerExtension *copy = g_new (HyScanMarkManagerExtension, 1);
+  HyScanMarkManagerExtension *copy = g_slice_new (HyScanMarkManagerExtension);
+
   copy->type     = self->type;
   copy->active   = self->active;
   copy->expanded = self->expanded;
+
   return copy;
 }
 
 /**
  * hyscan_mark_manager_extension_free:
- * @data: указатель на структуру #HyScanMarkManager.
+ * @self: указатель на удаляемую структуру #HyScanMarkManagerExtension
  *
  * Удаляет структуру #HyScanMarkManagerExtension.
  */
 void
-hyscan_mark_manager_extension_free (gpointer data)
+hyscan_mark_manager_extension_free (HyScanMarkManagerExtension *self)
 {
-  if (data != NULL)
-    {
-      HyScanMarkManagerExtension *extension = (HyScanMarkManagerExtension*)data;
-      extension->type     = PARENT;
-      extension->active   =
-      extension->expanded = FALSE;
-      g_free (extension);
-    }
+  if (self == NULL)
+    return;
+
+  g_slice_free(HyScanMarkManagerExtension, self);
 }

@@ -35,15 +35,21 @@
 #ifndef __HYSCAN_MARK_MANAGER_EXTENSION_H__
 #define __HYSCAN_MARK_MANAGER_EXTENSION_H__
 
-#include <glib.h>
-#include <hyscan-api.h>
+#include <hyscan-types.h>
+
 /* Типы записей в модели. */
 typedef enum
 {
-  PARENT,  /* Узел. */
-  CHILD,   /* Объект. */
-  ITEM     /* Атрибут объекта. */
+  HYSCAN_MARK_MANAGER_EXTENSION_PARENT,  /* Узел. */
+  HYSCAN_MARK_MANAGER_EXTENSION_CHILD,   /* Объект. */
+  HYSCAN_MARK_MANAGER_EXTENSION_ITEM     /* Атрибут объекта. */
 } HyScanMarkManagerExtensionType;
+
+G_BEGIN_DECLS
+
+#define HYSCAN_TYPE_MARK_MANAGER_EXTENSION (hyscan_mark_manager_extension_get_type ())
+
+typedef struct _HyScanMarkManagerExtension HyScanMarkManagerExtension;
 
 /**
  * HyScanMarkManagerExtension:
@@ -53,12 +59,12 @@ typedef enum
  *
  * Структура содержащая расширеную информацию об объектах.
  */
-typedef struct
+struct _HyScanMarkManagerExtension
 {
   HyScanMarkManagerExtensionType  type;
-  gboolean                        active,
-                                  expanded;
-}HyScanMarkManagerExtension;
+  gboolean                        active;
+  gboolean                        expanded;
+};
 
 HYSCAN_API
 HyScanMarkManagerExtension*  hyscan_mark_manager_extension_new  (HyScanMarkManagerExtensionType  type,
@@ -69,6 +75,8 @@ HYSCAN_API
 HyScanMarkManagerExtension*  hyscan_mark_manager_extension_copy (HyScanMarkManagerExtension     *self);
 
 HYSCAN_API
-void                         hyscan_mark_manager_extension_free (gpointer                        data);
+void                         hyscan_mark_manager_extension_free (HyScanMarkManagerExtension     *self);
+
+G_END_DECLS
 
 #endif /* __HYSCAN_MARK_MANAGER_EXTENSION_H__ */
